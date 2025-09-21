@@ -1,25 +1,25 @@
 # Stage 1: Build the application
-# Hum ek Node.js environment use kar rahe hain code ko build karne ke liye
-FROM node:18-alpine AS builder
+FROM node:18-alpine as builder
+
 WORKDIR /app
 
-# Pehle dependencies install karte hain
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
-# Baaki saara code copy karte hain
 COPY . .
 
-# Application ko build karte hain
+# --- THIS IS THE CRITICAL NEW PART ---
+# 1. Accept a build argument for the API URL
+ARG VITE_API_BASE_URL
+# 2. Create the .env file inside the container using the argument
+RUN echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" > .env
+# --- END OF NEW PART ---
+
+# Build the application using the new .env file
 RUN npm run build
 
-# Stage 2: Serve the application
-# Hum ek halka web server (Nginx) use kar rahe hain build ki hui files ko serve karne ke liye
+# Stage 2: Serve the application with Nginx
 FROM nginx:stable-alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Port 80 ko expose karte hain taaki bahar se access ho sake
 EXPOSE 80
-
-# Nginx ko start karte hain
 CMD ["nginx", "-g", "daemon off;"]
