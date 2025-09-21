@@ -25,8 +25,15 @@ import {
   Save,
   CreditCard,
   Clock,
-  Download
+  Download,
+  DollarSign,
+  Wallet
 } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
+import MarketingQuotationForm from './MarketingCreateQuotationForm';
+import MarketingQuotation from './MarketingQuotation';
+import { MarketingCorporateStandardInvoice } from './MarketingProformaInvoice';
+import MarketingFollowUpBase from './FollowUp/MarketingFollowUpBase';
 
 // Edit Lead Modal Component
 const EditLeadModal = ({ lead, onSave, onClose }) => {
@@ -684,15 +691,87 @@ const LeadImportModal = ({ onImport, onClose }) => {
   );
 };
 
-const AllLeads = () => {
+const MarketingSalespersonLeads = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showQuotationModal, setShowQuotationModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [activeTab, setActiveTab] = useState('Details');
+  const [quotations, setQuotations] = useState([]);
+  const [quotationData, setQuotationData] = useState({
+    quotationNumber: `ANQ${Date.now().toString().slice(-6)}`,
+    quotationDate: new Date().toISOString().split('T')[0],
+    validUpto: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    selectedBranch: 'ANODE',
+    items: [
+      {
+        id: 1,
+        description: "Industrial Motor 5HP",
+        quantity: 1,
+        unit: "Nos",
+        amount: 50000
+      }
+    ],
+    subtotal: 50000,
+    taxRate: 18,
+    taxAmount: 9000,
+    total: 59000,
+    billTo: {
+      business: "",
+      address: "",
+      phone: "",
+      gstNo: "",
+      state: ""
+    }
+  });
+  const [selectedBranch, setSelectedBranch] = useState('ANODE');
+  const [showQuotationPopup, setShowQuotationPopup] = useState(false);
+  const [quotationPopupData, setQuotationPopupData] = useState(null);
+  
+  // Payment related state
+  const [showPaymentDetails, setShowPaymentDetails] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [totalAmount, setTotalAmount] = useState(0);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  
+  // Company branch configuration
+  const companyBranches = {
+    ANODE: {
+      name: 'ANODE ELECTRIC PRIVATE LIMITED',
+      gstNumber: '(23AANCA7455R1ZX)',
+      description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
+      address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
+      tel: '6262002116, 6262002113',
+      web: 'www.anocab.com',
+      email: 'info@anocab.com',
+      logo: 'Anocab - A Positive Connection.....'
+    },
+    SAMRIDDHI_CABLE: {
+      name: 'SAMRIDDHI CABLE INDUSTRIES PRIVATE LIMITED',
+      gstNumber: '(23ABPCS7684F1ZT)',
+      description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
+      address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
+      tel: '6262002116, 6262002113',
+      web: 'www.samriddhicable.com',
+      email: 'info@samriddhicable.com',
+      logo: 'Samriddhi Cable - Quality & Excellence.....'
+    },
+    SAMRIDDHI_INDUSTRIES: {
+      name: 'SAMRIDDHI INDUSTRIES',
+      gstNumber: '(23ABWFS1117M1ZT)',
+      description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
+      address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
+      tel: '6262002116, 6262002113',
+      web: 'www.samriddhiindustries.com',
+      email: 'info@samriddhiindustries.com',
+      logo: 'Samriddhi Industries - Innovation & Trust.....'
+    }
+  };
   const [filters, setFilters] = useState({
     name: '',
     address: '',
@@ -862,7 +941,7 @@ const AllLeads = () => {
 
   const handleViewLead = (lead) => {
     setSelectedLead(lead);
-    setActiveTab('Overview');
+    setActiveTab('Details');
     setShowViewModal(true);
   };
 
@@ -899,6 +978,118 @@ const AllLeads = () => {
     }));
     setLeads([...leads, ...leadsWithIds]);
     setShowImportModal(false);
+  };
+
+  const handleSaveQuotation = (quotationData) => {
+    setQuotations([...quotations, quotationData]);
+    setShowQuotationModal(false);
+    setSelectedLead(null);
+    // You can add a success message here
+    alert('Quotation created successfully!');
+  };
+
+  const handleCreateQuotation = () => {
+    if (selectedLead) {
+      setShowQuotationModal(true);
+    }
+  };
+
+  const handleSendVerification = (lead) => {
+    // Update lead's quotation status to pending
+    const updatedLead = {
+      ...lead,
+      quotationStatus: 'pending',
+      verificationSentAt: new Date().toISOString()
+    }
+    
+    // Update the lead in the leads array
+    setLeads(prevLeads => 
+      prevLeads.map(l => l.id === lead.id ? updatedLead : l)
+    );
+    
+    // Update the selected lead if it's the same
+    if (selectedLead && selectedLead.id === lead.id) {
+      setSelectedLead(updatedLead);
+    }
+    
+    // Show success message
+    alert('Verification request sent successfully! Status will be updated when the customer responds.');
+  };
+
+  const handleViewLatestQuotation = (lead) => {
+    // Create sample quotation data for demo purposes
+    const sampleQuotationData = {
+      quotationNumber: `ANO/25-26/${Math.floor(Math.random() * 9999)}`,
+      quotationDate: new Date().toISOString().split('T')[0],
+      validUpto: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      voucherNumber: `VOUCH-${Math.floor(Math.random() * 9999)}`,
+      customer: lead,
+      items: [
+        {
+          description: lead.productName || "XLPE Cable 1.5mm",
+          quantity: 100,
+          unitPrice: 150.00,
+          total: 15000.00
+        }
+      ],
+      subtotal: 15000.00,
+      tax: 2700.00,
+      total: 17700.00
+    }
+    
+    setQuotationPopupData(sampleQuotationData);
+    setShowQuotationPopup(true);
+  };
+
+  const handleWalletClick = async (lead) => {
+    console.log('Opening payment modal for lead:', lead);
+    // Use the demo payment history data
+    setPaymentHistory([
+      {
+        id: 1,
+        amount: 50000,
+        date: '2024-01-15',
+        status: 'paid',
+        paymentMethod: 'Cash',
+        remarks: 'Initial advance payment',
+        reference: 'CASH001',
+        dueDate: '2024-01-15',
+        paidDate: '2024-01-15'
+      },
+      {
+        id: 2,
+        amount: 25000,
+        date: '2024-01-20',
+        status: 'paid',
+        paymentMethod: 'UPI',
+        remarks: 'Second installment',
+        reference: 'UPI123456',
+        dueDate: '2024-01-20',
+        paidDate: '2024-01-20'
+      },
+      {
+        id: 3,
+        amount: 15000,
+        date: '2024-01-25',
+        status: 'pending',
+        paymentMethod: 'Bank Transfer',
+        remarks: 'Final payment pending',
+        reference: 'BANK789',
+        dueDate: '2024-01-25',
+        paidDate: null
+      }
+    ]);
+    console.log('Payment history set with demo data');
+    setTotalAmount(90000);
+    setSelectedCustomer({
+      id: lead.id,
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+      business: lead.business,
+      address: lead.address
+    });
+    setShowPaymentDetails(true);
   };
 
   return (
@@ -1230,6 +1421,23 @@ const AllLeads = () => {
                         >
                           <Edit className="w-4 h-4 text-orange-500" />
                         </button>
+                        <button 
+                          onClick={() => {
+                            setSelectedLead(lead);
+                            setShowQuotationModal(true);
+                          }}
+                          className="w-8 h-8 rounded-full border-2 border-green-500 bg-white hover:bg-green-50 transition-colors flex items-center justify-center"
+                          title="Create Quotation"
+                        >
+                          <DollarSign className="w-4 h-4 text-green-500" />
+                        </button>
+                        <button 
+                          onClick={() => handleWalletClick(lead)}
+                          className="w-8 h-8 rounded-full border-2 border-purple-500 bg-white hover:bg-purple-50 transition-colors flex items-center justify-center"
+                          title="View Payment Details"
+                        >
+                          <Wallet className="w-4 h-4 text-purple-500" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1265,149 +1473,516 @@ const AllLeads = () => {
             
             {/* Tab Navigation */}
             <div className="border-b border-gray-200">
-              <nav className="flex space-x-8 px-6">
+              <div className="flex items-center gap-2 border-b border-gray-200 px-6">
                 <button
-                  onClick={() => setActiveTab('Overview')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'Overview'
-                      ? 'border-blue-500 text-blue-600 bg-white rounded-t-lg'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`px-3 py-2 text-sm flex items-center gap-1 ${
+                    activeTab === 'Details' 
+                      ? 'text-blue-600 border-b-2 border-blue-600' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`} 
+                  onClick={() => setActiveTab('Details')}
                 >
-                  Overview
+                  <User className="h-4 w-4" />
+                  Details
                 </button>
                 <button
-                  onClick={() => setActiveTab('Payment Status')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'Payment Status'
-                      ? 'border-blue-500 text-blue-600 bg-white rounded-t-lg'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`px-3 py-2 text-sm flex items-center gap-1 ${
+                    activeTab === 'Quotation & Payments' 
+                      ? 'text-blue-600 border-b-2 border-blue-600' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`} 
+                  onClick={() => setActiveTab('Quotation & Payments')}
                 >
-                  Payment Status
+                  <FileText className="h-4 w-4" />
+                  Quotation & Payment
                 </button>
                 <button
-                  onClick={() => setActiveTab('Meetings')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'Meetings'
-                      ? 'border-blue-500 text-blue-600 bg-white rounded-t-lg'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`px-3 py-2 text-sm flex items-center gap-1 ${
+                    activeTab === 'Proforma Invoice' 
+                      ? 'text-blue-600 border-b-2 border-blue-600' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`} 
+                  onClick={() => setActiveTab('Proforma Invoice')}
                 >
-                  Meetings
+                  <Clock className="h-4 w-4" />
+                  Performa Invoice
                 </button>
-              </nav>
+                <button
+                  className={`px-3 py-2 text-sm flex items-center gap-1 ${
+                    activeTab === 'Follow Up' 
+                      ? 'text-blue-600 border-b-2 border-blue-600' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`} 
+                  onClick={() => setActiveTab('Follow Up')}
+                >
+                  <Clock className="h-4 w-4" />
+                  Follow Up
+                </button>
+              </div>
             </div>
             
             <div className="p-6">
-              {/* Overview Tab */}
-              {activeTab === 'Overview' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Name</label>
-                      <p className="text-gray-900 mt-1">{selectedLead.name}</p>
+              {/* Details Tab */}
+              {activeTab === 'Details' && (
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Customer Name</span>
+                    <span className="font-medium text-gray-900">{selectedLead.name}</span>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Phone</label>
-                      <p className="text-gray-900 mt-1">{selectedLead.phone}</p>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Phone</span>
+                    <span className="font-medium text-gray-900">{selectedLead.phone}</span>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Address</label>
-                      <p className="text-gray-900 mt-1">{selectedLead.address}</p>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Address</span>
+                    <span className="font-medium text-gray-900 text-right max-w-[60%]">{selectedLead.address}</span>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">GST No.</label>
-                      <p className="text-gray-900 mt-1">{selectedLead.gstNo}</p>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">GST No.</span>
+                    <span className="font-medium text-gray-900">{selectedLead.gstNo || '-'}</span>
                     </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Product Type</span>
+                    <span className="font-medium text-gray-900">{selectedLead.productType}</span>
                   </div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Product Type</label>
-                      <p className="text-gray-900 mt-1">{selectedLead.productType}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">State</label>
-                      <p className="text-gray-900 mt-1">{selectedLead.state}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Lead Source</label>
-                      <p className="text-gray-900 mt-1">{selectedLead.leadSource}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Customer Type</label>
-                      <p className="text-gray-900 mt-1">{selectedLead.customerType}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Date</label>
-                      <p className="text-gray-900 mt-1">{selectedLead.date}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Visiting Status</label>
-                      <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getVisitingStatusColor(selectedLead.visitingStatus)}`}>
-                        {selectedLead.visitingStatus}
-                      </span>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Final Status</label>
-                      <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getFinalStatusColor(selectedLead.finalStatus)}`}>
-                        {selectedLead.finalStatus}
-                      </span>
-                    </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">State</span>
+                    <span className="font-medium text-gray-900">{selectedLead.state}</span>
                   </div>
-                </div>
-              )}
-
-              {/* Payment Status Tab */}
-              {activeTab === 'Payment Status' && (
-                <div className="space-y-6">
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-medium text-gray-900">Current Payment Status</h3>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPaymentStatusColor(selectedLead.paymentStatus)}`}>
-                        {selectedLead.paymentStatus}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-white p-4 rounded-lg">
-                        <p className="text-sm text-gray-500">Total Amount</p>
-                        <p className="text-xl font-semibold text-gray-900">₹50,000</p>
-                      </div>
-                      <div className="bg-white p-4 rounded-lg">
-                        <p className="text-sm text-gray-500">Paid Amount</p>
-                        <p className="text-xl font-semibold text-gray-900">₹{selectedLead.paymentStatus === 'Paid' ? '50,000' : selectedLead.paymentStatus === 'Partial' ? '25,000' : '0'}</p>
-                      </div>
-                      <div className="bg-white p-4 rounded-lg">
-                        <p className="text-sm text-gray-500">Pending Amount</p>
-                        <p className="text-xl font-semibold text-gray-900">₹{selectedLead.paymentStatus === 'Paid' ? '0' : selectedLead.paymentStatus === 'Partial' ? '25,000' : '50,000'}</p>
-                      </div>
-                    </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Lead Source</span>
+                    <span className="font-medium text-gray-900">{selectedLead.leadSource}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Customer Type</span>
+                    <span className="font-medium text-gray-900">{selectedLead.customerType}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Date</span>
+                    <span className="font-medium text-gray-900">{selectedLead.date}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Visiting Status</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getVisitingStatusColor(selectedLead.visitingStatus)}`}>
+                      {selectedLead.visitingStatus}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Final Status</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFinalStatusColor(selectedLead.finalStatus)}`}>
+                      {selectedLead.finalStatus}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Payment Status</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(selectedLead.paymentStatus)}`}>
+                      {selectedLead.paymentStatus}
+                    </span>
                   </div>
                 </div>
               )}
 
-              {/* Meetings Tab */}
-              {activeTab === 'Meetings' && (
-                <div className="space-y-4">
-                  {selectedLead.meetings.map((meeting, index) => (
-                    <div key={index} className="bg-gray-50 p-6 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">{meeting.type}</h4>
-                          <p className="text-sm text-gray-500 mt-1">{meeting.date} at {meeting.time}</p>
+              {/* Quotation & Payments Tab */}
+              {activeTab === 'Quotation & Payments' && (
+                <div className="space-y-4 text-sm">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Quotation Status</h3>
+                    <div className="rounded-md border border-gray-200 divide-y">
+                      <div className="p-3 flex items-center justify-between">
+                        <span className="text-gray-700">Latest Quotation</span>
+                        <span className="text-xs">{selectedLead.latestQuotationUrl === "latest" ? (
+                        <button 
+                            onClick={() => handleViewLatestQuotation(selectedLead)}
+                            className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> View
+                        </button>
+                        ) : selectedLead.latestQuotationUrl ? (
+                          <a href={selectedLead.latestQuotationUrl} className="text-blue-600 underline inline-flex items-center gap-1">
+                            <Eye className="h-3.5 w-3.5" /> View
+                          </a>
+                        ) : (
+                          <span className="text-gray-500">None</span>
+                        )}</span>
+                      </div>
+                      <div className="p-3 flex items-center justify-between">
+                        <span className="text-gray-700">Quotations Sent</span>
+                        <span className="text-xs text-gray-500">{selectedLead.quotationsSent ?? 0}</span>
+                      </div>
+                      <div className="p-3 flex items-center justify-between">
+                        <span className="text-gray-700">Verification Status</span>
+                        {!selectedLead.quotationStatus || selectedLead.quotationStatus === 'send_verification' ? (
+                        <button 
+                            onClick={() => handleSendVerification(selectedLead)}
+                            className="text-xs px-3 py-1 rounded-full font-medium bg-blue-600 text-white hover:bg-blue-700"
+                          >
+                            Send Verification
+                        </button>
+                        ) : (
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            selectedLead.quotationStatus === 'approved' 
+                              ? 'bg-green-100 text-green-800' 
+                              : selectedLead.quotationStatus === 'rejected'
+                              ? 'bg-red-100 text-red-800'
+                              : selectedLead.quotationStatus === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {selectedLead.quotationStatus === 'approved' 
+                              ? 'Verified' 
+                              : selectedLead.quotationStatus === 'rejected'
+                              ? 'Rejected'
+                              : selectedLead.quotationStatus === 'pending'
+                              ? 'Pending'
+                              : 'Send Verification'
+                            }
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <button 
+                          onClick={handleCreateQuotation}
+                          className="px-3 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 inline-flex items-center gap-2"
+                        >
+                          Create Quotation
+                        </button>
+                      </div>
+                    </div>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          meeting.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                          meeting.status === 'Scheduled' ? 'bg-blue-100 text-blue-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {meeting.status}
-                        </span>
+                    <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="text-sm font-semibold text-gray-900">Quotation Preview</h3>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-600">Company Branch:</label>
+                        <select 
+                          value={selectedBranch} 
+                          onChange={(e) => setSelectedBranch(e.target.value)}
+                          className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                        >
+                          <option value="ANODE">ANODE ELECTRIC</option>
+                          <option value="SAMRIDDHI_CABLE">SAMRIDDHI CABLE</option>
+                          <option value="SAMRIDDHI_INDUSTRIES">SAMRIDDHI INDUSTRIES</option>
+                        </select>
+                            </div>
+                    </div>
+             <div className="rounded-md border border-gray-200 max-h-[320px] overflow-auto bg-white">
+               <MarketingQuotation quotationData={quotationData} customer={selectedLead} selectedBranch={selectedBranch} />
+                    </div>
+                          </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Payment Status</h3>
+                    <div className="rounded-md border border-gray-200 divide-y">
+                      <div className="p-3 flex items-center justify-between">
+                        <span className="text-gray-700">Advance</span>
+                        <span className="text-xs text-gray-500">Not received</span>
+                        </div>
+                      <div className="p-3 flex items-center justify-between">
+                        <span className="text-gray-700">Balance</span>
+                        <span className="text-xs text-gray-500">N/A</span>
                       </div>
                     </div>
-                  ))}
+                    </div>
+                    </div>
+              )}
+
+              {/* Proforma Invoice Tab */}
+              {activeTab === 'Proforma Invoice' && (
+                <div className="space-y-6">
+                  {/* Create PI Button */}
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Performa Invoice</h3>
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2">
+                      <FileText className="w-4 h-4" />
+                      <span>Create PI</span>
+                    </button>
+                      </div>
+                      
+                  {/* Branch Selection for PI Preview */}
+                  <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Company Branch for PI Preview:</label>
+                    <select 
+                      value={selectedBranch} 
+                      onChange={(e) => setSelectedBranch(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="ANODE">ANODE ELECTRIC PRIVATE LIMITED</option>
+                      <option value="SAMRIDDHI_CABLE">SAMRIDDHI CABLE INDUSTRIES PRIVATE LIMITED</option>
+                      <option value="SAMRIDDHI_INDUSTRIES">SAMRIDDHI INDUSTRIES</option>
+                    </select>
+                              </div>
+
+                  {/* PI Display - Using CorporateStandardInvoice component */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <div className="flex justify-center">
+                      <div className="bg-white shadow-2xl rounded-lg overflow-hidden border-2 border-gray-300 max-w-full" style={{width: '100%', maxWidth: '8.5in'}}>
+                 <div id="pi-preview-content" className="transform scale-75 origin-top-left" style={{width: '133.33%'}}>
+                   <MarketingCorporateStandardInvoice 
+                     selectedBranch={selectedBranch} 
+                     companyBranches={companyBranches} 
+                   />
+                              </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+              )}
+
+              {/* Follow Up Tab */}
+              {activeTab === 'Follow Up' && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Marketing Follow Up</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Status:</span>
+                      <select className="text-sm border border-gray-300 rounded px-2 py-1 bg-white">
+                        <option value="all">All Status</option>
+                        <option value="connected">Connected</option>
+                        <option value="not-connected">Not Connected</option>
+                        <option value="next-meeting">Next Meeting</option>
+                        <option value="closed">Closed</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white border border-gray-200 rounded-lg">
+                    <MarketingFollowUpBase 
+                      status="all" 
+                      customData={leads} 
+                    />
+                  </div>
                 </div>
               )}
+                      </div>
+                      
+            {/* Modal Footer */}
+            <div className="px-6 pb-4 flex justify-end gap-3">
+              <button 
+                className="px-3 py-2 rounded-md bg-white border border-gray-200 text-gray-700 hover:bg-gray-50" 
+                onClick={() => setShowViewModal(false)}
+              >
+                Close
+              </button>
+              <button 
+                className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700" 
+                onClick={() => setShowViewModal(false)}
+              >
+                Done
+              </button>
+              {activeTab === 'Proforma Invoice' && (
+                <button
+                  onClick={() => {
+                    const element = document.getElementById('pi-preview-content');
+                    const opt = {
+                      margin: [0.4, 0.4, 0.4, 0.4],
+                      filename: `PI-${companyBranches[selectedBranch].name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`,
+                      image: { type: 'jpeg', quality: 0.8 },
+                      html2canvas: { 
+                        scale: 1.1,
+                        useCORS: true,
+                        letterRendering: true,
+                        allowTaint: true,
+                        backgroundColor: '#ffffff'
+                      },
+                      jsPDF: { 
+                        unit: 'in', 
+                        format: 'a4', 
+                        orientation: 'portrait',
+                        compress: true,
+                        putOnlyUsedFonts: true
+                      },
+                      pagebreak: { 
+                        mode: ['avoid-all', 'css', 'legacy'],
+                        before: '.page-break-before',
+                        after: '.page-break-after',
+                        avoid: '.no-page-break'
+                      }
+                    };
+                    html2pdf().set(opt).from(element).save();
+                  }}
+                  className="px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 inline-flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Print PDF
+                </button>
+              )}
+                          </div>
+                          </div>
+                        </div>
+      )}
+
+      {/* Payment Details Modal */}
+      {showPaymentDetails && selectedCustomer && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col">
+            <div className="p-4 flex-1 overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Payment Details</h3>
+                <button 
+                  onClick={() => setShowPaymentDetails(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                  aria-label="Close payment details"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+                      </div>
+                      
+              {/* Main Content Layout */}
+              <div className="flex gap-4 mb-4">
+                {/* Customer Details Box (Left - Main Area) */}
+                <div className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                  <div className="mb-4">
+                    <h4 className="font-bold text-gray-900 text-xl mb-2">{selectedCustomer.name}</h4>
+                    <div className="space-y-1">
+                      <p className="text-sm text-gray-700 flex items-center">
+                        <span className="w-16 text-gray-500">Phone:</span> 
+                        <span className="font-medium">{selectedCustomer.phone}</span>
+                      </p>
+                      <p className="text-sm text-gray-700 flex items-center">
+                        <span className="w-16 text-gray-500">Email:</span> 
+                        <span className="font-medium">{selectedCustomer.email}</span>
+                      </p>
+                      <p className="text-sm text-gray-700 flex items-center">
+                        <span className="w-16 text-gray-500">Business:</span> 
+                        <span className="font-medium">{selectedCustomer.business || 'N/A'}</span>
+                      </p>
+                      <p className="text-sm text-gray-700 flex items-center">
+                        <span className="w-16 text-gray-500">Address:</span> 
+                        <span className="font-medium">{selectedCustomer.address || 'N/A'}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Selected Payment Details */}
+                  <div className="bg-white rounded-lg border-2 border-blue-200 p-4 shadow-sm">
+                    <h5 className="font-semibold text-gray-800 mb-3 text-sm">Selected Payment Details</h5>
+                    {selectedPayment ? (
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Method:</span> 
+                          <span className="font-semibold text-blue-600">{selectedPayment.paymentMethod}</span>
+                    </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Amount:</span> 
+                          <span className="font-semibold text-green-600">₹{selectedPayment.amount.toLocaleString('en-IN')}</span>
+                      </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Due Date:</span> 
+                          <span className="font-medium">{selectedPayment.dueDate}</span>
+                      </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Paid Date:</span> 
+                          <span className="font-medium">{selectedPayment.paidDate || 'Not Paid'}</span>
+                      </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Status:</span> 
+                          <span className={`font-semibold ${selectedPayment.status === 'paid' ? 'text-green-600' : 'text-orange-600'}`}>
+                            {selectedPayment.status === 'paid' ? 'Paid' : 'Pending'}
+                          </span>
+                    </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Reference:</span> 
+                          <span className="font-medium text-xs">{selectedPayment.reference}</span>
+                  </div>
+                </div>
+                    ) : (
+                      <p className="text-gray-500 text-sm">Click on a payment to view details</p>
+                    )}
+                        </div>
+                      </div>
+                    
+                {/* Payment Methods (Right - Vertical) */}
+                <div className="w-32 space-y-2">
+                  <div className="bg-blue-100 border-2 border-blue-300 p-2 rounded-lg text-center text-sm font-semibold cursor-pointer hover:bg-blue-200 hover:scale-105 transition-all duration-200 shadow-sm">
+                    Cash
+                    </div>
+                  <div className="bg-gray-100 border-2 border-gray-300 p-2 rounded-lg text-center text-sm font-semibold cursor-pointer hover:bg-gray-200 hover:scale-105 transition-all duration-200 shadow-sm">
+                    Card
+                      </div>
+                  <div className="bg-gray-100 border-2 border-gray-300 p-2 rounded-lg text-center text-sm font-semibold cursor-pointer hover:bg-gray-200 hover:scale-105 transition-all duration-200 shadow-sm">
+                    UPI
+                    </div>
+                  <div className="bg-gray-100 border-2 border-gray-300 p-2 rounded-lg text-center text-sm font-semibold cursor-pointer hover:bg-gray-200 hover:scale-105 transition-all duration-200 shadow-sm">
+                    Bank
+                      </div>
+                  <div className="bg-gray-100 border-2 border-gray-300 p-2 rounded-lg text-center text-sm font-semibold cursor-pointer hover:bg-gray-200 hover:scale-105 transition-all duration-200 shadow-sm">
+                    Cheque
+                    </div>
+                  <div className="bg-gray-100 border-2 border-gray-300 p-2 rounded-lg text-center text-sm font-semibold cursor-pointer hover:bg-gray-200 hover:scale-105 transition-all duration-200 shadow-sm">
+                    Other
+                  </div>
+                      </div>
+                    </div>
+                    
+              {/* Payment History - Interactive */}
+              <div>
+                <h4 className="font-medium text-gray-900 mb-3 text-sm">Payment History</h4>
+                {paymentHistory.length > 0 ? (
+                  <div className="space-y-2">
+                    {paymentHistory.map((payment) => (
+                      <div 
+                        key={payment.id} 
+                        className={`rounded-lg p-3 text-sm cursor-pointer transition-all duration-200 hover:scale-105 shadow-sm border-2 ${
+                          selectedPayment?.id === payment.id 
+                            ? 'bg-blue-100 border-blue-300 shadow-md' 
+                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                        }`}
+                        onClick={() => setSelectedPayment(payment)}
+                        title="Click to view payment details"
+                      >
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center space-x-3">
+                            <span className="font-bold text-lg">₹{payment.amount.toLocaleString('en-IN')}</span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                              payment.status === 'paid' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {payment.status === 'paid' ? 'Paid' : 'Pending'}
+                            </span>
+                        </div>
+                          <div className="text-right">
+                            <div className="font-medium text-gray-700">{payment.paymentMethod}</div>
+                            <div className="text-gray-500 text-xs">{payment.date}</div>
+                        </div>
+                        </div>
+                        {selectedPayment?.id === payment.id && (
+                          <div className="mt-2 pt-2 border-t border-gray-300">
+                            <p className="text-xs text-gray-600">
+                              <span className="font-medium">Reference:</span> {payment.reference}
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              <span className="font-medium">Remarks:</span> {payment.remarks}
+                            </p>
+                      </div>
+                        )}
+                    </div>
+                    ))}
+                    </div>
+                ) : (
+                  <p className="text-center text-gray-500 py-4 text-sm">No payment history found</p>
+                )}
+                  </div>
+                </div>
+            
+            <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowPaymentDetails(false)}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded shadow-sm hover:bg-blue-700"
+                onClick={() => {
+                  alert('Add new payment functionality would open here');
+                }}
+              >
+                Add Payment
+              </button>
             </div>
           </div>
         </div>
@@ -1437,8 +2012,175 @@ const AllLeads = () => {
           onClose={() => setShowImportModal(false)}
         />
       )}
+
+      {/* Quotation Modal */}
+      {showQuotationModal && selectedLead && (
+        <MarketingQuotationForm 
+          customer={selectedLead}
+          user={{ username: 'Marketing User', email: 'marketing@anocab.com' }}
+          onSave={handleSaveQuotation}
+          onClose={() => {
+            setShowQuotationModal(false);
+            setSelectedLead(null);
+          }}
+        />
+      )}
+
+      {/* Quotation Popup Modal */}
+      {showQuotationPopup && quotationPopupData && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="p-4 flex-1 overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Latest Quotation - {quotationPopupData.customer.name}</h3>
+                <button 
+                  onClick={() => setShowQuotationPopup(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                  aria-label="Close quotation"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              {/* Quotation Content */}
+              <div className="border-2 border-black p-6 bg-white">
+                {/* Header */}
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h1 className="text-xl font-bold">ANODE ELECTRIC PRIVATE LIMITED</h1>
+                    <p className="text-sm font-semibold text-gray-700">(23AANCA7455R1ZX)</p>
+                    <p className="text-xs">MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.</p>
+                  </div>
+                  <div className="text-right">
+                    <img
+                      src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
+                      alt="Company Logo"
+                      className="h-12 w-auto bg-white p-1 rounded"
+                    />
+                  </div>
+                </div>
+                
+                {/* Company Details */}
+                <div className="border-2 border-black p-4 mb-4">
+                  <h3 className="font-bold mb-2">Company Details</h3>
+                  <p className="text-sm">KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.</p>
+                  <p className="text-sm">Tel: 6262002116, 6262002113</p>
+                  <p className="text-sm">Web: www.anocab.com</p>
+                  <p className="text-sm">Email: info@anocab.com</p>
+                </div>
+              
+                {/* Quotation Details Table */}
+                <div className="border border-black p-4 mb-4">
+                  <h3 className="font-bold mb-2">Quotation Details</h3>
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-black">
+                        <th className="text-left p-2 border-r border-black">Quotation Date</th>
+                        <th className="text-left p-2 border-r border-black">Quotation Number</th>
+                        <th className="text-left p-2 border-r border-black">Valid Upto</th>
+                        <th className="text-left p-2">Voucher Number</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="p-2 border-r border-black">{quotationPopupData.quotationDate}</td>
+                        <td className="p-2 border-r border-black">{quotationPopupData.quotationNumber}</td>
+                        <td className="p-2 border-r border-black">{quotationPopupData.validUpto}</td>
+                        <td className="p-2">{quotationPopupData.voucherNumber}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Customer Details */}
+                <div className="border border-black p-4 mb-4">
+                  <h3 className="font-bold mb-2">Bill To:</h3>
+                  <p className="font-semibold">{quotationPopupData.customer.name}</p>
+                  <p>{quotationPopupData.customer.business}</p>
+                  <p>{quotationPopupData.customer.address}</p>
+                  <p>Phone: {quotationPopupData.customer.phone}</p>
+                  <p>Email: {quotationPopupData.customer.email}</p>
+                </div>
+                
+                {/* Items Table */}
+                <div className="border border-black p-4 mb-4">
+                  <h3 className="font-bold mb-2">Items</h3>
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-black">
+                        <th className="text-left p-2 border-r border-black">Description</th>
+                        <th className="text-center p-2 border-r border-black">Quantity</th>
+                        <th className="text-right p-2 border-r border-black">Unit Price</th>
+                        <th className="text-right p-2">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {quotationPopupData.items.map((item, index) => (
+                        <tr key={index}>
+                          <td className="p-2 border-r border-black">{item.description}</td>
+                          <td className="p-2 text-center border-r border-black">{item.quantity}</td>
+                          <td className="p-2 text-right border-r border-black">₹{item.unitPrice.toFixed(2)}</td>
+                          <td className="p-2 text-right">₹{item.total.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Totals */}
+                <div className="border border-black p-4">
+                  <div className="flex justify-end">
+                    <div className="w-64">
+                      <div className="flex justify-between p-2 border-b">
+                        <span>Subtotal:</span>
+                        <span>₹{quotationPopupData.subtotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between p-2 border-b">
+                        <span>Tax (18%):</span>
+                        <span>₹{quotationPopupData.tax.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between p-2 font-bold">
+                        <span>Total:</span>
+                        <span>₹{quotationPopupData.total.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Footer */}
+                <div className="text-right text-xs mt-4">
+                  <p className="mb-4">
+                    For <strong>ANODE ELECTRIC PRIVATE LIMITED</strong>
+                  </p>
+                  <p className="mb-8">This is computer generated quotation no signature required.</p>
+                  <p className="font-bold">Authorized Signatory</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowQuotationPopup(false)}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded shadow-sm hover:bg-blue-700"
+                onClick={() => {
+                  alert('Print functionality would open here');
+                }}
+              >
+                Print
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default AllLeads;
+export default MarketingSalespersonLeads;

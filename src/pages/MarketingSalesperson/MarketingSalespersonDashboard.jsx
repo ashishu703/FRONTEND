@@ -32,11 +32,15 @@ import {
   Globe,
   MessageCircle
 } from 'lucide-react';
-import AllLeads from './AllLeads';
-import Visits from './Visits';
+import AllLeads from './MarketingSalespersonLeads';
+import Visits from './MarketingSalespersonVisits';
+import Orders from './MarketingSalespersonOrders';
+import MarketingFollowUpBase from './FollowUp/MarketingFollowUpBase';
+import { useMarketingFollowUpData } from './FollowUp/MarketingFollowUpDataContext';
 
 const MarketingSalespersonDashboard = ({ activeView }) => {
   const [selectedTab, setSelectedTab] = useState('overview');
+  const { getLeadsByStatus, loading } = useMarketingFollowUpData();
 
   const renderContent = () => {
     switch (activeView) {
@@ -44,10 +48,20 @@ const MarketingSalespersonDashboard = ({ activeView }) => {
         return <MarketingDashboardContent selectedTab={selectedTab} setSelectedTab={setSelectedTab} />;
       case 'all-leads':
         return <AllLeads />;
+      case 'follow-up':
+        return <MarketingFollowUpBase status="all" customData={getLeadsByStatus('all')} />;
+      case 'follow-up-connected':
+        return <MarketingFollowUpBase status="connected" customData={getLeadsByStatus('connected')} />;
+      case 'follow-up-not-connected':
+        return <MarketingFollowUpBase status="not-connected" customData={getLeadsByStatus('not-connected')} />;
+      case 'follow-up-next-meeting':
+        return <MarketingFollowUpBase status="next-meeting" customData={getLeadsByStatus('next-meeting')} />;
+      case 'follow-up-closed':
+        return <MarketingFollowUpBase status="closed" customData={getLeadsByStatus('closed')} />;
       case 'visits':
         return <Visits />;
       case 'orders':
-        return <OrdersContent />;
+        return <Orders />;
       case 'toolbox':
         return <ToolboxContent />;
       default:
@@ -604,310 +618,5 @@ const ToolboxContent = () => {
   );
 };
 
-// Orders Content
-const OrdersContent = () => {
-  // Sample orders data
-  const ordersData = {
-    totalOrders: 24,
-    confirmedOrders: 18,
-    pendingOrders: 4,
-    cancelledOrders: 2,
-    paymentStatus: {
-      paid: 15,
-      pending: 6,
-      overdue: 2,
-      partial: 1
-    }
-  };
-
-  return (
-    <div className="p-6 bg-gray-50 min-h-screen pb-16">
-      
-      {/* Order Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        {/* Total Orders */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-                <Users className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Total Orders</h3>
-                <p className="text-sm text-gray-500">All orders in the system</p>
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-purple-600">{ordersData.totalOrders}</div>
-          </div>
-        </div>
-
-        {/* Confirmed Orders */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                <Clock className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Confirmed Orders</h3>
-                <p className="text-sm text-gray-500">Orders awaiting action</p>
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-blue-600">{ordersData.confirmedOrders}</div>
-          </div>
-        </div>
-
-        {/* Pending Orders */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
-                <MessageCircle className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Pending Orders</h3>
-                <p className="text-sm text-gray-500">Orders in follow-up stage</p>
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-orange-600">{ordersData.pendingOrders}</div>
-          </div>
-        </div>
-
-        {/* Cancelled Orders */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                <Calendar className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Cancelled Orders</h3>
-                <p className="text-sm text-gray-500">Orders cancelled</p>
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-red-600">{ordersData.cancelledOrders}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Payment Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        {/* Paid Orders */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Paid Orders</h3>
-                <p className="text-sm text-gray-500">Payment completed</p>
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-green-600">{ordersData.paymentStatus.paid}</div>
-          </div>
-        </div>
-
-        {/* Pending Payment */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
-                <Clock className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Pending Payment</h3>
-                <p className="text-sm text-gray-500">Awaiting payment</p>
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-orange-600">{ordersData.paymentStatus.pending}</div>
-          </div>
-        </div>
-
-        {/* Overdue Payment */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Overdue Payment</h3>
-                <p className="text-sm text-gray-500">Payment overdue</p>
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-red-600">{ordersData.paymentStatus.overdue}</div>
-          </div>
-        </div>
-
-        {/* Partial Payment */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-                <Percent className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Partial Payment</h3>
-                <p className="text-sm text-gray-500">Partial payment received</p>
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-purple-600">{ordersData.paymentStatus.partial}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Orders Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Recent Orders</h3>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            View All Orders
-          </button>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-medium text-gray-700">
-                  <div className="flex items-center">
-                    <div className="w-5 h-5 bg-purple-100 rounded flex items-center justify-center mr-2">
-                      <Hash className="w-3 h-3 text-purple-600" />
-                    </div>
-                    <span className="text-sm text-gray-600">#</span>
-                  </div>
-                </th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">
-                  <div className="flex items-center">
-                    <div className="w-5 h-5 bg-blue-100 rounded flex items-center justify-center mr-2">
-                      <User className="w-3 h-3 text-blue-600" />
-                    </div>
-                    <span className="text-sm text-gray-600">NAME & PHONE</span>
-                  </div>
-                </th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">
-                  <div className="flex items-center">
-                    <div className="w-5 h-5 bg-green-100 rounded flex items-center justify-center mr-2">
-                      <MapPin className="w-3 h-3 text-green-600" />
-                    </div>
-                    <span className="text-sm text-gray-600">ADDRESS</span>
-                  </div>
-                </th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">
-                  <div className="flex items-center">
-                    <div className="w-5 h-5 bg-purple-100 rounded flex items-center justify-center mr-2">
-                      <FileText className="w-3 h-3 text-purple-600" />
-                    </div>
-                    <span className="text-sm text-gray-600">GST NO.</span>
-                  </div>
-                </th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">
-                  <div className="flex items-center">
-                    <div className="w-5 h-5 bg-purple-100 rounded flex items-center justify-center mr-2">
-                      <Package className="w-3 h-3 text-purple-600" />
-                    </div>
-                    <span className="text-sm text-gray-600">PRODUCT TYPE</span>
-                  </div>
-                </th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">
-                  <div className="flex items-center">
-                    <div className="w-5 h-5 bg-blue-100 rounded flex items-center justify-center mr-2">
-                      <Map className="w-3 h-3 text-blue-600" />
-                    </div>
-                    <span className="text-sm text-gray-600">STATE</span>
-                  </div>
-                </th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">
-                  <div className="flex items-center">
-                    <div className="w-5 h-5 bg-orange-100 rounded flex items-center justify-center mr-2">
-                      <Globe className="w-3 h-3 text-orange-600" />
-                    </div>
-                    <span className="text-sm text-gray-600">LEAD SOURCE</span>
-                  </div>
-                </th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">
-                  <div className="flex items-center">
-                    <div className="w-5 h-5 bg-blue-100 rounded flex items-center justify-center mr-2">
-                      <Users className="w-3 h-3 text-blue-600" />
-                    </div>
-                    <span className="text-sm text-gray-600">CUSTOMER TYPE</span>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-3 px-4 text-sm text-gray-900">#ORD-001</td>
-                <td className="py-3 px-4 text-sm text-gray-900">Rajesh Kumar</td>
-                <td className="py-3 px-4 text-sm text-gray-900">Solar Panel 5KW</td>
-                <td className="py-3 px-4 text-sm text-gray-900">₹2,50,000</td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Confirmed</span>
-                </td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Paid</span>
-                </td>
-                <td className="py-3 px-4 text-sm text-gray-500">15 Jan 2024</td>
-              </tr>
-              <tr className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-3 px-4 text-sm text-gray-900">#ORD-002</td>
-                <td className="py-3 px-4 text-sm text-gray-900">Priya Sharma</td>
-                <td className="py-3 px-4 text-sm text-gray-900">Inverter 3KW</td>
-                <td className="py-3 px-4 text-sm text-gray-900">₹1,20,000</td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Pending</span>
-                </td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">Pending</span>
-                </td>
-                <td className="py-3 px-4 text-sm text-gray-500">18 Jan 2024</td>
-              </tr>
-              <tr className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-3 px-4 text-sm text-gray-900">#ORD-003</td>
-                <td className="py-3 px-4 text-sm text-gray-900">Amit Singh</td>
-                <td className="py-3 px-4 text-sm text-gray-900">Battery 100Ah</td>
-                <td className="py-3 px-4 text-sm text-gray-900">₹45,000</td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Confirmed</span>
-                </td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">Partial</span>
-                </td>
-                <td className="py-3 px-4 text-sm text-gray-500">20 Jan 2024</td>
-              </tr>
-              <tr className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-3 px-4 text-sm text-gray-900">#ORD-004</td>
-                <td className="py-3 px-4 text-sm text-gray-900">Sunita Patel</td>
-                <td className="py-3 px-4 text-sm text-gray-900">Solar Panel 3KW</td>
-                <td className="py-3 px-4 text-sm text-gray-900">₹1,80,000</td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Cancelled</span>
-                </td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Refunded</span>
-                </td>
-                <td className="py-3 px-4 text-sm text-gray-500">22 Jan 2024</td>
-              </tr>
-              <tr className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-3 px-4 text-sm text-gray-900">#ORD-005</td>
-                <td className="py-3 px-4 text-sm text-gray-900">Vikram Mehta</td>
-                <td className="py-3 px-4 text-sm text-gray-900">Complete Solar Kit</td>
-                <td className="py-3 px-4 text-sm text-gray-900">₹3,50,000</td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Confirmed</span>
-                </td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Overdue</span>
-                </td>
-                <td className="py-3 px-4 text-sm text-gray-500">25 Jan 2024</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export default MarketingSalespersonDashboard;
