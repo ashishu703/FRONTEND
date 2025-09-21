@@ -298,8 +298,14 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => 
       case 'followup-next-meeting':
         return {
           icon: <Calendar className="w-6 h-6 text-white" />,
-          title: "Next Meeting Follow-ups",
+          title: "Today's Meeting Follow-ups",
           subtitle: "Schedule and manage upcoming meetings"
+        };
+      case 'followup-converted':
+        return {
+          icon: <CheckCircle className="w-6 h-6 text-white" />,
+          title: "Converted Follow-ups",
+          subtitle: "View and manage converted leads"
         };
       case 'followup-closed':
         return {

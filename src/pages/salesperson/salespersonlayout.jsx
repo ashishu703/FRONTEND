@@ -10,6 +10,7 @@ import FixedHeader from '../../Header.jsx'
 import ConnectedFollowUps from './FollowUp/ConnectedFollowUps';
 import NotConnectedFollowUps from './FollowUp/NotConnectedFollowUps';
 import NextMeetingFollowUps from './FollowUp/NextMeetingFollowUps';
+import ConvertedFollowUps from './FollowUp/ConvertedFollowUps';
 import ClosedFollowUps from './FollowUp/ClosedFollowUps';
 import { SharedDataProvider } from './SharedDataContext';
 import { FollowUpDataProvider } from './FollowUp/FollowUpDataContext';
@@ -18,6 +19,7 @@ const followUpPages = {
   'followup-connected': ConnectedFollowUps,
   'followup-not-connected': NotConnectedFollowUps,
   'followup-next-meeting': NextMeetingFollowUps,
+  'followup-converted': ConvertedFollowUps,
   'followup-closed': ClosedFollowUps,
 };
 

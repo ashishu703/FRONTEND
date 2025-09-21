@@ -152,7 +152,7 @@ export default function CustomerListContent() {
   const [showPdfViewer, setShowPdfViewer] = React.useState(false)
   const [currentPdfUrl, setCurrentPdfUrl] = React.useState('')
   // Available options for dropdowns
-  const productTypes = ['Conductor', 'Cable', 'AAAC', 'Aluminium', 'Copper', 'PVC', 'Wire'];
+  
   const customerTypes = ['Individual', 'Retailer', 'Distributer', 'Dealer', 'Contractor', 'Business'];
   const leadSources = [
     'Website Inquiry',
@@ -188,7 +188,6 @@ export default function CustomerListContent() {
     address: '',
     state: '',
     productName: '',
-    productType: '',
     customerType: '',
     enquiryBy: '',
     date: '',
@@ -219,7 +218,6 @@ export default function CustomerListContent() {
       address: '',
       state: '',
       productName: '',
-      productType: '',
       customerType: '',
       enquiryBy: '',
       date: '',
@@ -243,19 +241,23 @@ export default function CustomerListContent() {
           business: r.business || 'N/A',
           address: r.address || 'N/A',
           gstNo: r.gst_no || 'N/A',
-          productType: r.product_type || 'N/A',
+          productName: r.product_type || 'N/A',
           state: r.state || 'N/A',
           enquiryBy: r.lead_source || 'N/A',
           customerType: r.customer_type || 'N/A',
           date: r.date ? new Date(r.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          connected: { status: r.connected_status || 'Not Connected', remark: 'Imported from DH', datetime: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString() },
+          connectedStatus: r.connected_status || 'Not Connected',
+          connectedStatusRemark: r.connected_status_remark || null,
+          connectedStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
           finalStatus: r.final_status || 'New',
-          finalInfo: { status: r.final_status === 'closed' ? 'closed' : 'next_meeting', datetime: '', remark: r.final_status || 'New' },
+          finalStatusRemark: r.final_status_remark || null,
           latestQuotationUrl: '#',
           quotationsSent: 0,
           followUpLink: 'https://calendar.google.com/',
           whatsapp: r.whatsapp ? `+91${String(r.whatsapp).replace(/\D/g, '').slice(-10)}` : null,
           transferredLeads: 0,
+          transferredTo: r.transferred_to || null,
+          callDurationSeconds: r.call_duration_seconds || null,
         }));
         setCustomers(mapped);
       } catch (err) {
@@ -442,14 +444,14 @@ export default function CustomerListContent() {
     // Create CSV template with headers
     const headers = [
       'Name', 'Phone', 'WhatsApp', 'Email', 'Address', 'State', 'GST No', 
-      'Product Name', 'Product Type', 'Lead Source', 'Customer Type', 'Date'
+      'Product Name', 'Lead Source', 'Customer Type', 'Date'
     ]
     
     // Create sample data row with example values using new options
     const sampleData = [
       'John Doe', '9876543210', '9876543210', 'john.doe@email.com', 
       '123 Main Street, City', 'Karnataka', '29ABCDE1234F1Z5', 
-      'XLPE Cable 1.5mm', 'Cable', 'Website Inquiry', 'Individual', '2024-01-15'
+      'XLPE Cable 1.5mm', 'Website Inquiry', 'Individual', '2024-01-15'
     ]
     
     const csvContent = [headers, sampleData].map(row => 
@@ -496,7 +498,7 @@ export default function CustomerListContent() {
         // Expected headers for validation
         const expectedHeaders = [
           'Name', 'Phone', 'WhatsApp', 'Email', 'Address', 'State', 'GST No', 
-          'Product Name', 'Product Type', 'Lead Source', 'Customer Type', 'Date'
+          'Product Name', 'Lead Source', 'Customer Type', 'Date'
         ]
         
         // Validate headers
@@ -527,7 +529,6 @@ export default function CustomerListContent() {
                   address: validatedData.data.address,
                   gstNo: validatedData.data.gstNo,
                   productName: validatedData.data.productName,
-                  productType: validatedData.data.productType,
                   state: validatedData.data.state,
                   enquiryBy: validatedData.data.enquiryBy,
                   customerType: validatedData.data.customerType,
@@ -685,12 +686,7 @@ export default function CustomerListContent() {
           data.productName = value || 'N/A'
           break
           
-        case 'Product Type':
-          if (value && !productTypes.includes(value)) {
-            errors.push(`Product Type must be one of: ${productTypes.join(', ')}`)
-          }
-          data.productType = value || 'N/A'
-          break
+        
           
         case 'Lead Source':
           if (value && !leadSources.includes(value)) {
@@ -750,7 +746,7 @@ export default function CustomerListContent() {
               <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Name & Phone</th>
               <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Address</th>
               <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">GST No.</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Product Type</th>
+              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Product Name</th>
               <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">State</th>
               <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Lead Source</th>
               <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Customer Type</th>
@@ -770,7 +766,7 @@ export default function CustomerListContent() {
                 </td>
                 <td style="border: 1px solid #d1d5db; padding: 8px;">${customer.address || 'N/A'}</td>
                 <td style="border: 1px solid #d1d5db; padding: 8px;">${customer.gstNo || 'N/A'}</td>
-                <td style="border: 1px solid #d1d5db; padding: 8px;">${customer.productType || 'N/A'}</td>
+                <td style="border: 1px solid #d1d5db; padding: 8px;">${customer.productName || 'N/A'}</td>
                 <td style="border: 1px solid #d1d5db; padding: 8px;">${customer.state || 'N/A'}</td>
                 <td style="border: 1px solid #d1d5db; padding: 8px;">${customer.enquiryBy || 'N/A'}</td>
                 <td style="border: 1px solid #d1d5db; padding: 8px;">${customer.customerType || 'N/A'}</td>
@@ -982,7 +978,7 @@ export default function CustomerListContent() {
     setShowAddCustomer(true)
   }
 
-  const handleSaveCustomer = (newCustomerData) => {
+  const handleSaveCustomer = async (newCustomerData) => {
     if (editingCustomer) {
       // Update existing customer
       const updatedCustomer = {
@@ -990,23 +986,25 @@ export default function CustomerListContent() {
         name: newCustomerData.customerName,
         phone: newCustomerData.mobileNumber,
         email: newCustomerData.email || "N/A",
-        business: newCustomerData.businessType,
+        business: newCustomerData.business,
         location: newCustomerData.state, // Use state as location
         gstNo: newCustomerData.gstNumber || "N/A",
         address: newCustomerData.address,
         state: newCustomerData.state,
         productName: newCustomerData.productName,
-        productType: newCustomerData.productType,
         customerType: newCustomerData.customerType,
         enquiryBy: newCustomerData.leadSource,
         date: newCustomerData.date,
-        // Keep existing status values when editing
-        connectedStatus: editingCustomer.connectedStatus,
-        connectedStatusRemark: editingCustomer.connectedStatusRemark,
+        // Status values from form
+        connectedStatus: newCustomerData.connectedStatus,
+        connectedStatusRemark: newCustomerData.connectedStatusRemark,
         connectedStatusDate: editingCustomer.connectedStatusDate,
-        finalStatus: editingCustomer.finalStatus,
-        finalStatusRemark: editingCustomer.finalStatusRemark,
+        finalStatus: newCustomerData.finalStatus,
+        finalStatusRemark: newCustomerData.finalStatus === 'next_meeting' && newCustomerData.meetingDate && newCustomerData.meetingTime 
+          ? `${newCustomerData.meetingDate} AT ${newCustomerData.meetingTime}` 
+          : newCustomerData.finalStatusRemark,
         finalStatusDate: editingCustomer.finalStatusDate,
+        callDurationSeconds: newCustomerData.callDurationSeconds,
         whatsapp: newCustomerData.whatsappNumber ? `+91${newCustomerData.whatsappNumber}` : editingCustomer.whatsapp,
         // Update transferred leads data
         transferredLeads: newCustomerData.transferredLeads || 0,
@@ -1017,6 +1015,38 @@ export default function CustomerListContent() {
       setCustomers(prev => prev.map(customer => 
         customer.id === editingCustomer.id ? updatedCustomer : customer
       ))
+
+      // Persist update to backend with FormData for file upload
+      const formData = new FormData();
+      formData.append('name', updatedCustomer.name);
+      formData.append('phone', updatedCustomer.phone);
+      formData.append('email', updatedCustomer.email === 'N/A' ? '' : updatedCustomer.email);
+      formData.append('business', updatedCustomer.business);
+      formData.append('address', updatedCustomer.address);
+      formData.append('gst_no', updatedCustomer.gstNo === 'N/A' ? '' : updatedCustomer.gstNo);
+      formData.append('product_type', updatedCustomer.productName);
+      formData.append('state', updatedCustomer.state);
+      formData.append('lead_source', updatedCustomer.enquiryBy);
+      formData.append('customer_type', updatedCustomer.customerType);
+      formData.append('date', updatedCustomer.date);
+      formData.append('whatsapp', updatedCustomer.whatsapp ? updatedCustomer.whatsapp.replace('+91','') : '');
+      formData.append('connected_status', updatedCustomer.connectedStatus);
+      formData.append('connected_status_remark', updatedCustomer.connectedStatusRemark);
+      formData.append('final_status', updatedCustomer.finalStatus);
+      formData.append('final_status_remark', updatedCustomer.finalStatusRemark);
+      formData.append('call_duration_seconds', updatedCustomer.callDurationSeconds || '');
+      formData.append('transferred_to', updatedCustomer.transferredTo || '');
+      
+      // Add call recording file if present
+      if (newCustomerData.callRecordingFile) {
+        formData.append('call_recording', newCustomerData.callRecordingFile);
+      }
+
+      try {
+        await apiClient.putFormData(API_ENDPOINTS.SALESPERSON_LEAD_BY_ID(editingCustomer.id), formData);
+      } catch (err) {
+        console.error('Failed to update salesperson lead:', err);
+      }
     } else {
       // Add new customer
       const newCustomer = {
@@ -1024,22 +1054,23 @@ export default function CustomerListContent() {
         name: newCustomerData.customerName,
         phone: newCustomerData.mobileNumber,
         email: newCustomerData.email || "N/A",
-        business: newCustomerData.businessType,
+        business: newCustomerData.business,
         location: newCustomerData.state, // Use state as location
         gstNo: newCustomerData.gstNumber || "N/A",
         address: newCustomerData.address,
         state: newCustomerData.state,
         enquiryBy: newCustomerData.leadSource,
         productName: newCustomerData.productName,
-        productType: newCustomerData.productType,
         customerType: newCustomerData.customerType,
         date: newCustomerData.date,
-        // Set default status values for new customers
-        connectedStatus: "Not Connected",
-        connectedStatusRemark: "New customer added",
+        // Set status values from form
+        connectedStatus: newCustomerData.connectedStatus,
+        connectedStatusRemark: newCustomerData.connectedStatusRemark,
         connectedStatusDate: new Date().toISOString().split('T')[0],
-        finalStatus: "interested",
-        finalStatusRemark: "New customer added",
+        finalStatus: newCustomerData.finalStatus,
+        finalStatusRemark: newCustomerData.finalStatus === 'next_meeting' && newCustomerData.meetingDate && newCustomerData.meetingTime 
+          ? `${newCustomerData.meetingDate} AT ${newCustomerData.meetingTime}` 
+          : newCustomerData.finalStatusRemark,
         finalStatusDate: new Date().toISOString().split('T')[0],
         latestQuotationUrl: "#",
         quotationsSent: 0,
@@ -1070,19 +1101,23 @@ export default function CustomerListContent() {
         business: r.business || 'N/A',
         address: r.address || 'N/A',
         gstNo: r.gst_no || 'N/A',
-        productType: r.product_type || 'N/A',
+        productName: r.product_type || 'N/A',
         state: r.state || 'N/A',
         enquiryBy: r.lead_source || 'N/A',
         customerType: r.customer_type || 'N/A',
         date: r.date ? new Date(r.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        connected: { status: r.connected_status || 'Not Connected', remark: 'Imported from DH', datetime: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString() },
+        connectedStatus: r.connected_status || 'Not Connected',
+        connectedStatusRemark: r.connected_status_remark || null,
+        connectedStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
         finalStatus: r.final_status || 'New',
-        finalInfo: { status: r.final_status === 'closed' ? 'closed' : 'next_meeting', datetime: '', remark: r.final_status || 'New' },
+        finalStatusRemark: r.final_status_remark || null,
         latestQuotationUrl: '#',
         quotationsSent: 0,
         followUpLink: 'https://calendar.google.com/',
         whatsapp: r.whatsapp ? `+91${String(r.whatsapp).replace(/\D/g, '').slice(-10)}` : null,
         transferredLeads: 0,
+        transferredTo: r.transferred_to || null,
+        callDurationSeconds: r.call_duration_seconds || null,
       }));
       setCustomers(mapped)
     } catch (err) {
@@ -1114,7 +1149,7 @@ export default function CustomerListContent() {
           customer.business?.toLowerCase() || '',
           customer.state?.toLowerCase() || '',
           customer.gstNo?.toLowerCase() || '',
-          customer.productType?.toLowerCase() || '',
+          customer.productName?.toLowerCase() || '',
           customer.customerType?.toLowerCase() || '',
           customer.enquiryBy?.toLowerCase() || '',
           customer.date?.toLowerCase() || '',
@@ -1265,6 +1300,21 @@ export default function CustomerListContent() {
                   </th>
                   <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
                     <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-indigo-500" />
+                      Business
+                    </div>
+                    {showFilters && (
+                      <input
+                        type="text"
+                        value={filters.business}
+                        onChange={(e) => handleFilterChange('business', e.target.value)}
+                        className="mt-1 w-full text-xs p-1 border rounded"
+                        placeholder="Filter business..."
+                      />
+                    )}
+                  </th>
+                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                    <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-blue-500" />
                       Address
                     </div>
@@ -1308,24 +1358,7 @@ export default function CustomerListContent() {
                       />
                     )}
                   </th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm w-48">
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-violet-500" />
-                      Product Type
-                    </div>
-                    {showFilters && (
-                      <select
-                        value={filters.productType}
-                        onChange={(e) => handleFilterChange('productType', e.target.value)}
-                        className="mt-1 w-full text-xs p-1 border rounded bg-white"
-                      >
-                        <option value="">All Types</option>
-                        {productTypes.map(type => (
-                          <option key={type} value={type}>{type}</option>
-                        ))}
-                      </select>
-                    )}
-                  </th>
+                  
                   <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
                     <div className="flex items-center gap-2">
                       <Map className="h-4 w-4 text-indigo-500" />
@@ -1435,7 +1468,7 @@ export default function CustomerListContent() {
                   <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
                     <div className="flex items-center gap-2">
                       <ArrowRightLeft className="h-4 w-4 text-indigo-500" />
-                      Transferred Leads
+                      Transferred To
                     </div>
                   </th>
                   <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
@@ -1449,7 +1482,7 @@ export default function CustomerListContent() {
               <tbody>
                 {paginatedCustomers.length === 0 ? (
                   <tr>
-                    <td colSpan="12" className="py-12 text-center text-gray-500">
+                    <td colSpan="14" className="py-12 text-center text-gray-500">
                       <div className="flex flex-col items-center gap-2">
                         <Search className="h-8 w-8 text-gray-300" />
                         <p className="text-sm">
@@ -1495,6 +1528,9 @@ export default function CustomerListContent() {
                       </div>
                     </td>
                     <td className="py-4 px-4 text-sm text-gray-700">
+                      <div className="font-medium">{customer.business}</div>
+                    </td>
+                    <td className="py-4 px-4 text-sm text-gray-700">
                       <div className="font-medium">{customer.address}</div>
                     </td>
                     <td className="py-4 px-4 text-sm text-gray-700">
@@ -1503,9 +1539,7 @@ export default function CustomerListContent() {
                     <td className="py-4 px-4 text-sm text-gray-700">
                       <div className="font-medium">{customer.productName}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
-                      <div className="font-medium">{customer.productType}</div>
-                    </td>
+                    
                     <td className="py-4 px-4 text-sm text-gray-700">
                       <div className="font-medium">{customer.state}</div>
                     </td>
@@ -1521,13 +1555,22 @@ export default function CustomerListContent() {
                     <td className="py-4 px-4 text-sm text-gray-700">
                       <div className="flex flex-col">
                         <span className={
-                          customer.connectedStatus === 'Connected'
+                          customer.connectedStatus === 'connected'
                             ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-green-50 text-green-700 border-green-200'
-                            : customer.connectedStatus === 'Not Connected'
+                            : customer.connectedStatus === 'not_connected'
                             ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-red-50 text-red-700 border-red-200'
+                            : customer.connectedStatus === 'next_meeting'
+                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200'
+                            : customer.connectedStatus === 'other'
+                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-purple-50 text-purple-700 border-purple-200'
                             : 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-yellow-50 text-yellow-700 border-yellow-200'
                         }>
-                          {customer.connectedStatus || '-'}
+                          {customer.connectedStatus === 'connected' ? 'Connected' :
+                           customer.connectedStatus === 'not_connected' ? 'Not Connected' :
+                           customer.connectedStatus === 'next_meeting' ? 'Next Meeting' :
+                           customer.connectedStatus === 'other' ? 'Other' :
+                           customer.connectedStatus === 'pending' ? 'Pending' :
+                           customer.connectedStatus || '-'}
                         </span>
                         {customer.connectedStatusRemark && (
                           <span className="text-xs text-gray-500 mt-1">{customer.connectedStatusRemark}</span>
@@ -1544,11 +1587,21 @@ export default function CustomerListContent() {
                               ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-gray-50 text-gray-700 border-gray-200'
                             : customer.finalStatus === 'next_meeting'
                             ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200'
+                            : customer.finalStatus === 'order_confirmed'
+                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-green-50 text-green-700 border-green-200'
+                            : customer.finalStatus === 'not_interested'
+                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-red-50 text-red-700 border-red-200'
+                            : customer.finalStatus === 'other'
+                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-purple-50 text-purple-700 border-purple-200'
                             : 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-yellow-50 text-yellow-700 border-yellow-200'
                           }>
                           {customer.finalStatus === 'closed' ? 'Closed' : 
                            customer.finalStatus === 'next_meeting' ? 'Next Meeting' : 
-                           customer.finalStatus === 'open' ? 'Open' : 'New'}
+                           customer.finalStatus === 'open' ? 'Open' : 
+                           customer.finalStatus === 'order_confirmed' ? 'Order Confirmed' :
+                           customer.finalStatus === 'not_interested' ? 'Not Interested' :
+                           customer.finalStatus === 'other' ? 'Other' :
+                           customer.finalStatus || 'New'}
                           </span>
                         {customer.finalStatusRemark && (
                           <span className="text-xs text-gray-500 mt-1">{customer.finalStatusRemark}</span>
@@ -1561,12 +1614,12 @@ export default function CustomerListContent() {
                     <td className="py-4 px-4">
                           <div className="flex flex-col">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          customer.transferredLeads > 0 
+                          customer.transferredTo 
                             ? 'bg-indigo-100 text-indigo-800' 
                             : 'bg-gray-100 text-gray-600'
                         }`}>
                               <ArrowRightLeft className="h-3 w-3 mr-1" />
-                          {customer.transferredLeads || 0}
+                          {customer.transferredTo || 'Not Transferred'}
                             </span>
                         {customer.transferredLeads > 0 && (
                           <div className="text-xs text-gray-500 mt-1">

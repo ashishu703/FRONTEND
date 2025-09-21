@@ -39,6 +39,7 @@ export const API_ENDPOINTS = {
   LEADS_STATS: () => `${LEADS_BASE}/stats`,
   SALESPERSON_ASSIGNED_LEADS_ME: () => `${LEADS_BASE}/assigned/salesperson`,
   SALESPERSON_ASSIGNED_LEADS_BY_USERNAME: (username) => `${LEADS_BASE}/assigned/salesperson/${encodeURIComponent(username)}`,
+  SALESPERSON_LEAD_BY_ID: (id) => `${LEADS_BASE}/assigned/salesperson/lead/${id}`,
 };
 
 export default API_BASE_URL;

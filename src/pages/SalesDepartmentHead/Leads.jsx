@@ -45,10 +45,10 @@ const LeadsSimplified = () => {
   const [usernames, setUsernames] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [usersError, setUsersError] = useState('');
+  const [activeTab, setActiveTab] = useState('overview');
 
   const importFileInputRef = useRef(null);
 
-  // Download CSV template
   const downloadCSVTemplate = () => {
     const headers = [
       'Customer Name',
@@ -707,6 +707,7 @@ const LeadsSimplified = () => {
                       <button
                         onClick={() => {
                           setPreviewLead(lead);
+                          setActiveTab('overview');
                           setShowPreviewModal(true);
                         }}
                         className="text-green-600 hover:text-green-900"
@@ -820,82 +821,239 @@ const LeadsSimplified = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Lead Details</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Lead Details - {previewLead.customerId}</h2>
               <button onClick={() => setShowPreviewModal(false)} className="text-gray-400 hover:text-gray-600">✕</button>
             </div>
             
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
-                  <p className="text-gray-900">{previewLead.customer}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <p className="text-gray-900">{previewLead.phone}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <p className="text-gray-900">{previewLead.email}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Business</label>
-                  <p className="text-gray-900">{previewLead.business}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Lead Source</label>
-                  <p className="text-gray-900">{previewLead.leadSource}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                  <p className="text-gray-900">{previewLead.category}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sales Status</label>
-                  <p className="text-gray-900">{previewLead.salesStatus}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Salesperson</label>
-                  <p className="text-gray-900">{previewLead.assignedSalesperson}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Telecaller</label>
-                  <p className="text-gray-900">{previewLead.assignedTelecaller}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Telecaller Status</label>
-                  <p className="text-gray-900">{previewLead.telecallerStatus}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
-                  <p className="text-gray-900">{previewLead.paymentStatus}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">GST Number</label>
-                  <p className="text-gray-900">{previewLead.gstNo}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  <p className="text-gray-900">{previewLead.address}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                  <p className="text-gray-900">{previewLead.state}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Created At</label>
-                  <p className="text-gray-900">{previewLead.createdAt}</p>
-                </div>
+            {/* Tabs */}
+            <div className="px-6 md:px-8 pt-4">
+              <div className="flex items-center gap-3">
+                {[
+                  { key: 'overview', label: 'Overview' },
+                  { key: 'paymentQuotation', label: 'Payment & Quotation' },
+                  { key: 'proformaInvoice', label: 'Proforma Invoice' }
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium ${activeTab === tab.key ? 'bg-blue-100 text-blue-900' : 'text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
-              
-              <div className="flex items-center justify-end gap-3 mt-6">
-                <button
-                  onClick={() => setShowPreviewModal(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                >
-                  Close
-                </button>
-              </div>
+            </div>
+
+            {/* Tab Content */}
+            <div className="px-6 md:px-8 py-5">
+              {activeTab === 'overview' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
+                    <p className="text-gray-900">{previewLead.customer}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <p className="text-gray-900">{previewLead.phone}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <p className="text-gray-900">{previewLead.email}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Business</label>
+                    <p className="text-gray-900">{previewLead.business}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Lead Source</label>
+                    <p className="text-gray-900">{previewLead.leadSource}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <p className="text-gray-900">{previewLead.category}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Sales Status</label>
+                    <p className="text-gray-900">{previewLead.salesStatus}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Salesperson</label>
+                    <p className="text-gray-900">{previewLead.assignedSalesperson}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Telecaller</label>
+                    <p className="text-gray-900">{previewLead.assignedTelecaller}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Telecaller Status</label>
+                    <p className="text-gray-900">{previewLead.telecallerStatus}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
+                    <p className="text-gray-900">{previewLead.paymentStatus}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">GST Number</label>
+                    <p className="text-gray-900">{previewLead.gstNo}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <p className="text-gray-900">{previewLead.address}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                    <p className="text-gray-900">{previewLead.state}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Created At</label>
+                    <p className="text-gray-900">{previewLead.createdAt}</p>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'paymentQuotation' && (
+                <div className="space-y-6">
+                  {/* Active Quotation */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Quotation</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900">Quotation #QT-2024-001</p>
+                          <p className="text-sm text-gray-600">Digital Marketing Package - Premium Plan</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-semibold text-green-600">₹23,600 - Active</p>
+                          <p className="text-sm text-gray-500">Valid Until: 2024-02-20</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                        <p className="text-sm text-gray-600">Prepared by: Sarah Johnson</p>
+                        <div className="flex space-x-2">
+                          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                            View Quotation
+                          </button>
+                          <button className="px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 text-sm">
+                            Download PDF
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Rejected Quotation */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Rejected Quotation</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900">Quotation #QT-2024-002</p>
+                          <p className="text-sm text-gray-600">Basic Marketing Package - Standard Plan</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-semibold text-red-600">₹15,000 - Rejected</p>
+                          <p className="text-sm text-gray-500">Rejected on: 2024-01-15</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                        <p className="text-sm text-gray-600">Prepared by: Mike Wilson</p>
+                        <div className="flex space-x-2">
+                          <button className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">
+                            View Quotation
+                          </button>
+                          <button className="px-4 py-2 text-gray-600 border border-gray-600 rounded-lg hover:bg-gray-50 text-sm">
+                            Download PDF
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'proformaInvoice' && (
+                <div className="space-y-6">
+                  {/* Payment Summary */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Summary</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Advance Payment</label>
+                        <p className="text-green-600 font-semibold text-lg">₹10,000</p>
+                        <p className="text-sm text-gray-500">Received on: 2024-01-10</p>
+                        <p className="text-sm text-gray-600">Receiver: John Smith</p>
+                        <p className="text-sm text-gray-600">Account ID: ACC-2024-001</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Pending Payment</label>
+                        <p className="text-yellow-600 font-semibold text-lg">₹15,000</p>
+                        <p className="text-sm text-gray-500">Due on: 2024-02-15</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
+                        <p className="text-gray-900 font-semibold text-lg">₹25,000</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Balance</label>
+                        <p className="text-red-600 font-semibold text-lg">₹15,000</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Voucher Details */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Voucher Details</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Number</label>
+                        <p className="text-gray-900 font-mono">VCH-2024-001</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Date</label>
+                        <p className="text-gray-900">{new Date().toLocaleDateString()}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Quotation Reference</label>
+                        <p className="text-gray-900">#QT-2024-001</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Lead ID</label>
+                        <p className="text-gray-900">{previewLead.customerId}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
+                        <p className="text-gray-900">{previewLead.customer}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                        <p className="text-gray-900 font-semibold">₹25,000</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-end space-x-3">
+                    <button className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+                      Preview Voucher
+                    </button>
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                      Generate Voucher
+                    </button>
+                    <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                      Download PDF
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex items-center justify-end gap-3 px-6 md:px-8 py-4 border-t border-gray-200">
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

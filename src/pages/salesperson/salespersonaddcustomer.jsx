@@ -50,15 +50,23 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     mobileNumber: editingCustomer?.phone || "",
     whatsappNumber: editingCustomer?.whatsapp?.replace('+91', '') || "",
     email: editingCustomer?.email === "N/A" ? "" : editingCustomer?.email || "",
+    business: editingCustomer?.business || "",
     productName: editingCustomer?.productName || "",
     gstNumber: editingCustomer?.gstNo === "N/A" ? "" : editingCustomer?.gstNo || "",
     address: editingCustomer?.address || "",
     state: editingCustomer?.state || "",
-    productType: editingCustomer?.productType || "",
     customerType: editingCustomer?.customerType || "",
     leadSource: editingCustomer?.enquiryBy || "",
-    assignedSalesperson: editingCustomer?.assignedSalesperson || "",
+    connectedStatus: editingCustomer?.connectedStatus || 'pending',
+    connectedStatusRemark: editingCustomer?.connectedStatusRemark || '',
+    finalStatus: editingCustomer?.finalStatus || 'open',
+    finalStatusRemark: editingCustomer?.finalStatusRemark || '',
+    callDurationSeconds: editingCustomer?.callDurationSeconds || '',
+    callRecordingFile: null,
+    transferredTo: editingCustomer?.transferredTo || '',
     date: new Date().toISOString().split('T')[0],
+    meetingDate: editingCustomer?.meetingDate || '',
+    meetingTime: editingCustomer?.meetingTime || '',
   })
 
   const handleInputChange = (field, value) => {
@@ -68,45 +76,39 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     }))
   }
 
+  const handleFileChange = (field, file) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: file,
+    }))
+  }
+
+  const isDisabled = (field) => {
+    if (!editingCustomer) return false
+    const initialMap = {
+      customerName: editingCustomer?.name,
+      mobileNumber: editingCustomer?.phone,
+      whatsappNumber: editingCustomer?.whatsapp,
+      email: editingCustomer?.email,
+      business: editingCustomer?.business,
+      productName: editingCustomer?.productName,
+      gstNumber: editingCustomer?.gstNo,
+      address: editingCustomer?.address,
+      state: editingCustomer?.state,
+      customerType: editingCustomer?.customerType,
+      leadSource: editingCustomer?.enquiryBy,
+    }
+    const raw = (initialMap[field] ?? '').toString().trim()
+    return raw !== '' && raw.toUpperCase() !== 'N/A'
+  }
   const handleSubmit = (e) => {
     e.preventDefault()
     onSave(formData)
     onClose()
   }
 
-  const productTypeOptions = ["Conductor", "Cable", "AAAC", "Aluminium"]
+  
 
-  const customerTypeOptions = ["Individual", "Retailer", "Distributer", "Dealer", "Contractor", "Business"]
-
-  const leadSourceOptions = [
-    "Website Inquiry",
-    "Phone Call", 
-    "Walk-in / Direct Visit",
-    "Distributor / Dealer",
-    "Existing Customer Referral",
-    "Trade Show / Exhibition",
-    "Tender / Government Contract",
-    "Social Media (LinkedIn, Facebook, Instagram, etc.)",
-    "Email Campaign",
-    "Online Marketplace (IndiaMART, TradeIndia, etc.)",
-    "Advertisement (Newspaper / Hoarding / Online Ads)",
-    "Cold Call / Telemarketing",
-    "Salesperson Visit",
-    "Networking / Business Association"
-  ]
-
-  const stateOptions = [
-    "Madhya Pradesh",
-    "Maharashtra",
-    "Delhi",
-    "Punjab",
-    "Gujarat",
-    "Rajasthan",
-    "Uttar Pradesh",
-    "Karnataka",
-    "Tamil Nadu",
-    "West Bengal",
-  ]
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -141,7 +143,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="text"
-                  required
+                  disabled={isDisabled('customerName')}
                   value={formData.customerName}
                   onChange={(e) => handleInputChange("customerName", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -156,7 +158,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="tel"
-                  required
+                  disabled={isDisabled('mobileNumber')}
                   value={formData.mobileNumber}
                   onChange={(e) => handleInputChange("mobileNumber", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -171,6 +173,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="tel"
+                  disabled={isDisabled('whatsappNumber')}
                   value={formData.whatsappNumber}
                   onChange={(e) => handleInputChange("whatsappNumber", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -185,6 +188,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="email"
+                  disabled={isDisabled('email')}
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -202,7 +206,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="text"
-                  required
+                  disabled={isDisabled('productName')}
                   value={formData.productName}
                   onChange={(e) => handleInputChange("productName", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -217,6 +221,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="text"
+                  disabled={isDisabled('gstNumber')}
                   value={formData.gstNumber}
                   onChange={(e) => handleInputChange("gstNumber", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -229,40 +234,31 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                   <Globe className="h-4 w-4 text-red-500" />
                   State *
                 </label>
-                <select
-                  required
+                <input
+                  type="text"
+                  disabled={isDisabled('state')}
                   value={formData.state}
                   onChange={(e) => handleInputChange("state", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select state</option>
-                  {stateOptions.map((state) => (
-                    <option key={state} value={state}>
-                      {state}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Enter state"
+                />
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <Package className="h-4 w-4 text-yellow-500" />
-                  Product Type *
+                  <Building2 className="h-4 w-4 text-blue-500" />
+                  Business
                 </label>
-                <select
-                  required
-                  value={formData.productType}
-                  onChange={(e) => handleInputChange("productType", e.target.value)}
+                <input
+                  type="text"
+                  disabled={isDisabled('business')}
+                  value={formData.business}
+                  onChange={(e) => handleInputChange("business", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select product type</option>
-                  {productTypeOptions.map((product) => (
-                    <option key={product} value={product}>
-                      {product}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Enter business name"
+                />
               </div>
+              
             </div>
 
             {/* Address */}
@@ -272,7 +268,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 Address *
               </label>
               <textarea
-                required
+                disabled={isDisabled('address')}
                 value={formData.address}
                 onChange={(e) => handleInputChange("address", e.target.value)}
                 rows={3}
@@ -289,19 +285,14 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                   <User className="h-4 w-4 text-purple-500" />
                   Customer Type *
                 </label>
-                <select
-                  required
+                <input
+                  type="text"
+                  disabled={isDisabled('customerType')}
                   value={formData.customerType}
                   onChange={(e) => handleInputChange("customerType", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select customer type</option>
-                  {customerTypeOptions.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Enter customer type"
+                />
               </div>
 
               <div className="space-y-2">
@@ -309,39 +300,14 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                   <Globe className="h-4 w-4 text-orange-500" />
                   Lead Source *
                 </label>
-                <select
-                  required
+                <input
+                  type="text"
+                  disabled={isDisabled('leadSource')}
                   value={formData.leadSource}
                   onChange={(e) => handleInputChange("leadSource", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select lead source</option>
-                  {leadSourceOptions.map((source) => (
-                    <option key={source} value={source}>
-                      {source}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <User className="h-4 w-4 text-purple-500" />
-                  Assigned Salesperson *
-                </label>
-                <select
-                  required
-                  value={formData.assignedSalesperson}
-                  onChange={(e) => handleInputChange("assignedSalesperson", e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select salesperson</option>
-                  <option value="John Smith">John Smith</option>
-                  <option value="Sarah Johnson">Sarah Johnson</option>
-                  <option value="Mike Wilson">Mike Wilson</option>
-                  <option value="Emily Davis">Emily Davis</option>
-                  <option value="David Brown">David Brown</option>
-                </select>
+                  placeholder="Enter lead source"
+                />
               </div>
 
               <div className="space-y-2">
@@ -351,7 +317,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="date"
-                  required
+                  disabled
                   value={formData.date}
                   onChange={(e) => handleInputChange("date", e.target.value)}
                   readOnly={true}
@@ -359,6 +325,141 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 />
                 <p className="text-xs text-gray-500">Date is auto-detected</p>
               </div>
+            </div>
+
+            {/* Connected Status */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <User className="h-4 w-4 text-green-600" />
+                Connected Status
+              </label>
+              <select
+                value={formData.connectedStatus}
+                onChange={(e) => handleInputChange("connectedStatus", e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="pending">Pending</option>
+                <option value="connected">Connected</option>
+                <option value="running">Running</option>
+                <option value="converted">Converted</option>
+                <option value="lost_closed">Lost/Closed</option>
+                <option value="interested">Interested</option>
+                <option value="win_converted">Win - CONVERTED</option>
+                <option value="closed">CLOSED</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            {/* Call Details - Only show when connected/next_meeting/other */}
+            {(formData.connectedStatus === 'connected' || formData.connectedStatus === 'next_meeting' || formData.connectedStatus === 'other') && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Call Duration (seconds)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.callDurationSeconds}
+                    onChange={(e) => handleInputChange("callDurationSeconds", e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., 120"
+                  />
+                </div> */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    {formData.connectedStatus === 'other' ? 'Please specify' : 'Remark'}
+                  </label>
+                  <textarea
+                    value={formData.connectedStatusRemark}
+                    onChange={(e) => handleInputChange("connectedStatusRemark", e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    placeholder={formData.connectedStatus === 'other' ? 'Please specify connected status' : 'Remark for connected status'}
+                  />
+                </div>
+                {/* <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Call Recording</label>
+                  <input
+                    type="file"
+                    accept="audio/*"
+                    onChange={(e) => handleFileChange("callRecordingFile", e.target.files[0])}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div> */}
+              </div>
+            )}
+
+            {/* Final Status block */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <User className="h-4 w-4 text-blue-600" />
+                  Final Status
+                </label>
+                <select
+                  value={formData.finalStatus}
+                  onChange={(e) => handleInputChange("finalStatus", e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="next_meeting">Next Meeting</option>
+                  <option value="open">Open</option>
+                  <option value="not_connected">Not Connected</option>
+                  <option value="order_confirmed">Order Confirmed</option>
+                  <option value="closed">Closed</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  {formData.finalStatus === 'other' ? 'Please specify final status' : 
+                   formData.finalStatus === 'next_meeting' ? 'Meeting Date & Time' : 
+                   'Remark for final status'}
+                </label>
+                {formData.finalStatus === 'next_meeting' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Date</label>
+                      <input
+                        type="date"
+                        value={formData.meetingDate || ''}
+                        onChange={(e) => handleInputChange("meetingDate", e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Time</label>
+                      <input
+                        type="time"
+                        value={formData.meetingTime || ''}
+                        onChange={(e) => handleInputChange("meetingTime", e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <textarea
+                    value={formData.finalStatusRemark}
+                    onChange={(e) => handleInputChange("finalStatusRemark", e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    placeholder={formData.finalStatus === 'other' ? 'Please specify final status' : 'Remark for final status'}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Transfer Lead field */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <User className="h-4 w-4 text-purple-600" />
+                Transfer Lead to
+              </label>
+              <input
+                type="text"
+                value={formData.transferredTo}
+                onChange={(e) => handleInputChange("transferredTo", e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter who the lead was transferred to"
+              />
             </div>
 
 
