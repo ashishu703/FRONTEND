@@ -272,15 +272,6 @@ export default function StockManagement() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-          <Package className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Available Stock</h1>
-          <p className="text-sm text-gray-600">Manage your inventory items</p>
-        </div>
-      </div>
 
       {/* Top Row - Search, Filters and Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -345,13 +336,6 @@ export default function StockManagement() {
             Export
           </button>
           
-          <button 
-            onClick={handleAddNew}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add New Item
-          </button>
         </div>
       </div>
 

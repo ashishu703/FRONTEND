@@ -3,6 +3,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4500
 const ADMIN_BASE = `${API_BASE_URL}/api/admin`;
 const DEPT_HEADS_BASE = `${ADMIN_BASE}/department-heads`;
 const DEPT_USERS_BASE = `${ADMIN_BASE}/department-users`;
+const LEADS_BASE = `${API_BASE_URL}/api/leads`;
 
 export const API_ENDPOINTS = {
   // Authentication
@@ -28,6 +29,17 @@ export const API_ENDPOINTS = {
   DEPARTMENT_USERS_BY_HEAD: (headUserId) => `${DEPT_USERS_BASE}/by-head/${encodeURIComponent(headUserId)}`,
   DEPARTMENT_USER_BY_ID: (id) => `${DEPT_USERS_BASE}/${id}`,
   DEPARTMENT_USER_STATUS: (id) => `${DEPT_USERS_BASE}/${id}/status`,
+
+  // Leads
+  LEADS_BASE: LEADS_BASE,
+  LEADS_LIST: (query = '') => `${LEADS_BASE}${query ? `?${query}` : ''}`,
+  LEADS_CREATE: () => `${LEADS_BASE}`,
+  LEADS_IMPORT: () => `${LEADS_BASE}/import`,
+  LEAD_BY_ID: (id) => `${LEADS_BASE}/${id}`,
+  LEADS_STATS: () => `${LEADS_BASE}/stats`,
+  SALESPERSON_ASSIGNED_LEADS_ME: () => `${LEADS_BASE}/assigned/salesperson`,
+  SALESPERSON_ASSIGNED_LEADS_BY_USERNAME: (username) => `${LEADS_BASE}/assigned/salesperson/${encodeURIComponent(username)}`,
+  SALESPERSON_LEAD_BY_ID: (id) => `${LEADS_BASE}/assigned/salesperson/lead/${id}`,
 };
 
 export default API_BASE_URL;

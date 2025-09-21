@@ -34,20 +34,14 @@ const MarketingDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView })
   const sidebarItems = [
     {
       id: 'marketing-dashboard',
-      label: 'Marketing Dashboard',
+      label: 'Dashboard',
       icon: <BarChart3 className="w-5 h-5" />,
       hasDropdown: false
     },
     {
       id: 'marketing-leads',
-      label: 'Marketing Leads',
+      label: 'Leads',
       icon: <UserCheck className="w-5 h-5" />,
-      hasDropdown: false
-    },
-    {
-      id: 'campaign-leads',
-      label: 'Campaign Leads',
-      icon: <Megaphone className="w-5 h-5" />,
       hasDropdown: false
     },
     {

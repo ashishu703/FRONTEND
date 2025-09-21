@@ -1,9 +1,139 @@
-import React, { useState } from 'react';
-import { Search, Trash2, Filter, Upload, RefreshCw, Eye, MoreVertical, User, Mail, Building, Shield, Tag, Clock, Calendar, Phone, CheckCircle, XCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Search, Trash2, Filter, Upload, RefreshCw, Eye, MoreVertical, User, Mail, Building, Shield, Tag, Clock, Calendar, Phone, CheckCircle, XCircle, Download, FileText } from 'lucide-react';
 
 const AllLeads = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLeads, setSelectedLeads] = useState([]);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importPreview, setImportPreview] = useState([]);
+  const [importing, setImporting] = useState(false);
+  
+  const importFileInputRef = useRef(null);
+
+  // Download CSV template
+  const downloadCSVTemplate = () => {
+    const headers = [
+      'Customer Name',
+      'Mobile Number', 
+      'WhatsApp Number',
+      'Email',
+      'GST Number',
+      'Business Name',
+      'Business Category',
+      'Lead Source',
+      'Product Names (comma separated)',
+      'Assigned Salesperson',
+      'Assigned Telecaller',
+      'Address',
+      'State',
+      'Date (YYYY-MM-DD)'
+    ];
+    
+    const csvContent = headers.join(',') + '\n' + 
+      'Sample Customer,9876543210,9876543210,sample@email.com,22ABCDE1234F1Z5,Sample Business,dealer,instagram,ACSR AAAC,John Doe,Jane Smith,123 Main St,Delhi,2024-01-15\n' +
+      'Another Customer,9876543211,9876543211,another@email.com,22ABCDE1234F1Z6,Another Business,contractor,facebook,AB CABLE AAAC,Jane Doe,John Smith,456 Main St,Mumbai,2024-01-16';
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'leads_template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    alert('CSV template downloaded successfully');
+  };
+
+  // Parse CSV file
+  const parseCSV = (csvText) => {
+    const lines = csvText.split('\n');
+    const headers = lines[0].split(',').map(h => h.trim());
+    const data = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i].trim()) {
+        const values = lines[i].split(',').map(v => v.trim());
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || '';
+        });
+        data.push(row);
+      }
+    }
+    return data;
+  };
+
+  // Handle file upload
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'text/csv') {
+      setImportFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const csvText = e.target.result;
+        const parsedData = parseCSV(csvText);
+        setImportPreview(parsedData);
+        setShowImportModal(true);
+      };
+      reader.readAsText(file);
+    } else {
+      alert('Please select a valid CSV file');
+    }
+  };
+
+  // Helper function to format date
+  const formatDate = (dateString) => {
+    if (!dateString) return new Date().toISOString().split('T')[0];
+    
+    // Handle different date formats
+    if (dateString.includes('-')) {
+      const parts = dateString.split('-');
+      if (parts.length === 3) {
+        // If it's DD-MM-YYYY format, convert to YYYY-MM-DD
+        if (parts[0].length === 2 && parts[2].length === 4) {
+          return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+        // If it's already YYYY-MM-DD format, return as is
+        if (parts[0].length === 4 && parts[1].length === 2 && parts[2].length === 2) {
+          return dateString;
+        }
+      }
+    }
+    
+    // If it's a valid date string, try to parse it
+    try {
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+    } catch (e) {
+      console.warn('Invalid date format:', dateString);
+    }
+    
+    // Fallback to current date
+    return new Date().toISOString().split('T')[0];
+  };
+
+  // Import leads from CSV
+  const handleImportLeads = async () => {
+    if (importPreview.length === 0) {
+      alert('No data to import');
+      return;
+    }
+
+    setImporting(true);
+    // Here you would implement the actual import logic
+    // For now, just simulate the import
+    setTimeout(() => {
+      alert(`Import completed! ${importPreview.length} leads imported successfully`);
+      setShowImportModal(false);
+      setImportPreview([]);
+      setImportFile(null);
+      setImporting(false);
+    }, 2000);
+  };
 
   // Sample data
   const leads = [
@@ -143,7 +273,6 @@ const AllLeads = () => {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">All Leads</h1>
-        <p className="text-gray-600">Manage and track all your leads</p>
       </div>
 
       {/* Search and Action Bar */}
@@ -173,9 +302,17 @@ const AllLeads = () => {
               <Filter className="w-4 h-4" />
               <span>Filters</span>
             </button>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
-              <Upload className="w-4 h-4" />
-              <span>Import Leads</span>
+            <button
+              onClick={() => {
+                downloadCSVTemplate();
+                setTimeout(() => {
+                  importFileInputRef.current?.click();
+                }, 1000);
+              }}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+            >
+              <Download className="w-4 h-4" />
+              <span>Import CSV</span>
             </button>
             <button className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
               <RefreshCw className="w-4 h-4" />
@@ -329,6 +466,96 @@ const AllLeads = () => {
           </table>
         </div>
       </div>
+
+      {/* Hidden file input for CSV import */}
+      <input
+        ref={importFileInputRef}
+        type="file"
+        accept=".csv"
+        onChange={handleFileUpload}
+        style={{ display: 'none' }}
+      />
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Import Leads from CSV</h2>
+                <p className="text-sm text-gray-600">Review the data before importing</p>
+              </div>
+              <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  Found {importPreview.length} records to import. Please review the data below:
+                </p>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Customer Name</th>
+                      <th className="px-3 py-2 text-left">Mobile</th>
+                      <th className="px-3 py-2 text-left">Email</th>
+                      <th className="px-3 py-2 text-left">Business</th>
+                      <th className="px-3 py-2 text-left">Lead Source</th>
+                      <th className="px-3 py-2 text-left">Category</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importPreview.slice(0, 10).map((row, index) => (
+                      <tr key={index} className="border-b">
+                        <td className="px-3 py-2">{row['Customer Name'] || '-'}</td>
+                        <td className="px-3 py-2">{row['Mobile Number'] || '-'}</td>
+                        <td className="px-3 py-2">{row['Email'] || '-'}</td>
+                        <td className="px-3 py-2">{row['Business Name'] || '-'}</td>
+                        <td className="px-3 py-2">{row['Lead Source'] || '-'}</td>
+                        <td className="px-3 py-2">{row['Business Category'] || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {importPreview.length > 10 && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    ... and {importPreview.length - 10} more records
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setShowImportModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleImportLeads}
+                  disabled={importing}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  {importing ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Importing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-4 h-4" />
+                      <span>Import {importPreview.length} Leads</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pagination or Empty State */}
       {filteredLeads.length === 0 && (

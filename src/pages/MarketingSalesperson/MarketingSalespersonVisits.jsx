@@ -14,10 +14,17 @@ import {
   Package,
   Globe,
   Calendar,
-  CheckCircle
+  CheckCircle,
+  Hash,
+  Clock,
+  Building,
+  Filter,
+  RefreshCw,
+  Upload
 } from 'lucide-react';
 
 const Visits = () => {
+  const [searchTerm, setSearchTerm] = useState('');
   const [visits, setVisits] = useState([
     { 
       id: 1, 
@@ -25,6 +32,9 @@ const Visits = () => {
       time: '09:00 AM', 
       address: '123 Business St, City', 
       status: 'Scheduled',
+      productType: 'Industrial Equipment',
+      customerType: 'B2B',
+      date: '2025-01-17',
       photos: [],
       locationTimeline: [
         {
@@ -59,6 +69,9 @@ const Visits = () => {
       time: '11:30 AM', 
       address: '456 Corporate Ave, City', 
       status: 'In Progress',
+      productType: 'Commercial Lighting',
+      customerType: 'B2B',
+      date: '2025-01-16',
       photos: [],
       locationTimeline: [
         {
@@ -101,6 +114,9 @@ const Visits = () => {
       time: '02:00 PM', 
       address: '789 Innovation Dr, City', 
       status: 'Completed',
+      productType: 'Power Solutions',
+      customerType: 'B2C',
+      date: '2025-01-15',
       photos: [
         { id: 1, url: 'https://via.placeholder.com/150', timestamp: '2025-01-13 14:30', location: 'Customer Office' },
         { id: 2, url: 'https://via.placeholder.com/150', timestamp: '2025-01-13 14:45', location: 'Meeting Room' }
@@ -226,6 +242,16 @@ const Visits = () => {
     lead.phone.includes(leadsSearchTerm) ||
     lead.address.toLowerCase().includes(leadsSearchTerm.toLowerCase()) ||
     lead.productType.toLowerCase().includes(leadsSearchTerm.toLowerCase())
+  );
+
+  const filteredVisits = visits.filter(visit => 
+    visit.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    visit.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    visit.time.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    visit.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    visit.productType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    visit.customerType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    visit.date.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handlePhotoUpload = (visitId, event) => {
@@ -449,8 +475,19 @@ const Visits = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Search Bar and Action Buttons */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Customer Visits</h1>
+        <div className="relative w-full max-w-sm">
+          <input
+            type="text"
+            placeholder="Search by customer, address, time, or status"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+          />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+        </div>
+        
         <div className="flex items-center space-x-3">
           <button 
             onClick={() => setShowLeadsModal(true)}
@@ -487,24 +524,82 @@ const Visits = () => {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                  <div className="flex items-center space-x-2">
+                    <Hash className="w-4 h-4 text-purple-600" />
+                    <span>#</span>
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                  <div className="flex items-center space-x-2">
+                    <User className="w-4 h-4 text-blue-600" />
+                    <span>CUSTOMER</span>
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-green-600" />
+                    <span>TIME</span>
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="w-4 h-4 text-blue-600" />
+                    <span>DATE</span>
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-80">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="w-4 h-4 text-green-600" />
+                    <span>ADDRESS</span>
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                  <div className="flex items-center space-x-2">
+                    <Building className="w-4 h-4 text-purple-600" />
+                    <span>STATUS</span>
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                  <div className="flex items-center space-x-2">
+                    <Package className="w-4 h-4 text-orange-600" />
+                    <span>PRODUCT TYPE</span>
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                  <div className="flex items-center space-x-2">
+                    <Users className="w-4 h-4 text-indigo-600" />
+                    <span>CUSTOMER TYPE</span>
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="w-4 h-4 text-gray-600" />
+                    <span>ACTIONS</span>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {visits.map((visit) => (
+              {filteredVisits.map((visit) => (
                 <tr key={visit.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {visit.id}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {visit.customer}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {visit.time}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <Calendar className="w-4 h-4 text-blue-500 mr-2" />
+                      {visit.date}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center">
@@ -520,6 +615,18 @@ const Visits = () => {
                     }`}>
                       {visit.status}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <Package className="w-4 h-4 text-orange-500 mr-2" />
+                      {visit.productType}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <Users className="w-4 h-4 text-indigo-500 mr-2" />
+                      {visit.customerType}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center space-x-2">

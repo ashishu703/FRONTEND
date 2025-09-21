@@ -28,7 +28,7 @@ import {
   Clock as ClockIcon
 } from 'lucide-react';
 
-const FollowUpBase = ({ status, customData = [] }) => {
+const MarketingFollowUpBase = ({ status, customData = [] }) => {
   // State for payment timeline
   const [showTimeline, setShowTimeline] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -41,8 +41,8 @@ const FollowUpBase = ({ status, customData = [] }) => {
       amount: 15000,
       date: '2025-09-10T14:30:00',
       status: 'sent',
-      remarks: 'Initial quotation sent',
-      documentUrl: '/quotation-1.pdf'
+      remarks: 'Marketing quotation sent',
+      documentUrl: '/marketing-quotation-1.pdf'
     },
     {
       id: 2,
@@ -50,8 +50,8 @@ const FollowUpBase = ({ status, customData = [] }) => {
       amount: 5000,
       date: '2025-09-12T10:15:00',
       status: 'received',
-      remarks: 'Advance payment received',
-      reference: 'TXN12345'
+      remarks: 'Marketing advance payment received',
+      reference: 'MK-TXN12345'
     },
     // Add more timeline items as needed
   ]);
@@ -206,7 +206,7 @@ const FollowUpBase = ({ status, customData = [] }) => {
               <div className="flex-1 overflow-y-auto">
                 <div className="px-4 py-6 sm:px-6 bg-indigo-700 text-white">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-medium">Performa Invoice</h2>
+                    <h2 className="text-lg font-medium">Marketing Performa Invoice</h2>
                     <button
                       type="button"
                       className="text-white hover:text-gray-200 focus:outline-none"
@@ -246,7 +246,7 @@ const FollowUpBase = ({ status, customData = [] }) => {
                               <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
                                 <div>
                                   <p className="text-sm text-gray-800">
-                                    {event.type === 'quotation' ? 'Quotation Sent' : 'Payment Received'}
+                                    {event.type === 'quotation' ? 'Marketing Quotation Sent' : 'Payment Received'}
                                     {event.amount && (
                                       <span className="font-medium text-gray-900"> • ₹{event.amount.toLocaleString()}</span>
                                     )}
@@ -260,7 +260,7 @@ const FollowUpBase = ({ status, customData = [] }) => {
                                       className="text-xs text-blue-600 hover:text-blue-800 mt-1 inline-flex items-center"
                                     >
                                       <FileText className="h-3 w-3 mr-1" />
-                                      View Document
+                                      View Marketing Document
                                     </a>
                                   )}
                                   {event.reference && (
@@ -521,7 +521,7 @@ const FollowUpBase = ({ status, customData = [] }) => {
                         <button
                           type="button"
                           className="text-blue-600 hover:text-blue-900"
-                          title="View Performa Invoice"
+                          title="View Marketing Performa Invoice"
                           onClick={() => openTimeline(item)}
                         >
                           <Clock className="h-5 w-5" />
@@ -550,7 +550,7 @@ const FollowUpBase = ({ status, customData = [] }) => {
                         <button
                           type="button"
                           className="text-amber-600 hover:text-amber-900"
-                          title="Schedule Follow-up"
+                          title="Schedule Marketing Follow-up"
                         >
                           <Calendar className="h-5 w-5" />
                         </button>
@@ -561,7 +561,7 @@ const FollowUpBase = ({ status, customData = [] }) => {
               ) : (
                 <tr>
                   <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500">
-                    No follow-ups found. Try adjusting your search or filters.
+                    No marketing follow-ups found. Try adjusting your search or filters.
                   </td>
                 </tr>
               )}
@@ -638,4 +638,4 @@ const FollowUpBase = ({ status, customData = [] }) => {
   );
 };
 
-export default FollowUpBase;
+export default MarketingFollowUpBase;

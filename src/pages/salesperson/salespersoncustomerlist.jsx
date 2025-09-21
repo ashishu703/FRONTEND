@@ -1461,7 +1461,7 @@ export default function CustomerListContent() {
                 </button>
                 <button className={cx("px-3 py-2 text-sm flex items-center gap-1", modalTab === 'payment_timeline' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-900')} onClick={() => setModalTab('payment_timeline')}>
                   <Clock className="h-4 w-4" />
-                  Payment Timeline
+                  Performa Invoice
                 </button>
               </div>
             </div>
@@ -1477,107 +1477,158 @@ export default function CustomerListContent() {
                 </div>
               )}
               {modalTab === 'payment_timeline' && (
-                <div className="space-y-4">
-                  <div className="bg-white rounded-lg shadow overflow-hidden">
-                    <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
-                      <h3 className="text-lg font-medium leading-6 text-gray-900">Quotation History</h3>
-                      <p className="mt-1 text-sm text-gray-500">All quotations sent to {viewingCustomer?.name}</p>
+                <div className="bg-white" style={{fontFamily: 'Arial, sans-serif', fontSize: '12px', lineHeight: '1.4'}}>
+                  {/* Header Section - Exact match to your PI */}
+                  <div style={{borderBottom: '2px solid #000', paddingBottom: '10px', marginBottom: '15px'}}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                      <div style={{flex: '1', textAlign: 'center'}}>
+                        <div style={{fontSize: '24px', fontWeight: 'bold', marginBottom: '5px'}}>PROFORMA INVOICE</div>
+                        <div style={{fontSize: '18px', fontWeight: '600'}}>PROFORMA INVOICE</div>
+                      </div>
+                      <div style={{fontSize: '11px', color: '#666'}}>
+                        Printed on {new Date().toLocaleDateString('en-GB')} at {new Date().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}
+                      </div>
                     </div>
-                    <div className="divide-y divide-gray-200">
-                      {quotations.map((quotation, index) => (
-                        <div key={quotation.id} className="p-4 hover:bg-gray-50">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="flex items-center">
-                                <h4 className="text-sm font-medium text-gray-900">
-                                  Quotation #{quotation.id}
-                                  {quotation.revisionOf && (
-                                    <span className="ml-2 text-xs text-gray-500">
-                                      (Revision of {quotation.revisionOf})
-                                    </span>
-                                  )}
-                                </h4>
-                                <span className={`ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                  quotation.status === 'sent' ? 'bg-blue-100 text-blue-800' :
-                                  quotation.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                                  quotation.status === 'revised' ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {quotation.status.charAt(0).toUpperCase() + quotation.status.slice(1)}
-                                </span>
-                              </div>
-                              <div className="mt-1 text-sm text-gray-500">
-                                <p>{quotation.remarks}</p>
-                                <p className="mt-1">
-                                  <span className="font-medium">Amount:</span> ₹{quotation.amount.toLocaleString()}
-                                  <span className="mx-2">•</span>
-                                  <span>Valid until: {new Date(quotation.validity).toLocaleDateString()}</span>
-                                </p>
-                                {quotation.customerNotes && (
-                                  <div className="mt-1 p-2 bg-yellow-50 border-l-4 border-yellow-400">
-                                    <p className="text-xs text-yellow-700">
-                                      <span className="font-medium">Customer Note:</span> {quotation.customerNotes}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="ml-4 flex-shrink-0">
-                              <div className="text-right">
-                                <time dateTime={quotation.date} className="text-sm text-gray-500">
-                                  {new Date(quotation.date).toLocaleString('en-US', {
-                                    year: 'numeric',
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
-                                </time>
-                                <div className="mt-1">
-                                  <button
-                                    onClick={() => {
-                                      setCurrentPdfUrl(quotation.documentUrl);
-                                      setShowPdfViewer(true);
-                                    }}
-                                    className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                  >
-                                    <FileText className="h-3 w-3 mr-1" />
-                                    View PDF
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Quotation Details - Collapsible */}
-                          <div className="mt-3 border-t border-gray-200 pt-3">
-                            <div className="text-sm text-gray-700">
-                              <div className="grid grid-cols-3 gap-2 text-xs font-medium text-gray-500 mb-1">
-                                <div>Description</div>
-                                <div className="text-right">Qty</div>
-                                <div className="text-right">Amount</div>
-                              </div>
-                              {quotation.items.map((item, itemIndex) => (
-                                <div key={itemIndex} className="grid grid-cols-3 gap-2 py-1 border-b border-gray-100">
-                                  <div className="text-sm">{item.description}</div>
-                                  <div className="text-right">{item.quantity} x ₹{item.rate.toLocaleString()}</div>
-                                  <div className="text-right font-medium">₹{item.amount.toLocaleString()}</div>
-                                </div>
-                              ))}
-                              <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
-                                <div className="text-sm font-medium">Total</div>
-                                <div className="text-right">
-                                  <div className="text-base font-bold">₹{quotation.total.toLocaleString()}</div>
-                                  <div className="text-xs text-gray-500">{quotation.terms}</div>
-                                </div>
-                              </div>
-                              <div className="mt-2 text-xs text-gray-500">
-                                <p>Prepared by: {quotation.preparedBy}</p>
-                              </div>
-                            </div>
-                          </div>
+                  </div>
+
+                  {/* Invoice Details Box - Exact positioning */}
+                  <div style={{marginBottom: '20px'}}>
+                    <div style={{border: '2px solid #000', padding: '15px', backgroundColor: '#f5f5f5', float: 'right', width: '300px'}}>
+                      <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px'}}>
+                        <div><strong>Voucher No.:</strong> 415</div>
+                        <div><strong>Dated:</strong> {new Date().toLocaleDateString('en-GB')}</div>
+                        <div><strong>Mode/Terms of Payment:</strong> ADVANCE</div>
+                        <div><strong>Buyer's Ref./Order No.:</strong> 415</div>
+                        <div><strong>Other References:</strong> DIRECT SALE</div>
+                        <div><strong>Dispatched through:</strong> BY TRANSPORT</div>
+                        <div><strong>Destination:</strong> Chandrapur Transport</div>
+                        <div><strong>Terms of Delivery:</strong> Delivery :- FOR upto Chandrapur Transport</div>
+                      </div>
+                    </div>
+                    <div style={{clear: 'both'}}></div>
+                  </div>
+
+                  {/* Company Details - 3 column layout exactly like your PI */}
+                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px'}}>
+                    {/* Seller Details */}
+                    <div>
+                      <div style={{fontSize: '16px', fontWeight: 'bold', marginBottom: '8px'}}>ANODE ELECTRIC PVT. LTD.</div>
+                      <div style={{fontSize: '11px', lineHeight: '1.3'}}>
+                        <div>Plot No.FA-42, Ghugus Road, Chinchala</div>
+                        <div>Sai Mobile Training Institute, Additional Chandrapur</div>
+                        <div>Maharashtra - 442406, India</div>
+                        <div><strong>GSTIN/UIN:</strong> 27AADCF6974E1ZF</div>
+                        <div><strong>State Name:</strong> Maharashtra, Code: 27</div>
+                        <div><strong>Contact:</strong> +91-9876543210</div>
+                        <div><strong>E-Mail:</strong> info@anodeelectric.com</div>
+                      </div>
+                    </div>
+
+                    {/* Consignee Details */}
+                    <div>
+                      <div style={{fontSize: '12px', fontWeight: '600', marginBottom: '5px'}}>Consignee (Ship to)</div>
+                      <div style={{fontSize: '11px', lineHeight: '1.3'}}>
+                        <div style={{fontWeight: '600'}}>FORSICA SHIND ELECTRICALS PRIVATE LIMITED</div>
+                        <div>Chandrapur Transport, Chandrapur</div>
+                        <div>Maharashtra - 442406, India</div>
+                        <div><strong>GSTIN/UIN:</strong> 27AADCF6974E1ZF</div>
+                        <div><strong>PAN/IT No.:</strong> AADCF6974E</div>
+                        <div><strong>State Name:</strong> Maharashtra, Code: 27</div>
+                      </div>
+                    </div>
+
+                    {/* Bill To Details */}
+                    <div>
+                      <div style={{fontSize: '12px', fontWeight: '600', marginBottom: '5px'}}>Bill To</div>
+                      <div style={{fontSize: '11px', lineHeight: '1.3'}}>
+                        <div style={{fontWeight: '600'}}>ANODE AND ELECTRICALS PRIVATE LIMITED</div>
+                        <div>Plot No.FA-42, Ghugus Road, Chinchala</div>
+                        <div>Sai Mobile Training Institute, Additional Chandrapur</div>
+                        <div>Maharashtra - 442406, India</div>
+                        <div><strong>GSTIN/UIN:</strong> 27AADCF6974E1ZF</div>
+                        <div><strong>PAN/IT No.:</strong> AADCF6974E</div>
+                        <div><strong>State Name:</strong> Maharashtra, Code: 27</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Items Table - Exact structure */}
+                  <div style={{marginBottom: '20px'}}>
+                    <table style={{width: '100%', borderCollapse: 'collapse', border: '1px solid #000'}}>
+                      <thead>
+                        <tr style={{backgroundColor: '#f0f0f0'}}>
+                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>S.No.</th>
+                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>Description of Goods</th>
+                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>HSN/SAC</th>
+                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>Due on</th>
+                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>Quantity</th>
+                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>Rate</th>
+                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>per</th>
+                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>Disc.%</th>
+                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>1</td>
+                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>
+                            <div style={{fontWeight: '600'}}>COVERED CONDUCTOR 34 SQMM</div>
+                            <div style={{fontSize: '10px', color: '#666'}}>COVERED CONDUCTOR 34SQMM XLPE 3 LAYER</div>
+                          </td>
+                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>76141000</td>
+                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>{new Date().toLocaleDateString('en-GB')}</td>
+                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>600 MTR</td>
+                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>48.00</td>
+                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>MTR</td>
+                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>-</td>
+                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>28,800.00</td>
+                        </tr>
+                        <tr>
+                          <td colSpan="8" style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px', textAlign: 'right', fontWeight: '600'}}>IGST:</td>
+                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>5,184.00</td>
+                        </tr>
+                        <tr style={{backgroundColor: '#f0f0f0'}}>
+                          <td colSpan="4" style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px', fontWeight: '600'}}>Total</td>
+                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px', fontWeight: '600'}}>600 MTR</td>
+                          <td colSpan="3" style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}></td>
+                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px', fontWeight: '600'}}>33,984.00</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Footer Section - Exact positioning */}
+                  <div>
+                    <div style={{fontSize: '11px', marginBottom: '15px'}}>
+                      <strong>Amount Chargeable (in words):</strong> INR Thirty Three Thousand Nine Hundred Eighty Four Only
+                    </div>
+                    
+                    <div style={{border: '1px solid #000', padding: '15px', backgroundColor: '#f5f5f5', marginBottom: '15px'}}>
+                      <div style={{fontSize: '12px', fontWeight: '600', marginBottom: '8px'}}>Company's Bank Details</div>
+                      <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', fontSize: '11px'}}>
+                        <div>
+                          <div><strong>A/c Holder's Name:</strong> ANODE ELECTRIC PVT. LTD.</div>
+                          <div><strong>Bank Name:</strong> ICICI BANK 36601</div>
                         </div>
-                      ))}
+                        <div>
+                          <div><strong>A/c No.:</strong> 777705336601</div>
+                          <div><strong>Branch & IFS Code:</strong> NIWARGANJ & ICIC0007345</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '10px'}}>
+                      <div style={{fontSize: '11px'}}>
+                        <div style={{textAlign: 'right'}}>E. & O.E</div>
+                      </div>
+                      <div style={{textAlign: 'center'}}>
+                        <div style={{fontSize: '11px', fontWeight: '600'}}>for ANODE ELECTRIC PVT. LTD.</div>
+                        <div style={{marginTop: '30px', fontSize: '11px'}}>Authorised Signatory</div>
+                      </div>
+                    </div>
+
+                    <div style={{textAlign: 'center', fontSize: '10px', color: '#666'}}>
+                      This is a Computer Generated Document
                     </div>
                   </div>
                 </div>

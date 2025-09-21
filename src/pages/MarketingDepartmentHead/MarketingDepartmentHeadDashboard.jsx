@@ -4,7 +4,6 @@ import MarketingLeads from './MarketingLeads';
 import UserPerformance from './UserPerformance';
 import PaymentInfo from './PaymentInfo';
 import MarketingDepartmentUser from './MarketingDepartmentUser';
-import CampaignLeads from './CampaignLeads';
 import TodayVisit from './TodayVisit';
 import StockUpdate from './StockUpdate';
 import MarketingSalespersonDashboard from '../SuperAdmin/MarketingSalespersonDashboard';
@@ -23,8 +22,6 @@ const MarketingDepartmentHeadDashboard = ({ activeView, setActiveView }) => {
     switch (activeView) {
       case 'marketing-dashboard':
         return <MarketingHeadDashboard setActiveView={setActiveView} />;
-      case 'campaign-leads':
-        return <CampaignLeads />;
       case 'today-visit':
         return <TodayVisit />;
       case 'marketing-leads':

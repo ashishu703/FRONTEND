@@ -260,13 +260,6 @@ const MarketingUserPerformance = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <Target className="w-8 h-8 text-purple-600" />
-            <h1 className="text-2xl font-bold text-gray-900">Marketing User Performance</h1>
-          </div>
-          <p className="text-gray-600">Track and analyze marketing team performance metrics</p>
-        </div>
 
         {/* Search and Filters */}
         <div className="mb-6 flex items-center justify-between">

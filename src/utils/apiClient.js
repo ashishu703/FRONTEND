@@ -106,6 +106,24 @@ class ApiClient {
     });
   }
 
+  async putFormData(url, formData) {
+    try {
+      const token = sessionStorage.getItem('authToken') || this.getAuthToken();
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+          // Do NOT set Content-Type for FormData; browser sets boundary
+        },
+        body: formData,
+      });
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('API Request Error (putFormData):', error);
+      throw error;
+    }
+  }
+
   /**
    * Check if user is authenticated
    */

@@ -8,7 +8,7 @@ function cx(...classes) {
 }
 
 function Card({ className, children }) {
-  return <div className={cx("rounded-lg border bg-white", className)}>{children}</div>
+  return <div className={cx("rounded-lg border bg-white transition-all duration-300 hover:shadow-lg hover:scale-105 hover:-translate-y-1", className)}>{children}</div>
 }
 
 function CardHeader({ className, children }) {
@@ -29,7 +29,7 @@ function CustomPieChart({ data, size = 200 }) {
   let cumulativePercentage = 0
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div className="relative transition-all duration-300 hover:scale-110" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="transform -rotate-90">
         {data.map((item, index) => {
           const percentage = (item.value / total) * 100
@@ -65,12 +65,14 @@ function CustomPieChart({ data, size = 200 }) {
               fill={item.color}
               stroke="white"
               strokeWidth="2"
+              className="transition-all duration-300 hover:opacity-80 hover:stroke-4"
+              style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
             />
           )
         })}
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center transition-all duration-300 hover:scale-110">
           <div className="text-2xl font-bold text-gray-700">{total}</div>
           <div className="text-sm text-gray-500">Total</div>
         </div>
@@ -83,22 +85,24 @@ function CustomBarChart({ data, height = 200 }) {
   const maxValue = Math.max(...data.map(item => item.value))
   
   return (
-    <div className="w-full" style={{ height }}>
+    <div className="w-full transition-all duration-300 hover:scale-105" style={{ height }}>
       <div className="flex items-end justify-between h-full space-x-2">
         {data.map((item, index) => {
           const barHeight = (item.value / maxValue) * (height - 40)
           return (
-            <div key={index} className="flex flex-col items-center flex-1">
-              <div className="text-xs text-gray-500 mb-1">{item.value}</div>
+            <div key={index} className="flex flex-col items-center flex-1 group">
+              <div className="text-xs text-gray-500 mb-1 transition-all duration-300 group-hover:text-gray-700 group-hover:font-semibold">{item.value}</div>
               <div
-                className="w-full rounded-t transition-all duration-500 hover:opacity-80"
+                className="w-full rounded-t transition-all duration-500 hover:opacity-80 hover:shadow-lg hover:scale-110 cursor-pointer relative"
                 style={{
                   height: barHeight,
                   backgroundColor: item.color,
-                  minHeight: '4px'
+                  minHeight: '4px',
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
                 }}
+                title={`${item.label}: ${item.value}`}
               />
-              <div className="text-xs text-gray-600 mt-2 text-center">{item.label}</div>
+              <div className="text-xs text-gray-600 mt-2 text-center transition-all duration-300 group-hover:text-gray-800 group-hover:font-medium">{item.label}</div>
             </div>
           )
         })}
@@ -111,18 +115,21 @@ function ProgressBar({ value, max, label, color = "bg-blue-500" }) {
   const percentage = Math.min((value / max) * 100, 100)
   
   return (
-    <div className="w-full">
+    <div className="w-full group cursor-pointer">
       <div className="flex justify-between items-center mb-2">
-        <span className="text-sm font-medium text-gray-700">{label}</span>
-        <span className="text-sm text-gray-500">{value}/{max}</span>
+        <span className="text-sm font-medium text-gray-700 transition-all duration-300 group-hover:text-gray-900 group-hover:font-semibold">{label}</span>
+        <span className="text-sm text-gray-500 transition-all duration-300 group-hover:text-gray-700 group-hover:font-medium">{value}/{max}</span>
       </div>
-      <div className="w-full bg-gray-200 rounded-full h-2">
+      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden transition-all duration-300 group-hover:shadow-inner">
         <div
-          className={`h-2 rounded-full transition-all duration-500 ${color}`}
-          style={{ width: `${percentage}%` }}
+          className={`h-2 rounded-full transition-all duration-500 hover:shadow-lg ${color}`}
+          style={{ 
+            width: `${percentage}%`,
+            filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))'
+          }}
         />
       </div>
-      <div className="text-xs text-gray-500 mt-1">{percentage.toFixed(1)}%</div>
+      <div className="text-xs text-gray-500 mt-1 transition-all duration-300 group-hover:text-gray-700 group-hover:font-medium">{percentage.toFixed(1)}%</div>
     </div>
   )
 }
@@ -139,64 +146,64 @@ export default function DashboardContent() {
 
   // Generate performance data based on selected date
   const getPerformanceData = (selectedDate) => {
-    // Base performance data - empty structure ready for real data
+    // Base performance data - Demo data for realistic dashboard
     const baseData = {
       targets: {
-        monthlyLeads: { current: 0, target: 100, label: "Monthly Leads" },
-        conversionRate: { current: 0, target: 25, label: "Conversion Rate (%)" },
-        revenue: { current: 0, target: 300000, label: "Monthly Revenue (₹)" },
-        calls: { current: 0, target: 300, label: "Daily Calls" }
+        monthlyLeads: { current: 127, target: 100, label: "Monthly Leads" },
+        conversionRate: { current: 23.6, target: 25, label: "Conversion Rate (%)" },
+        revenue: { current: 2400000, target: 3000000, label: "Monthly Revenue (₹)" },
+        calls: { current: 285, target: 300, label: "Daily Calls" }
       },
       leadStatusData: [
-        { label: "Hot", value: 0, color: "#ef4444" },
-        { label: "Warm", value: 0, color: "#f97316" },
-        { label: "Cold", value: 0, color: "#6b7280" },
-        { label: "Converted", value: 0, color: "#22c55e" }
+        { label: "Hot", value: 35, color: "#ef4444" },
+        { label: "Warm", value: 42, color: "#f97316" },
+        { label: "Cold", value: 28, color: "#6b7280" },
+        { label: "Converted", value: 22, color: "#22c55e" }
       ],
       monthlyPerformance: [
-        { label: "Jan", value: 0, color: "#3b82f6" },
-        { label: "Feb", value: 0, color: "#3b82f6" },
-        { label: "Mar", value: 0, color: "#3b82f6" },
-        { label: "Apr", value: 0, color: "#3b82f6" },
-        { label: "May", value: 0, color: "#3b82f6" },
-        { label: "Jun", value: 0, color: "#3b82f6" }
+        { label: "Jan", value: 78, color: "#3b82f6" },
+        { label: "Feb", value: 82, color: "#3b82f6" },
+        { label: "Mar", value: 85, color: "#3b82f6" },
+        { label: "Apr", value: 88, color: "#3b82f6" },
+        { label: "May", value: 91, color: "#3b82f6" },
+        { label: "Jun", value: 94, color: "#3b82f6" }
       ],
       kpis: [
         {
           title: "Lead Response Time",
-          value: "0 hrs",
+          value: "0.8 hrs",
           target: "< 1 hr",
-          status: "warning",
+          status: "success",
           icon: Clock,
-          color: "bg-orange-50 text-orange-600 border-orange-200"
+          color: "bg-green-50 text-green-600 border-green-200"
         },
         {
           title: "Follow-up Rate",
-          value: "0%",
+          value: "89%",
           target: "> 85%",
-          status: "warning",
+          status: "success",
           icon: ArrowUp,
-          color: "bg-orange-50 text-orange-600 border-orange-200"
+          color: "bg-green-50 text-green-600 border-green-200"
         },
         {
           title: "Customer Satisfaction",
-          value: "0/5",
+          value: "4.7/5",
           target: "> 4.5",
-          status: "warning",
+          status: "success",
           icon: Award,
-          color: "bg-orange-50 text-orange-600 border-orange-200"
+          color: "bg-green-50 text-green-600 border-green-200"
         },
         {
           title: "Quotation Success",
-          value: "0%",
+          value: "73%",
           target: "> 70%",
-          status: "warning",
+          status: "success",
           icon: CheckCircle,
-          color: "bg-orange-50 text-orange-600 border-orange-200"
+          color: "bg-green-50 text-green-600 border-green-200"
         },
         {
           title: "Transfer Leads",
-          value: "0",
+          value: "5",
           target: "< 20",
           status: "success",
           icon: ArrowRightLeft,
@@ -217,70 +224,70 @@ export default function DashboardContent() {
   // Get filtered performance data
   const performanceData = getPerformanceData(dateFilter)
 
-  // Overview Data - empty structure ready for real data
+  // Overview Data - Demo data for realistic dashboard
   const overviewData = {
     metrics: [
       {
         title: "Total Leads",
-        value: "0",
-        subtitle: "No leads assigned yet",
+        value: "127",
+        subtitle: "Active leads this month",
         icon: UserPlus,
         color: "bg-blue-50 text-blue-600 border-blue-200",
-        trend: "0%",
+        trend: "+12%",
         trendUp: true
       },
       {
         title: "Conversion Rate",
-        value: "0%",
-        subtitle: "No conversions yet",
+        value: "23.6%",
+        subtitle: "Above target of 20%",
         icon: CheckCircle,
         color: "bg-green-50 text-green-600 border-green-200",
-        trend: "0%",
+        trend: "+3.2%",
         trendUp: true
       },
       {
         title: "Pending Rate",
-        value: "0%",
-        subtitle: "No pending leads",
+        value: "18.5%",
+        subtitle: "Leads requiring follow-up",
         icon: Clock,
         color: "bg-orange-50 text-orange-600 border-orange-200",
-        trend: "0%",
+        trend: "-2.1%",
         trendUp: false
       },
       {
         title: "Total Revenue",
-        value: "₹0",
-        subtitle: "No revenue generated yet",
+        value: "₹2.4M",
+        subtitle: "Revenue generated this month",
         icon: CreditCard,
         color: "bg-purple-50 text-purple-600 border-purple-200",
-        trend: "0%",
+        trend: "+15.3%",
         trendUp: true
       },
     ],
     weeklyLeads: [
-      { label: "Mon", value: 0, color: "#3b82f6" },
-      { label: "Tue", value: 0, color: "#3b82f6" },
-      { label: "Wed", value: 0, color: "#3b82f6" },
-      { label: "Thu", value: 0, color: "#3b82f6" },
-      { label: "Fri", value: 0, color: "#3b82f6" },
-      { label: "Sat", value: 0, color: "#3b82f6" },
-      { label: "Sun", value: 0, color: "#3b82f6" }
+      { label: "Mon", value: 18, color: "#3b82f6" },
+      { label: "Tue", value: 22, color: "#3b82f6" },
+      { label: "Wed", value: 15, color: "#3b82f6" },
+      { label: "Thu", value: 28, color: "#3b82f6" },
+      { label: "Fri", value: 24, color: "#3b82f6" },
+      { label: "Sat", value: 12, color: "#3b82f6" },
+      { label: "Sun", value: 8, color: "#3b82f6" }
     ],
     leadSourceData: [
-      { label: "Website", value: 0, color: "#3b82f6" },
-      { label: "Referrals", value: 0, color: "#10b981" },
-      { label: "Social Media", value: 0, color: "#f59e0b" },
-      { label: "Cold Calls", value: 0, color: "#ef4444" },
-      { label: "Email Campaign", value: 0, color: "#8b5cf6" },
-      { label: "Other", value: 0, color: "#6b7280" }
+      { label: "Website", value: 35, color: "#3b82f6" },
+      { label: "Referrals", value: 28, color: "#10b981" },
+      { label: "Social Media", value: 22, color: "#f59e0b" },
+      { label: "Cold Calls", value: 18, color: "#ef4444" },
+      { label: "Email Campaign", value: 15, color: "#8b5cf6" },
+      { label: "Other", value: 9, color: "#6b7280" }
     ],
     monthlyRevenue: [
-      { label: "Jan", value: 0, color: "#3b82f6" },
-      { label: "Feb", value: 0, color: "#3b82f6" },
-      { label: "Mar", value: 0, color: "#3b82f6" },
-      { label: "Apr", value: 0, color: "#3b82f6" },
-      { label: "May", value: 0, color: "#3b82f6" },
-      { label: "Jun", value: 0, color: "#3b82f6" }
+      { label: "Jan", value: 1800, color: "#3b82f6" },
+      { label: "Feb", value: 2100, color: "#3b82f6" },
+      { label: "Mar", value: 1950, color: "#3b82f6" },
+      { label: "Apr", value: 2400, color: "#3b82f6" },
+      { label: "May", value: 2200, color: "#3b82f6" },
+      { label: "Jun", value: 2800, color: "#3b82f6" }
     ]
   }
 
@@ -289,50 +296,50 @@ export default function DashboardContent() {
   const leadStatuses = [
     {
       title: "Pending",
-      count: "0",
-      subtitle: "No pending leads",
+      count: "23",
+      subtitle: "Leads awaiting response",
       icon: Clock,
       color: "bg-orange-50 text-orange-600 border-orange-200",
     },
     {
       title: "Meeting scheduled",
-      count: "0",
-      subtitle: "No meetings scheduled",
+      count: "18",
+      subtitle: "Upcoming meetings",
       icon: CalendarCheck,
       color: "bg-purple-50 text-purple-600 border-purple-200",
     },
     {
       title: "Follow Up",
-      count: "0",
-      subtitle: "No follow-ups required",
+      count: "31",
+      subtitle: "Requires follow-up",
       icon: ArrowUp,
       color: "bg-blue-50 text-blue-600 border-blue-200",
     },
     {
       title: "Win Leads",
-      count: "0",
-      subtitle: "No successful conversions",
+      count: "30",
+      subtitle: "Successful conversions",
       icon: CheckCircle,
       color: "bg-green-50 text-green-600 border-green-200",
     },
     {
       title: "Not Interested",
-      count: "0",
-      subtitle: "No declined leads",
+      count: "12",
+      subtitle: "Declined leads",
       icon: XCircle,
       color: "bg-red-50 text-red-600 border-red-200",
     },
     {
       title: "Loose Leads",
-      count: "0",
-      subtitle: "No unreachable leads",
+      count: "8",
+      subtitle: "Unreachable leads",
       icon: PhoneOff,
       color: "bg-gray-50 text-gray-600 border-gray-200",
     },
     {
       title: "Transfer Leads",
-      count: "0",
-      subtitle: "No transferred leads",
+      count: "5",
+      subtitle: "Transferred to other teams",
       icon: ArrowRightLeft,
       color: "bg-indigo-50 text-indigo-600 border-indigo-200",
     },
@@ -344,24 +351,24 @@ export default function DashboardContent() {
       <div className="flex gap-6 mb-6">
         <button 
           onClick={() => setActiveTab('overview')}
-          className={`gap-2 flex items-center pb-2 border-b-2 transition-colors ${
+          className={`gap-2 flex items-center pb-2 border-b-2 transition-all duration-300 hover:scale-105 ${
             activeTab === 'overview' 
               ? 'text-blue-600 border-blue-600' 
-              : 'text-gray-500 border-transparent hover:text-gray-700'
+              : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-          <TrendingUp className="h-4 w-4" />
+          <TrendingUp className="h-4 w-4 transition-all duration-300 hover:scale-110" />
           Overview
         </button>
         <button 
           onClick={() => setActiveTab('performance')}
-          className={`gap-2 flex items-center pb-2 border-b-2 transition-colors ${
+          className={`gap-2 flex items-center pb-2 border-b-2 transition-all duration-300 hover:scale-105 ${
             activeTab === 'performance' 
               ? 'text-blue-600 border-blue-600' 
-              : 'text-gray-500 border-transparent hover:text-gray-700'
+              : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-          <BarChart3 className="h-4 w-4" />
+          <BarChart3 className="h-4 w-4 transition-all duration-300 hover:scale-110" />
           Performance
         </button>
       </div>
@@ -369,39 +376,7 @@ export default function DashboardContent() {
       {activeTab === 'overview' && (
         <>
 
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {metrics.map((metric, index) => {
-          const Icon = metric.icon
-          return (
-            <Card key={index} className={cx("border-2", metric.color)}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500">{metric.title}</CardTitle>
-                <Icon className="h-5 w-5" />
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between mb-1">
-                  <div className="text-2xl font-bold">{metric.value}</div>
-                  <div className={`flex items-center text-xs font-medium ${
-                    metric.trendUp ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {metric.trendUp ? (
-                      <TrendingUp className="w-3 h-3 mr-1" />
-                    ) : (
-                      <TrendingDown className="w-3 h-3 mr-1" />
-                    )}
-                    {metric.trend}
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500">{metric.subtitle}</p>
-                <div className="w-full bg-current opacity-20 h-1 rounded-full mt-3"></div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
-
-      {/* Lead Status Summary */}
+      {/* Lead Status Summary - Moved to top */}
       <div className="space-y-4 mb-8">
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-gray-500" />
@@ -413,14 +388,56 @@ export default function DashboardContent() {
           {leadStatuses.map((status, index) => {
             const Icon = status.icon
             return (
-              <Card key={index} className={cx("border-2", status.color)}>
+              <Card key={index} className={cx("border-2 group", status.color)}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{status.title}</CardTitle>
-                  <Icon className="h-5 w-5" />
+                  <CardTitle className="text-sm font-medium transition-all duration-300 group-hover:text-gray-800 group-hover:font-semibold">{status.title}</CardTitle>
+                  <Icon className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold mb-1">{status.count}</div>
-                  <p className="text-xs text-gray-500">{status.subtitle}</p>
+                  <div className="text-2xl font-bold mb-1 transition-all duration-300 group-hover:scale-110">{status.count}</div>
+                  <p className="text-xs text-gray-500 transition-all duration-300 group-hover:text-gray-700">{status.subtitle}</p>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Key Performance Metrics - Enhanced styling */}
+      <div className="space-y-4 mb-8">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-blue-600" />
+          <h2 className="text-lg font-semibold">Key Performance Metrics</h2>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">Critical business indicators and trends</p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {metrics.map((metric, index) => {
+            const Icon = metric.icon
+            return (
+              <Card key={index} className={cx("border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50", metric.color)}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-600 transition-all duration-300 group-hover:text-gray-800 group-hover:font-semibold">{metric.title}</CardTitle>
+                  <div className="p-2 rounded-full bg-white shadow-md">
+                    <Icon className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-3xl font-bold transition-all duration-300 group-hover:scale-110">{metric.value}</div>
+                    <div className={`flex items-center text-sm font-semibold px-2 py-1 rounded-full transition-all duration-300 group-hover:scale-105 ${
+                      metric.trendUp ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
+                    }`}>
+                      {metric.trendUp ? (
+                        <TrendingUp className="w-4 h-4 mr-1 transition-all duration-300 group-hover:scale-110" />
+                      ) : (
+                        <TrendingDown className="w-4 h-4 mr-1 transition-all duration-300 group-hover:scale-110" />
+                      )}
+                      {metric.trend}
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 transition-all duration-300 group-hover:text-gray-800 mb-3">{metric.subtitle}</p>
+                  <div className="w-full bg-gradient-to-r from-current to-transparent opacity-30 h-2 rounded-full transition-all duration-300 group-hover:opacity-50 group-hover:h-2.5"></div>
                 </CardContent>
               </Card>
             )
@@ -431,11 +448,11 @@ export default function DashboardContent() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Weekly Leads Bar Chart */}
-        <Card className="border-2">
+        <Card className="border-2 group">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
-              <CardTitle className="text-lg font-semibold">Weekly Leads Activity</CardTitle>
+              <BarChart3 className="h-5 w-5 text-blue-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
+              <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-blue-700">Weekly Leads Activity</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
@@ -449,11 +466,11 @@ export default function DashboardContent() {
         </Card>
 
         {/* Lead Source Pie Chart */}
-        <Card className="border-2">
+        <Card className="border-2 group">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <PieChartIcon className="h-5 w-5 text-purple-600" />
-              <CardTitle className="text-lg font-semibold">Lead Sources</CardTitle>
+              <PieChartIcon className="h-5 w-5 text-purple-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
+              <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-purple-700">Lead Sources</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
@@ -476,11 +493,11 @@ export default function DashboardContent() {
       </div>
 
       {/* Monthly Revenue Chart */}
-      <Card className="border-2 mb-8">
+      <Card className="border-2 mb-8 group">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-green-600" />
-            <CardTitle className="text-lg font-semibold">Monthly Revenue Trend</CardTitle>
+            <TrendingUp className="h-5 w-5 text-green-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
+            <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-green-700">Monthly Revenue Trend</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -558,13 +575,13 @@ export default function DashboardContent() {
           {/* Target Progress Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {Object.entries(performanceData.targets).map(([key, target]) => (
-              <Card key={key} className="border-2 border-blue-200">
+              <Card key={key} className="border-2 border-blue-200 group">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-500">{target.label}</CardTitle>
-                  <Target className="h-5 w-5 text-blue-600" />
+                  <CardTitle className="text-sm font-medium text-gray-500 transition-all duration-300 group-hover:text-gray-700 group-hover:font-semibold">{target.label}</CardTitle>
+                  <Target className="h-5 w-5 text-blue-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold mb-3">
+                  <div className="text-2xl font-bold mb-3 transition-all duration-300 group-hover:scale-110">
                     {key === 'revenue' ? `₹${target.current.toLocaleString()}` : target.current}
                   </div>
                   <ProgressBar 
@@ -590,24 +607,24 @@ export default function DashboardContent() {
               {performanceData.kpis.map((kpi, index) => {
                 const Icon = kpi.icon
                 return (
-                  <Card key={index} className={`border-2 ${kpi.color}`}>
+                  <Card key={index} className={`border-2 group ${kpi.color}`}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">{kpi.title}</CardTitle>
-                      <Icon className="h-5 w-5" />
+                      <CardTitle className="text-sm font-medium transition-all duration-300 group-hover:text-gray-800 group-hover:font-semibold">{kpi.title}</CardTitle>
+                      <Icon className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold mb-1">{kpi.value}</div>
-                      <p className="text-xs text-gray-500 mb-2">Target: {kpi.target}</p>
+                      <div className="text-2xl font-bold mb-1 transition-all duration-300 group-hover:scale-110">{kpi.value}</div>
+                      <p className="text-xs text-gray-500 mb-2 transition-all duration-300 group-hover:text-gray-700">Target: {kpi.target}</p>
                       <div className="flex items-center gap-1">
                         {kpi.status === 'warning' ? (
                           <>
-                            <TrendingDown className="h-3 w-3 text-orange-500" />
-                            <span className="text-xs text-orange-600">Below Target</span>
+                            <TrendingDown className="h-3 w-3 text-orange-500 transition-all duration-300 group-hover:scale-110" />
+                            <span className="text-xs text-orange-600 transition-all duration-300 group-hover:font-medium">Below Target</span>
                           </>
                         ) : (
                           <>
-                            <TrendingUp className="h-3 w-3 text-green-500" />
-                            <span className="text-xs text-green-600">Above Target</span>
+                            <TrendingUp className="h-3 w-3 text-green-500 transition-all duration-300 group-hover:scale-110" />
+                            <span className="text-xs text-green-600 transition-all duration-300 group-hover:font-medium">Above Target</span>
                           </>
                         )}
                       </div>
@@ -621,11 +638,11 @@ export default function DashboardContent() {
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Lead Status Pie Chart */}
-            <Card className="border-2">
+            <Card className="border-2 group">
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <PieChartIcon className="h-5 w-5 text-purple-600" />
-                  <CardTitle className="text-lg font-semibold">Lead Status Distribution</CardTitle>
+                  <PieChartIcon className="h-5 w-5 text-purple-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
+                  <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-purple-700">Lead Status Distribution</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
@@ -647,11 +664,11 @@ export default function DashboardContent() {
             </Card>
 
             {/* Monthly Performance Bar Chart */}
-            <Card className="border-2">
+            <Card className="border-2 group">
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-green-600" />
-                  <CardTitle className="text-lg font-semibold">Monthly Performance</CardTitle>
+                  <BarChart3 className="h-5 w-5 text-green-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
+                  <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-green-700">Monthly Performance</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
@@ -667,26 +684,26 @@ export default function DashboardContent() {
 
 
           {/* Performance Summary */}
-          <Card className="border-2 border-gray-200">
+          <Card className="border-2 border-gray-200 group">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Award className="h-5 w-5 text-yellow-600" />
-                <CardTitle className="text-lg font-semibold">Performance Summary</CardTitle>
+                <Award className="h-5 w-5 text-yellow-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
+                <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-yellow-700">Performance Summary</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600 mb-2">0%</div>
-                  <div className="text-sm text-gray-600">Overall Target Achievement</div>
+                <div className="text-center group/summary transition-all duration-300 hover:scale-105">
+                  <div className="text-3xl font-bold text-blue-600 mb-2 transition-all duration-300 group-hover/summary:scale-110">87%</div>
+                  <div className="text-sm text-gray-600 transition-all duration-300 group-hover/summary:text-gray-800 group-hover/summary:font-medium">Overall Target Achievement</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-orange-600 mb-2">0</div>
-                  <div className="text-sm text-gray-600">Areas Need Improvement</div>
+                <div className="text-center group/summary transition-all duration-300 hover:scale-105">
+                  <div className="text-3xl font-bold text-orange-600 mb-2 transition-all duration-300 group-hover/summary:scale-110">2</div>
+                  <div className="text-sm text-gray-600 transition-all duration-300 group-hover/summary:text-gray-800 group-hover/summary:font-medium">Areas Need Improvement</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600 mb-2">0</div>
-                  <div className="text-sm text-gray-600">Area Exceeding Target</div>
+                <div className="text-center group/summary transition-all duration-300 hover:scale-105">
+                  <div className="text-3xl font-bold text-green-600 mb-2 transition-all duration-300 group-hover/summary:scale-110">3</div>
+                  <div className="text-sm text-gray-600 transition-all duration-300 group-hover/summary:text-gray-800 group-hover/summary:font-medium">Area Exceeding Target</div>
                 </div>
               </div>
             </CardContent>

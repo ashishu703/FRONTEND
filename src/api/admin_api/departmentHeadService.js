@@ -68,6 +68,29 @@ class DepartmentHeadService {
   async deleteHead(id) {
     return apiClient.request(API_ENDPOINTS.DEPARTMENT_HEAD_BY_ID(id), { method: 'DELETE' });
   }
+
+  // Leads
+  async getAllLeads(params = {}) {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        query.append(key, value);
+      }
+    });
+    return apiClient.get(API_ENDPOINTS.LEADS_LIST(query.toString()));
+  }
+
+  async createLead(payload) {
+    return apiClient.post(API_ENDPOINTS.LEADS_CREATE(), payload);
+  }
+
+  async importLeads(leadsArray) {
+    return apiClient.post(API_ENDPOINTS.LEADS_IMPORT(), { leads: leadsArray });
+  }
+
+  async updateLead(id, payload) {
+    return apiClient.put(API_ENDPOINTS.LEAD_BY_ID(id), payload);
+  }
 }
 
 const departmentHeadService = new DepartmentHeadService();

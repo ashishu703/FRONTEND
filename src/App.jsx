@@ -27,7 +27,7 @@ function AppContent() {
       return urlUserType
     }
     
-    return user ? getUserTypeForRole(user.role) : 'superadmin'
+    return user ? getUserTypeForRole(user.role, user.departmentType) : 'superadmin'
   }
   
   const userType = getCurrentUserType()

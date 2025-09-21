@@ -1,42 +1,23 @@
 import React from 'react';
 import FollowUpBase from './FollowUpBase';
+import { useFollowUpData } from './FollowUpDataContext';
 
 const PendingFollowUps = () => {
-  // Sample data for pending follow-ups
-  const pendingData = [
-    {
-      id: 5,
-      name: 'Michael Brown',
-      customerId: 'CUST005',
-      business: 'Brown Enterprises',
-      address: '555 Corporate Dr, District',
-      state: 'Florida',
-      productType: 'Speaker Wires',
-      customerType: 'Distributor',
-      leadSource: 'Email Campaign',
-      date: '2023-09-11',
-      status: 'Pending',
-      waitingSince: '2023-09-13',
-      lastContact: '2023-09-13 09:30',
-      nextAction: 'Follow up email'
-    },
-    {
-      id: 6,
-      name: 'Emily Davis',
-      customerId: 'CUST006',
-      business: 'Davis Electronics',
-      address: '777 Tech Blvd, City',
-      state: 'Washington',
-      productType: 'HDMI Cables',
-      customerType: 'Retailer',
-      leadSource: 'Website Form',
-      date: '2023-09-10',
-      status: 'Pending',
-      waitingSince: '2023-09-11',
-      lastContact: '2023-09-11 14:15',
-      nextAction: 'Send catalog'
-    }
-  ];
+  const { getLeadsByStatus, loading } = useFollowUpData();
+  
+  // Get pending leads from the shared data context
+  const pendingData = getLeadsByStatus('pending');
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading pending leads...</p>
+        </div>
+      </div>
+    );
+  }
 
   return <FollowUpBase status="pending" customData={pendingData} />;
 };

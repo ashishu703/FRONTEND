@@ -1,6 +1,6 @@
 import { Printer } from "lucide-react"
 
-const Quotation = ({ quotationData, customer, selectedBranch = 'ANODE' }) => {
+const MarketingQuotation = ({ quotationData, customer, selectedBranch = 'ANODE' }) => {
   // Company branch configuration
   const companyBranches = {
     ANODE: {
@@ -39,7 +39,7 @@ const Quotation = ({ quotationData, customer, selectedBranch = 'ANODE' }) => {
   const handlePrint = async () => {
     // Create a new window for printing
     const printWindow = window.open('', '_blank')
-    const quotationElement = document.getElementById('quotation-content')
+    const quotationElement = document.getElementById('marketing-quotation-content')
     
     if (printWindow && quotationElement) {
       // Convert image to base64 to ensure it loads in PDF
@@ -73,7 +73,7 @@ const Quotation = ({ quotationData, customer, selectedBranch = 'ANODE' }) => {
       printWindow.document.write(`
         <html>
           <head>
-            <title>Quotation - ${quotationData?.quotationNumber || 'ANO/25-26/458'}</title>
+            <title>Marketing Quotation - ${quotationData?.quotationNumber || 'ANO/25-26/458'}</title>
             <style>
               * { margin: 0; padding: 0; box-sizing: border-box; }
               body { 
@@ -108,6 +108,7 @@ const Quotation = ({ quotationData, customer, selectedBranch = 'ANODE' }) => {
               .items-center { align-items: center; }
               .grid { display: grid; }
               .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+              .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
               .grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
               .gap-2 { gap: 0.5rem; }
               .gap-4 { gap: 1rem; }
@@ -149,8 +150,8 @@ const Quotation = ({ quotationData, customer, selectedBranch = 'ANODE' }) => {
   }
     return (
       <div className="max-w-4xl mx-auto bg-white font-sans text-sm">        
-        {/* Quotation Content */}
-        <div id="quotation-content" className="p-6">
+        {/* Marketing Quotation Content */}
+        <div id="marketing-quotation-content" className="p-6">
         {/* Header */}
         <div className="border-2 border-black mb-4">
           {/* Removed header background color and updated company name and tagline */}
@@ -190,7 +191,7 @@ const Quotation = ({ quotationData, customer, selectedBranch = 'ANODE' }) => {
         {/* Quotation Details */}
         <div className="border border-black mb-4">
           <div className="bg-gray-100 p-2 text-center font-bold">
-            <h2>Quotation Details</h2>
+            <h2>Marketing Quotation Details</h2>
           </div>
           <div className="grid grid-cols-4 gap-2 p-2 text-xs border-b">
             <div>
@@ -371,7 +372,7 @@ const Quotation = ({ quotationData, customer, selectedBranch = 'ANODE' }) => {
         {/* Terms and Conditions */}
         <div className="border border-black mb-4">
           <div className="bg-gray-100 p-2 font-bold text-xs">
-            <h3>Terms and Conditions</h3>
+            <h3>Marketing Terms and Conditions</h3>
           </div>
           <div className="p-3 text-xs space-y-2">
             <div>
@@ -415,8 +416,8 @@ const Quotation = ({ quotationData, customer, selectedBranch = 'ANODE' }) => {
           <p className="mb-4">
             For <strong>{currentCompany.name}</strong>
           </p>
-          <p className="mb-8">This is computer generated invoice no signature required.</p>
-          <p className="font-bold">Authorized Signatory</p>
+          <p className="mb-8">This is computer generated marketing quotation no signature required.</p>
+          <p className="font-bold">Marketing Authorized Signatory</p>
         </div>
         </div>
         
@@ -427,12 +428,11 @@ const Quotation = ({ quotationData, customer, selectedBranch = 'ANODE' }) => {
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Printer className="h-4 w-4" />
-            Print PDF
+            Print Marketing Quotation
           </button>
         </div>
       </div>
     )
   }
   
-  export default Quotation
-  
+  export default MarketingQuotation

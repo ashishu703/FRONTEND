@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, FileText, Calendar, User, Package, DollarSign, Plus, Minus, Eye, Edit } from "lucide-react"
+import { X, FileText, Calendar, User, Package, DollarSign, Plus, Minus, Eye, Edit, Building2 } from "lucide-react"
 
 function Card({ className, children }) {
   return <div className={`rounded-lg border bg-white shadow-sm ${className || ''}`}>{children}</div>
@@ -46,7 +46,12 @@ function Button({ children, onClick, type = "button", variant = "default", size 
 }
 
 // Preview Component
-function QuotationPreview({ data, onEdit }) {
+function QuotationPreview({ data, onEdit, companyBranches, user }) {
+  // Debug: Log user data
+  console.log('QuotationPreview received user:', user);
+  
+  const selectedBranch = companyBranches[data?.selectedBranch] || companyBranches.ANODE;
+  
   return (
     <div className="max-w-4xl mx-auto bg-white font-sans text-sm">        
       {/* Quotation Content */}
@@ -55,13 +60,13 @@ function QuotationPreview({ data, onEdit }) {
         <div className="border-2 border-black mb-4">
           <div className="p-2 flex justify-between items-center">
             <div>
-              <h1 className="text-xl font-bold">ANODE ELECTRIC PVT. LTD.</h1>
-              <p className="text-xs">MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES</p>
+              <h1 className="text-xl font-bold">{selectedBranch.name}</h1>
+              <p className="text-xs">{selectedBranch.description}</p>
             </div>
             <div className="text-right">
               <img
                 src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
-                alt="Anode Electric Logo"
+                alt="Company Logo"
                 className="h-12 w-auto bg-white p-1 rounded"
               />
             </div>
@@ -71,15 +76,13 @@ function QuotationPreview({ data, onEdit }) {
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div>
                 <p>
-                  <strong>KHASRA NO. 805/5, PLOT NO. 10, IT PARK</strong>
+                  <strong>{selectedBranch.address}</strong>
                 </p>
-                <p>BARGI HILLS, JABALPUR - 482003</p>
-                <p>MADHYA PRADESH, INDIA</p>
               </div>
               <div className="text-right">
-                <p>Tel: 6262002116, 6262002113</p>
-                <p>Web: www.anocab.com</p>
-                <p>Email: info@anocab.com</p>
+                <p>Tel: {selectedBranch.tel}</p>
+                <p>Web: {selectedBranch.web}</p>
+                <p>Email: {selectedBranch.email}</p>
               </div>
             </div>
           </div>
@@ -311,10 +314,15 @@ function QuotationPreview({ data, onEdit }) {
         {/* Footer */}
         <div className="text-right text-xs">
           <p className="mb-4">
-            For <strong>ANODE ELECTRIC PRIVATE LIMITED</strong>
+            For <strong>{selectedBranch.name}</strong>
           </p>
           <p className="mb-8">This is computer generated invoice no signature required.</p>
           <p className="font-bold">Authorized Signatory</p>
+          {user && (
+            <p className="mt-2 text-sm font-semibold text-gray-800">
+              {user.username || user.email || 'User'}
+            </p>
+          )}
         </div>
       </div>
       
@@ -369,17 +377,55 @@ function QuotationPreview({ data, onEdit }) {
   );
 }
 
-export default function CreateQuotationForm({ customer, onClose, onSave }) {
+export default function CreateQuotationForm({ customer, user, onClose, onSave }) {
+  // Debug: Log user data
+  console.log('CreateQuotationForm received user:', user);
+  
   const getSevenDaysLater = (dateString) => {
     const date = new Date(dateString);
     date.setDate(date.getDate() + 7);
     return date.toISOString().split('T')[0];
   };
 
+  // Company branch configuration
+  const companyBranches = {
+    ANODE: {
+      name: 'ANODE ELECTRIC PRIVATE LIMITED',
+      gstNumber: '(23AANCA7455R1ZX)',
+      description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
+      address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
+      tel: '6262002116, 6262002113',
+      web: 'www.anocab.com',
+      email: 'info@anocab.com',
+      logo: 'Anocab - A Positive Connection.....'
+    },
+    SAMRIDDHI_CABLE: {
+      name: 'SAMRIDDHI CABLE INDUSTRIES PRIVATE LIMITED',
+      gstNumber: '(23ABPCS7684F1ZT)',
+      description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
+      address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
+      tel: '6262002116, 6262002113',
+      web: 'www.samriddhicable.com',
+      email: 'info@samriddhicable.com',
+      logo: 'Samriddhi Cable - Quality & Excellence.....'
+    },
+    SAMRIDDHI_INDUSTRIES: {
+      name: 'SAMRIDDHI INDUSTRIES',
+      gstNumber: '(23ABWFS1117M1ZT)',
+      description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
+      address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
+      tel: '6262002116, 6262002113',
+      web: 'www.samriddhiindustries.com',
+      email: 'info@samriddhiindustries.com',
+      logo: 'Samriddhi Industries - Innovation & Trust.....'
+    }
+  };
+
   const [quotationData, setQuotationData] = useState({
     quotationNumber: `ANQ${Date.now().toString().slice(-6)}`,
     quotationDate: new Date().toISOString().split('T')[0],
     validUpto: getSevenDaysLater(new Date().toISOString().split('T')[0]),
+    selectedBranch: 'ANODE', // Default branch
     items: [
       {
         id: 1,
@@ -516,7 +562,9 @@ export default function CreateQuotationForm({ customer, onClose, onSave }) {
           
           <QuotationPreview 
             data={previewData} 
-            onEdit={togglePreview} 
+            onEdit={togglePreview}
+            companyBranches={companyBranches}
+            user={user}
           />
           <div className="mt-4 flex justify-end gap-3">
             <Button 
@@ -592,6 +640,30 @@ export default function CreateQuotationForm({ customer, onClose, onSave }) {
                   value={quotationData.validUpto}
                   name="validUpto"
                 />
+              </div>
+            </div>
+
+            {/* Branch Selection */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-green-500" />
+                Company Branch
+              </h3>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Select Branch *</label>
+                <select
+                  value={quotationData.selectedBranch}
+                  onChange={(e) => handleInputChange("selectedBranch", e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  required
+                >
+                  <option value="ANODE">ANODE ELECTRIC PRIVATE LIMITED</option>
+                  <option value="SAMRIDDHI_CABLE">SAMRIDDHI CABLE INDUSTRIES PRIVATE LIMITED</option>
+                  <option value="SAMRIDDHI_INDUSTRIES">SAMRIDDHI INDUSTRIES</option>
+                </select>
+                <p className="text-xs text-gray-500">
+                  Selected branch will determine the letterhead and company details for this quotation.
+                </p>
               </div>
             </div>
 

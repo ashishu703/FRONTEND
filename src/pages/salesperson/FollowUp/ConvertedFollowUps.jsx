@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  XCircle, 
+  CheckCircle, 
   RefreshCw, 
   Filter, 
   Calendar, 
@@ -18,13 +18,13 @@ import {
   MessageCircle,
   Globe,
   BadgeCheck,
-  FileText,
-  Mail
+  XCircle,
+  FileText
 } from 'lucide-react';
 import apiClient from '../../../utils/apiClient';
 import { API_ENDPOINTS } from '../../../api/admin_api/api';
 
-const ClosedFollowUps = () => {
+const ConvertedFollowUps = () => {
   const [followUps, setFollowUps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -42,17 +42,17 @@ const ClosedFollowUps = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
-  // Load closed leads (final_status = 'not_interested' or 'closed')
+  // Load converted leads (final_status = 'order_confirmed')
   useEffect(() => {
-    const loadClosedLeads = async () => {
+    const loadConvertedLeads = async () => {
       try {
         setLoading(true);
         const res = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
         const rows = res?.data || [];
         
-        // Filter for closed leads (final_status = 'not_interested' or 'closed')
-        const closedLeads = rows
-          .filter(r => r.final_status === 'not_interested' || r.final_status === 'closed')
+        // Filter for converted leads (final_status = 'order_confirmed')
+        const convertedLeads = rows
+          .filter(r => r.final_status === 'order_confirmed')
           .map((r) => ({
             id: r.id,
             name: r.name,
@@ -80,15 +80,15 @@ const ClosedFollowUps = () => {
             callDurationSeconds: r.call_duration_seconds || null,
           }));
         
-        setFollowUps(closedLeads);
+        setFollowUps(convertedLeads);
       } catch (err) {
-        console.error('Failed to load closed leads:', err);
+        console.error('Failed to load converted leads:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    loadClosedLeads();
+    loadConvertedLeads();
   }, []);
 
   const handleRefresh = async () => {
@@ -97,8 +97,8 @@ const ClosedFollowUps = () => {
       const res = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
       const rows = res?.data || [];
       
-      const closedLeads = rows
-        .filter(r => r.final_status === 'not_interested' || r.final_status === 'closed')
+      const convertedLeads = rows
+        .filter(r => r.final_status === 'order_confirmed')
         .map((r) => ({
           id: r.id,
           name: r.name,
@@ -126,9 +126,9 @@ const ClosedFollowUps = () => {
           callDurationSeconds: r.call_duration_seconds || null,
         }));
       
-      setFollowUps(closedLeads);
+      setFollowUps(convertedLeads);
     } catch (err) {
-      console.error('Failed to refresh closed leads:', err);
+      console.error('Failed to refresh converted leads:', err);
     } finally {
       setIsRefreshing(false);
     }
@@ -302,14 +302,14 @@ const ClosedFollowUps = () => {
                   <td colSpan="8" className="px-4 py-8 text-center text-gray-500">
                     <div className="flex items-center justify-center space-x-2">
                       <RefreshCw className="h-4 w-4 animate-spin" />
-                      <span>Loading closed leads...</span>
+                      <span>Loading converted leads...</span>
                     </div>
                   </td>
                 </tr>
               ) : paginatedLeads.length === 0 ? (
                 <tr>
                   <td colSpan="8" className="px-4 py-8 text-center text-gray-500">
-                    No closed leads found. Try adjusting your search or filters.
+                    No converted leads found. Try adjusting your search or filters.
                   </td>
                 </tr>
               ) : (
@@ -361,8 +361,8 @@ const ClosedFollowUps = () => {
                     </td>
                     <td className="py-4 px-4 text-sm text-gray-700">
                       <div className="flex flex-col space-y-1">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 w-fit">
-                          {lead.finalStatus === 'not_interested' ? 'Not Interested' : lead.finalStatus}
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 w-fit">
+                          {lead.finalStatus === 'order_confirmed' ? 'Converted' : lead.finalStatus}
                         </span>
                         {lead.finalStatusRemark && (
                           <div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
@@ -441,4 +441,4 @@ const ClosedFollowUps = () => {
   );
 };
 
-export default ClosedFollowUps;
+export default ConvertedFollowUps;

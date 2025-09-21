@@ -5,9 +5,13 @@ export const ROLES = {
   MARKETING_DEPARTMENT_HEAD: 'marketing_department_head',
 };
 
-export const getUserTypeForRole = (role) => {
+export const getUserTypeForRole = (role, departmentType = null) => {
   switch (role) {
     case ROLES.DEPARTMENT_HEAD:
+      // Check department type to determine which dashboard to show
+      if (departmentType === 'marketing_sales' || departmentType === 'Marketing Department') {
+        return 'marketingdepartmenthead';
+      }
       return 'salesdepartmenthead';
     case ROLES.MARKETING_DEPARTMENT_HEAD:
       return 'marketingdepartmenthead';

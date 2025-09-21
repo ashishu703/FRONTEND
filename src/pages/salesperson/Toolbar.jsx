@@ -231,13 +231,6 @@ export default function ProductToolbar({ onSearch, onAddProduct, onExport, onFil
             <Download className="h-4 w-4" />
             Export
           </button>
-          <button
-            onClick={handleAddProduct}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 inline-flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add New Item
-          </button>
         </div>
       </div>
 

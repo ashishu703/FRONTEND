@@ -224,13 +224,6 @@ const MarketingPaymentInfo = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <DollarSign className="w-8 h-8 text-green-600" />
-          <h1 className="text-2xl font-bold text-gray-900">Marketing Payment Information</h1>
-        </div>
-        <p className="text-gray-600">Track and manage marketing campaign payments</p>
-      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">

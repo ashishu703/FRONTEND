@@ -315,13 +315,6 @@ const MarketingStockUpdate = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <Package className="w-8 h-8 text-blue-600" />
-          <h1 className="text-2xl font-bold text-gray-900">Marketing Materials Stock</h1>
-        </div>
-        <p className="text-gray-600">Manage and track marketing materials inventory</p>
-      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
