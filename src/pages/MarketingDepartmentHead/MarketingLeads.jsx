@@ -1,6 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Search, Filter, Upload, RefreshCw, User, Mail, Building, Shield, Tag, Clock, Calendar, Phone, CheckCircle, XCircle, Hash, MapPin, Info, Plus, TrendingUp, Target, Users, BarChart3, ChevronDown, Download, UserPlus, X, Package, CreditCard, PhoneCall, FileText, Calendar as CalendarIcon, Edit, Eye } from 'lucide-react';
+import { Search, Filter, Upload, RefreshCw, User, Mail, Building, Shield, Tag, Clock, Calendar, Phone, CheckCircle, XCircle, Hash, MapPin, Info, Plus, TrendingUp, Target, Users, BarChart3, ChevronDown, Download, UserPlus, X, Package, CreditCard, PhoneCall, FileText, Calendar as CalendarIcon, Edit, Eye, Navigation, Printer } from 'lucide-react';
 import AddCustomerForm from '../salesperson/salespersonaddcustomer.jsx';
+import MarketingQuotation from '../MarketingSalesperson/MarketingQuotation';
+import { MarketingCorporateStandardInvoice } from '../MarketingSalesperson/MarketingProformaInvoice';
 
 const MarketingLeads = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +23,10 @@ const MarketingLeads = () => {
   const [selectedLeadForEdit, setSelectedLeadForEdit] = useState(null);
   const [selectedLeadForView, setSelectedLeadForView] = useState(null);
   const [activeViewTab, setActiveViewTab] = useState('overview');
+  const [showQuotationModal, setShowQuotationModal] = useState(false);
+  const [quotationData, setQuotationData] = useState(null);
+  const [showProformaModal, setShowProformaModal] = useState(false);
+  const [proformaData, setProformaData] = useState(null);
   const [showLeadImportModal, setShowLeadImportModal] = useState(false);
   const [leadImportData, setLeadImportData] = useState({
     customerName: '',
@@ -163,6 +169,71 @@ const MarketingLeads = () => {
       gstNo: '07ABCD1234E1F2'
     }
   ];
+
+  // Sample quotation data
+  const sampleQuotationData = {
+    quotationNumber: 'ANO/25-26/458',
+    quotationDate: new Date().toLocaleDateString(),
+    validUpto: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+    billTo: {
+      business: 'Das Industrial Controls',
+      address: 'Panvel, Maharashtra, India',
+      phone: '7039542259',
+      gstNo: '27DVTPS2973B1Z0',
+      state: 'Maharashtra'
+    },
+    items: [
+      {
+        description: 'ACSR Dog Conductor',
+        quantity: '120,000',
+        unit: 'MTR',
+        amount: 9840000,
+        hsn: '76042910'
+      },
+      {
+        description: 'AAAC Panther 232 SQMM',
+        quantity: '120,000',
+        unit: 'MTR',
+        amount: 24600000,
+        hsn: '85446090'
+      }
+    ],
+    subtotal: 34440000,
+    taxAmount: 6199200,
+    total: 40639200
+  };
+
+  // Sample proforma invoice data
+  const sampleProformaData = {
+    invoiceNumber: 'PI-2024-001',
+    invoiceDate: new Date().toLocaleDateString(),
+    billTo: {
+      business: 'Das Industrial Controls',
+      address: 'Panvel, Maharashtra, India',
+      phone: '7039542259',
+      gstNo: '27DVTPS2973B1Z0',
+      state: 'Maharashtra'
+    },
+    items: [
+      {
+        description: 'ACSR Dog Conductor',
+        quantity: '120,000',
+        unit: 'MTR',
+        amount: 9840000,
+        hsn: '76042910'
+      },
+      {
+        description: 'AAAC Panther 232 SQMM',
+        quantity: '120,000',
+        unit: 'MTR',
+        amount: 24600000,
+        hsn: '85446090'
+      }
+    ],
+    subtotal: 34440000,
+    taxAmount: 6199200,
+    total: 40639200
+  };
 
   const handleSelectAll = () => {
     if (selectedLeads.length === leads.length) {
@@ -532,11 +603,11 @@ const MarketingLeads = () => {
           {/* Right: Actions */}
           <div className="flex items-center space-x-3">
             <button
-              className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
-              title="Toggle column filters"
-              onClick={() => setShowColumnFilters(v => !v)}
+              className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center space-x-2 text-base"
+              onClick={() => setShowColumnFilters(!showColumnFilters)}
             >
-              <Filter className="w-4 h-4 text-indigo-600" />
+              <Filter className="w-4 h-4" />
+              <span>Filters</span>
             </button>
             <button
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
@@ -565,91 +636,207 @@ const MarketingLeads = () => {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
                     <Hash className="w-4 h-4 text-purple-600" />
-                    <span>Customer ID</span>
+                    <span>Salesperson ID</span>
                   </div>
+                  {showColumnFilters && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        placeholder="Filter by ID..."
+                        value={columnFilters.customerId}
+                        onChange={(e) => setColumnFilters(prev => ({ ...prev, customerId: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  )}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4 text-blue-600" />
-                    <span>Customer</span>
+                    <span>Salesperson</span>
                   </div>
+                  {showColumnFilters && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        placeholder="Filter by name..."
+                        value={columnFilters.customer}
+                        onChange={(e) => setColumnFilters(prev => ({ ...prev, customer: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  )}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="flex items-center space-x-2">
-                    <Mail className="w-4 h-4 text-emerald-600" />
-                    <span>Email</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
                     <Building className="w-4 h-4 text-indigo-600" />
                     <span>Business</span>
                   </div>
+                  {showColumnFilters && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        placeholder="Filter by business..."
+                        value={columnFilters.business}
+                        onChange={(e) => setColumnFilters(prev => ({ ...prev, business: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  )}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
                     <Shield className="w-4 h-4 text-orange-600" />
                     <span>Lead Source</span>
                   </div>
+                  {showColumnFilters && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        placeholder="Filter by source..."
+                        value={columnFilters.leadSource}
+                        onChange={(e) => setColumnFilters(prev => ({ ...prev, leadSource: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  )}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
                     <Package className="w-4 h-4 text-purple-600" />
                     <span>Product Name</span>
                   </div>
+                  {showColumnFilters && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        placeholder="Filter by product..."
+                        value={columnFilters.productName}
+                        onChange={(e) => setColumnFilters(prev => ({ ...prev, productName: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  )}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
                     <Tag className="w-4 h-4 text-pink-600" />
                     <span>Category</span>
                   </div>
+                  {showColumnFilters && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        placeholder="Filter by category..."
+                        value={columnFilters.category}
+                        onChange={(e) => setColumnFilters(prev => ({ ...prev, category: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  )}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
                     <Users className="w-4 h-4 text-blue-600" />
                     <span>Assigned Salesperson</span>
                   </div>
+                  {showColumnFilters && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        placeholder="Filter by assigned..."
+                        value={columnFilters.assigned}
+                        onChange={(e) => setColumnFilters(prev => ({ ...prev, assigned: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  )}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
                     <MapPin className="w-4 h-4 text-green-600" />
                     <span>Visiting Status</span>
                   </div>
+                  {showColumnFilters && (
+                    <div className="mt-2">
+                      <select
+                        value={columnFilters.visitingStatus}
+                        onChange={(e) => setColumnFilters(prev => ({ ...prev, visitingStatus: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">All Status</option>
+                        <option value="SCHEDULED">Scheduled</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="COMPLETED">Completed</option>
+                        <option value="PENDING">Pending</option>
+                      </select>
+                    </div>
+                  )}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
                     <CreditCard className="w-4 h-4 text-emerald-600" />
                     <span>Payment Status</span>
                   </div>
+                  {showColumnFilters && (
+                    <div className="mt-2">
+                      <select
+                        value={columnFilters.paymentStatus}
+                        onChange={(e) => setColumnFilters(prev => ({ ...prev, paymentStatus: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">All Status</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="COMPLETED">Completed</option>
+                      </select>
+                    </div>
+                  )}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="flex items-center space-x-2">
-                    <PhoneCall className="w-4 h-4 text-cyan-600" />
-                    <span>Telecaller Status</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
                     <FileText className="w-4 h-4 text-red-600" />
                     <span>GST No</span>
                   </div>
+                  {showColumnFilters && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        placeholder="Filter by GST..."
+                        value={columnFilters.gstNo}
+                        onChange={(e) => setColumnFilters(prev => ({ ...prev, gstNo: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  )}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="flex items-center space-x-2">
-                    <CalendarIcon className="w-4 h-4 text-indigo-600" />
-                    <span>Created</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
                     <Clock className="w-4 h-4 text-amber-600" />
                     <span>Sales Status</span>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                  <div className="flex items-center space-x-2">
+                    <CalendarIcon className="w-4 h-4 text-indigo-600" />
+                    <span>Created</span>
+                  </div>
+                  {showColumnFilters && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        placeholder="Filter by date..."
+                        value={columnFilters.createdAt}
+                        onChange={(e) => setColumnFilters(prev => ({ ...prev, createdAt: e.target.value }))}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  )}
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -657,20 +844,23 @@ const MarketingLeads = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredLeads.map((lead) => (
                 <tr key={lead.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-4 text-sm text-gray-700">{lead.customerId}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.customer}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.email}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.business}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.leadSource}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.productName}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.category}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.assigned}</td>
+                  <td className="px-6 py-5 text-base text-gray-700">{lead.customerId}</td>
+                  <td className="px-6 py-5 text-base text-gray-900">
+                    <div>
+                      <div className="font-medium text-gray-900">{lead.customer}</div>
+                      <div className="text-sm text-gray-500">{lead.email}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5 text-base text-gray-900">{lead.business}</td>
+                  <td className="px-6 py-5 text-base text-gray-900">{lead.leadSource}</td>
+                  <td className="px-6 py-5 text-base text-gray-900">{lead.productName}</td>
+                  <td className="px-6 py-5 text-base text-gray-900">{lead.category}</td>
+                  <td className="px-6 py-5 text-base text-gray-900">{lead.assigned}</td>
                   <td className="px-4 py-4">{getStatusBadge(lead.visitingStatus, 'visiting')}</td>
                   <td className="px-4 py-4">{getStatusBadge(lead.paymentStatus, 'payment')}</td>
-                  <td className="px-4 py-4">{getStatusBadge(lead.telecallerStatus, 'telecaller')}</td>
-                  <td className="px-4 py-4 text-sm text-gray-700">{lead.gstNo}</td>
-                  <td className="px-4 py-4 text-sm text-gray-700">{lead.createdAt}</td>
+                  <td className="px-6 py-5 text-base text-gray-700">{lead.gstNo}</td>
                   <td className="px-4 py-4">{getStatusBadge(lead.salesStatus, 'sales')}</td>
+                  <td className="px-6 py-5 text-base text-gray-700">{lead.createdAt}</td>
                   <td className="px-4 py-4">
                     <div className="flex items-center space-x-2">
                       <button
@@ -845,7 +1035,7 @@ const MarketingLeads = () => {
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Meetings
+                  Visits/Meetings
                 </button>
               </div>
 
@@ -895,37 +1085,138 @@ const MarketingLeads = () => {
 
               {activeViewTab === 'payment' && (
                 <div className="space-y-6">
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <h4 className="font-semibold text-gray-900 mb-4">Payment Information</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Payment Status</p>
-                        <div className="mt-1">{getStatusBadge(selectedLeadForView.paymentStatus, 'payment')}</div>
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <h4 className="font-semibold text-gray-900 mb-6">Payment Overview</h4>
+                    
+                    {/* Payment Summary Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-gray-600">Total Amount</span>
+                          <span className="text-lg font-bold text-gray-900">₹25,000</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Status</span>
+                          {getStatusBadge(selectedLeadForView.paymentStatus, 'payment')}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Amount</p>
-                        <p className="text-lg font-semibold text-gray-900">₹25,000</p>
+                      
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-gray-600">Paid Amount</span>
+                          <span className="text-lg font-bold text-green-600">₹10,000</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Method</span>
+                          <span className="text-sm text-gray-900">Bank Transfer</span>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Payment Method</p>
-                        <p className="text-gray-900">Bank Transfer</p>
+                      
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-gray-600">Pending Amount</span>
+                          <span className="text-lg font-bold text-orange-600">₹15,000</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Due Date</span>
+                          <span className="text-sm text-gray-900">2024-02-15</span>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Due Date</p>
-                        <p className="text-gray-900">2024-02-15</p>
+                    </div>
+
+                    {/* Payment History */}
+                    <div>
+                      <h5 className="font-semibold text-gray-900 mb-4">Payment History</h5>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <div>
+                              <p className="font-medium text-gray-900">Initial Payment</p>
+                              <p className="text-sm text-gray-600">Completed on 2024-01-15</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-green-600">₹10,000</p>
+                            <p className="text-sm text-gray-600">Bank Transfer</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                            <div>
+                              <p className="font-medium text-gray-900">Second Payment</p>
+                              <p className="text-sm text-gray-600">Due on 2024-02-15</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-orange-600">₹15,000</p>
+                            <p className="text-sm text-gray-600">Pending</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
+
+                  {/* Active Quotation Section */}
                   <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h5 className="font-semibold text-gray-900 mb-3">Payment History</h5>
+                    <h5 className="font-semibold text-gray-900 mb-3">Active Quotation</h5>
                     <div className="space-y-3">
                       <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span className="text-sm text-gray-600">Initial Payment</span>
-                        <span className="text-sm font-medium text-green-600">₹10,000 - Completed</span>
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">Quotation #{sampleQuotationData.quotationNumber}</span>
+                          <p className="text-sm text-gray-600">Digital Marketing Package - Premium Plan</p>
+                        </div>
+                        <span className="text-sm font-medium text-green-600">₹{sampleQuotationData.total.toLocaleString()} - Active</span>
                       </div>
                       <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span className="text-sm text-gray-600">Second Payment</span>
-                        <span className="text-sm font-medium text-yellow-600">₹15,000 - Pending</span>
+                        <div>
+                          <span className="text-sm text-gray-600">Valid Until: {sampleQuotationData.validUpto}</span>
+                          <p className="text-sm text-gray-600">Prepared by: Sarah Johnson</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setQuotationData(sampleQuotationData);
+                              setShowQuotationModal(true);
+                            }}
+                            className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                          >
+                            View Quotation
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Proforma Invoice Section */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <h5 className="font-semibold text-gray-900 mb-3">Proforma Invoice</h5>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">Invoice #PI-2024-001</span>
+                          <p className="text-sm text-gray-600">Electrical Cables & Wires Supply</p>
+                        </div>
+                        <span className="text-sm font-medium text-blue-600">₹{sampleQuotationData.total.toLocaleString()} - Generated</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <div>
+                          <span className="text-sm text-gray-600">Invoice Date: {sampleQuotationData.quotationDate}</span>
+                          <p className="text-sm text-gray-600">Generated by: David Lee</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setProformaData(sampleProformaData);
+                              setShowProformaModal(true);
+                            }}
+                            className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                          >
+                            View Invoice
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -934,29 +1225,112 @@ const MarketingLeads = () => {
 
               {activeViewTab === 'meetings' && (
                 <div className="space-y-6">
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <h4 className="font-semibold text-gray-900 mb-4">Meeting Information</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Next Meeting</p>
-                        <p className="text-lg font-semibold text-gray-900">2024-01-25 at 2:00 PM</p>
+                  {/* Site Visit Summary and Lead Performance - Side by Side */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Site Visit Summary */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-gray-900 mb-4">Site Visit Summary</h4>
+                      
+                      {/* Next Visit - Simplified */}
+                      <div className="bg-blue-50 p-3 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-gray-900">Next Visit</p>
+                            <p className="text-sm text-gray-600">25 Jan 2024, 2:00 PM</p>
+                          </div>
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                            Scheduled
+                          </span>
+                        </div>
+                        <div className="mt-2 text-sm text-gray-600">
+                          <span className="font-medium">{selectedLeadForView?.assigned || 'Unassigned'}</span> • Follow-up
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Meeting Type</p>
-                        <p className="text-gray-900">Video Call</p>
+                    </div>
+
+                    {/* Lead-Specific Performance */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900">Lead Performance</h4>
+                          <p className="text-sm text-gray-600">Performance metrics for this specific lead</p>
+                        </div>
+                        <TrendingUp className="w-6 h-6 text-blue-600" />
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Meeting Link</p>
-                        <p className="text-blue-600">https://meet.google.com/abc-def-ghi</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Status</p>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          Scheduled
-                        </span>
+                      
+                      <div className="space-y-4">
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h5 className="font-semibold text-gray-900">{selectedLeadForView?.assigned || 'No Assigned Salesperson'}</h5>
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              active
+                            </span>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 gap-3 text-sm">
+                            <div>
+                              <span className="text-gray-600">Lead Status:</span>
+                              <span className="ml-2 font-medium text-gray-900">{selectedLeadForView?.salesStatus || 'Pending'}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Visit Status:</span>
+                              <span className="ml-2 font-medium text-gray-900">{selectedLeadForView?.visitingStatus || 'Not Scheduled'}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Payment Status:</span>
+                              <span className="ml-2 font-medium text-gray-900">{selectedLeadForView?.paymentStatus || 'Pending'}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Lead Category:</span>
+                              <span className="ml-2 font-medium text-gray-900">{selectedLeadForView?.category || 'Uncategorized'}</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
+
+                  {/* Visit Tracking Map */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900">Visit Tracking Map</h4>
+                        <p className="text-sm text-gray-600">Track salesperson locations and routes</p>
+                      </div>
+                      <Navigation className="w-6 h-6 text-green-600" />
+                    </div>
+                    
+                    <div className="relative">
+                      <div className="w-full h-80 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <div className="text-center">
+                          <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-600 mb-2">Interactive map will be displayed here</p>
+                          <p className="text-sm text-gray-500">Integration with Google Maps API required</p>
+                        </div>
+                      </div>
+                      
+                      {/* Live tracking indicator */}
+                      <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-2">
+                        <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                        Live Tracking
+                      </div>
+                    </div>
+                    
+                    {/* Salesperson list with live status */}
+                    <div className="mt-4 space-y-2">
+                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="font-medium text-gray-900">{selectedLeadForView?.assigned || 'No assigned salesperson'}</span>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Distance: 0 KM
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Meeting History */}
                   <div className="bg-white border border-gray-200 rounded-lg p-4">
                     <h5 className="font-semibold text-gray-900 mb-3">Meeting History</h5>
                     <div className="space-y-3">
@@ -1315,6 +1689,154 @@ const MarketingLeads = () => {
                   >
                     Import {csvData.length} Leads
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quotation Modal */}
+      {showQuotationModal && quotationData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Quotation - {quotationData.quotationNumber}</h3>
+                <button
+                  onClick={() => setShowQuotationModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <MarketingQuotation 
+                selectedBranch="ANODE"
+                companyBranches={{
+                  ANODE: {
+                    name: 'ANODE ELECTRIC PRIVATE LIMITED',
+                    gstNumber: '(23AANCA7455R1ZX)',
+                    description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
+                    address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
+                    tel: '6262002116, 6262002113',
+                    web: 'www.anocab.com',
+                    email: 'info@anocab.com'
+                  }
+                }}
+              />
+              
+              {/* Accept/Reject Actions */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Status:</span>
+                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                        Active
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Valid Until: {quotationData?.validUpto || 'N/A'}
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        alert('Quotation rejected successfully!');
+                        setShowQuotationModal(false);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                      Reject Quotation
+                    </button>
+                    <button
+                      onClick={() => {
+                        alert('Quotation accepted successfully!');
+                        setShowQuotationModal(false);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Accept Quotation
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Proforma Invoice Modal */}
+      {showProformaModal && proformaData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Proforma Invoice - {proformaData.invoiceNumber}</h3>
+                <button
+                  onClick={() => setShowProformaModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <MarketingCorporateStandardInvoice 
+                selectedBranch="ANODE"
+                companyBranches={{
+                  ANODE: {
+                    name: 'ANODE ELECTRIC PRIVATE LIMITED',
+                    gstNumber: '(23AANCA7455R1ZX)',
+                    description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
+                    address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
+                    tel: '6262002116, 6262002113',
+                    web: 'www.anocab.com',
+                    email: 'info@anocab.com'
+                  }
+                }}
+              />
+              
+              {/* Accept/Reject Actions */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Status:</span>
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                        Generated
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Invoice Date: {proformaData?.invoiceDate || 'N/A'}
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        alert('Proforma Invoice rejected successfully!');
+                        setShowProformaModal(false);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                      Reject Invoice
+                    </button>
+                    <button
+                      onClick={() => {
+                        alert('Proforma Invoice accepted successfully!');
+                        setShowProformaModal(false);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Accept Invoice
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
