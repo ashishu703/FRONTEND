@@ -3,7 +3,7 @@
 import React from "react"
 import apiClient from '../../utils/apiClient'
 import { API_ENDPOINTS } from '../../api/admin_api/api'
-import { Search, RefreshCw, User, Mail, Building2, Pencil, Eye, Plus, Download, Filter, Wallet, MessageCircle, Package, MapPin, Map, BadgeCheck, XCircle, FileText, Globe, X, Clock, Check, Clock as ClockIcon, ArrowRightLeft, Upload } from "lucide-react"
+import { Search, RefreshCw, User, Mail, Building2, Pencil, Eye, Plus, Download, Filter, Wallet, MessageCircle, Package, MapPin, Map, BadgeCheck, XCircle, FileText, Globe, X, Clock, Check, Clock as ClockIcon, ArrowRightLeft, Upload, Send } from "lucide-react"
 import html2pdf from 'html2pdf.js'
 import Quotation from './salespersonquotation.jsx'
 import AddCustomerForm from './salespersonaddcustomer.jsx'
@@ -333,6 +333,35 @@ export default function CustomerListContent() {
     setSelectedCustomerForPI(null)
   }
 
+
+  const handleViewQuotation = (quotation) => {
+    // Create sample quotation data for demo purposes
+    const sampleQuotationData = {
+      quotationNumber: quotation.id || `ANO/25-26/${Math.floor(Math.random() * 9999)}`,
+      quotationDate: new Date().toISOString().split('T')[0],
+      validUpto: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      voucherNumber: `VOUCH-${Math.floor(Math.random() * 9999)}`,
+      customer: viewingCustomer,
+      items: [
+        {
+          description: viewingCustomer.productName || "XLPE Cable 1.5mm",
+          quantity: 100,
+          unitPrice: 150.00,
+          total: 15000.00
+        }
+      ],
+      subtotal: 15000.00,
+      tax: 2700.00,
+      total: 17700.00,
+      terms: "Payment terms: 30 days from invoice date"
+    };
+    
+    setQuotationPopupData({
+      customer: viewingCustomer,
+      quotation: sampleQuotationData
+    });
+    setShowQuotationPopup(true);
+  };
 
   const handleViewLatestQuotation = (customer) => {
     // Create sample quotation data for demo purposes
@@ -1737,145 +1766,328 @@ export default function CustomerListContent() {
                 </div>
               )}
               {modalTab === 'payment_timeline' && (
-                <div className="space-y-4">
-                  {/* Create PI Button */}
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Performa Invoice</h3>
-                    <button
-                      onClick={() => setShowCreatePI(true)}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Create PI
-                    </button>
-                  </div>
-
-                  {/* Branch Selection for PI Preview */}
-                  <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Company Branch for PI Preview:</label>
-                    <select 
-                      value={selectedBranch} 
-                      onChange={(e) => setSelectedBranch(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="ANODE">ANODE ELECTRIC PRIVATE LIMITED</option>
-                      <option value="SAMRIDDHI_CABLE">SAMRIDDHI CABLE INDUSTRIES PRIVATE LIMITED</option>
-                      <option value="SAMRIDDHI_INDUSTRIES">SAMRIDDHI INDUSTRIES</option>
-                    </select>
-                  </div>
-
-                  {/* PI Display - Using new CorporateStandardInvoice component */}
-                  <CorporateStandardInvoice 
-                    selectedBranch={selectedBranch} 
-                    companyBranches={companyBranches} 
-                  />
-                </div>
-              )}
-              {modalTab === 'quotation_status' && (
                 <div className="space-y-4 text-sm">
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Quotation Status</h3>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Performa Invoice Details</h3>
                     <div className="rounded-md border border-gray-200 divide-y">
                       <div className="p-3 flex items-center justify-between">
-                        <span className="text-gray-700">Latest Quotation</span>
-                        <span className="text-xs">{viewingCustomer.latestQuotationUrl === "latest" ? (
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          <div>
+                            <span className="text-gray-700">Latest PI:</span>
+                            <p className="text-sm font-medium text-gray-900">PI-475373</p>
+                            <p className="text-xs text-gray-500">2025-09-22</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
                           <button 
                             onClick={() => handleViewLatestQuotation(viewingCustomer)}
                             className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700"
                           >
                             <Eye className="h-3.5 w-3.5" /> View
                           </button>
-                        ) : viewingCustomer.latestQuotationUrl ? (
-                          <a href={viewingCustomer.latestQuotationUrl} className="text-blue-600 underline inline-flex items-center gap-1">
-                            <Eye className="h-3.5 w-3.5" /> View
-                          </a>
-                        ) : (
-                          <span className="text-gray-500">None</span>
-                        )}</span>
-                      </div>
-                      <div className="p-3 flex items-center justify-between">
-                        <span className="text-gray-700">Quotations Sent</span>
-                        <span className="text-xs text-gray-500">{viewingCustomer.quotationsSent ?? 0}</span>
-                      </div>
-                      <div className="p-3 flex items-center justify-between">
-                        <span className="text-gray-700">Verification Status</span>
-                        {!viewingCustomer.quotationStatus || viewingCustomer.quotationStatus === 'send_verification' ? (
                           <button 
                             onClick={() => handleSendVerification(viewingCustomer)}
-                            className="text-xs px-3 py-1 rounded-full font-medium bg-blue-600 text-white hover:bg-blue-700"
+                            className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
+                              viewingCustomer.piStatus === 'approved' 
+                                ? 'bg-green-600 text-white hover:bg-green-700' 
+                                : viewingCustomer.piStatus === 'rejected'
+                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                : viewingCustomer.piStatus === 'pending'
+                                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
                           >
-                            Send Verification
+                            {viewingCustomer.piStatus === 'approved' 
+                              ? <Check className="h-3 w-3" />
+                              : viewingCustomer.piStatus === 'rejected'
+                              ? <X className="h-3 w-3" />
+                              : viewingCustomer.piStatus === 'pending'
+                              ? <Clock className="h-3 w-3" />
+                              : <Send className="h-3 w-3" />
+                            }
+                            {viewingCustomer.piStatus === 'approved' 
+                              ? 'Verified' 
+                              : viewingCustomer.piStatus === 'rejected'
+                              ? 'Rejected'
+                              : viewingCustomer.piStatus === 'pending'
+                              ? 'Pending'
+                              : 'Send'
+                            }
                           </button>
-                        ) : (
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            viewingCustomer.quotationStatus === 'approved' 
-                              ? 'bg-green-100 text-green-800' 
+                        </div>
+                      </div>
+                      <div className="p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          <div>
+                            <span className="text-gray-700">PI #2:</span>
+                            <p className="text-sm font-medium text-gray-900">PI-266545</p>
+                            <p className="text-xs text-gray-500">2025-09-22</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => handleViewQuotation({id: 'PI-266545'})}
+                            className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> View
+                          </button>
+                          <button 
+                            onClick={() => handleSendVerification(viewingCustomer)}
+                            className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
+                              viewingCustomer.piStatus === 'approved' 
+                                ? 'bg-green-600 text-white hover:bg-green-700' 
+                                : viewingCustomer.piStatus === 'rejected'
+                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                : viewingCustomer.piStatus === 'pending'
+                                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
+                          >
+                            {viewingCustomer.piStatus === 'approved' 
+                              ? <Check className="h-3 w-3" />
+                              : viewingCustomer.piStatus === 'rejected'
+                              ? <X className="h-3 w-3" />
+                              : viewingCustomer.piStatus === 'pending'
+                              ? <Clock className="h-3 w-3" />
+                              : <Send className="h-3 w-3" />
+                            }
+                            {viewingCustomer.piStatus === 'approved' 
+                              ? 'Verified' 
+                              : viewingCustomer.piStatus === 'rejected'
+                              ? 'Rejected'
+                              : viewingCustomer.piStatus === 'pending'
+                              ? 'Pending'
+                              : 'Send'
+                            }
+                          </button>
+                        </div>
+                      </div>
+                      <div className="p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          <div>
+                            <span className="text-gray-700">PI #1:</span>
+                            <p className="text-sm font-medium text-gray-900">PI-231567</p>
+                            <p className="text-xs text-gray-500">2025-09-22</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => handleViewQuotation({id: 'PI-231567'})}
+                            className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> View
+                          </button>
+                          <button 
+                            onClick={() => handleSendVerification(viewingCustomer)}
+                            className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
+                              viewingCustomer.piStatus === 'approved' 
+                                ? 'bg-green-600 text-white hover:bg-green-700' 
+                                : viewingCustomer.piStatus === 'rejected'
+                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                : viewingCustomer.piStatus === 'pending'
+                                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
+                          >
+                            {viewingCustomer.piStatus === 'approved' 
+                              ? <Check className="h-3 w-3" />
+                              : viewingCustomer.piStatus === 'rejected'
+                              ? <X className="h-3 w-3" />
+                              : viewingCustomer.piStatus === 'pending'
+                              ? <Clock className="h-3 w-3" />
+                              : <Send className="h-3 w-3" />
+                            }
+                            {viewingCustomer.piStatus === 'approved' 
+                              ? 'Verified' 
+                              : viewingCustomer.piStatus === 'rejected'
+                              ? 'Rejected'
+                              : viewingCustomer.piStatus === 'pending'
+                              ? 'Pending'
+                              : 'Send'
+                            }
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {modalTab === 'quotation_status' && (
+                <div className="space-y-4 text-sm">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Quotation Details</h3>
+                    <div className="rounded-md border border-gray-200 divide-y">
+                      <div className="p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          <div>
+                            <span className="text-gray-700">Latest Quotation:</span>
+                            <p className="text-sm font-medium text-gray-900">ANQ475373</p>
+                            <p className="text-xs text-gray-500">2025-09-22</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => handleViewLatestQuotation(viewingCustomer)}
+                            className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> View
+                          </button>
+                          <button 
+                            onClick={() => handleSendVerification(viewingCustomer)}
+                            className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
+                              viewingCustomer.quotationStatus === 'approved' 
+                                ? 'bg-green-600 text-white hover:bg-green-700' 
+                                : viewingCustomer.quotationStatus === 'rejected'
+                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                : viewingCustomer.quotationStatus === 'pending'
+                                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
+                          >
+                            {viewingCustomer.quotationStatus === 'approved' 
+                              ? <Check className="h-3 w-3" />
                               : viewingCustomer.quotationStatus === 'rejected'
-                              ? 'bg-red-100 text-red-800'
+                              ? <X className="h-3 w-3" />
                               : viewingCustomer.quotationStatus === 'pending'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-600'
-                          }`}>
+                              ? <Clock className="h-3 w-3" />
+                              : <Send className="h-3 w-3" />
+                            }
                             {viewingCustomer.quotationStatus === 'approved' 
                               ? 'Verified' 
                               : viewingCustomer.quotationStatus === 'rejected'
                               ? 'Rejected'
                               : viewingCustomer.quotationStatus === 'pending'
                               ? 'Pending'
-                              : 'Send Verification'
+                              : 'Send'
                             }
-                          </span>
-                        )}
-                      </div>
-                      <div className="p-3">
-                        <button 
-                          onClick={handleCreateQuotation}
-                          className="px-3 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 inline-flex items-center gap-2"
-                        >
-                          Create Quotation
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-sm font-semibold text-gray-900">Quotation Preview</h3>
-                      <div className="flex items-center gap-2">
-                        <label className="text-xs text-gray-600">Company Branch:</label>
-                        <select 
-                          value={selectedBranch} 
-                          onChange={(e) => setSelectedBranch(e.target.value)}
-                          className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
-                        >
-                          <option value="ANODE">ANODE ELECTRIC</option>
-                          <option value="SAMRIDDHI_CABLE">SAMRIDDHI CABLE</option>
-                          <option value="SAMRIDDHI_INDUSTRIES">SAMRIDDHI INDUSTRIES</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="rounded-md border border-gray-200 max-h-[320px] overflow-auto bg-white">
-                      <Quotation quotationData={quotationData} customer={viewingCustomer} selectedBranch={selectedBranch} />
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Payment Status</h3>
-                    <div className="rounded-md border border-gray-200 divide-y">
-                      <div className="p-3 flex items-center justify-between">
-                        <span className="text-gray-700">Advance</span>
-                        <span className="text-xs text-gray-500">Not received</span>
+                          </button>
+                        </div>
                       </div>
                       <div className="p-3 flex items-center justify-between">
-                        <span className="text-gray-700">Balance</span>
-                        <span className="text-xs text-gray-500">N/A</span>
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          <div>
+                            <span className="text-gray-700">Quotation #2:</span>
+                            <p className="text-sm font-medium text-gray-900">ANQ266545</p>
+                            <p className="text-xs text-gray-500">2025-09-22</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => handleViewQuotation({id: 'ANQ266545'})}
+                            className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> View
+                          </button>
+                          <button 
+                            onClick={() => handleSendVerification(viewingCustomer)}
+                            className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
+                              viewingCustomer.quotationStatus === 'approved' 
+                                ? 'bg-green-600 text-white hover:bg-green-700' 
+                                : viewingCustomer.quotationStatus === 'rejected'
+                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                : viewingCustomer.quotationStatus === 'pending'
+                                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
+                          >
+                            {viewingCustomer.quotationStatus === 'approved' 
+                              ? <Check className="h-3 w-3" />
+                              : viewingCustomer.quotationStatus === 'rejected'
+                              ? <X className="h-3 w-3" />
+                              : viewingCustomer.quotationStatus === 'pending'
+                              ? <Clock className="h-3 w-3" />
+                              : <Send className="h-3 w-3" />
+                            }
+                            {viewingCustomer.quotationStatus === 'approved' 
+                              ? 'Verified' 
+                              : viewingCustomer.quotationStatus === 'rejected'
+                              ? 'Rejected'
+                              : viewingCustomer.quotationStatus === 'pending'
+                              ? 'Pending'
+                              : 'Send'
+                            }
+                          </button>
+                        </div>
+                      </div>
+                      <div className="p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          <div>
+                            <span className="text-gray-700">Quotation #1:</span>
+                            <p className="text-sm font-medium text-gray-900">ANQ231567</p>
+                            <p className="text-xs text-gray-500">2025-09-22</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => handleViewQuotation({id: 'ANQ231567'})}
+                            className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> View
+                          </button>
+                          <button 
+                            onClick={() => handleSendVerification(viewingCustomer)}
+                            className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
+                              viewingCustomer.quotationStatus === 'approved' 
+                                ? 'bg-green-600 text-white hover:bg-green-700' 
+                                : viewingCustomer.quotationStatus === 'rejected'
+                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                : viewingCustomer.quotationStatus === 'pending'
+                                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
+                          >
+                            {viewingCustomer.quotationStatus === 'approved' 
+                              ? <Check className="h-3 w-3" />
+                              : viewingCustomer.quotationStatus === 'rejected'
+                              ? <X className="h-3 w-3" />
+                              : viewingCustomer.quotationStatus === 'pending'
+                              ? <Clock className="h-3 w-3" />
+                              : <Send className="h-3 w-3" />
+                            }
+                            {viewingCustomer.quotationStatus === 'approved' 
+                              ? 'Verified' 
+                              : viewingCustomer.quotationStatus === 'rejected'
+                              ? 'Rejected'
+                              : viewingCustomer.quotationStatus === 'pending'
+                              ? 'Pending'
+                              : 'Send'
+                            }
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
+                  
+                  
                 </div>
               )}
             </div>
             <div className="px-6 pb-4 flex justify-end gap-3">
               <button className="px-3 py-2 rounded-md bg-white border border-gray-200 text-gray-700 hover:bg-gray-50" onClick={() => setViewingCustomer(null)}>Close</button>
-              <button className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700" onClick={() => setViewingCustomer(null)}>Done</button>
+              {modalTab === 'quotation_status' && (
+                <button 
+                  onClick={handleCreateQuotation}
+                  className="px-3 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 inline-flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Create Quotation
+                </button>
+              )}
+              {modalTab === 'payment_timeline' && (
+                <button 
+                  onClick={() => setShowCreatePI(true)}
+                  className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 inline-flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Create PI
+                </button>
+              )}
               {modalTab === 'payment_timeline' && (
                 <button
                   onClick={() => setShowPIPreview(true)}
@@ -1894,60 +2106,70 @@ export default function CustomerListContent() {
 
       {/* PI Preview Modal */}
       {showPIPreview && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">PI Preview</h2>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    const element = document.getElementById('pi-preview-content');
-                    const opt = {
-                      margin: [0.4, 0.4, 0.4, 0.4],
-                      filename: `PI-${companyBranches[selectedBranch].name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`,
-                      image: { type: 'jpeg', quality: 0.8 },
-                      html2canvas: { 
-                        scale: 1.1,
-                        useCORS: true,
-                        letterRendering: true,
-                        allowTaint: true,
-                        backgroundColor: '#ffffff'
-                      },
-                      jsPDF: { 
-                        unit: 'in', 
-                        format: 'a4', 
-                        orientation: 'portrait',
-                        compress: true,
-                        putOnlyUsedFonts: true
-                      },
-                      pagebreak: { 
-                        mode: ['avoid-all', 'css', 'legacy'],
-                        before: '.page-break-before',
-                        after: '.page-break-after',
-                        avoid: '.no-page-break'
-                      }
-                    };
-                    html2pdf().set(opt).from(element).save();
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  Download PDF
-                </button>
-                <button
-                  onClick={() => setShowPIPreview(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
+        <div className="fixed inset-0 z-50 overflow-auto bg-white flex items-center justify-center">
+          <div className="w-full h-full flex flex-col">
+            {/* Floating Action Buttons */}
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setShowPIPreview(false)
+                  alert('PI saved successfully!')
+                }}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 inline-flex items-center gap-2 shadow-lg"
+              >
+                <Check className="h-4 w-4" />
+                Save PI
+              </button>
+              <button
+                onClick={() => {
+                  const element = document.getElementById('pi-preview-content');
+                  const opt = {
+                    margin: [0.4, 0.4, 0.4, 0.4],
+                    filename: `PI-${companyBranches[selectedBranch].name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`,
+                    image: { type: 'jpeg', quality: 0.8 },
+                    html2canvas: { 
+                      scale: 1.1,
+                      useCORS: true,
+                      letterRendering: true,
+                      allowTaint: true,
+                      backgroundColor: '#ffffff'
+                    },
+                    jsPDF: { 
+                      unit: 'in', 
+                      format: 'a4', 
+                      orientation: 'portrait',
+                      compress: true,
+                      putOnlyUsedFonts: true
+                    },
+                    pagebreak: { 
+                      mode: ['avoid-all', 'css', 'legacy'],
+                      before: '.page-break-before',
+                      after: '.page-break-after',
+                      avoid: '.no-page-break'
+                    }
+                  };
+                  html2pdf().set(opt).from(element).save();
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-2 shadow-lg"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Download PDF
+              </button>
+              <button
+                onClick={() => setShowPIPreview(false)}
+                className="p-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 shadow-lg"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-100">
-              <div className="flex justify-center">
-                <div className="bg-white shadow-2xl rounded-lg overflow-hidden border-2 border-gray-300 max-w-full" style={{width: '100%', maxWidth: '8.5in'}}>
-                  <div id="pi-preview-content" className="transform scale-75 origin-top-left" style={{width: '133.33%'}}>
+            
+            {/* PI Content - Full Screen */}
+            <div className="flex-1 overflow-y-auto bg-white">
+              <div className="flex justify-center p-4">
+                <div className="bg-white max-w-full" style={{width: '100%', maxWidth: '8.5in'}}>
+                  <div id="pi-preview-content">
                     <CorporateStandardInvoice 
                       selectedBranch={selectedBranch} 
                       companyBranches={companyBranches} 
@@ -2314,12 +2536,15 @@ export default function CustomerListContent() {
               </button>
               <button
                 onClick={() => {
+                  // Show PI preview modal
+                  setShowPIPreview(true)
+                  // Close the create PI modal
                   setShowCreatePI(false)
-                  alert('PI created successfully!')
                 }}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700"
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 inline-flex items-center gap-2"
               >
-                Save PI
+                <Eye className="h-4 w-4" />
+                Preview & Save PI
               </button>
             </div>
           </div>

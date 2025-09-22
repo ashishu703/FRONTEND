@@ -1670,12 +1670,6 @@ export default function CustomerListContent() {
                     </div>
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Quotation Preview</h3>
-                    <div className="rounded-md border border-gray-200 max-h-[320px] overflow-auto bg-white">
-                      <Quotation quotationData={quotationData} customer={viewingCustomer} />
-                    </div>
-                  </div>
-                  <div>
                     <h3 className="text-sm font-semibold text-gray-900 mb-2">Payment Status</h3>
                     <div className="rounded-md border border-gray-200 divide-y">
                       <div className="p-3 flex items-center justify-between">
