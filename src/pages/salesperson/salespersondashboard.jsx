@@ -1,7 +1,10 @@
 "use client"
 
 import { TrendingUp, CheckCircle, Clock, CreditCard, UserPlus, CalendarCheck, ArrowUp, XCircle, PhoneOff, Target, BarChart3, PieChart as PieChartIcon, Activity, Award, TrendingDown, ArrowRightLeft, Calendar } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import apiClient from '../../utils/apiClient'
+import { API_ENDPOINTS } from '../../api/admin_api/api'
+import { mapSalesStatusToBucket } from './FollowUp/statusMapping'
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")
@@ -27,6 +30,18 @@ function CardContent({ className, children }) {
 function CustomPieChart({ data, size = 200 }) {
   const total = data.reduce((sum, item) => sum + item.value, 0)
   let cumulativePercentage = 0
+  
+  // If no data, show a placeholder
+  if (total === 0 || !data || data.length === 0) {
+    return (
+      <div className="flex items-center justify-center" style={{ width: size, height: size }}>
+        <div className="text-center">
+          <div className="text-2xl font-bold text-gray-400">0</div>
+          <div className="text-sm text-gray-500">No Data</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="relative transition-all duration-300 hover:scale-110" style={{ width: size, height: size }}>
@@ -137,6 +152,121 @@ function ProgressBar({ value, max, label, color = "bg-blue-500" }) {
 export default function DashboardContent() {
   const [activeTab, setActiveTab] = useState('overview')
   const [dateFilter, setDateFilter] = useState('')
+  const [leads, setLeads] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Load leads data from API
+  useEffect(() => {
+    const loadLeads = async () => {
+      try {
+        setLoading(true)
+        const res = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME())
+        const rows = res?.data || []
+        setLeads(rows)
+        setError(null)
+      } catch (err) {
+        console.error('Failed to load leads:', err)
+        setError('Failed to load dashboard data')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadLeads()
+  }, [])
+
+  // Calculate real data from leads
+  const calculateLeadStatusData = () => {
+    const statusCounts = {}
+    leads.forEach(lead => {
+      const bucket = mapSalesStatusToBucket(lead.sales_status)
+      statusCounts[bucket] = (statusCounts[bucket] || 0) + 1
+    })
+    return statusCounts
+  }
+
+  const calculateMetrics = () => {
+    const totalLeads = leads.length
+    const convertedLeads = leads.filter(lead => mapSalesStatusToBucket(lead.sales_status) === 'converted').length
+    const pendingLeads = leads.filter(lead => mapSalesStatusToBucket(lead.sales_status) === 'not-connected').length
+    const nextMeetingLeads = leads.filter(lead => mapSalesStatusToBucket(lead.sales_status) === 'next-meeting').length
+    const connectedLeads = leads.filter(lead => mapSalesStatusToBucket(lead.sales_status) === 'connected').length
+    const closedLeads = leads.filter(lead => mapSalesStatusToBucket(lead.sales_status) === 'closed').length
+
+    const conversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(1) : 0
+    const pendingRate = totalLeads > 0 ? ((pendingLeads / totalLeads) * 100).toFixed(1) : 0
+
+    return {
+      totalLeads,
+      convertedLeads,
+      pendingLeads,
+      nextMeetingLeads,
+      connectedLeads,
+      closedLeads,
+      conversionRate,
+      pendingRate
+    }
+  }
+
+  // Calculate lead sources from real data
+  const calculateLeadSources = () => {
+    const sourceCounts = {}
+    
+    leads.forEach(lead => {
+      // Try different possible source fields
+      const source = lead.source || lead.lead_source || lead.origin || 'Other'
+      sourceCounts[source] = (sourceCounts[source] || 0) + 1
+    })
+    
+    // If no sources found, create a default entry
+    if (Object.keys(sourceCounts).length === 0) {
+      sourceCounts['No Data'] = leads.length
+    }
+    
+    // Convert to array format for charts
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6b7280']
+    const result = Object.entries(sourceCounts).map(([label, value], index) => ({
+      label,
+      value,
+      color: colors[index % colors.length]
+    }))
+    
+    return result
+  }
+
+  // Calculate weekly activity from real data
+  const calculateWeeklyActivity = () => {
+    const weeklyCounts = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 }
+    
+    leads.forEach(lead => {
+      if (lead.created_at) {
+        const date = new Date(lead.created_at)
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' })
+        if (weeklyCounts.hasOwnProperty(dayName)) {
+          weeklyCounts[dayName]++
+        }
+      }
+    })
+    
+    return Object.entries(weeklyCounts).map(([label, value]) => ({
+      label,
+      value,
+      color: '#3b82f6'
+    }))
+  }
+
+  // Calculate monthly revenue trend (all 0 since revenue is 0)
+  const calculateMonthlyRevenue = () => {
+    return [
+      { label: "Jan", value: 0, color: "#3b82f6" },
+      { label: "Feb", value: 0, color: "#3b82f6" },
+      { label: "Mar", value: 0, color: "#3b82f6" },
+      { label: "Apr", value: 0, color: "#3b82f6" },
+      { label: "May", value: 0, color: "#3b82f6" },
+      { label: "Jun", value: 0, color: "#3b82f6" }
+    ]
+  }
 
   // Handle date filter change
   const handleDateFilterChange = (selectedDate) => {
@@ -144,21 +274,26 @@ export default function DashboardContent() {
     console.log('Filtering performance data for date:', selectedDate)
   }
 
+  // Calculate real metrics
+  const calculatedMetrics = calculateMetrics()
+  const statusData = calculateLeadStatusData()
+
   // Generate performance data based on selected date
   const getPerformanceData = (selectedDate) => {
-    // Base performance data - Demo data for realistic dashboard
+    // Real performance data from API
     const baseData = {
       targets: {
-        monthlyLeads: { current: 127, target: 100, label: "Monthly Leads" },
-        conversionRate: { current: 23.6, target: 25, label: "Conversion Rate (%)" },
-        revenue: { current: 2400000, target: 3000000, label: "Monthly Revenue (₹)" },
-        calls: { current: 285, target: 300, label: "Daily Calls" }
+        monthlyLeads: { current: calculatedMetrics.totalLeads, target: 1000, label: "Monthly Leads" },
+        conversionRate: { current: parseFloat(calculatedMetrics.conversionRate), target: 25, label: "Conversion Rate (%)" },
+        revenue: { current: 0, target: 500000, label: "Monthly Revenue (₹)" },
+        calls: { current: 0, target: 300, label: "Daily Calls" }
       },
       leadStatusData: [
-        { label: "Hot", value: 35, color: "#ef4444" },
-        { label: "Warm", value: 42, color: "#f97316" },
-        { label: "Cold", value: 28, color: "#6b7280" },
-        { label: "Converted", value: 22, color: "#22c55e" }
+        { label: "Not Connected", value: statusData['not-connected'] || 0, color: "#ef4444" },
+        { label: "Connected", value: statusData['connected'] || 0, color: "#f97316" },
+        { label: "Next Meeting", value: statusData['next-meeting'] || 0, color: "#6b7280" },
+        { label: "Converted", value: statusData['converted'] || 0, color: "#22c55e" },
+        { label: "Closed", value: statusData['closed'] || 0, color: "#8b5cf6" }
       ],
       monthlyPerformance: [
         { label: "Jan", value: 78, color: "#3b82f6" },
@@ -171,43 +306,43 @@ export default function DashboardContent() {
       kpis: [
         {
           title: "Lead Response Time",
-          value: "0.8 hrs",
+          value: "0 hrs",
           target: "< 1 hr",
-          status: "success",
+          status: "warning",
           icon: Clock,
-          color: "bg-green-50 text-green-600 border-green-200"
+          color: "bg-orange-50 text-orange-600 border-orange-200"
         },
         {
           title: "Follow-up Rate",
-          value: "89%",
+          value: "0%",
           target: "> 85%",
-          status: "success",
+          status: "warning",
           icon: ArrowUp,
-          color: "bg-green-50 text-green-600 border-green-200"
+          color: "bg-orange-50 text-orange-600 border-orange-200"
         },
         {
           title: "Customer Satisfaction",
-          value: "4.7/5",
+          value: "0/5",
           target: "> 4.5",
-          status: "success",
+          status: "warning",
           icon: Award,
-          color: "bg-green-50 text-green-600 border-green-200"
+          color: "bg-orange-50 text-orange-600 border-orange-200"
         },
         {
           title: "Quotation Success",
-          value: "73%",
+          value: "0%",
           target: "> 70%",
-          status: "success",
+          status: "warning",
           icon: CheckCircle,
-          color: "bg-green-50 text-green-600 border-green-200"
+          color: "bg-orange-50 text-orange-600 border-orange-200"
         },
         {
           title: "Transfer Leads",
-          value: "5",
+          value: "0",
           target: "< 20",
           status: "success",
           icon: ArrowRightLeft,
-          color: "bg-indigo-50 text-indigo-600 border-indigo-200"
+          color: "bg-green-50 text-green-600 border-green-200"
         }
       ]
     }
@@ -224,12 +359,12 @@ export default function DashboardContent() {
   // Get filtered performance data
   const performanceData = getPerformanceData(dateFilter)
 
-  // Overview Data - Demo data for realistic dashboard
+  // Overview Data - Real data from API
   const overviewData = {
     metrics: [
       {
         title: "Total Leads",
-        value: "127",
+        value: calculatedMetrics.totalLeads.toString(),
         subtitle: "Active leads this month",
         icon: UserPlus,
         color: "bg-blue-50 text-blue-600 border-blue-200",
@@ -238,7 +373,7 @@ export default function DashboardContent() {
       },
       {
         title: "Conversion Rate",
-        value: "23.6%",
+        value: `${calculatedMetrics.conversionRate}%`,
         subtitle: "Above target of 20%",
         icon: CheckCircle,
         color: "bg-green-50 text-green-600 border-green-200",
@@ -247,7 +382,7 @@ export default function DashboardContent() {
       },
       {
         title: "Pending Rate",
-        value: "18.5%",
+        value: `${calculatedMetrics.pendingRate}%`,
         subtitle: "Leads requiring follow-up",
         icon: Clock,
         color: "bg-orange-50 text-orange-600 border-orange-200",
@@ -256,94 +391,104 @@ export default function DashboardContent() {
       },
       {
         title: "Total Revenue",
-        value: "₹2.4M",
+        value: "₹0",
         subtitle: "Revenue generated this month",
         icon: CreditCard,
         color: "bg-purple-50 text-purple-600 border-purple-200",
-        trend: "+15.3%",
-        trendUp: true
+        trend: "0%",
+        trendUp: false
       },
     ],
-    weeklyLeads: [
-      { label: "Mon", value: 18, color: "#3b82f6" },
-      { label: "Tue", value: 22, color: "#3b82f6" },
-      { label: "Wed", value: 15, color: "#3b82f6" },
-      { label: "Thu", value: 28, color: "#3b82f6" },
-      { label: "Fri", value: 24, color: "#3b82f6" },
-      { label: "Sat", value: 12, color: "#3b82f6" },
-      { label: "Sun", value: 8, color: "#3b82f6" }
-    ],
-    leadSourceData: [
-      { label: "Website", value: 35, color: "#3b82f6" },
-      { label: "Referrals", value: 28, color: "#10b981" },
-      { label: "Social Media", value: 22, color: "#f59e0b" },
-      { label: "Cold Calls", value: 18, color: "#ef4444" },
-      { label: "Email Campaign", value: 15, color: "#8b5cf6" },
-      { label: "Other", value: 9, color: "#6b7280" }
-    ],
-    monthlyRevenue: [
-      { label: "Jan", value: 1800, color: "#3b82f6" },
-      { label: "Feb", value: 2100, color: "#3b82f6" },
-      { label: "Mar", value: 1950, color: "#3b82f6" },
-      { label: "Apr", value: 2400, color: "#3b82f6" },
-      { label: "May", value: 2200, color: "#3b82f6" },
-      { label: "Jun", value: 2800, color: "#3b82f6" }
-    ]
+    weeklyLeads: calculateWeeklyActivity(),
+    leadSourceData: calculateLeadSources(),
+    monthlyRevenue: calculateMonthlyRevenue()
   }
 
-  const metrics = overviewData.metrics
+  const overviewMetrics = overviewData.metrics
 
   const leadStatuses = [
     {
       title: "Pending",
-      count: "23",
+      count: statusData['not-connected']?.toString() || "0",
       subtitle: "Leads awaiting response",
       icon: Clock,
       color: "bg-orange-50 text-orange-600 border-orange-200",
     },
     {
       title: "Meeting scheduled",
-      count: "18",
+      count: statusData['next-meeting']?.toString() || "0",
       subtitle: "Upcoming meetings",
       icon: CalendarCheck,
       color: "bg-purple-50 text-purple-600 border-purple-200",
     },
     {
       title: "Follow Up",
-      count: "31",
+      count: statusData['connected']?.toString() || "0",
       subtitle: "Requires follow-up",
       icon: ArrowUp,
       color: "bg-blue-50 text-blue-600 border-blue-200",
     },
     {
       title: "Win Leads",
-      count: "30",
+      count: statusData['converted']?.toString() || "0",
       subtitle: "Successful conversions",
       icon: CheckCircle,
       color: "bg-green-50 text-green-600 border-green-200",
     },
     {
       title: "Not Interested",
-      count: "12",
+      count: "0",
       subtitle: "Declined leads",
       icon: XCircle,
       color: "bg-red-50 text-red-600 border-red-200",
     },
     {
       title: "Loose Leads",
-      count: "8",
+      count: statusData['closed']?.toString() || "0",
       subtitle: "Unreachable leads",
       icon: PhoneOff,
       color: "bg-gray-50 text-gray-600 border-gray-200",
     },
     {
       title: "Transfer Leads",
-      count: "5",
+      count: "0",
       subtitle: "Transferred to other teams",
       icon: ArrowRightLeft,
       color: "bg-indigo-50 text-indigo-600 border-indigo-200",
     },
   ]
+
+  if (loading) {
+    return (
+      <main className="flex-1 overflow-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading dashboard data...</p>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  if (error) {
+    return (
+      <main className="flex-1 overflow-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600 mb-4">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="flex-1 overflow-auto p-6">
@@ -412,7 +557,7 @@ export default function DashboardContent() {
         <p className="text-sm text-gray-500 mb-4">Critical business indicators and trends</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {metrics.map((metric, index) => {
+          {overviewMetrics.map((metric, index) => {
             const Icon = metric.icon
             return (
               <Card key={index} className={cx("border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50", metric.color)}>

@@ -19,10 +19,12 @@ import {
   Globe,
   BadgeCheck,
   XCircle,
-  FileText
+  FileText,
+  Mail
 } from 'lucide-react';
 import apiClient from '../../../utils/apiClient';
 import { API_ENDPOINTS } from '../../../api/admin_api/api';
+import { mapSalesStatusToBucket } from './statusMapping';
 
 const ConvertedFollowUps = () => {
   const [followUps, setFollowUps] = useState([]);
@@ -50,9 +52,9 @@ const ConvertedFollowUps = () => {
         const res = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
         const rows = res?.data || [];
         
-        // Filter for converted leads (final_status = 'order_confirmed')
+        // Filter for converted leads via unified sales_status
         const convertedLeads = rows
-          .filter(r => r.final_status === 'order_confirmed')
+          .filter(r => mapSalesStatusToBucket(r.sales_status) === 'converted')
           .map((r) => ({
             id: r.id,
             name: r.name,
@@ -66,11 +68,9 @@ const ConvertedFollowUps = () => {
             enquiryBy: r.lead_source || 'N/A',
             customerType: r.customer_type || 'N/A',
             date: r.date ? new Date(r.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-            connectedStatus: r.connected_status || 'Not Connected',
-            connectedStatusRemark: r.connected_status_remark || null,
-            connectedStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
-            finalStatus: r.final_status || 'New',
-            finalStatusRemark: r.final_status_remark || null,
+            salesStatus: r.sales_status || 'pending',
+            salesStatusRemark: r.sales_status_remark || null,
+            salesStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
             latestQuotationUrl: '#',
             quotationsSent: 0,
             followUpLink: 'https://calendar.google.com/',
@@ -98,7 +98,7 @@ const ConvertedFollowUps = () => {
       const rows = res?.data || [];
       
       const convertedLeads = rows
-        .filter(r => r.final_status === 'order_confirmed')
+        .filter(r => mapSalesStatusToBucket(r.sales_status) === 'converted')
         .map((r) => ({
           id: r.id,
           name: r.name,
@@ -112,11 +112,9 @@ const ConvertedFollowUps = () => {
           enquiryBy: r.lead_source || 'N/A',
           customerType: r.customer_type || 'N/A',
           date: r.date ? new Date(r.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          connectedStatus: r.connected_status || 'Not Connected',
-          connectedStatusRemark: r.connected_status_remark || null,
-          connectedStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
-          finalStatus: r.final_status || 'New',
-          finalStatusRemark: r.final_status_remark || null,
+          salesStatus: r.sales_status || 'pending',
+          salesStatusRemark: r.sales_status_remark || null,
+          salesStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
           latestQuotationUrl: '#',
           quotationsSent: 0,
           followUpLink: 'https://calendar.google.com/',
@@ -362,14 +360,14 @@ const ConvertedFollowUps = () => {
                     <td className="py-4 px-4 text-sm text-gray-700">
                       <div className="flex flex-col space-y-1">
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 w-fit">
-                          {lead.finalStatus === 'order_confirmed' ? 'Converted' : lead.finalStatus}
+                          {lead.salesStatus === 'converted' || lead.salesStatus === 'win_converted' ? 'Converted' : lead.salesStatus}
                         </span>
-                        {lead.finalStatusRemark && (
+                        {lead.salesStatusRemark && (
                           <div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
-                            {lead.finalStatusRemark}
+                            {lead.salesStatusRemark}
                           </div>
                         )}
-                        <span className="text-xs text-gray-500">{lead.connectedStatusDate}</span>
+                        <span className="text-xs text-gray-500">{lead.salesStatusDate}</span>
                       </div>
                     </td>
                     <td className="py-4 px-4 text-sm text-gray-700">

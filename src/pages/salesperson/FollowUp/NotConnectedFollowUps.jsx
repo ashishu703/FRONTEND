@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../../../utils/apiClient';
 import { API_ENDPOINTS } from '../../../api/admin_api/api';
+import { mapSalesStatusToBucket } from './statusMapping';
 
 const NotConnectedFollowUps = () => {
   const [followUps, setFollowUps] = useState([]);
@@ -50,9 +51,12 @@ const NotConnectedFollowUps = () => {
         const res = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
         const rows = res?.data || [];
         
-        // Filter for not connected leads (connected_status = 'not_connected' or 'pending')
+        // Filter by unified sales_status bucket: 'not-connected'
         const notConnectedLeads = rows
-          .filter(r => r.connected_status === 'not_connected' || r.connected_status === 'pending')
+          .filter(r => {
+            const b = mapSalesStatusToBucket(r.sales_status);
+            return b === 'not-connected';
+          })
           .map((r) => ({
             id: r.id,
             name: r.name,
@@ -66,11 +70,9 @@ const NotConnectedFollowUps = () => {
             enquiryBy: r.lead_source || 'N/A',
             customerType: r.customer_type || 'N/A',
             date: r.date ? new Date(r.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-            connectedStatus: r.connected_status || 'Not Connected',
-            connectedStatusRemark: r.connected_status_remark || null,
-            connectedStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
-            finalStatus: r.final_status || 'New',
-            finalStatusRemark: r.final_status_remark || null,
+            salesStatus: r.sales_status || 'pending',
+            salesStatusRemark: r.sales_status_remark || null,
+            salesStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
             latestQuotationUrl: '#',
             quotationsSent: 0,
             followUpLink: 'https://calendar.google.com/',
@@ -98,7 +100,7 @@ const NotConnectedFollowUps = () => {
       const rows = res?.data || [];
       
       const notConnectedLeads = rows
-        .filter(r => r.connected_status === 'not_connected' || r.connected_status === 'pending')
+        .filter(r => mapSalesStatusToBucket(r.sales_status) === 'not-connected')
         .map((r) => ({
           id: r.id,
           name: r.name,
@@ -112,11 +114,9 @@ const NotConnectedFollowUps = () => {
           enquiryBy: r.lead_source || 'N/A',
           customerType: r.customer_type || 'N/A',
           date: r.date ? new Date(r.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          connectedStatus: r.connected_status || 'Not Connected',
-          connectedStatusRemark: r.connected_status_remark || null,
-          connectedStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
-          finalStatus: r.final_status || 'New',
-          finalStatusRemark: r.final_status_remark || null,
+          salesStatus: r.sales_status || 'pending',
+          salesStatusRemark: r.sales_status_remark || null,
+          salesStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
           latestQuotationUrl: '#',
           quotationsSent: 0,
           followUpLink: 'https://calendar.google.com/',

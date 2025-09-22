@@ -1,14 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Users, X, Phone, Mail, MapPin, MessageCircle, TrendingUp, Award, Calendar, CheckCircle, DollarSign, Package } from 'lucide-react';
+import { Bell, Users, X, TrendingUp, Calendar, CheckCircle } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 
 const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => {
   const { user, logout } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [showNotificationHistory, setShowNotificationHistory] = useState(false);
   const notificationRef = useRef(null);
-  const profileRef = useRef(null);
   const notificationHistoryRef = useRef(null);
 
   // Sample notification data
@@ -171,60 +169,12 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => 
     }
   ];
 
-  // Get user profile data from auth context
-  const userProfile = user ? {
-    name: user.username || 'Abhay Kumar',
-    email: user.email || 'abhay.kumar@anocab.com',
-    phone: user.phone || '+91 98765 43210',
-    whatsapp: user.whatsapp || '+91 98765 43210',
-    state: user.state || 'Maharashtra',
-    city: user.city || 'Mumbai',
-    designation: user.role === 'superadmin' ? 'Super Administrator' : 
-                 user.role === 'salesperson' ? 'Sales Executive' :
-                 user.role === 'sales_head' ? 'Sales Department Head' :
-                 user.role === 'marketing_department_head' ? 'Marketing Department Head' :
-                 user.role === 'marketing_salesperson' ? 'Marketing Salesperson' :
-                 user.role === 'office_salesperson' ? 'Office Sales Executive' : 'Sales Department Head',
-    department: user.departmentType || user.role || 'Sales Department',
-    companyName: user.companyName || 'Anode Electric Pvt. Ltd.',
-    joinDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '17/09/2024',
-    totalLeads: user.totalLeads || 127,
-    convertedLeads: user.convertedLeads || 30,
-    conversionRate: user.conversionRate || "23.6%",
-    totalRevenue: user.totalRevenue || "₹2,547,727",
-    monthlyTarget: user.monthlyTarget || "₹3,000,000",
-    targetAchievement: user.targetAchievement || "84.9%",
-    performanceRating: user.performanceRating || "Excellent",
-    lastLogin: user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Today at 9:30 AM'
-  } : {
-    name: 'Abhay Kumar',
-    email: 'abhay.kumar@anocab.com',
-    phone: '+91 98765 43210',
-    whatsapp: '+91 98765 43210',
-    state: 'Maharashtra',
-    city: 'Mumbai',
-    designation: 'Sales Department Head',
-    department: 'Sales Department',
-    companyName: 'Anode Electric Pvt. Ltd.',
-    joinDate: '17/09/2024',
-    totalLeads: 127,
-    convertedLeads: 30,
-    conversionRate: "23.6%",
-    totalRevenue: "₹2,547,727",
-    monthlyTarget: "₹3,000,000",
-    targetAchievement: "84.9%",
-    performanceRating: "Excellent",
-    lastLogin: 'Today at 9:30 AM'
-  };
 
   // Close popups when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target)) {
         setShowNotifications(false);
-      }
-      if (profileRef.current && !profileRef.current.contains(event.target)) {
-        setShowProfile(false);
       }
       if (notificationHistoryRef.current && !notificationHistoryRef.current.contains(event.target)) {
         setShowNotificationHistory(false);
@@ -556,160 +506,26 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => 
             )}
           </div>
 
-          {/* User Profile */}
-          <div className="relative" ref={profileRef}>
-            <button 
-              onClick={() => setShowProfile(!showProfile)}
-              className="flex items-center space-x-3 hover:bg-gray-50 rounded-lg p-2 transition-colors"
-            >
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-medium text-sm">{userProfile.name.split(' ').map(n => n[0]).join('').toUpperCase()}</span>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">
-                  {userProfile.email.includes('@') ? 
-                    `${userProfile.email.split('@')[0]}@${userProfile.email.split('@')[1].substring(0, 3)}...` : 
-                    userProfile.email
-                  }
-                </p>
-                <p className="text-xs text-gray-500">
-                  {user?.role ? user.role.toUpperCase().replace('_', ' ') : userType.toUpperCase()}
-                </p>
-              </div>
-            </button>
-
-            {/* Profile Panel */}
-            {showProfile && (
-              <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-[80vh] overflow-y-auto">
-                <div className="p-3 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-900">User Profile</h3>
-                    <button 
-                      onClick={() => setShowProfile(false)}
-                      className="p-1 hover:bg-gray-100 rounded"
-                    >
-                      <X className="w-4 h-4 text-gray-500" />
-                    </button>
-                  </div>
-                </div>
-                <div className="p-3 space-y-3">
-                  {/* Profile Header */}
-                  <div className="flex items-center space-x-3">
-                    <div className="relative">
-                      <img 
-                        src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=64&h=64&fit=crop&crop=face" 
-                        alt="Profile" 
-                        className="w-12 h-12 rounded-full object-cover border-2 border-blue-200"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'flex';
-                        }}
-                      />
-                      <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center border-2 border-blue-200" style={{display: 'none'}}>
-                        <span className="text-white font-bold text-sm">{userProfile.name.split(' ').map(n => n[0]).join('').toUpperCase()}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="text-base font-semibold text-gray-900">{userProfile.name}</h4>
-                      <p className="text-sm text-gray-600">{userProfile.designation}</p>
-                      <p className="text-xs text-gray-500">{userProfile.department}</p>
-                    </div>
-                  </div>
-
-                  {/* Contact Information */}
-                  <div className="space-y-2">
-                    <h5 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-1">Contact Information</h5>
-                    <div className="grid grid-cols-1 gap-1">
-                      <div className="flex items-center space-x-2">
-                        <Mail className="w-3 h-3 text-gray-500" />
-                        <span className="text-xs text-gray-700">{userProfile.email}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Phone className="w-3 h-3 text-gray-500" />
-                        <span className="text-xs text-gray-700">{userProfile.phone}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <MessageCircle className="w-3 h-3 text-gray-500" />
-                        <span className="text-xs text-gray-700">{userProfile.whatsapp}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <MapPin className="w-3 h-3 text-gray-500" />
-                        <span className="text-xs text-gray-700">{userProfile.city}, {userProfile.state}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Performance Metrics */}
-                  <div className="space-y-2">
-                    <h5 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-1">Performance Metrics</h5>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-blue-50 p-2 rounded-lg">
-                        <div className="text-xs text-blue-600 font-medium">Total Leads</div>
-                        <div className="text-sm font-bold text-blue-800">{userProfile.totalLeads}</div>
-                      </div>
-                      <div className="bg-green-50 p-2 rounded-lg">
-                        <div className="text-xs text-green-600 font-medium">Converted</div>
-                        <div className="text-sm font-bold text-green-800">{userProfile.convertedLeads}</div>
-                      </div>
-                      <div className="bg-purple-50 p-2 rounded-lg">
-                        <div className="text-xs text-purple-600 font-medium">Conversion Rate</div>
-                        <div className="text-sm font-bold text-purple-800">{userProfile.conversionRate}</div>
-                      </div>
-                      <div className="bg-orange-50 p-2 rounded-lg">
-                        <div className="text-xs text-orange-600 font-medium">Target Achievement</div>
-                        <div className="text-sm font-bold text-orange-800">{userProfile.targetAchievement}</div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-2 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-600">Total Revenue:</span>
-                        <span className="text-xs font-bold text-gray-900">{userProfile.totalRevenue}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-600">Monthly Target:</span>
-                        <span className="text-xs font-bold text-gray-900">{userProfile.monthlyTarget}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Additional Info */}
-                  <div className="space-y-1 pt-2 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-600">Join Date:</span>
-                      <span className="text-xs text-gray-900">{userProfile.joinDate}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-600">Last Login:</span>
-                      <span className="text-xs text-gray-900">{userProfile.lastLogin}</span>
-                    </div>
-                    {userProfile.companyName !== 'N/A' && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-600">Company:</span>
-                        <span className="text-xs text-gray-900">{userProfile.companyName}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Logout Button */}
-                  <div className="pt-2 border-t border-gray-200">
-                    <button
-                      onClick={async () => {
-                        try {
-                          await logout();
-                          window.location.href = '/login';
-                        } catch (error) {
-                          console.error('Logout error:', error);
-                        }
-                      }}
-                      className="w-full px-3 py-2 text-xs font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                    >
-                      Logout
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+          {/* User Button (without profile panel) */}
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+              <span className="text-white font-medium text-sm">
+                {user?.username ? user.username.split(' ').map(n => n[0]).join('').toUpperCase() : 'T'}
+              </span>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-medium text-gray-900">
+                {user?.email ? 
+                  `${user.email.split('@')[0]}@${user.email.split('@')[1].substring(0, 3)}...` : 
+                  'testuser@gma...'
+                }
+              </p>
+              <p className="text-xs text-gray-500">
+                {user?.role ? user.role.toUpperCase().replace('_', ' ') : userType.toUpperCase()}
+              </p>
+            </div>
           </div>
+
         </div>
       </div>
 

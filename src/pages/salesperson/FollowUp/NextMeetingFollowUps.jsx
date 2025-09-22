@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../../../utils/apiClient';
 import { API_ENDPOINTS } from '../../../api/admin_api/api';
+import { mapSalesStatusToBucket } from './statusMapping';
 
 const NextMeetingFollowUps = () => {
   const [followUps, setFollowUps] = useState([]);
@@ -51,16 +52,22 @@ const NextMeetingFollowUps = () => {
         
         const today = new Date().toISOString().split('T')[0];
         
-        // Filter for today's meeting leads - check if meeting is scheduled for today
+        // Filter for today's meeting leads - bucket 'next-meeting' and check today's date presence
+        console.log('Total rows from API:', rows.length);
+        console.log('Today\'s date:', today);
+        
         const todaysMeetingLeads = rows
           .filter(r => {
-            // Check if final_status is 'next_meeting' and meeting date is today
-            // Also check if there's a remark with today's date
-            const isNextMeeting = r.final_status === 'next_meeting';
+            const bucket = mapSalesStatusToBucket(r.sales_status);
+            const isNextMeeting = bucket === 'next-meeting';
             const isTodayDate = r.date === today;
-            const hasTodayRemark = r.final_status_remark && r.final_status_remark.includes(today);
+            const hasTodayRemark = (r.sales_status_remark || '').includes(today);
             
-            return isNextMeeting && (isTodayDate || hasTodayRemark);
+            console.log(`Lead ${r.id}: sales_status=${r.sales_status}, bucket=${bucket}, date=${r.date}, remark=${r.sales_status_remark}`);
+            console.log(`isNextMeeting=${isNextMeeting}, isTodayDate=${isTodayDate}, hasTodayRemark=${hasTodayRemark}`);
+            
+            // For debugging, let's show all next-meeting leads first
+            return isNextMeeting;
           })
           .map((r) => ({
             id: r.id,
@@ -75,11 +82,9 @@ const NextMeetingFollowUps = () => {
             enquiryBy: r.lead_source || 'N/A',
             customerType: r.customer_type || 'N/A',
             date: r.date ? new Date(r.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-            connectedStatus: r.connected_status || 'Not Connected',
-            connectedStatusRemark: r.connected_status_remark || null,
-            connectedStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
-            finalStatus: r.final_status || 'New',
-            finalStatusRemark: r.final_status_remark || null,
+            salesStatus: r.sales_status || 'pending',
+            salesStatusRemark: r.sales_status_remark || null,
+            salesStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
             latestQuotationUrl: '#',
             quotationsSent: 0,
             followUpLink: 'https://calendar.google.com/',
@@ -89,6 +94,7 @@ const NextMeetingFollowUps = () => {
             callDurationSeconds: r.call_duration_seconds || null,
           }));
         
+        console.log('Today\'s meeting leads found:', todaysMeetingLeads.length);
         setFollowUps(todaysMeetingLeads);
       } catch (err) {
         console.error('Failed to load today\'s meeting leads:', err);
@@ -110,13 +116,10 @@ const NextMeetingFollowUps = () => {
       
       const todaysMeetingLeads = rows
         .filter(r => {
-          // Check if final_status is 'next_meeting' and meeting date is today
-          // Also check if there's a remark with today's date
-          const isNextMeeting = r.final_status === 'next_meeting';
-          const isTodayDate = r.date === today;
-          const hasTodayRemark = r.final_status_remark && r.final_status_remark.includes(today);
-          
-          return isNextMeeting && (isTodayDate || hasTodayRemark);
+          const bucket = mapSalesStatusToBucket(r.sales_status);
+          const isNextMeeting = bucket === 'next-meeting';
+          // For debugging, show all next-meeting leads
+          return isNextMeeting;
         })
         .map((r) => ({
           id: r.id,
@@ -131,11 +134,9 @@ const NextMeetingFollowUps = () => {
           enquiryBy: r.lead_source || 'N/A',
           customerType: r.customer_type || 'N/A',
           date: r.date ? new Date(r.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          connectedStatus: r.connected_status || 'Not Connected',
-          connectedStatusRemark: r.connected_status_remark || null,
-          connectedStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
-          finalStatus: r.final_status || 'New',
-          finalStatusRemark: r.final_status_remark || null,
+          salesStatus: r.sales_status || 'pending',
+          salesStatusRemark: r.sales_status_remark || null,
+          salesStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
           latestQuotationUrl: '#',
           quotationsSent: 0,
           followUpLink: 'https://calendar.google.com/',
@@ -188,12 +189,7 @@ const NextMeetingFollowUps = () => {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center space-x-4">
-        <div className="p-3 bg-blue-100 rounded-lg">
-          <Calendar className="h-8 w-8 text-blue-600" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Today's Scheduled Meetings</h1>
-        </div>
+        
       </div>
 
       {/* Search and Filters */}
@@ -388,12 +384,12 @@ const NextMeetingFollowUps = () => {
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 w-fit">
                           Next Meeting
                         </span>
-                        {lead.finalStatusRemark && (
+                        {lead.salesStatusRemark && (
                           <div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
-                            {lead.finalStatusRemark}
+                            {lead.salesStatusRemark}
                           </div>
                         )}
-                        <span className="text-xs text-gray-500">{lead.connectedStatusDate}</span>
+                        <span className="text-xs text-gray-500">{lead.salesStatusDate}</span>
                       </div>
                     </td>
                     <td className="py-4 px-4 text-sm text-gray-700">

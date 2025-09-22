@@ -191,8 +191,7 @@ export default function CustomerListContent() {
     customerType: '',
     enquiryBy: '',
     date: '',
-    connectedStatus: '',
-    finalStatus: ''
+    salesStatus: ''
   });
 
   // Pagination state
@@ -221,8 +220,7 @@ export default function CustomerListContent() {
       customerType: '',
       enquiryBy: '',
       date: '',
-      connectedStatus: '',
-      finalStatus: ''
+      salesStatus: ''
     });
   };
 
@@ -246,11 +244,9 @@ export default function CustomerListContent() {
           enquiryBy: r.lead_source || 'N/A',
           customerType: r.customer_type || 'N/A',
           date: r.date ? new Date(r.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          connectedStatus: r.connected_status || 'Not Connected',
-          connectedStatusRemark: r.connected_status_remark || null,
-          connectedStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
-          finalStatus: r.final_status || 'New',
-          finalStatusRemark: r.final_status_remark || null,
+          salesStatus: r.sales_status || 'pending',
+          salesStatusRemark: r.sales_status_remark || null,
+          salesStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
           latestQuotationUrl: '#',
           quotationsSent: 0,
           followUpLink: 'https://calendar.google.com/',
@@ -533,12 +529,9 @@ export default function CustomerListContent() {
                   enquiryBy: validatedData.data.enquiryBy,
                   customerType: validatedData.data.customerType,
                   date: validatedData.data.date,
-                  connectedStatus: 'Not Connected',
-                  connectedStatusRemark: 'Imported from CSV',
-                  connectedStatusDate: new Date().toISOString().split('T')[0],
-                  finalStatus: 'open',
-                  finalStatusRemark: 'Imported from CSV',
-                  finalStatusDate: new Date().toISOString().split('T')[0],
+                  salesStatus: 'pending',
+                  salesStatusRemark: 'Imported from CSV',
+                  salesStatusDate: new Date().toISOString().split('T')[0],
                   latestQuotationUrl: "#",
                   quotationsSent: 0,
                   followUpLink: "https://calendar.google.com/",
@@ -751,8 +744,7 @@ export default function CustomerListContent() {
               <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Lead Source</th>
               <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Customer Type</th>
               <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Date</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Connected Status</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Final Status</th>
+              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Sales Status</th>
             </tr>
           </thead>
           <tbody>
@@ -996,14 +988,11 @@ export default function CustomerListContent() {
         enquiryBy: newCustomerData.leadSource,
         date: newCustomerData.date,
         // Status values from form
-        connectedStatus: newCustomerData.connectedStatus,
-        connectedStatusRemark: newCustomerData.connectedStatusRemark,
-        connectedStatusDate: editingCustomer.connectedStatusDate,
-        finalStatus: newCustomerData.finalStatus,
-        finalStatusRemark: newCustomerData.finalStatus === 'next_meeting' && newCustomerData.meetingDate && newCustomerData.meetingTime 
+        salesStatus: newCustomerData.salesStatus,
+        salesStatusRemark: newCustomerData.salesStatus === 'next_meeting' && newCustomerData.meetingDate && newCustomerData.meetingTime 
           ? `${newCustomerData.meetingDate} AT ${newCustomerData.meetingTime}` 
-          : newCustomerData.finalStatusRemark,
-        finalStatusDate: editingCustomer.finalStatusDate,
+          : newCustomerData.salesStatusRemark,
+        salesStatusDate: editingCustomer.salesStatusDate,
         callDurationSeconds: newCustomerData.callDurationSeconds,
         whatsapp: newCustomerData.whatsappNumber ? `+91${newCustomerData.whatsappNumber}` : editingCustomer.whatsapp,
         // Update transferred leads data
@@ -1030,10 +1019,8 @@ export default function CustomerListContent() {
       formData.append('customer_type', updatedCustomer.customerType);
       formData.append('date', updatedCustomer.date);
       formData.append('whatsapp', updatedCustomer.whatsapp ? updatedCustomer.whatsapp.replace('+91','') : '');
-      formData.append('connected_status', updatedCustomer.connectedStatus);
-      formData.append('connected_status_remark', updatedCustomer.connectedStatusRemark);
-      formData.append('final_status', updatedCustomer.finalStatus);
-      formData.append('final_status_remark', updatedCustomer.finalStatusRemark);
+      formData.append('sales_status', updatedCustomer.salesStatus);
+      formData.append('sales_status_remark', updatedCustomer.salesStatusRemark);
       formData.append('call_duration_seconds', updatedCustomer.callDurationSeconds || '');
       formData.append('transferred_to', updatedCustomer.transferredTo || '');
       
@@ -1064,14 +1051,11 @@ export default function CustomerListContent() {
         customerType: newCustomerData.customerType,
         date: newCustomerData.date,
         // Set status values from form
-        connectedStatus: newCustomerData.connectedStatus,
-        connectedStatusRemark: newCustomerData.connectedStatusRemark,
-        connectedStatusDate: new Date().toISOString().split('T')[0],
-        finalStatus: newCustomerData.finalStatus,
-        finalStatusRemark: newCustomerData.finalStatus === 'next_meeting' && newCustomerData.meetingDate && newCustomerData.meetingTime 
+        salesStatus: newCustomerData.salesStatus,
+        salesStatusRemark: newCustomerData.salesStatus === 'next_meeting' && newCustomerData.meetingDate && newCustomerData.meetingTime 
           ? `${newCustomerData.meetingDate} AT ${newCustomerData.meetingTime}` 
-          : newCustomerData.finalStatusRemark,
-        finalStatusDate: new Date().toISOString().split('T')[0],
+          : newCustomerData.salesStatusRemark,
+        salesStatusDate: new Date().toISOString().split('T')[0],
         latestQuotationUrl: "#",
         quotationsSent: 0,
         followUpLink: "https://calendar.google.com/",
@@ -1106,11 +1090,9 @@ export default function CustomerListContent() {
         enquiryBy: r.lead_source || 'N/A',
         customerType: r.customer_type || 'N/A',
         date: r.date ? new Date(r.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        connectedStatus: r.connected_status || 'Not Connected',
-        connectedStatusRemark: r.connected_status_remark || null,
-        connectedStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
-        finalStatus: r.final_status || 'New',
-        finalStatusRemark: r.final_status_remark || null,
+        salesStatus: r.sales_status || 'pending',
+        salesStatusRemark: r.sales_status_remark || null,
+        salesStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
         latestQuotationUrl: '#',
         quotationsSent: 0,
         followUpLink: 'https://calendar.google.com/',
@@ -1168,10 +1150,10 @@ export default function CustomerListContent() {
           const value = filterValue.toString().toLowerCase().trim();
           if (!value) return true;
           
-          // Special handling for connected status to match exactly
-          if (key === 'connectedStatus') {
-            // For connected status, do an exact match (case-insensitive)
-            return customer.connected?.status?.toLowerCase() === value.toLowerCase();
+          // Special handling for sales status to match exactly
+          if (key === 'salesStatus') {
+            // For sales status, do an exact match (case-insensitive)
+            return customer.salesStatus?.toLowerCase() === value.toLowerCase();
           }
           
           // For other fields, do a partial match
@@ -1430,12 +1412,12 @@ export default function CustomerListContent() {
                   <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
                     <div className="flex items-center gap-2">
                       <BadgeCheck className="h-4 w-4 text-emerald-600" />
-                      Connected Status
+                      Sales Status
                     </div>
                     {showFilters && (
                       <select
-                        value={filters.connectedStatus}
-                        onChange={(e) => handleFilterChange('connectedStatus', e.target.value)}
+                        value={filters.salesStatus}
+                        onChange={(e) => handleFilterChange('salesStatus', e.target.value)}
                         className="mt-1 w-full text-xs p-1 border rounded bg-white"
                       >
                         <option value="">All Statuses</option>
@@ -1443,25 +1425,6 @@ export default function CustomerListContent() {
                         <option value="Not Connected">Not Connected</option>
                         <option value="Follow Up">Follow Up</option>
                         <option value="Not Interested">Not Interested</option>
-                      </select>
-                    )}
-                  </th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
-                    <div className="flex items-center gap-2">
-                      <BadgeCheck className="h-4 w-4 text-blue-600" />
-                      Final Status
-                    </div>
-                    {showFilters && (
-                      <select
-                        value={filters.finalStatus}
-                        onChange={(e) => handleFilterChange('finalStatus', e.target.value)}
-                        className="mt-1 w-full text-xs p-1 border rounded bg-white"
-                      >
-                        <option value="">All Statuses</option>
-                        <option value="next scheduled meeting">Next Scheduled Meeting</option>
-                        <option value="closed">Closed</option>
-                        <option value="interested">Interested</option>
-                        <option value="not interested">Not Interested</option>
                       </select>
                     )}
                   </th>
@@ -1555,59 +1518,35 @@ export default function CustomerListContent() {
                     <td className="py-4 px-4 text-sm text-gray-700">
                       <div className="flex flex-col">
                         <span className={
-                          customer.connectedStatus === 'connected'
+                          customer.salesStatus === 'connected'
                             ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-green-50 text-green-700 border-green-200'
-                            : customer.connectedStatus === 'not_connected'
+                            : customer.salesStatus === 'not_connected'
                             ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-red-50 text-red-700 border-red-200'
-                            : customer.connectedStatus === 'next_meeting'
+                            : customer.salesStatus === 'next_meeting'
                             ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200'
-                            : customer.connectedStatus === 'other'
+                            : customer.salesStatus === 'closed'
+                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-gray-50 text-gray-700 border-gray-200'
+                            : customer.salesStatus === 'order_confirmed'
+                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-green-50 text-green-700 border-green-200'
+                            : customer.salesStatus === 'other'
                             ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-purple-50 text-purple-700 border-purple-200'
                             : 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-yellow-50 text-yellow-700 border-yellow-200'
                         }>
-                          {customer.connectedStatus === 'connected' ? 'Connected' :
-                           customer.connectedStatus === 'not_connected' ? 'Not Connected' :
-                           customer.connectedStatus === 'next_meeting' ? 'Next Meeting' :
-                           customer.connectedStatus === 'other' ? 'Other' :
-                           customer.connectedStatus === 'pending' ? 'Pending' :
-                           customer.connectedStatus || '-'}
+                          {customer.salesStatus === 'connected' ? 'Connected' :
+                           customer.salesStatus === 'not_connected' ? 'Not Connected' :
+                           customer.salesStatus === 'next_meeting' ? 'Next Meeting' :
+                           customer.salesStatus === 'closed' ? 'Closed' :
+                           customer.salesStatus === 'order_confirmed' ? 'Order Confirmed' :
+                           customer.salesStatus === 'open' ? 'Open' :
+                           customer.salesStatus === 'pending' ? 'Pending' :
+                           customer.salesStatus === 'other' ? 'Other' :
+                           customer.salesStatus || 'Pending'}
                         </span>
-                        {customer.connectedStatusRemark && (
-                          <span className="text-xs text-gray-500 mt-1">{customer.connectedStatusRemark}</span>
+                        {customer.salesStatusRemark && (
+                          <span className="text-xs text-gray-500 mt-1">{customer.salesStatusRemark}</span>
                         )}
-                        {customer.connectedStatusDate && (
-                          <span className="text-xs text-gray-400">{customer.connectedStatusDate}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
-                      <div className="flex flex-col">
-                          <span className={
-                          customer.finalStatus === 'closed'
-                              ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-gray-50 text-gray-700 border-gray-200'
-                            : customer.finalStatus === 'next_meeting'
-                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200'
-                            : customer.finalStatus === 'order_confirmed'
-                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-green-50 text-green-700 border-green-200'
-                            : customer.finalStatus === 'not_interested'
-                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-red-50 text-red-700 border-red-200'
-                            : customer.finalStatus === 'other'
-                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-purple-50 text-purple-700 border-purple-200'
-                            : 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-yellow-50 text-yellow-700 border-yellow-200'
-                          }>
-                          {customer.finalStatus === 'closed' ? 'Closed' : 
-                           customer.finalStatus === 'next_meeting' ? 'Next Meeting' : 
-                           customer.finalStatus === 'open' ? 'Open' : 
-                           customer.finalStatus === 'order_confirmed' ? 'Order Confirmed' :
-                           customer.finalStatus === 'not_interested' ? 'Not Interested' :
-                           customer.finalStatus === 'other' ? 'Other' :
-                           customer.finalStatus || 'New'}
-                          </span>
-                        {customer.finalStatusRemark && (
-                          <span className="text-xs text-gray-500 mt-1">{customer.finalStatusRemark}</span>
-                        )}
-                        {customer.finalStatusDate && (
-                          <span className="text-xs text-gray-400">{customer.finalStatusDate}</span>
+                        {customer.salesStatusDate && (
+                          <span className="text-xs text-gray-400">{customer.salesStatusDate}</span>
                         )}
                       </div>
                     </td>
