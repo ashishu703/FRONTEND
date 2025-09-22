@@ -332,6 +332,55 @@ const OverviewContent = () => {
         </div>
       </div>
 
+      {/* Recent Orders Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+              <ShoppingCart className="w-4 h-4 text-blue-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-blue-800">Recent Orders</h3>
+          </div>
+          <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+            View All Orders
+          </button>
+        </div>
+        <div className="space-y-4">
+          {[
+            { leadNumber: 'LD-2025-001', customer: 'Rajesh Kumar', product: 'Industrial Motor 5HP', amount: '₹50,000', status: 'Confirmed', orderId: 'ORD-0001' },
+            { leadNumber: 'LD-2025-002', customer: 'Priya Sharma', product: 'LED Street Light 100W', amount: '₹1,75,000', status: 'Delivered', orderId: 'ORD-0002' },
+            { leadNumber: 'LD-2025-003', customer: 'Amit Patel', product: 'Power Distribution Panel', amount: '₹85,000', status: 'Processing', orderId: 'ORD-0003' }
+          ].map((order, index) => (
+            <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Hash className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">{order.leadNumber}</p>
+                  <p className="text-sm text-gray-600">{order.customer}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-medium text-gray-900">{order.product}</p>
+                <p className="text-sm text-gray-600">{order.amount}</p>
+              </div>
+              <div className="text-right">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  order.status === 'Confirmed' ? 'bg-blue-100 text-blue-800' :
+                  order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
+                  order.status === 'Processing' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {order.status}
+                </span>
+                <p className="text-xs text-gray-500 mt-1">{order.orderId}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Monthly Revenue Trend Chart */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1">
         <div className="flex items-center mb-6">
