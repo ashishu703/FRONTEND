@@ -818,6 +818,7 @@ const MarketingSalespersonLeads = () => {
     dueDate: '',
     paidDate: '',
     reference: '',
+    remarks: '',
     status: 'paid'
   });
   const [paymentHistory, setPaymentHistory] = useState([]);
@@ -1461,10 +1462,10 @@ const MarketingSalespersonLeads = () => {
       dueDate: paymentFormData.dueDate || new Date().toISOString().split('T')[0],
       paidDate: paymentFormData.paidDate || new Date().toISOString().split('T')[0],
       reference: paymentFormData.reference || `REF-${Date.now()}`,
+      remarks: paymentFormData.remarks || `Payment via ${paymentFormData.paymentMethod}`,
       status: paymentFormData.status,
       customerId: selectedCustomer?.id,
-      date: paymentFormData.paidDate || new Date().toISOString().split('T')[0],
-      remarks: `Payment via ${paymentFormData.paymentMethod}`
+      date: paymentFormData.paidDate || new Date().toISOString().split('T')[0]
     };
 
     setPaymentHistory(prev => [...prev, newPayment]);
@@ -1477,6 +1478,7 @@ const MarketingSalespersonLeads = () => {
       dueDate: '',
       paidDate: '',
       reference: '',
+      remarks: '',
       status: 'paid'
     });
     
@@ -1759,6 +1761,27 @@ const MarketingSalespersonLeads = () => {
                       <div>
                         <div className="text-sm font-medium text-gray-900">{lead.name}</div>
                         <div className="text-sm text-gray-500">{lead.phone}</div>
+                        <div className="flex space-x-3 mt-1">
+                          <span 
+                            className="text-xs text-green-600 cursor-pointer hover:text-green-800 transition-colors"
+                            onClick={() => {
+                              const phoneNumber = lead.phone.replace(/\D/g, '');
+                              window.open(`https://wa.me/${phoneNumber}`, '_blank');
+                            }}
+                            title="Click to open WhatsApp"
+                          >
+                            WhatsApp
+                          </span>
+                          <span 
+                            className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 transition-colors"
+                            onClick={() => {
+                              window.open(`mailto:${lead.email || 'contact@example.com'}`, '_blank');
+                            }}
+                            title="Click to open Email"
+                          >
+                            Email
+                          </span>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
@@ -1916,11 +1939,28 @@ const MarketingSalespersonLeads = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-500">Customer Name</span>
-                    <span className="font-medium text-gray-900">{selectedLead.name}</span>
+                    <span 
+                      className="font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                      onClick={() => {
+                        const phoneNumber = selectedLead.phone.replace(/\D/g, '');
+                        window.open(`https://wa.me/${phoneNumber}`, '_blank');
+                      }}
+                      title="Click to open WhatsApp"
+                    >
+                      {selectedLead.name}
+                    </span>
                     </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Phone</span>
-                    <span className="font-medium text-gray-900">{selectedLead.phone}</span>
+                    <span 
+                      className="font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                      onClick={() => {
+                        window.open(`mailto:${selectedLead.email || 'contact@example.com'}`, '_blank');
+                      }}
+                      title="Click to open Email"
+                    >
+                      {selectedLead.phone}
+                    </span>
                     </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Address</span>
@@ -1963,11 +2003,15 @@ const MarketingSalespersonLeads = () => {
                       )}
                     </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Final Status</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getFinalStatusColor(selectedLead.finalStatus)}`}>
-                      {selectedLead.finalStatus}
-                    </span>
+                  
+                  {/* Final Status - Separated */}
+                  <div className="border-t border-gray-200 pt-3 mt-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500 font-medium">Final Status</span>
+                      <span className={`px-3 py-2 rounded-full text-sm font-semibold ${getFinalStatusColor(selectedLead.finalStatus)}`}>
+                        {selectedLead.finalStatus}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Payment Status</span>
@@ -2205,17 +2249,31 @@ const MarketingSalespersonLeads = () => {
                 {/* Customer Details Box (Left - Main Area) */}
                 <div className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
                   <div className="mb-4">
-                    <h4 className="font-bold text-gray-900 text-xl mb-2">{selectedCustomer.name}</h4>
+                    <h4 
+                      className="font-bold text-gray-900 text-xl mb-2 cursor-pointer hover:text-blue-600 transition-colors"
+                      onClick={() => {
+                        const phoneNumber = selectedCustomer.phone.replace(/\D/g, '');
+                        window.open(`https://wa.me/${phoneNumber}`, '_blank');
+                      }}
+                      title="Click to open WhatsApp"
+                    >
+                      {selectedCustomer.name}
+                    </h4>
                     <div className="space-y-1">
                       <p className="text-sm text-gray-700 flex items-center">
                         <span className="w-16 text-gray-500">Phone:</span> 
-                        <span className="font-medium">{selectedCustomer.phone}</span>
+                        <span 
+                          className="font-medium cursor-pointer hover:text-blue-600 transition-colors"
+                          onClick={() => {
+                            window.open(`mailto:${selectedCustomer.email || 'contact@example.com'}`, '_blank');
+                          }}
+                          title="Click to open Email"
+                        >
+                          {selectedCustomer.phone}
+                        </span>
                       </p>
-                      <p className="text-sm text-gray-700 flex items-center">
-                        <span className="w-16 text-gray-500">Email:</span> 
-                        <span className="font-medium">{selectedCustomer.email}</span>
-                      </p>
-                      <p className="text-sm text-gray-700 flex items-center">
+                      
+                      <p className="text-sm text-gray-700 flex items-center mt-2">
                         <span className="w-16 text-gray-500">Business:</span> 
                         <span className="font-medium">{selectedCustomer.business || 'N/A'}</span>
                       </p>
@@ -3177,6 +3235,18 @@ const MarketingSalespersonLeads = () => {
                     onChange={handlePaymentInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Payment reference"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+                  <input
+                    type="text"
+                    name="remarks"
+                    value={paymentFormData.remarks}
+                    onChange={handlePaymentInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter payment remarks or notes"
                   />
                 </div>
                 
