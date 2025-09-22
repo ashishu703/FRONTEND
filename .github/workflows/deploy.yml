@@ -15,13 +15,21 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
+          # Ensure you are using the correct secret name for the private key
           echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H 62.72.12.249 >> ~/.ssh/known_hosts
 
       - name: Deploy on VPS
         env:
+          # This makes the new secret available to the runner
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-        # THIS IS THE FIX: The entire remote command is now on a single line
-        # to prevent any shell parsing errors with multi-line strings.
-        run: ssh -i ~/.ssh/id_ed25519 deploy@62.72.12.249 "cd /home/deploy/app && git fetch origin main && git reset --hard origin/main && docker compose build --build-arg VITE_API_BASE_URL=${VITE_API_BASE_URL} && docker compose up -d"
+        run: |
+          # The SSH command now uses the correct path and passes the API URL
+          # as a build argument to Docker Compose.
+          ssh -i ~/.ssh/id_ed25519 deploy@62.72.12.249 "
+            cd /home/deploy/app && \
+            git fetch origin main && \
+            git reset --hard origin/main && \
+            docker compose build --build-arg VITE_API_BASE_URL=${VITE_API_BASE_URL} && \
+            docker compose up -d
