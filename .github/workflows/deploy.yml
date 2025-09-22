@@ -1,4 +1,4 @@
-name: CI/CD Deploy
+name: CI/CD Deploy Frontend
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup SSH
         run: |
@@ -20,5 +20,8 @@ jobs:
           ssh-keyscan -H 62.72.12.249 >> ~/.ssh/known_hosts
 
       - name: Deploy on VPS
-        run: |
-          ssh -i ~/.ssh/id_ed25519 deploy@62.72.12.249 "cd /home/deploy/app && git fetch origin main && git reset --hard origin/main && docker compose up -d --build"
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        # THIS IS THE FIX: The entire remote command is now on a single line
+        # to prevent any shell parsing errors with multi-line strings.
+        run: ssh -i ~/.ssh/id_ed25519 deploy@62.72.12.249 "cd /home/deploy/app && git fetch origin main && git reset --hard origin/main && docker compose build --build-arg VITE_API_BASE_URL=${VITE_API_BASE_URL} && docker compose up -d"

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   RefreshCw, 
@@ -48,8 +48,9 @@ const EditLeadModal = ({ lead, onSave, onClose }) => {
     customerType: lead.customerType,
     date: lead.date,
     visitingStatus: lead.visitingStatus,
-    finalStatus: lead.finalStatus,
-    paymentStatus: lead.paymentStatus
+    visitingStatusUpdated: lead.visitingStatusUpdated || '',
+    paymentStatus: lead.paymentStatus,
+    transferredTo: lead.transferredTo || ''
   });
 
   const handleSubmit = (e) => {
@@ -206,18 +207,14 @@ const EditLeadModal = ({ lead, onSave, onClose }) => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Final Status</label>
-              <select
-                name="finalStatus"
-                value={formData.finalStatus}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status Updated At</label>
+              <input
+                type="datetime-local"
+                name="visitingStatusUpdated"
+                value={formData.visitingStatusUpdated}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-                <option value="Interested">Interested</option>
-                <option value="Not Interested">Not Interested</option>
-                <option value="Pending">Pending</option>
-              </select>
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
@@ -233,6 +230,25 @@ const EditLeadModal = ({ lead, onSave, onClose }) => {
                 <option value="Pending">Pending</option>
                 <option value="Not Started">Not Started</option>
                 <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Transfer Lead To</label>
+              <select
+                name="transferredTo"
+                value={formData.transferredTo}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Not Transferred</option>
+                <option value="John Smith">John Smith</option>
+                <option value="Sarah Johnson">Sarah Johnson</option>
+                <option value="Mike Davis">Mike Davis</option>
+                <option value="Lisa Wilson">Lisa Wilson</option>
+                <option value="David Brown">David Brown</option>
+                <option value="Emma Taylor">Emma Taylor</option>
+                <option value="Alex Martinez">Alex Martinez</option>
+                <option value="Sophie Anderson">Sophie Anderson</option>
               </select>
             </div>
           </div>
@@ -272,7 +288,7 @@ const AddCustomerModal = ({ onSave, onClose }) => {
     customerType: '',
     date: new Date().toISOString().split('T')[0],
     visitingStatus: 'Not Visited',
-    finalStatus: 'Pending',
+    visitingStatusUpdated: new Date().toISOString().slice(0, 16),
     paymentStatus: 'Not Started'
   });
 
@@ -419,46 +435,57 @@ const AddCustomerModal = ({ onSave, onClose }) => {
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Visiting Status</label>
-              <select
-                name="visitingStatus"
-                value={formData.visitingStatus}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="Not Visited">Not Visited</option>
-                <option value="Scheduled">Scheduled</option>
-                <option value="Visited">Visited</option>
-              </select>
+          </div>
+          
+          {/* Visiting Status Section */}
+          <div className="mt-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Visiting Status</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  name="visitingStatus"
+                  value={formData.visitingStatus}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Not Visited">Not Visited</option>
+                  <option value="Scheduled">Scheduled</option>
+                  <option value="Visited">Visited</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status Updated At</label>
+                <input
+                  type="datetime-local"
+                  name="visitingStatusUpdated"
+                  value={formData.visitingStatusUpdated}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Final Status</label>
-              <select
-                name="finalStatus"
-                value={formData.finalStatus}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="Pending">Pending</option>
-                <option value="Interested">Interested</option>
-                <option value="Not Interested">Not Interested</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
-              <select
-                name="paymentStatus"
-                value={formData.paymentStatus}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="Not Started">Not Started</option>
-                <option value="Pending">Pending</option>
-                <option value="Partial">Partial</option>
-                <option value="Paid">Paid</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
+          </div>
+          
+          {/* Payment Status Section */}
+          <div className="mt-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Status</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  name="paymentStatus"
+                  value={formData.paymentStatus}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Not Started">Not Started</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Partial">Partial</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
             </div>
           </div>
           
@@ -530,7 +557,7 @@ const LeadImportModal = ({ onImport, onClose }) => {
           customerType: lead.customertype || lead.customertype || 'B2B',
           date: lead.date || new Date().toISOString().split('T')[0],
           visitingStatus: lead.visitingstatus || lead.visitingstatus || 'Not Visited',
-          finalStatus: lead.finalstatus || lead.finalstatus || 'Pending',
+          visitingStatusUpdated: new Date().toISOString(),
           paymentStatus: lead.paymentstatus || lead.paymentstatus || 'Not Started'
         }));
       
@@ -648,7 +675,6 @@ const LeadImportModal = ({ onImport, onClose }) => {
                     <div className="truncate">{lead.name}</div>
                     <div className="truncate">{lead.phone}</div>
                     <div className="truncate">{lead.productType}</div>
-                    <div className="truncate">{lead.finalStatus}</div>
                   </div>
                 ))}
                 {csvData.length > 5 && (
@@ -699,9 +725,59 @@ const MarketingSalespersonLeads = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showQuotationModal, setShowQuotationModal] = useState(false);
+  const [showPIModal, setShowPIModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
   const [activeTab, setActiveTab] = useState('Details');
-  const [quotations, setQuotations] = useState([]);
+  const [showPIPreview, setShowPIPreview] = useState(false);
+  const [showPIPopup, setShowPIPopup] = useState(false);
+  const [piPopupData, setPiPopupData] = useState(null);
+  const [piFormData, setPiFormData] = useState({
+    branch: 'ANODE',
+    voucherNo: `PI-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+    dated: new Date().toISOString().split('T')[0],
+    paymentTerms: 'ADVANCE',
+    buyersRef: `BR-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
+    otherReferences: 'DIRECT SALE',
+    dispatchedThrough: 'BY TRANSPORT',
+    destination: '',
+    deliveryTerms: 'Delivery :- FOR upto',
+    items: [
+      {
+        id: 1,
+        description: 'COVERED CONDUCTOR 34 SQMM',
+        subDescription: 'COVERED CONDUCTOR 34SQMM XLPE 3 LAYER',
+        hsnSac: '76141000',
+        dueOn: new Date().toISOString().split('T')[0],
+        quantity: 600,
+        unit: 'MTR',
+        rate: 48.00,
+        amount: 28800.00
+      }
+    ],
+    subtotal: 28800.00,
+    taxRate: 18,
+    taxAmount: 5184.00,
+    total: 33984.00,
+    amountInWords: 'INR Thirty Three Thousand Nine Hundred Eighty Four Only',
+    bankDetails: {
+      accountHolderName: 'ANODE ELECTRIC PVT. LTD.',
+      accountNumber: '777705336601',
+      ifscCode: 'ICIC0007345',
+      bankName: 'ICICI BANK',
+      branch: 'NIWARGANJ',
+      bankCode: '36601'
+    }
+  });
+  const [quotations, setQuotations] = useState(() => {
+    // Load quotations from localStorage on component mount
+    const savedQuotations = localStorage.getItem('marketingQuotations');
+    return savedQuotations ? JSON.parse(savedQuotations) : [];
+  });
+  const [pis, setPis] = useState(() => {
+    // Load PIs from localStorage on component mount
+    const savedPis = localStorage.getItem('marketingPIs');
+    return savedPis ? JSON.parse(savedPis) : [];
+  });
   const [quotationData, setQuotationData] = useState({
     quotationNumber: `ANQ${Date.now().toString().slice(-6)}`,
     quotationDate: new Date().toISOString().split('T')[0],
@@ -735,9 +811,28 @@ const MarketingSalespersonLeads = () => {
   // Payment related state
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
+  const [paymentFormData, setPaymentFormData] = useState({
+    amount: '',
+    paymentMethod: 'Cash',
+    dueDate: '',
+    paidDate: '',
+    reference: '',
+    status: 'paid'
+  });
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  
+  // Sync quotations with localStorage whenever quotations change
+  useEffect(() => {
+    localStorage.setItem('marketingQuotations', JSON.stringify(quotations));
+  }, [quotations]);
+
+  // Sync PIs with localStorage whenever PIs change
+  useEffect(() => {
+    localStorage.setItem('marketingPIs', JSON.stringify(pis));
+  }, [pis]);
   
   // Company branch configuration
   const companyBranches = {
@@ -777,7 +872,6 @@ const MarketingSalespersonLeads = () => {
     address: '',
     gstNo: '',
     visitingStatus: '',
-    finalStatus: '',
     leadSource: '',
     customerType: '',
     productType: '',
@@ -787,6 +881,7 @@ const MarketingSalespersonLeads = () => {
   const [leads, setLeads] = useState([
     {
       id: 1,
+      leadId: 'LD-2025-001',
       name: 'Rajesh Kumar',
       phone: '+91 98765 43210',
       address: '123 MG Road, Indore, MP',
@@ -797,8 +892,9 @@ const MarketingSalespersonLeads = () => {
       customerType: 'B2B',
       date: '2025-01-17',
       visitingStatus: 'Scheduled',
-      finalStatus: 'Pending',
+      visitingStatusUpdated: '2025-01-17T10:30:00',
       transferredLeads: 0,
+      transferredTo: null,
       paymentStatus: 'Pending',
       meetings: [
         { date: '2025-01-20', time: '10:00 AM', type: 'Initial Meeting', status: 'Scheduled' },
@@ -807,6 +903,7 @@ const MarketingSalespersonLeads = () => {
     },
     {
       id: 2,
+      leadId: 'LD-2025-002',
       name: 'Priya Sharma',
       phone: '+91 87654 32109',
       address: '456 Business Park, Bhopal, MP',
@@ -817,8 +914,9 @@ const MarketingSalespersonLeads = () => {
       customerType: 'B2B',
       date: '2025-01-16',
       visitingStatus: 'Visited',
-      finalStatus: 'Interested',
+      visitingStatusUpdated: '2025-01-16T14:45:00',
       transferredLeads: 1,
+      transferredTo: 'John Smith',
       paymentStatus: 'Partial',
       meetings: [
         { date: '2025-01-18', time: '11:00 AM', type: 'Product Demo', status: 'Completed' },
@@ -827,6 +925,7 @@ const MarketingSalespersonLeads = () => {
     },
     {
       id: 3,
+      leadId: 'LD-2025-003',
       name: 'Amit Patel',
       phone: '+91 76543 21098',
       address: '789 Industrial Area, Jabalpur, MP',
@@ -837,8 +936,9 @@ const MarketingSalespersonLeads = () => {
       customerType: 'B2B',
       date: '2025-01-15',
       visitingStatus: 'Not Visited',
-      finalStatus: 'Pending',
+      visitingStatusUpdated: '2025-01-15T09:15:00',
       transferredLeads: 0,
+      transferredTo: null,
       paymentStatus: 'Not Started',
       meetings: [
         { date: '2025-01-21', time: '9:00 AM', type: 'Initial Contact', status: 'Planned' }
@@ -846,6 +946,7 @@ const MarketingSalespersonLeads = () => {
     },
     {
       id: 4,
+      leadId: 'LD-2025-004',
       name: 'Sneha Gupta',
       phone: '+91 65432 10987',
       address: '321 Tech Hub, Gwalior, MP',
@@ -856,8 +957,9 @@ const MarketingSalespersonLeads = () => {
       customerType: 'B2C',
       date: '2025-01-14',
       visitingStatus: 'Scheduled',
-      finalStatus: 'Interested',
+      visitingStatusUpdated: '2025-01-14T16:20:00',
       transferredLeads: 0,
+      transferredTo: null,
       paymentStatus: 'Paid',
       meetings: [
         { date: '2025-01-19', time: '2:30 PM', type: 'Site Visit', status: 'Completed' },
@@ -866,6 +968,7 @@ const MarketingSalespersonLeads = () => {
     },
     {
       id: 5,
+      leadId: 'LD-2025-005',
       name: 'Vikram Singh',
       phone: '+91 54321 09876',
       address: '654 Corporate Plaza, Ujjain, MP',
@@ -876,8 +979,9 @@ const MarketingSalespersonLeads = () => {
       customerType: 'B2B',
       date: '2025-01-13',
       visitingStatus: 'Visited',
-      finalStatus: 'Not Interested',
+      visitingStatusUpdated: '2025-01-13T11:30:00',
       transferredLeads: 0,
+      transferredTo: null,
       paymentStatus: 'Cancelled',
       meetings: [
         { date: '2025-01-17', time: '1:00 PM', type: 'Initial Meeting', status: 'Completed' }
@@ -892,7 +996,8 @@ const MarketingSalespersonLeads = () => {
       lead.phone.includes(searchTerm) ||
       lead.address.toLowerCase().includes(searchTerm) ||
       lead.gstNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.productType.toLowerCase().includes(searchTerm.toLowerCase());
+      lead.productType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.leadId.toLowerCase().includes(searchTerm.toLowerCase());
     
     // Filter conditions
     const matchesFilters = 
@@ -900,7 +1005,6 @@ const MarketingSalespersonLeads = () => {
       (filters.address === '' || lead.address.toLowerCase().includes(filters.address.toLowerCase())) &&
       (filters.gstNo === '' || lead.gstNo.toLowerCase().includes(filters.gstNo.toLowerCase())) &&
       (filters.visitingStatus === '' || lead.visitingStatus === filters.visitingStatus) &&
-      (filters.finalStatus === '' || lead.finalStatus === filters.finalStatus) &&
       (filters.leadSource === '' || lead.leadSource === filters.leadSource) &&
       (filters.customerType === '' || lead.customerType === filters.customerType) &&
       (filters.productType === '' || lead.productType === filters.productType) &&
@@ -917,6 +1021,22 @@ const MarketingSalespersonLeads = () => {
       case 'Not Visited': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const formattedDate = date.toLocaleDateString('en-US', { 
+      month: 'numeric', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+    const formattedTime = date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    return `${formattedDate}, ${formattedTime}`;
   };
 
   const getFinalStatusColor = (status) => {
@@ -959,10 +1079,14 @@ const MarketingSalespersonLeads = () => {
   };
 
   const handleAddLead = (newLead) => {
+    const newId = Math.max(...leads.map(l => l.id)) + 1;
     const leadWithId = {
       ...newLead,
-      id: Math.max(...leads.map(l => l.id)) + 1,
+      id: newId,
+      leadId: `LD-2025-${String(newId).padStart(3, '0')}`,
       transferredLeads: 0,
+      transferredTo: null,
+      visitingStatusUpdated: new Date().toISOString(),
       meetings: []
     };
     setLeads([...leads, leadWithId]);
@@ -970,18 +1094,26 @@ const MarketingSalespersonLeads = () => {
   };
 
   const handleImportLeads = (importedLeads) => {
-    const leadsWithIds = importedLeads.map((lead, index) => ({
-      ...lead,
-      id: Math.max(...leads.map(l => l.id)) + index + 1,
-      transferredLeads: 0,
-      meetings: []
-    }));
+    const leadsWithIds = importedLeads.map((lead, index) => {
+      const newId = Math.max(...leads.map(l => l.id)) + index + 1;
+      return {
+        ...lead,
+        id: newId,
+        leadId: `LD-2025-${String(newId).padStart(3, '0')}`,
+        transferredLeads: 0,
+        transferredTo: null,
+        visitingStatusUpdated: new Date().toISOString(),
+        meetings: []
+      };
+    });
     setLeads([...leads, ...leadsWithIds]);
     setShowImportModal(false);
   };
 
   const handleSaveQuotation = (quotationData) => {
-    setQuotations([...quotations, quotationData]);
+    const newQuotations = [...quotations, quotationData];
+    setQuotations(newQuotations);
+    
     setShowQuotationModal(false);
     setSelectedLead(null);
     // You can add a success message here
@@ -992,6 +1124,222 @@ const MarketingSalespersonLeads = () => {
     if (selectedLead) {
       setShowQuotationModal(true);
     }
+  };
+
+  const handleCreatePI = () => {
+    if (selectedLead) {
+      setShowPIModal(true);
+    }
+  };
+
+  const handlePIInputChange = (field, value) => {
+    setPiFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handlePIItemChange = (index, field, value) => {
+    const updatedItems = [...piFormData.items];
+    updatedItems[index] = {
+      ...updatedItems[index],
+      [field]: value
+    };
+    
+    // Calculate amount for this item
+    if (['quantity', 'rate'].includes(field)) {
+      updatedItems[index].amount = updatedItems[index].quantity * updatedItems[index].rate;
+    }
+    
+    // Calculate totals
+    const subtotal = updatedItems.reduce((sum, item) => sum + item.amount, 0);
+    const taxAmount = (subtotal * piFormData.taxRate) / 100;
+    const total = subtotal + taxAmount;
+    
+    // Generate amount in words
+    const amountInWords = `INR ${numberToWords(total)} Only`;
+    
+    setPiFormData(prev => ({
+      ...prev,
+      items: updatedItems,
+      subtotal,
+      taxAmount,
+      total,
+      amountInWords
+    }));
+  };
+
+  // Helper function to convert numbers to words (simplified version)
+  const numberToWords = (num) => {
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    
+    if (num === 0) return 'Zero';
+    if (num < 10) return ones[num];
+    if (num < 20) return teens[num - 10];
+    if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + ones[num % 10] : '');
+    if (num < 1000) return ones[Math.floor(num / 100)] + ' Hundred' + (num % 100 ? ' ' + numberToWords(num % 100) : '');
+    if (num < 100000) return numberToWords(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 ? ' ' + numberToWords(num % 1000) : '');
+    if (num < 10000000) return numberToWords(Math.floor(num / 100000)) + ' Lakh' + (num % 100000 ? ' ' + numberToWords(num % 100000) : '');
+    return numberToWords(Math.floor(num / 10000000)) + ' Crore' + (num % 10000000 ? ' ' + numberToWords(num % 10000000) : '');
+  };
+
+  const addPIItem = () => {
+    setPiFormData(prev => ({
+      ...prev,
+      items: [...prev.items, {
+        id: prev.items.length + 1,
+        description: '',
+        subDescription: '',
+        hsnSac: '',
+        dueOn: new Date().toISOString().split('T')[0],
+        quantity: 1,
+        unit: 'MTR',
+        rate: 0,
+        amount: 0
+      }]
+    }));
+  };
+
+  const removePIItem = (index) => {
+    if (piFormData.items.length > 1) {
+      const updatedItems = piFormData.items.filter((_, i) => i !== index);
+      const subtotal = updatedItems.reduce((sum, item) => sum + item.amount, 0);
+      const taxAmount = (subtotal * piFormData.taxRate) / 100;
+      const total = subtotal + taxAmount;
+      
+      setPiFormData(prev => ({
+        ...prev,
+        items: updatedItems,
+        subtotal,
+        taxAmount,
+        total
+      }));
+    }
+  };
+
+  const handleSavePI = () => {
+    // Create new PI object
+    const newPI = {
+      id: Date.now(),
+      voucherNo: piFormData.voucherNo,
+      dated: piFormData.dated,
+      branch: piFormData.branch,
+      paymentTerms: piFormData.paymentTerms,
+      buyersRef: piFormData.buyersRef,
+      otherReferences: piFormData.otherReferences,
+      dispatchedThrough: piFormData.dispatchedThrough,
+      destination: piFormData.destination,
+      deliveryTerms: piFormData.deliveryTerms,
+      items: piFormData.items,
+      subtotal: piFormData.subtotal,
+      taxRate: piFormData.taxRate,
+      taxAmount: piFormData.taxAmount,
+      total: piFormData.total,
+      amountInWords: piFormData.amountInWords,
+      bankDetails: piFormData.bankDetails,
+      createdAt: new Date().toISOString(),
+      leadId: selectedLead?.id,
+      leadName: selectedLead?.name
+    };
+
+    // Add PI to the list
+    setPis(prev => [newPI, ...prev]);
+    
+    alert('PI created successfully!');
+    setShowPIModal(false);
+    
+    // Reset form
+    setPiFormData({
+      branch: 'ANODE',
+      voucherNo: `PI-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+      dated: new Date().toISOString().split('T')[0],
+      paymentTerms: 'ADVANCE',
+      buyersRef: `BR-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
+      otherReferences: 'DIRECT SALE',
+      dispatchedThrough: 'BY TRANSPORT',
+      destination: '',
+      deliveryTerms: 'Delivery :- FOR upto',
+      items: [
+        {
+          id: 1,
+          description: '',
+          subDescription: '',
+          hsnSac: '',
+          dueOn: new Date().toISOString().split('T')[0],
+          quantity: 1,
+          unit: 'MTR',
+          rate: 0,
+          amount: 0
+        }
+      ],
+      subtotal: 0,
+      taxRate: 18,
+      taxAmount: 0,
+      total: 0,
+      amountInWords: 'INR Zero Only',
+      bankDetails: {
+        accountHolderName: 'ANODE ELECTRIC PVT. LTD.',
+        accountNumber: '777705336601',
+        ifscCode: 'ICIC0007345',
+        bankName: 'ICICI BANK',
+        branch: 'NIWARGANJ',
+        bankCode: '36601'
+      }
+    });
+  };
+
+  const handlePIPreview = () => {
+    setShowPIPreview(true);
+  };
+
+  const handlePIDownload = () => {
+    const element = document.getElementById('pi-preview-content');
+    if (element) {
+      const opt = {
+        margin: [0.4, 0.4, 0.4, 0.4],
+        filename: `PI-${selectedLead.name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.8 },
+        html2canvas: { 
+          scale: 1.1,
+          useCORS: true,
+          letterRendering: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff'
+        },
+        jsPDF: { 
+          unit: 'in', 
+          format: 'a4', 
+          orientation: 'portrait',
+          compress: true,
+          putOnlyUsedFonts: true
+        }
+      };
+      html2pdf().set(opt).from(element).save();
+    } else {
+      alert('No PI content to download');
+    }
+  };
+
+  const isPIFormValid = () => {
+    return piFormData.branch && 
+           piFormData.voucherNo && 
+           piFormData.dated && 
+           piFormData.paymentTerms && 
+           piFormData.buyersRef && 
+           piFormData.otherReferences && 
+           piFormData.dispatchedThrough && 
+           piFormData.destination && 
+           piFormData.deliveryTerms &&
+           piFormData.items.some(item => item.description && item.hsnSac && item.quantity > 0 && item.rate > 0);
+  };
+
+  // Function to clear all quotations (for testing purposes)
+  const clearAllQuotations = () => {
+    setQuotations([]);
+    localStorage.removeItem('marketingQuotations');
+    alert('All quotations cleared!');
   };
 
   const handleSendVerification = (lead) => {
@@ -1092,8 +1440,68 @@ const MarketingSalespersonLeads = () => {
     setShowPaymentDetails(true);
   };
 
+  const handlePaymentInputChange = (e) => {
+    const { name, value } = e.target;
+    setPaymentFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleAddPayment = () => {
+    if (!paymentFormData.amount || !paymentFormData.paymentMethod) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    const newPayment = {
+      id: Date.now(),
+      amount: parseFloat(paymentFormData.amount),
+      paymentMethod: paymentFormData.paymentMethod,
+      dueDate: paymentFormData.dueDate || new Date().toISOString().split('T')[0],
+      paidDate: paymentFormData.paidDate || new Date().toISOString().split('T')[0],
+      reference: paymentFormData.reference || `REF-${Date.now()}`,
+      status: paymentFormData.status,
+      customerId: selectedCustomer?.id,
+      date: paymentFormData.paidDate || new Date().toISOString().split('T')[0],
+      remarks: `Payment via ${paymentFormData.paymentMethod}`
+    };
+
+    setPaymentHistory(prev => [...prev, newPayment]);
+    setTotalAmount(prev => prev + newPayment.amount);
+    
+    // Reset form
+    setPaymentFormData({
+      amount: '',
+      paymentMethod: 'Cash',
+      dueDate: '',
+      paidDate: '',
+      reference: '',
+      status: 'paid'
+    });
+    
+    setShowAddPaymentModal(false);
+    alert('Payment added successfully!');
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen pb-16">
+      <style jsx>{`
+        .overflow-x-auto::-webkit-scrollbar {
+          height: 8px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 4px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb {
+          background: #94a3b8;
+          border-radius: 4px;
+        }
+        .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+          background: #64748b;
+        }
+      `}</style>
       {/* Top Section - Search and Actions */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <div className="flex items-center justify-between">
@@ -1102,7 +1510,7 @@ const MarketingSalespersonLeads = () => {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search by name, email, or business"
+                placeholder="Search by name, phone, address, or lead ID"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
@@ -1150,8 +1558,8 @@ const MarketingSalespersonLeads = () => {
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+          <table className="min-w-full divide-y divide-gray-200" style={{minWidth: '1200px'}}>
             <thead className="bg-gray-50">
               {/* Filter Row */}
               {showFilters && (
@@ -1256,18 +1664,6 @@ const MarketingSalespersonLeads = () => {
                     </select>
                   </th>
                   <th className="px-6 py-2">
-                    <select
-                      value={filters.finalStatus}
-                      onChange={(e) => setFilters({...filters, finalStatus: e.target.value})}
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="">All Sta</option>
-                      <option value="Interested">Interested</option>
-                      <option value="Not Interested">Not Interested</option>
-                      <option value="Pending">Pending</option>
-                    </select>
-                  </th>
-                  <th className="px-6 py-2">
                     {/* Transferred Leads - No filter */}
                   </th>
                   <th className="px-6 py-2">
@@ -1278,79 +1674,73 @@ const MarketingSalespersonLeads = () => {
               
               {/* Header Row */}
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '100px', minWidth: '100px'}}>
                   <div className="flex items-center space-x-2">
                     <Hash className="w-4 h-4 text-purple-600" />
-                    <span>#</span>
+                    <span>LEAD ID</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '200px', minWidth: '200px'}}>
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4 text-blue-600" />
                     <span>NAME & PHONE</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '250px', minWidth: '250px'}}>
                   <div className="flex items-center space-x-2">
                     <MapPin className="w-4 h-4 text-green-600" />
                     <span>ADDRESS</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '150px', minWidth: '150px'}}>
                   <div className="flex items-center space-x-2">
                     <FileText className="w-4 h-4 text-purple-600" />
                     <span>GST NO.</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '150px', minWidth: '150px'}}>
                   <div className="flex items-center space-x-2">
                     <Package className="w-4 h-4 text-purple-600" />
                     <span>PRODUCT TYPE</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '120px', minWidth: '120px'}}>
                   <div className="flex items-center space-x-2">
                     <Map className="w-4 h-4 text-blue-600" />
                     <span>STATE</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '120px', minWidth: '120px'}}>
                   <div className="flex items-center space-x-2">
                     <Globe className="w-4 h-4 text-orange-600" />
                     <span>LEAD SOURCE</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '120px', minWidth: '120px'}}>
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4 text-blue-600" />
                     <span>CUSTOMER TYPE</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '100px', minWidth: '100px'}}>
                   <div className="flex items-center space-x-2">
                     <Calendar className="w-4 h-4 text-green-600" />
                     <span>DATE</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '120px', minWidth: '120px'}}>
                   <div className="flex items-center space-x-2">
                     <div className="w-4 h-4 rounded-full bg-blue-500"></div>
                     <span>VISITING STATUS</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                    <span>FINAL STATUS</span>
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '150px', minWidth: '150px'}}>
                   <div className="flex items-center space-x-2">
                     <ArrowUpDown className="w-4 h-4 text-purple-600" />
                     <span>TRANSFERRED LEADS</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '120px', minWidth: '120px'}}>
                   <div className="flex items-center space-x-2">
                     <Edit className="w-4 h-4 text-gray-600" />
                     <span>ACTION</span>
@@ -1362,8 +1752,8 @@ const MarketingSalespersonLeads = () => {
               {filteredLeads.length > 0 ? (
                 filteredLeads.map((lead) => (
                   <tr key={lead.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {lead.id}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {lead.leadId}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
@@ -1392,18 +1782,28 @@ const MarketingSalespersonLeads = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {lead.date}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getVisitingStatusColor(lead.visitingStatus)}`}>
-                        {lead.visitingStatus}
-                      </span>
-                    </td>
-                    <td className="px-1 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getFinalStatusColor(lead.finalStatus)}`}>
-                        {lead.finalStatus}
-                      </span>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="flex flex-col items-center space-y-1">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getVisitingStatusColor(lead.visitingStatus)}`}>
+                          {lead.visitingStatus}
+                        </span>
+                        {lead.visitingStatusUpdated && (
+                          <span className="text-xs text-gray-500">
+                            {formatTimestamp(lead.visitingStatusUpdated)}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-1 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                      {lead.transferredLeads}
+                      {lead.transferredTo ? (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                          {lead.transferredTo}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                          Not Transferred
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex space-x-2">
@@ -1507,17 +1907,6 @@ const MarketingSalespersonLeads = () => {
                   <Clock className="h-4 w-4" />
                   Performa Invoice
                 </button>
-                <button
-                  className={`px-3 py-2 text-sm flex items-center gap-1 ${
-                    activeTab === 'Follow Up' 
-                      ? 'text-blue-600 border-b-2 border-blue-600' 
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`} 
-                  onClick={() => setActiveTab('Follow Up')}
-                >
-                  <Clock className="h-4 w-4" />
-                  Follow Up
-                </button>
               </div>
             </div>
             
@@ -1563,9 +1952,16 @@ const MarketingSalespersonLeads = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Visiting Status</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getVisitingStatusColor(selectedLead.visitingStatus)}`}>
-                      {selectedLead.visitingStatus}
-                    </span>
+                    <div className="flex flex-col items-center space-y-1">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getVisitingStatusColor(selectedLead.visitingStatus)}`}>
+                        {selectedLead.visitingStatus}
+                      </span>
+                      {selectedLead.visitingStatusUpdated && (
+                        <span className="text-xs text-gray-500">
+                          {formatTimestamp(selectedLead.visitingStatusUpdated)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Final Status</span>
@@ -1590,24 +1986,16 @@ const MarketingSalespersonLeads = () => {
                     <div className="rounded-md border border-gray-200 divide-y">
                       <div className="p-3 flex items-center justify-between">
                         <span className="text-gray-700">Latest Quotation</span>
-                        <span className="text-xs">{selectedLead.latestQuotationUrl === "latest" ? (
                         <button 
-                            onClick={() => handleViewLatestQuotation(selectedLead)}
-                            className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700"
-                          >
-                            <Eye className="h-3.5 w-3.5" /> View
+                          onClick={() => handleViewLatestQuotation(selectedLead)}
+                          className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700 text-xs"
+                        >
+                          <Eye className="h-3.5 w-3.5" /> View
                         </button>
-                        ) : selectedLead.latestQuotationUrl ? (
-                          <a href={selectedLead.latestQuotationUrl} className="text-blue-600 underline inline-flex items-center gap-1">
-                            <Eye className="h-3.5 w-3.5" /> View
-                          </a>
-                        ) : (
-                          <span className="text-gray-500">None</span>
-                        )}</span>
                       </div>
                       <div className="p-3 flex items-center justify-between">
                         <span className="text-gray-700">Quotations Sent</span>
-                        <span className="text-xs text-gray-500">{selectedLead.quotationsSent ?? 0}</span>
+                        <span className="text-xs text-gray-500">{quotations.length}</span>
                       </div>
                       <div className="p-3 flex items-center justify-between">
                         <span className="text-gray-700">Verification Status</span>
@@ -1639,34 +2027,38 @@ const MarketingSalespersonLeads = () => {
                           </span>
                         )}
                       </div>
-                      <div className="p-3">
-                        <button 
-                          onClick={handleCreateQuotation}
-                          className="px-3 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 inline-flex items-center gap-2"
-                        >
-                          Create Quotation
-                        </button>
-                      </div>
                     </div>
                         </div>
                     <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-sm font-semibold text-gray-900">Quotation Preview</h3>
-                      <div className="flex items-center gap-2">
-                        <label className="text-xs text-gray-600">Company Branch:</label>
-                        <select 
-                          value={selectedBranch} 
-                          onChange={(e) => setSelectedBranch(e.target.value)}
-                          className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
-                        >
-                          <option value="ANODE">ANODE ELECTRIC</option>
-                          <option value="SAMRIDDHI_CABLE">SAMRIDDHI CABLE</option>
-                          <option value="SAMRIDDHI_INDUSTRIES">SAMRIDDHI INDUSTRIES</option>
-                        </select>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Quotation Details</h3>
+                    <div className="rounded-md border border-gray-200 divide-y">
+                      {quotations.length > 0 ? (
+                        quotations
+                          .sort((a, b) => new Date(b.createdAt || b.quotationDate) - new Date(a.createdAt || a.quotationDate))
+                          .map((quotation, index) => (
+                            <div key={quotation.quotationNumber || index} className="p-3 flex items-center justify-between">
+                              <div className="flex items-center space-x-4">
+                                <span className="text-gray-700">
+                                  {index === 0 ? 'Latest Quotation:' : `Quotation #${quotations.length - index}:`}
+                                </span>
+                                <span 
+                                  className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 hover:underline"
+                                  onClick={() => {
+                                    setQuotationPopupData(quotation);
+                                    setShowQuotationPopup(true);
+                                  }}
+                                >
+                                  {quotation.quotationNumber}
+                                </span>
+                                <span className="text-xs text-gray-500">{quotation.quotationDate}</span>
+                              </div>
                             </div>
-                    </div>
-             <div className="rounded-md border border-gray-200 max-h-[320px] overflow-auto bg-white">
-               <MarketingQuotation quotationData={quotationData} customer={selectedLead} selectedBranch={selectedBranch} />
+                          ))
+                      ) : (
+                        <div className="p-3 text-center text-gray-500 text-sm">
+                          No quotations created yet
+                        </div>
+                      )}
                     </div>
                           </div>
                   <div>
@@ -1687,71 +2079,70 @@ const MarketingSalespersonLeads = () => {
 
               {/* Proforma Invoice Tab */}
               {activeTab === 'Proforma Invoice' && (
-                <div className="space-y-6">
-                  {/* Create PI Button */}
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Performa Invoice</h3>
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2">
-                      <FileText className="w-4 h-4" />
-                      <span>Create PI</span>
-                    </button>
+                <div className="space-y-4 text-sm">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">PI Status</h3>
+                    <div className="rounded-md border border-gray-200 divide-y">
+                      <div className="p-3 flex items-center justify-between">
+                        <span className="text-gray-700">Latest PI</span>
+                        {pis.filter(pi => pi.leadId === selectedLead.id).length > 0 ? (
+                          <button 
+                            onClick={() => {
+                              const latestPI = pis.filter(pi => pi.leadId === selectedLead.id)
+                                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+                              setPiPopupData(latestPI);
+                              setShowPIPopup(true);
+                            }}
+                            className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700 text-xs"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> View
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-500">No PI created</span>
+                        )}
                       </div>
-                      
-                  {/* Branch Selection for PI Preview */}
-                  <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Company Branch for PI Preview:</label>
-                    <select 
-                      value={selectedBranch} 
-                      onChange={(e) => setSelectedBranch(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="ANODE">ANODE ELECTRIC PRIVATE LIMITED</option>
-                      <option value="SAMRIDDHI_CABLE">SAMRIDDHI CABLE INDUSTRIES PRIVATE LIMITED</option>
-                      <option value="SAMRIDDHI_INDUSTRIES">SAMRIDDHI INDUSTRIES</option>
-                    </select>
-                              </div>
-
-                  {/* PI Display - Using CorporateStandardInvoice component */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <div className="flex justify-center">
-                      <div className="bg-white shadow-2xl rounded-lg overflow-hidden border-2 border-gray-300 max-w-full" style={{width: '100%', maxWidth: '8.5in'}}>
-                 <div id="pi-preview-content" className="transform scale-75 origin-top-left" style={{width: '133.33%'}}>
-                   <MarketingCorporateStandardInvoice 
-                     selectedBranch={selectedBranch} 
-                     companyBranches={companyBranches} 
-                   />
-                              </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-              )}
-
-              {/* Follow Up Tab */}
-              {activeTab === 'Follow Up' && (
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Marketing Follow Up</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">Status:</span>
-                      <select className="text-sm border border-gray-300 rounded px-2 py-1 bg-white">
-                        <option value="all">All Status</option>
-                        <option value="connected">Connected</option>
-                        <option value="not-connected">Not Connected</option>
-                        <option value="next-meeting">Next Meeting</option>
-                        <option value="closed">Closed</option>
-                      </select>
+                      <div className="p-3 flex items-center justify-between">
+                        <span className="text-gray-700">PIs Sent</span>
+                        <span className="text-xs text-gray-500">{pis.filter(pi => pi.leadId === selectedLead.id).length}</span>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="bg-white border border-gray-200 rounded-lg">
-                    <MarketingFollowUpBase 
-                      status="all" 
-                      customData={leads} 
-                    />
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">PI Details</h3>
+                    <div className="rounded-md border border-gray-200 divide-y">
+                      {pis.filter(pi => pi.leadId === selectedLead.id).length > 0 ? (
+                        pis
+                          .filter(pi => pi.leadId === selectedLead.id)
+                          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                          .map((pi, index) => (
+                            <div key={pi.id} className="p-3 flex items-center justify-between">
+                              <div className="flex items-center space-x-4">
+                                <span className="text-gray-700">
+                                  {index === 0 ? 'Latest PI:' : `PI #${pis.filter(p => p.leadId === selectedLead.id).length - index}:`}
+                                </span>
+                                <span 
+                                  className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 hover:underline"
+                                  onClick={() => {
+                                    setPiPopupData(pi);
+                                    setShowPIPopup(true);
+                                  }}
+                                >
+                                  {pi.voucherNo}
+                                </span>
+                                <span className="text-xs text-gray-500">{pi.dated}</span>
+                              </div>
+                            </div>
+                          ))
+                      ) : (
+                        <div className="p-3 text-center text-gray-500 text-sm">
+                          No PIs created yet
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
+
                       </div>
                       
             {/* Modal Footer */}
@@ -1768,43 +2159,24 @@ const MarketingSalespersonLeads = () => {
               >
                 Done
               </button>
+              {activeTab === 'Quotation & Payments' && (
+                <button
+                  onClick={handleCreateQuotation}
+                  className="px-3 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 inline-flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Create Quotation
+                </button>
+              )}
               {activeTab === 'Proforma Invoice' && (
                 <button
-                  onClick={() => {
-                    const element = document.getElementById('pi-preview-content');
-                    const opt = {
-                      margin: [0.4, 0.4, 0.4, 0.4],
-                      filename: `PI-${companyBranches[selectedBranch].name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`,
-                      image: { type: 'jpeg', quality: 0.8 },
-                      html2canvas: { 
-                        scale: 1.1,
-                        useCORS: true,
-                        letterRendering: true,
-                        allowTaint: true,
-                        backgroundColor: '#ffffff'
-                      },
-                      jsPDF: { 
-                        unit: 'in', 
-                        format: 'a4', 
-                        orientation: 'portrait',
-                        compress: true,
-                        putOnlyUsedFonts: true
-                      },
-                      pagebreak: { 
-                        mode: ['avoid-all', 'css', 'legacy'],
-                        before: '.page-break-before',
-                        after: '.page-break-after',
-                        avoid: '.no-page-break'
-                      }
-                    };
-                    html2pdf().set(opt).from(element).save();
-                  }}
+                  onClick={handleCreatePI}
                   className="px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 inline-flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Print PDF
+                  Create PI
                 </button>
               )}
                           </div>
@@ -1977,9 +2349,7 @@ const MarketingSalespersonLeads = () => {
               <button
                 type="button"
                 className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded shadow-sm hover:bg-blue-700"
-                onClick={() => {
-                  alert('Add new payment functionality would open here');
-                }}
+                onClick={() => setShowAddPaymentModal(true)}
               >
                 Add Payment
               </button>
@@ -2043,7 +2413,7 @@ const MarketingSalespersonLeads = () => {
               </div>
               
               {/* Quotation Content */}
-              <div className="border-2 border-black p-6 bg-white">
+              <div id="quotation-preview-content" className="border-2 border-black p-6 bg-white">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-4">
                   <div>
@@ -2168,6 +2538,40 @@ const MarketingSalespersonLeads = () => {
               </button>
               <button
                 type="button"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 border border-transparent rounded shadow-sm hover:bg-green-700 flex items-center gap-2"
+                onClick={() => {
+                  const element = document.getElementById('quotation-preview-content');
+                  if (element) {
+                    const opt = {
+                      margin: [0.4, 0.4, 0.4, 0.4],
+                      filename: `Quotation-${quotationPopupData.quotationNumber}-${quotationPopupData.customer.name.replace(/\s+/g, '-')}.pdf`,
+                      image: { type: 'jpeg', quality: 0.8 },
+                      html2canvas: { 
+                        scale: 1.1,
+                        useCORS: true,
+                        letterRendering: true,
+                        allowTaint: true,
+                        backgroundColor: '#ffffff'
+                      },
+                      jsPDF: { 
+                        unit: 'in', 
+                        format: 'a4', 
+                        orientation: 'portrait',
+                        compress: true,
+                        putOnlyUsedFonts: true
+                      }
+                    };
+                    html2pdf().set(opt).from(element).save();
+                  } else {
+                    alert('No quotation content to download');
+                  }
+                }}
+              >
+                <Download className="w-4 h-4" />
+                Download PDF
+              </button>
+              <button
+                type="button"
                 className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded shadow-sm hover:bg-blue-700"
                 onClick={() => {
                   alert('Print functionality would open here');
@@ -2175,6 +2579,636 @@ const MarketingSalespersonLeads = () => {
               >
                 Print
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PI Modal */}
+      {showPIModal && selectedLead && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-semibold text-gray-900">Create Proforma Invoice - {selectedLead.name}</h2>
+              <button 
+                onClick={() => setShowPIModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <form className="space-y-6">
+                {/* General Invoice Details */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">General Invoice Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Select Branch *</label>
+                      <select
+                        value={piFormData.branch}
+                        onChange={(e) => handlePIInputChange('branch', e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="ANODE">ANODE ELECTRIC PRIVATE LIMITED</option>
+                        <option value="SAMRIDDHI_CABLE">SAMRIDDHI CABLE INDUSTRIES PRIVATE LIMITED</option>
+                        <option value="SAMRIDDHI_INDUSTRIES">SAMRIDDHI INDUSTRIES</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Voucher No. *</label>
+                      <input
+                        type="text"
+                        value={piFormData.voucherNo}
+                        onChange={(e) => handlePIInputChange('voucherNo', e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Dated *</label>
+                      <input
+                        type="date"
+                        value={piFormData.dated}
+                        onChange={(e) => handlePIInputChange('dated', e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Payment Terms *</label>
+                      <select
+                        value={piFormData.paymentTerms}
+                        onChange={(e) => handlePIInputChange('paymentTerms', e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="ADVANCE">ADVANCE</option>
+                        <option value="NET 30">NET 30</option>
+                        <option value="NET 60">NET 60</option>
+                        <option value="CASH">CASH</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Buyer's Ref. *</label>
+                      <input
+                        type="text"
+                        value={piFormData.buyersRef}
+                        onChange={(e) => handlePIInputChange('buyersRef', e.target.value)}
+                        className="w-full px-3 py-2.5 border border-orange-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Other References *</label>
+                      <select
+                        value={piFormData.otherReferences}
+                        onChange={(e) => handlePIInputChange('otherReferences', e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="DIRECT SALE">DIRECT SALE</option>
+                        <option value="REFERRAL">REFERRAL</option>
+                        <option value="WEBSITE">WEBSITE</option>
+                        <option value="COLD CALL">COLD CALL</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Dispatched Through *</label>
+                      <select
+                        value={piFormData.dispatchedThrough}
+                        onChange={(e) => handlePIInputChange('dispatchedThrough', e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="BY TRANSPORT">BY TRANSPORT</option>
+                        <option value="BY COURIER">BY COURIER</option>
+                        <option value="BY HAND">BY HAND</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Destination *</label>
+                      <input
+                        type="text"
+                        value={piFormData.destination}
+                        onChange={(e) => handlePIInputChange('destination', e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label className="text-sm font-medium text-gray-700">Delivery Terms *</label>
+                    <input
+                      type="text"
+                      value={piFormData.deliveryTerms}
+                      onChange={(e) => handlePIInputChange('deliveryTerms', e.target.value)}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Items Section */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Items</h3>
+                    <button 
+                      type="button" 
+                      onClick={addPIItem}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>+ Add Item</span>
+                    </button>
+                  </div>
+
+                  {piFormData.items.map((item, index) => (
+                    <div key={item.id} className="bg-white p-4 rounded-lg border border-gray-200 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Description</label>
+                          <select
+                            value={item.description}
+                            onChange={(e) => handlePIItemChange(index, 'description', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            required
+                          >
+                            <option value="">Select Description</option>
+                            <option value="COVERED CONDUCTOR 34 SQMM">COVERED CONDUCTOR 34 SQMM</option>
+                            <option value="COVERED CONDUCTOR 25 SQMM">COVERED CONDUCTOR 25 SQMM</option>
+                            <option value="COVERED CONDUCTOR 16 SQMM">COVERED CONDUCTOR 16 SQMM</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Sub Description</label>
+                          <select
+                            value={item.subDescription}
+                            onChange={(e) => handlePIItemChange(index, 'subDescription', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            required
+                          >
+                            <option value="">Select Sub Description</option>
+                            <option value="COVERED CONDUCTOR 34SQMM XLPE 3 LAYER">COVERED CONDUCTOR 34SQMM XLPE 3 LAYER</option>
+                            <option value="COVERED CONDUCTOR 25SQMM XLPE 3 LAYER">COVERED CONDUCTOR 25SQMM XLPE 3 LAYER</option>
+                            <option value="COVERED CONDUCTOR 16SQMM XLPE 3 LAYER">COVERED CONDUCTOR 16SQMM XLPE 3 LAYER</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">HSN/SAC</label>
+                          <input
+                            type="text"
+                            value={item.hsnSac}
+                            onChange={(e) => handlePIItemChange(index, 'hsnSac', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Due On</label>
+                          <input
+                            type="date"
+                            value={item.dueOn}
+                            onChange={(e) => handlePIItemChange(index, 'dueOn', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Quantity</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => handlePIItemChange(index, 'quantity', parseFloat(e.target.value) || 0)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Unit</label>
+                          <select
+                            value={item.unit}
+                            onChange={(e) => handlePIItemChange(index, 'unit', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          >
+                            <option value="MTR">MTR</option>
+                            <option value="Nos">Nos</option>
+                            <option value="Kg">Kg</option>
+                            <option value="Set">Set</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Rate (Auto-Calculated)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.rate}
+                            onChange={(e) => handlePIItemChange(index, 'rate', parseFloat(e.target.value) || 0)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Amount (Auto-Calculated)</label>
+                          <input
+                            type="number"
+                            value={item.amount}
+                            readOnly
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm"
+                          />
+                        </div>
+                      </div>
+                      {piFormData.items.length > 1 && (
+                        <div className="mt-4 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => removePIItem(index)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded flex items-center space-x-1"
+                          >
+                            <X className="h-4 w-4" />
+                            <span>Remove Item</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Financial Summary */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Summary</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">IGST (18%) - Auto-Calculated</label>
+                      <input
+                        type="text"
+                        value={`₹${piFormData.taxAmount.toFixed(2)}`}
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Total Amount - Auto-Calculated</label>
+                      <input
+                        type="text"
+                        value={`₹${piFormData.total.toFixed(2)}`}
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Amount in Words - Auto-Generated</label>
+                      <input
+                        type="text"
+                        value={piFormData.amountInWords}
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bank Details */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
+                      <span className="text-white text-xs">🏦</span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">Bank Details (Separate Fields)</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Account Holder's Name</label>
+                      <input
+                        type="text"
+                        value={piFormData.bankDetails.accountHolderName}
+                        onChange={(e) => handlePIInputChange('bankDetails', {...piFormData.bankDetails, accountHolderName: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Account Number</label>
+                      <input
+                        type="text"
+                        value={piFormData.bankDetails.accountNumber}
+                        onChange={(e) => handlePIInputChange('bankDetails', {...piFormData.bankDetails, accountNumber: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">IFSC Code (Separate Field)</label>
+                      <input
+                        type="text"
+                        value={piFormData.bankDetails.ifscCode}
+                        onChange={(e) => handlePIInputChange('bankDetails', {...piFormData.bankDetails, ifscCode: e.target.value})}
+                        className="w-full px-3 py-2 border border-orange-200 rounded-lg bg-orange-50 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Bank Name</label>
+                      <select
+                        value={piFormData.bankDetails.bankName}
+                        onChange={(e) => handlePIInputChange('bankDetails', {...piFormData.bankDetails, bankName: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="ICICI BANK">ICICI BANK</option>
+                        <option value="HDFC BANK">HDFC BANK</option>
+                        <option value="SBI">SBI</option>
+                        <option value="AXIS BANK">AXIS BANK</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Branch (Separate Field)</label>
+                      <input
+                        type="text"
+                        value={piFormData.bankDetails.branch}
+                        onChange={(e) => handlePIInputChange('bankDetails', {...piFormData.bankDetails, branch: e.target.value})}
+                        className="w-full px-3 py-2 border border-green-200 rounded-lg bg-green-50 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Bank Code (Separate Field)</label>
+                      <input
+                        type="text"
+                        value={piFormData.bankDetails.bankCode}
+                        onChange={(e) => handlePIInputChange('bankDetails', {...piFormData.bankDetails, bankCode: e.target.value})}
+                        className="w-full px-3 py-2 border border-purple-200 rounded-lg bg-purple-50 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Actions */}
+                <div className="flex items-center justify-end pt-6 border-t space-x-3">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPIModal(false)}
+                    className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleSavePI}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                  >
+                    Save PI
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PI Preview Modal */}
+      {showPIPreview && selectedLead && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+            <div className="p-4 flex-1 overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">PI Preview - {selectedLead.name}</h3>
+                <button 
+                  onClick={() => setShowPIPreview(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                  aria-label="Close PI Preview"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              {/* PI Content */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <div className="flex justify-center">
+                  <div className="bg-white shadow-2xl rounded-lg overflow-hidden border-2 border-gray-300 max-w-full" style={{width: '100%', maxWidth: '8.5in'}}>
+                    <div id="pi-preview-content" className="transform scale-75 origin-top-left" style={{width: '133.33%'}}>
+                      <MarketingCorporateStandardInvoice 
+                        selectedBranch={piFormData.branch} 
+                        companyBranches={companyBranches} 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowPIPreview(false)}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 border border-transparent rounded shadow-sm hover:bg-green-700 flex items-center gap-2"
+                onClick={handlePIDownload}
+              >
+                <Download className="w-4 h-4" />
+                Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PI Popup Modal */}
+      {showPIPopup && piPopupData && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+            <div className="p-4 flex-1 overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">PI Preview - {piPopupData.voucherNo}</h3>
+                <button 
+                  onClick={() => setShowPIPopup(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                  aria-label="Close PI"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              {/* PI Content */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <div className="flex justify-center">
+                  <div className="bg-white shadow-2xl rounded-lg overflow-hidden border-2 border-gray-300 max-w-full" style={{width: '100%', maxWidth: '8.5in'}}>
+                    <div id="pi-popup-content" className="transform scale-75 origin-top-left" style={{width: '133.33%'}}>
+                      <MarketingCorporateStandardInvoice 
+                        selectedBranch={piPopupData.branch} 
+                        companyBranches={companyBranches}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowPIPopup(false)}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 border border-transparent rounded shadow-sm hover:bg-green-700 flex items-center gap-2"
+                onClick={() => {
+                  const element = document.getElementById('pi-popup-content');
+                  if (element) {
+                    const opt = {
+                      margin: [0.4, 0.4, 0.4, 0.4],
+                      filename: `PI-${piPopupData.voucherNo}-${new Date().toISOString().split('T')[0]}.pdf`,
+                      image: { type: 'jpeg', quality: 0.8 },
+                      html2canvas: { 
+                        scale: 1.1,
+                        useCORS: true,
+                        letterRendering: true,
+                        allowTaint: true,
+                        backgroundColor: '#ffffff'
+                      },
+                      jsPDF: { 
+                        unit: 'in', 
+                        format: 'a4', 
+                        orientation: 'portrait',
+                        compress: true,
+                        putOnlyUsedFonts: true
+                      }
+                    };
+                    html2pdf().set(opt).from(element).save();
+                  } else {
+                    alert('No PI content to download');
+                  }
+                }}
+              >
+                <Download className="w-4 h-4" />
+                Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Payment Modal */}
+      {showAddPaymentModal && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Add New Payment</h3>
+                <button
+                  onClick={() => setShowAddPaymentModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <form className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
+                  <input
+                    type="number"
+                    name="amount"
+                    value={paymentFormData.amount}
+                    onChange={handlePaymentInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter amount"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method *</label>
+                  <select
+                    name="paymentMethod"
+                    value={paymentFormData.paymentMethod}
+                    onChange={handlePaymentInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="Cash">Cash</option>
+                    <option value="Card">Card</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                  <input
+                    type="date"
+                    name="dueDate"
+                    value={paymentFormData.dueDate}
+                    onChange={handlePaymentInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Paid Date</label>
+                  <input
+                    type="date"
+                    name="paidDate"
+                    value={paymentFormData.paidDate}
+                    onChange={handlePaymentInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reference</label>
+                  <input
+                    type="text"
+                    name="reference"
+                    value={paymentFormData.reference}
+                    onChange={handlePaymentInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Payment reference"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select
+                    name="status"
+                    value={paymentFormData.status}
+                    onChange={handlePaymentInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="paid">Paid</option>
+                    <option value="pending">Pending</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </form>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => setShowAddPaymentModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddPayment}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Add Payment
+                </button>
+              </div>
             </div>
           </div>
         </div>

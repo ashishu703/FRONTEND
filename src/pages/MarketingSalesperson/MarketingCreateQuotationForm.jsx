@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Plus, DollarSign } from 'lucide-react';
+import { X, Plus, DollarSign, Eye, Download } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 
 // CreateQuotationForm Component for Marketing Salesperson
 const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
@@ -42,6 +43,8 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
       logo: 'Samriddhi Industries - Innovation & Trust.....'
     }
   };
+
+  const [showPreview, setShowPreview] = useState(false);
 
   const [quotationData, setQuotationData] = useState({
     quotationNumber: `ANQ${Date.now().toString().slice(-6)}`,
@@ -144,6 +147,63 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
         taxAmount,
         total
       }));
+    }
+  };
+
+  // Check if all required fields are filled
+  const isFormValid = () => {
+    const { billTo, items } = quotationData;
+    
+    // Check bill-to information
+    if (!billTo.business || !billTo.phone || !billTo.address || !billTo.gstNo || !billTo.state) {
+      return false;
+    }
+    
+    // Check items
+    if (items.length === 0) return false;
+    
+    return items.every(item => 
+      item.productName && 
+      item.quantity > 0 && 
+      item.buyerRate > 0
+    );
+  };
+
+  const handlePreview = () => {
+    if (isFormValid()) {
+      setShowPreview(true);
+    } else {
+      alert('Please fill all required fields before previewing');
+    }
+  };
+
+  const handleDownload = () => {
+    if (isFormValid()) {
+      const element = document.getElementById('quotation-preview-content');
+      if (element) {
+        const opt = {
+          margin: [0.4, 0.4, 0.4, 0.4],
+          filename: `Quotation-${quotationData.quotationNumber}-${quotationData.billTo.business.replace(/\s+/g, '-')}.pdf`,
+          image: { type: 'jpeg', quality: 0.8 },
+          html2canvas: { 
+            scale: 1.1,
+            useCORS: true,
+            letterRendering: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff'
+          },
+          jsPDF: { 
+            unit: 'in', 
+            format: 'a4', 
+            orientation: 'portrait',
+            compress: true,
+            putOnlyUsedFonts: true
+          }
+        };
+        html2pdf().set(opt).from(element).save();
+      }
+    } else {
+      alert('Please fill all required fields before downloading');
     }
   };
 
@@ -427,7 +487,35 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
             </div>
 
             {/* Form Actions */}
-            <div className="flex items-center justify-end pt-6 border-t">
+            <div className="flex items-center justify-between pt-6 border-t">
+              <div className="flex gap-3">
+                <button 
+                  type="button" 
+                  onClick={handlePreview}
+                  disabled={!isFormValid()}
+                  className={`px-4 py-2 rounded-md transition-colors flex items-center gap-2 ${
+                    isFormValid() 
+                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  <Eye className="w-4 h-4" />
+                  Preview
+                </button>
+                <button 
+                  type="button" 
+                  onClick={handleDownload}
+                  disabled={!isFormValid()}
+                  className={`px-4 py-2 rounded-md transition-colors flex items-center gap-2 ${
+                    isFormValid() 
+                      ? 'bg-green-600 text-white hover:bg-green-700' 
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </button>
+              </div>
               <div className="flex gap-3">
                 <button 
                   type="button" 
@@ -447,6 +535,162 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
           </form>
         </div>
       </div>
+
+      {/* Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="p-4 flex-1 overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Quotation Preview - {quotationData.billTo.business}</h3>
+                <button 
+                  onClick={() => setShowPreview(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                  aria-label="Close preview"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              {/* Quotation Preview Content */}
+              <div id="quotation-preview-content" className="border-2 border-black p-6 bg-white">
+                {/* Header */}
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h1 className="text-xl font-bold">{companyBranches[quotationData.selectedBranch].name}</h1>
+                    <p className="text-sm font-semibold text-gray-700">{companyBranches[quotationData.selectedBranch].gstNumber}</p>
+                    <p className="text-xs">{companyBranches[quotationData.selectedBranch].description}</p>
+                  </div>
+                  <div className="text-right">
+                    <img
+                      src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
+                      alt="Company Logo"
+                      className="h-12 w-auto bg-white p-1 rounded"
+                    />
+                  </div>
+                </div>
+                
+                {/* Company Details */}
+                <div className="border-2 border-black p-4 mb-4">
+                  <h3 className="font-bold mb-2">Company Details</h3>
+                  <p className="text-sm">{companyBranches[quotationData.selectedBranch].address}</p>
+                  <p className="text-sm">Tel: {companyBranches[quotationData.selectedBranch].tel}</p>
+                  <p className="text-sm">Web: {companyBranches[quotationData.selectedBranch].web}</p>
+                  <p className="text-sm">Email: {companyBranches[quotationData.selectedBranch].email}</p>
+                </div>
+              
+                {/* Quotation Details Table */}
+                <div className="border border-black p-4 mb-4">
+                  <h3 className="font-bold mb-2">Quotation Details</h3>
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-black">
+                        <th className="text-left p-2 border-r border-black">Quotation Date</th>
+                        <th className="text-left p-2 border-r border-black">Quotation Number</th>
+                        <th className="text-left p-2">Valid Upto</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="p-2 border-r border-black">{quotationData.quotationDate}</td>
+                        <td className="p-2 border-r border-black">{quotationData.quotationNumber}</td>
+                        <td className="p-2">{quotationData.validUpto}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Customer Details */}
+                <div className="border border-black p-4 mb-4">
+                  <h3 className="font-bold mb-2">Bill To:</h3>
+                  <p className="font-semibold">{quotationData.billTo.business}</p>
+                  <p>{quotationData.billTo.address}</p>
+                  <p>Phone: {quotationData.billTo.phone}</p>
+                  <p>GST: {quotationData.billTo.gstNo}</p>
+                  <p>State: {quotationData.billTo.state}</p>
+                </div>
+                
+                {/* Items Table */}
+                <div className="border border-black p-4 mb-4">
+                  <h3 className="font-bold mb-2">Items</h3>
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-black">
+                        <th className="text-left p-2 border-r border-black">Description</th>
+                        <th className="text-center p-2 border-r border-black">Quantity</th>
+                        <th className="text-right p-2 border-r border-black">Unit Price</th>
+                        <th className="text-right p-2">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {quotationData.items.map((item, index) => (
+                        <tr key={index}>
+                          <td className="p-2 border-r border-black">{item.productName}</td>
+                          <td className="p-2 text-center border-r border-black">{item.quantity} {item.unit}</td>
+                          <td className="p-2 text-right border-r border-black">₹{item.buyerRate.toFixed(2)}</td>
+                          <td className="p-2 text-right">₹{item.amount.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Totals */}
+                <div className="border border-black p-4 mb-4">
+                  <div className="flex justify-end">
+                    <div className="w-64">
+                      <div className="flex justify-between p-2 border-b">
+                        <span>Subtotal:</span>
+                        <span>₹{quotationData.subtotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between p-2 border-b">
+                        <span>GST ({quotationData.taxRate}%):</span>
+                        <span>₹{quotationData.taxAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between p-2 font-bold">
+                        <span>Total:</span>
+                        <span>₹{quotationData.total.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Terms & Conditions */}
+                <div className="border border-black p-4 mb-4">
+                  <h3 className="font-bold mb-2">Terms & Conditions</h3>
+                  <p className="text-sm whitespace-pre-line">{quotationData.terms}</p>
+                </div>
+                
+                {/* Footer */}
+                <div className="text-right text-xs mt-4">
+                  <p className="mb-4">
+                    For <strong>{companyBranches[quotationData.selectedBranch].name}</strong>
+                  </p>
+                  <p className="mb-8">This is computer generated quotation no signature required.</p>
+                  <p className="font-bold">Authorized Signatory</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowPreview(false)}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 border border-transparent rounded shadow-sm hover:bg-green-700"
+                onClick={handleDownload}
+              >
+                Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
