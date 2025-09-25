@@ -1487,7 +1487,9 @@ const MarketingSalespersonLeads = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen pb-16">
+    <div className="p-6 bg-gray-50 min-h-screen pb-16" 
+         onMouseDown={(e) => e.stopPropagation()}
+         onClick={(e) => e.stopPropagation()}>
       <style jsx>{`
         .overflow-x-auto::-webkit-scrollbar {
           height: 8px;
@@ -1559,9 +1561,15 @@ const MarketingSalespersonLeads = () => {
 
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
-          <table className="min-w-full divide-y divide-gray-200" style={{minWidth: '1200px'}}>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+           onMouseDown={(e) => e.stopPropagation()}
+           onClick={(e) => e.stopPropagation()}>
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100" 
+             onMouseDown={(e) => e.stopPropagation()}
+             onClick={(e) => e.stopPropagation()}>
+          <table className="min-w-full divide-y divide-gray-200" style={{minWidth: '1200px'}}
+                 onMouseDown={(e) => e.stopPropagation()}
+                 onClick={(e) => e.stopPropagation()}>
             <thead className="bg-gray-50">
               {/* Filter Row */}
               {showFilters && (
@@ -1753,7 +1761,9 @@ const MarketingSalespersonLeads = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredLeads.length > 0 ? (
                 filteredLeads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-gray-50">
+                  <tr key={lead.id} className="hover:bg-gray-50" 
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {lead.leadId}
                     </td>

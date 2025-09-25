@@ -34,11 +34,12 @@ import {
 } from 'lucide-react';
 import AllLeads from './MarketingSalespersonLeads';
 import Visits from './MarketingSalespersonVisits';
+import TestVisits from './TestVisits';
 import Orders from './MarketingSalespersonOrders';
 import MarketingFollowUpBase from './FollowUp/MarketingFollowUpBase';
 import { useMarketingFollowUpData } from './FollowUp/MarketingFollowUpDataContext';
 
-const MarketingSalespersonDashboard = ({ activeView }) => {
+const MarketingSalespersonDashboard = ({ activeView, setActiveView }) => {
   const [selectedTab, setSelectedTab] = useState('overview');
   const { getLeadsByStatus, loading } = useMarketingFollowUpData();
 
@@ -59,6 +60,8 @@ const MarketingSalespersonDashboard = ({ activeView }) => {
       case 'follow-up-closed':
         return <MarketingFollowUpBase status="closed" customData={getLeadsByStatus('closed')} />;
       case 'visits':
+        console.log('Rendering Visits component - DEBUGGING');
+        console.log('Active view is:', activeView);
         return <Visits />;
       case 'orders':
         return <Orders />;
