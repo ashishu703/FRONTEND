@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Users, X, TrendingUp, Calendar, CheckCircle } from 'lucide-react';
+import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 
 const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => {
