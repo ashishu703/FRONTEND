@@ -221,7 +221,7 @@ const MarketingSalespersonToolbox = ({
     };
     
     // Update the customer in the context
-    updateCustomer(updatedCustomer);
+    updateCustomer(updatedCustomer.id, { visitingStatus: 'scheduled' });
     
     // Close the import modal
     setShowImportLeads(false);

@@ -138,6 +138,9 @@ const Visits = () => {
     customer.visitingStatus === 'cancelled'
   );
   
+  console.log('Filtering customers with visits:', customersWithVisits);
+  console.log('Customers with visitingStatus:', customers.map(c => ({ name: c.name, visitingStatus: c.visitingStatus })));
+  
   // Use dummy data if no real visits exist
   const visitsToShow = customersWithVisits.length > 0 ? customersWithVisits : dummyVisits;
   
