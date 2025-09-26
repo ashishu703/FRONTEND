@@ -37,188 +37,189 @@ const Visits = () => {
   console.log('Visits component is rendering...');
   
   try {
-  const { customers, updateCustomer, loading } = useMarketingSharedData();
+    const { customers, updateCustomer, loading } = useMarketingSharedData();
     console.log('MarketingSharedData loaded:', { customers, loading });
 
-  // Add some dummy visits data for demonstration
-  React.useEffect(() => {
-    console.log('Customers:', customers);
-    console.log('Has visiting status:', customers.some(c => c.visitingStatus));
-    
-    if (customers.length > 0 && !customers.some(c => c.visitingStatus)) {
-      console.log('Adding dummy visits...');
-      // Add visiting status to first few customers to create dummy visits
-      const customersToUpdate = customers.slice(0, 3).map((customer, index) => {
-        const updatedCustomer = {
-          ...customer,
-          visitingStatus: index === 0 ? 'scheduled' : index === 1 ? 'completed' : 'pending',
-          // Ensure all required fields exist
-          address: customer.address || '123 Business Street, City',
-          gstNo: customer.gstNo || '29ABCDE1234F1Z5',
-          productType: customer.productType || 'Cable',
-          state: customer.state || 'Maharashtra',
-          leadSource: customer.leadSource || 'Website'
-        };
-        console.log('Updated customer:', updatedCustomer);
-        return updatedCustomer;
-      });
+    // Add some dummy visits data for demonstration
+    React.useEffect(() => {
+      console.log('Customers:', customers);
+      console.log('Has visiting status:', customers.some(c => c.visitingStatus));
       
-      customersToUpdate.forEach(customer => {
-        updateCustomer(customer);
-      });
-    }
-  }, [customers, updateCustomer]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [showAddVisitModal, setShowAddVisitModal] = useState(false);
-  const [showEditVisitModal, setShowEditVisitModal] = useState(false);
-  const [selectedLead, setSelectedLead] = useState(null);
-  const [visitForm, setVisitForm] = useState({
-    leadId: '',
-    name: '',
-    phone: '',
-    address: '',
-    gstNo: '',
-    productType: '',
-    state: '',
-    leadSource: '',
-    visitDate: '',
-    visitTime: '',
-    purpose: '',
-    notes: '',
-    status: 'scheduled'
-  });
-  const [capturedPhotos, setCapturedPhotos] = useState({});
-  const [currentLocation, setCurrentLocation] = useState(null);
-
-  console.log('Visits component is rendering with customers:', customers);
-
-  // Create some dummy visits data for demonstration
-  const dummyVisits = [
-    {
-      id: 1,
-      name: 'Tech Solutions Inc',
-      phone: '+91 98765 43210',
-      address: '123 Business Street, Mumbai, Maharashtra',
-      gstNo: '29ABCDE1234F1Z5',
-      productType: 'Cable',
-      state: 'Maharashtra',
-      leadSource: 'Website',
-      visitingStatus: 'scheduled'
-    },
-    {
-      id: 2,
-      name: 'Marketing Agency',
-      phone: '+91 87654 32109',
-      address: '456 Corporate Avenue, Delhi, Delhi',
-      gstNo: '27FGHIJ5678K2L6',
-      productType: 'Wire',
-      state: 'Delhi',
-      leadSource: 'Social Media',
-      visitingStatus: 'completed'
-    },
-    {
-      id: 3,
-      name: 'Startup Ventures',
-      phone: '+91 76543 21098',
-      address: '789 Innovation Drive, Ahmedabad, Gujarat',
-      gstNo: '24MNOPQ9012R3S7',
-      productType: 'Conductor',
-      state: 'Gujarat',
-      leadSource: 'Referral',
-      visitingStatus: 'pending'
-    }
-  ];
-
-  // Filter customers that have visits or can have visits scheduled
-  const customersWithVisits = customers.filter(customer => 
-    customer.visitingStatus === 'scheduled' || 
-    customer.visitingStatus === 'completed' || 
-    customer.visitingStatus === 'pending' || 
-    customer.visitingStatus === 'cancelled'
-  );
-  
-  console.log('Filtering customers with visits:', customersWithVisits);
-  console.log('Customers with visitingStatus:', customers.map(c => ({ name: c.name, visitingStatus: c.visitingStatus })));
-  
-  // Use dummy data if no real visits exist
-  const visitsToShow = customersWithVisits.length > 0 ? customersWithVisits : dummyVisits;
-  
-  console.log('All customers:', customers);
-  console.log('Customers with visits:', customersWithVisits);
-  console.log('Visits to show:', visitsToShow);
-
-  const filteredLeads = customersWithVisits.filter(customer => {
-    const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.business?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === 'all' || customer.visitingStatus === filterStatus;
-    return matchesSearch && matchesFilter;
-  });
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'scheduled':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'scheduled':
-        return <Calendar className="w-4 h-4" />;
-      case 'completed':
-        return <CheckCircle className="w-4 h-4" />;
-      case 'pending':
-        return <Clock className="w-4 h-4" />;
-      case 'cancelled':
-        return <XCircle className="w-4 h-4" />;
-      default:
-        return <AlertCircle className="w-4 h-4" />;
-    }
-  };
-
-  const handleAddVisit = () => {
-    setShowAddVisitModal(true);
-    setVisitForm({
+      if (customers.length > 0 && !customers.some(c => c.visitingStatus)) {
+        console.log('Adding dummy visits...');
+        // Add visiting status to first few customers to create dummy visits
+        const customersToUpdate = customers.slice(0, 3).map((customer, index) => {
+          const updatedCustomer = {
+            ...customer,
+            visitingStatus: index === 0 ? 'scheduled' : index === 1 ? 'completed' : 'pending',
+            // Ensure all required fields exist
+            address: customer.address || '123 Business Street, City',
+            gstNo: customer.gstNo || '29ABCDE1234F1Z5',
+            productType: customer.productType || 'Cable',
+            state: customer.state || 'Maharashtra',
+            leadSource: customer.leadSource || 'Website'
+          };
+          console.log('Updated customer:', updatedCustomer);
+          return updatedCustomer;
+        });
+        
+        customersToUpdate.forEach(customer => {
+          updateCustomer(customer);
+        });
+      }
+    }, [customers, updateCustomer]);
+    
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [showAddVisitModal, setShowAddVisitModal] = useState(false);
+    const [showEditVisitModal, setShowEditVisitModal] = useState(false);
+    const [selectedLead, setSelectedLead] = useState(null);
+    const [visitForm, setVisitForm] = useState({
+      leadId: '',
+      name: '',
+      phone: '',
+      address: '',
+      gstNo: '',
+      productType: '',
+      state: '',
+      leadSource: '',
       visitDate: '',
       visitTime: '',
       purpose: '',
       notes: '',
       status: 'scheduled'
     });
-  };
+    const [capturedPhotos, setCapturedPhotos] = useState({});
+    const [currentLocation, setCurrentLocation] = useState(null);
 
-  const handleEditVisit = (lead) => {
-    setSelectedLead(lead);
-    setVisitForm({
-      visitDate: lead.visitDate || '',
-      visitTime: lead.visitTime || '',
-      purpose: lead.purpose || '',
-      notes: lead.notes || '',
-      status: lead.visitingStatus || 'scheduled'
+    console.log('Visits component is rendering with customers:', customers);
+
+    // Create some dummy visits data for demonstration
+    const dummyVisits = [
+      {
+        id: 1,
+        name: 'Tech Solutions Inc',
+        phone: '+91 98765 43210',
+        address: '123 Business Street, Mumbai, Maharashtra',
+        gstNo: '29ABCDE1234F1Z5',
+        productType: 'Cable',
+        state: 'Maharashtra',
+        leadSource: 'Website',
+        visitingStatus: 'scheduled'
+      },
+      {
+        id: 2,
+        name: 'Marketing Agency',
+        phone: '+91 87654 32109',
+        address: '456 Corporate Avenue, Delhi, Delhi',
+        gstNo: '27FGHIJ5678K2L6',
+        productType: 'Wire',
+        state: 'Delhi',
+        leadSource: 'Social Media',
+        visitingStatus: 'completed'
+      },
+      {
+        id: 3,
+        name: 'Startup Ventures',
+        phone: '+91 76543 21098',
+        address: '789 Innovation Drive, Ahmedabad, Gujarat',
+        gstNo: '24MNOPQ9012R3S7',
+        productType: 'Conductor',
+        state: 'Gujarat',
+        leadSource: 'Referral',
+        visitingStatus: 'pending'
+      }
+    ];
+
+    // Filter customers that have visits or can have visits scheduled
+    const customersWithVisits = customers.filter(customer => 
+      customer.visitingStatus === 'scheduled' || 
+      customer.visitingStatus === 'completed' || 
+      customer.visitingStatus === 'pending' || 
+      customer.visitingStatus === 'cancelled'
+    );
+    
+    console.log('Filtering customers with visits:', customersWithVisits);
+    console.log('Customers with visitingStatus:', customers.map(c => ({ name: c.name, visitingStatus: c.visitingStatus })));
+    
+    // Use dummy data if no real visits exist
+    const visitsToShow = customersWithVisits.length > 0 ? customersWithVisits : dummyVisits;
+    
+    console.log('All customers:', customers);
+    console.log('Customers with visits:', customersWithVisits);
+    console.log('Visits to show:', visitsToShow);
+
+    const filteredLeads = customersWithVisits.filter(customer => {
+      const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           customer.business?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesFilter = filterStatus === 'all' || customer.visitingStatus === filterStatus;
+      return matchesSearch && matchesFilter;
     });
-    setShowEditVisitModal(true);
-  };
 
-  const handleSaveVisit = () => {
-    if (selectedLead) {
-      updateCustomer(selectedLead.id, {
-        ...visitForm,
-        visitingStatus: visitForm.status
+    const getStatusColor = (status) => {
+      switch (status) {
+        case 'scheduled':
+          return 'bg-blue-100 text-blue-800 border-blue-200';
+        case 'completed':
+          return 'bg-green-100 text-green-800 border-green-200';
+        case 'pending':
+          return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        case 'cancelled':
+          return 'bg-red-100 text-red-800 border-red-200';
+        default:
+          return 'bg-gray-100 text-gray-800 border-gray-200';
+      }
+    };
+
+    const getStatusIcon = (status) => {
+      switch (status) {
+        case 'scheduled':
+          return <Calendar className="w-4 h-4" />;
+        case 'completed':
+          return <CheckCircle className="w-4 h-4" />;
+        case 'pending':
+          return <Clock className="w-4 h-4" />;
+        case 'cancelled':
+          return <XCircle className="w-4 h-4" />;
+        default:
+          return <AlertCircle className="w-4 h-4" />;
+      }
+    };
+
+    const handleAddVisit = () => {
+      setShowAddVisitModal(true);
+      setVisitForm({
+        visitDate: '',
+        visitTime: '',
+        purpose: '',
+        notes: '',
+        status: 'scheduled'
       });
-    }
-    setShowAddVisitModal(false);
-    setShowEditVisitModal(false);
-    setSelectedLead(null);
-  };
+    };
+
+    const handleEditVisit = (lead) => {
+      setSelectedLead(lead);
+      setVisitForm({
+        visitDate: lead.visitDate || '',
+        visitTime: lead.visitTime || '',
+        purpose: lead.purpose || '',
+        notes: lead.notes || '',
+        status: lead.visitingStatus || 'scheduled'
+      });
+      setShowEditVisitModal(true);
+    };
+
+    const handleSaveVisit = () => {
+      if (selectedLead) {
+        updateCustomer(selectedLead.id, {
+          ...visitForm,
+          visitingStatus: visitForm.status
+        });
+      }
+      setShowAddVisitModal(false);
+      setShowEditVisitModal(false);
+      setSelectedLead(null);
+    };
 
   const handleCancelVisit = () => {
     setShowAddVisitModal(false);

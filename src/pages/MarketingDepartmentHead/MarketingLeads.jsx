@@ -798,6 +798,12 @@ const MarketingLeads = () => {
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-amber-600" />
+                    <span>Sales Status</span>
+                  </div>
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                  <div className="flex items-center space-x-2">
                     <FileText className="w-4 h-4 text-red-600" />
                     <span>GST No</span>
                   </div>
@@ -812,12 +818,6 @@ const MarketingLeads = () => {
                       />
                     </div>
                   )}
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4 text-amber-600" />
-                    <span>Sales Status</span>
-                  </div>
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
@@ -858,8 +858,8 @@ const MarketingLeads = () => {
                   <td className="px-6 py-5 text-base text-gray-900">{lead.assigned}</td>
                   <td className="px-4 py-4">{getStatusBadge(lead.visitingStatus, 'visiting')}</td>
                   <td className="px-4 py-4">{getStatusBadge(lead.paymentStatus, 'payment')}</td>
-                  <td className="px-6 py-5 text-base text-gray-700">{lead.gstNo}</td>
                   <td className="px-4 py-4">{getStatusBadge(lead.salesStatus, 'sales')}</td>
+                  <td className="px-6 py-5 text-base text-gray-700">{lead.gstNo}</td>
                   <td className="px-6 py-5 text-base text-gray-700">{lead.createdAt}</td>
                   <td className="px-4 py-4">
                     <div className="flex items-center space-x-2">

@@ -1,7 +1,7 @@
 import React from 'react';
 import MarketingHeadDashboard from './marketingHeadDashboard';
 import MarketingLeads from './MarketingLeads';
-import UserPerformance from './UserPerformance';
+import MarketingUserPerformance from './UserPerformance';
 import PaymentInfo from './PaymentInfo';
 import MarketingDepartmentUser from './MarketingDepartmentUser';
 import TodayVisit from './TodayVisit';
@@ -19,6 +19,7 @@ const MarketingDepartmentHeadDashboard = ({ activeView, setActiveView }) => {
   }, [activeView, setActiveView]);
 
   const renderContent = () => {
+    console.log('MarketingDepartmentHeadDashboard - activeView:', activeView);
     switch (activeView) {
       case 'marketing-dashboard':
         return <MarketingHeadDashboard setActiveView={setActiveView} />;
@@ -27,7 +28,8 @@ const MarketingDepartmentHeadDashboard = ({ activeView, setActiveView }) => {
       case 'marketing-leads':
         return <MarketingLeads />;
       case 'user-performance':
-        return <UserPerformance />;
+        console.log('MarketingDepartmentHeadDashboard: Rendering MarketingUserPerformance component');
+        return <MarketingUserPerformance />;
       case 'payment-info':
         return <PaymentInfo />;
       case 'marketing-department-users':
@@ -47,8 +49,7 @@ const MarketingDepartmentHeadDashboard = ({ activeView, setActiveView }) => {
 
   return (
     <div className="h-full">
-      
-      {renderContent() || <div className="p-4">No content to display</div>}
+      {renderContent()}
     </div>
   );
 };
