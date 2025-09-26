@@ -4,6 +4,7 @@ import DashboardContent from './salespersondashboard.jsx'
 import CustomerListContent from './salespersonleads.jsx'
 import StockManagement from './salespersonstock.jsx'
 import ProductsPage from './salespersonproducts.jsx'
+import ToolboxInterface from './ToolboxInterface.jsx'
 import FixedHeader from '../../Header.jsx'
 
 // Follow Up Components
@@ -60,6 +61,7 @@ export default function SalespersonLayout({ onLogout }) {
             {currentPage === 'customers' && <CustomerListContent />}
             {currentPage === 'stock' && <StockManagement />}
             {currentPage === 'products' && <ProductsPage />}
+            {currentPage === 'toolbox' && <ToolboxInterface />}
             
             {/* Render the appropriate follow-up component */}
             {Object.entries(followUpPages).map(([key, Component]) => (
