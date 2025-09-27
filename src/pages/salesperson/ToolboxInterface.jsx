@@ -36,56 +36,32 @@ const sections = [
     title: "Products",
     icon: Package,
     tools: [
-        { name: "Aerial Bunch Cable", description: "Overhead power distribution cable", icon: Image, imageUrl: "https://drive.google.com/uc?export=view&id=1YadL_KkgnKdqyzARdByfKmXXuKq3KCCB" },
-      { name: "Aluminium Conductor Galvanized Steel Reinforced", description: "ACSR conductor for transmission lines", icon: Image, imageUrl: "/images/aluminium-conductor-galvanized-steel.jpg" },
-      { name: "All Aluminium Alloy Conductor", description: "AAAC conductor for overhead lines", icon: Image, imageUrl: "/images/all-aluminium-alloy-conductor.jpg" },
-      { name: "Paper Cover Aluminium Conductor", description: "Traditional paper insulated conductor", icon: Image, imageUrl: "/images/paper-cover-aluminium-conductor.jpg" },
-      { name: "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable", description: "Single core power cable with PVC insulation", icon: Image, imageUrl: "/images/single-core-pvc-cable.jpg" },
-      { name: "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable", description: "Single core power cable with XLPE insulation", icon: Image, imageUrl: "/images/single-core-xlpe-cable.jpg" },
-      { name: "Multi Core PVC Insulated Aluminium Armoured Cable", description: "Multi-core power cable with aluminium armour", icon: Image, imageUrl: "/images/multi-core-pvc-armoured-cable.jpg" },
-      { name: "Multi Core XLPE Insulated Aluminium Armoured Cable", description: "Multi-core XLPE cable with aluminium armour", icon: Image, imageUrl: "/images/multi-core-xlpe-armoured-cable.jpg" },
-      { name: "Multi Core PVC Insulated Aluminium Unarmoured Cable", description: "Multi-core PVC cable without armour", icon: Image, imageUrl: "/images/multi-core-pvc-unarmoured-cable.jpg" },
-      { name: "Multi Core XLPE Insulated Aluminium Unarmoured Cable", description: "Multi-core XLPE cable without armour", icon: Image, imageUrl: "/images/multi-core-xlpe-unarmoured-cable.jpg" },
-      { name: "Multistrand Single Core Copper Cable", description: "Flexible single core copper cable", icon: Image, imageUrl: "/images/multistrand-single-core-copper-cable.jpg" },
-      { name: "Multi Core Copper Cable", description: "Multi-core copper power cable", icon: Image, imageUrl: "/images/multi-core-copper-cable.jpg" },
-      { name: "PVC Insulated Single Core Aluminium Cable", description: "Single core aluminium cable with PVC insulation", icon: Image, imageUrl: "/images/pvc-insulated-single-core-aluminium-cable.jpg" },
-      { name: "PVC Insulated Submersible Cable", description: "Water-resistant submersible cable", icon: Image, imageUrl: "/images/pvc-insulated-submersible-cable.jpg" },
-      { name: "PVC Insulated Multicore Aluminium Cable", description: "Multi-core aluminium cable with PVC insulation", icon: Image, imageUrl: "/images/pvc-insulated-multicore-aluminium-cable.jpg" },
-      { name: "Submersible Winding Wire", description: "Specialized winding wire for submersible applications", icon: Image, imageUrl: "/images/submersible-winding-wire.jpg" },
-      { name: "Twin Twisted Copper Wire", description: "Twisted pair copper wire", icon: Image, imageUrl: "/images/twin-twisted-copper-wire.jpg" },
-      { name: "Speaker Cable", description: "Audio speaker connection cable", icon: Image, imageUrl: "/images/speaker-cable.jpg" },
-      { name: "CCTV Cable", description: "Closed-circuit television cable", icon: Image, imageUrl: "/images/cctv-cable.jpg" },
-      { name: "LAN Cable", description: "Local area network cable", icon: Image, imageUrl: "/images/lan-cable.jpg" },
-      { name: "Automobile Cable", description: "Automotive electrical cable", icon: Image, imageUrl: "/images/automobile-cable.jpg" },
-      { name: "PV Solar Cable", description: "Photovoltaic solar panel cable", icon: Image, imageUrl: "/images/pv-solar-cable.jpg" },
-      { name: "Co Axial Cable", description: "Coaxial transmission cable", icon: Image, imageUrl: "/images/co-axial-cable.jpg" },
-      { name: "Uni-tube Unarmoured Optical Fibre Cable", description: "Single tube optical fibre cable", icon: Image, imageUrl: "/images/uni-tube-optical-fibre-cable.jpg" },
-      { name: "Armoured Unarmoured PVC Insulated Copper Control Cable", description: "Control cable for industrial applications", icon: Image, imageUrl: "/images/armoured-pvc-copper-control-cable.jpg" },
-      { name: "Telecom Switch Board Cables", description: "Telecommunications switchboard cable", icon: Image, imageUrl: "/images/telecom-switch-board-cables.jpg" },
-    ],
-  },
-  {
-    id: "product-rate-list",
-    title: "Product Rate List",
-    icon: DollarSign,
-    tools: [
-      { name: "Price Calculator", description: "Calculate product pricing", icon: Calculator },
-      { name: "Rate Comparison", description: "Compare different rates", icon: BarChart3 },
-      { name: "Bulk Pricing", description: "Bulk order calculations", icon: Database },
-      { name: "Discount Manager", description: "Manage discounts and offers", icon: Settings },
-      { name: "Cost Analysis", description: "Analyze cost structures", icon: Wrench },
-    ],
-  },
-  {
-    id: "calculators",
-    title: "Calculators",
-    icon: Calculator,
-    tools: [
-      { name: "Basic Calculator", description: "Standard calculations", icon: Calculator },
-      { name: "Scientific Calculator", description: "Advanced mathematical functions", icon: Settings },
-      { name: "Unit Converter", description: "Convert between units", icon: Wrench },
-      { name: "Financial Calculator", description: "Financial computations", icon: DollarSign },
-      { name: "Statistics Calculator", description: "Statistical analysis", icon: BarChart3 },
+        { name: "Aerial Bunch Cable", description: "Overhead power distribution cable", icon: Image, imageUrl: "/images/products/aerial bunch cable.jpeg" },
+      { name: "Aluminium Conductor Galvanized Steel Reinforced", description: "ACSR conductor for transmission lines", icon: Image, imageUrl: "/images/products/all aluminium alloy conductor.jpeg" },
+      { name: "All Aluminium Alloy Conductor", description: "AAAC conductor for overhead lines", icon: Image, imageUrl: "/images/products/all aluminium alloy conductor.jpeg" },
+      { name: "Paper Cover Aluminium Conductor", description: "Traditional paper insulated conductor", icon: Image, imageUrl: "/images/products/paper covered aluminium conductor.jpeg" },
+      { name: "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable", description: "Single core power cable with PVC insulation", icon: Image, imageUrl: "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg" },
+      { name: "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable", description: "Single core power cable with XLPE insulation", icon: Image, imageUrl: "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg" },
+      { name: "Multi Core PVC Insulated Aluminium Armoured Cable", description: "Multi-core power cable with aluminium armour", icon: Image, imageUrl: "/images/products/multi core pvc isulated aluminium armoured cable.jpeg" },
+      { name: "Multi Core XLPE Insulated Aluminium Armoured Cable", description: "Multi-core XLPE cable with aluminium armour", icon: Image, imageUrl: "/images/products/multi core xlpe insulated aluminium armoured cable.jpeg" },
+      { name: "Multi Core PVC Insulated Aluminium Unarmoured Cable", description: "Multi-core PVC cable without armour", icon: Image, imageUrl: "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg" },
+      { name: "Multi Core XLPE Insulated Aluminium Unarmoured Cable", description: "Multi-core XLPE cable without armour", icon: Image, imageUrl: "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg" },
+      { name: "Multistrand Single Core Copper Cable", description: "Flexible single core copper cable", icon: Image, imageUrl: "/images/products/multistrand single core copper cable.jpeg" },
+      { name: "Multi Core Copper Cable", description: "Multi-core copper power cable", icon: Image, imageUrl: "/images/products/multi core copper cable.jpeg" },
+      { name: "PVC Insulated Single Core Aluminium Cable", description: "Single core aluminium cable with PVC insulation", icon: Image, imageUrl: "/images/products/pvc insulated single core aluminium cables.jpeg" },
+      { name: "PVC Insulated Submersible Cable", description: "Water-resistant submersible cable", icon: Image, imageUrl: "/images/products/pvc insulated submersible cable.jpeg" },
+      { name: "PVC Insulated Multicore Aluminium Cable", description: "Multi-core aluminium cable with PVC insulation", icon: Image, imageUrl: "/images/products/pvc insulated multicore aluminium cable.jpeg" },
+      { name: "Submersible Winding Wire", description: "Specialized winding wire for submersible applications", icon: Image, imageUrl: "/images/products/submersible winding wire.jpeg" },
+      { name: "Twin Twisted Copper Wire", description: "Twisted pair copper wire", icon: Image, imageUrl: "/images/products/twin twisted copper wire.jpeg" },
+      { name: "Speaker Cable", description: "Audio speaker connection cable", icon: Image, imageUrl: "/images/products/speaker cable.jpeg" },
+      { name: "CCTV Cable", description: "Closed-circuit television cable", icon: Image, imageUrl: "/images/products/cctv cable.jpeg" },
+      { name: "LAN Cable", description: "Local area network cable", icon: Image, imageUrl: "/images/products/telecom switch board cables.jpeg" },
+      { name: "Automobile Cable", description: "Automotive electrical cable", icon: Image, imageUrl: "/images/products/automobile wire.jpeg" },
+      { name: "PV Solar Cable", description: "Photovoltaic solar panel cable", icon: Image, imageUrl: "/images/products/pv solar cable.jpeg" },
+      { name: "Co Axial Cable", description: "Coaxial transmission cable", icon: Image, imageUrl: "/images/products/co axial cable.jpeg" },
+      { name: "Uni-tube Unarmoured Optical Fibre Cable", description: "Single tube optical fibre cable", icon: Image, imageUrl: "/images/products/unitube unarmoured optical fibre cable.jpeg" },
+      { name: "Armoured Unarmoured PVC Insulated Copper Control Cable", description: "Control cable for industrial applications", icon: Image, imageUrl: "/images/products/armoured unarmoured pvc insulated copper control cable.jpeg" },
+      { name: "Telecom Switch Board Cables", description: "Telecommunications switchboard cable", icon: Image, imageUrl: "/images/products/telecom switch board cables.jpeg" },
     ],
   },
   {
@@ -101,32 +77,10 @@ const sections = [
       { name: "ALUMINIUM CONDUCTOR GALVANISED STEEL REINFORCED IS 398 PT-II : 1996", description: "Galvanised steel reinforced conductor specifications", icon: Shield, dataId: "aluminium-conductor-galvanised-steel" },
     ],
   },
-  {
-    id: "resources",
-    title: "Helping Calculators",
-    icon: FileText,
-    tools: [
-      { name: "TECHNICAL CALCULATIONS", description: "Advanced technical calculation tools", icon: Calculator },
-      { name: "CONVERSIONAL CALCULATIONS", description: "Unit conversion and calculation utilities", icon: Settings },
-      { name: "WIRE GAUGE CHART", description: "Wire gauge reference and calculations", icon: BarChart3 },
-      { name: "TEMPERATURE CORRECTION FACTORS kt FOR CONDUCTOR RESISTANCE TO CORRECT THE MEASURED RESISTANCE AT t°C TO 20°C", description: "Temperature correction factor calculations", icon: Wrench },
-    ],
-  },
-  {
-    id: "tech-document",
-    title: "Tech Document",
-    icon: CheckCircle,
-    tools: [
-      { name: "Approval", description: "Manage approval processes", icon: CheckCircle },
-      { name: "BIS Licence", description: "BIS licence documentation", icon: FileText },
-      { name: "GTP", description: "GTP documentation", icon: Shield },
-      { name: "Others", description: "Other technical documents", icon: Database },
-    ],
-  },
 ];
 
 const ToolboxInterface = () => {
-  const [activeSection, setActiveSection] = useState("product-rate-list");
+  const [activeSection, setActiveSection] = useState("products");
   const [selectedTableData, setSelectedTableData] = useState(null);
   const [isTableOpen, setIsTableOpen] = useState(false);
   const [selectedCalculator, setSelectedCalculator] = useState(null);
@@ -146,22 +100,22 @@ const ToolboxInterface = () => {
   const [isConversionCalculationsOpen, setIsConversionCalculationsOpen] = useState(false);
   const [isWireGaugeChartOpen, setIsWireGaugeChartOpen] = useState(false);
   const [isTemperatureCorrectionOpen, setIsTemperatureCorrectionOpen] = useState(false);
-  const [isApprovalSystemOpen, setIsApprovalSystemOpen] = useState(false);
-  const [isBISLicenceSystemOpen, setIsBISLicenceSystemOpen] = useState(false);
-  const [isGTPSystemOpen, setIsGTPSystemOpen] = useState(false);
-  const [isOthersSystemOpen, setIsOthersSystemOpen] = useState(false);
   
   // Sidebar state
   const [selectedLocation, setSelectedLocation] = useState("Anode Electric Private Limited");
   const [showBusinessCard, setShowBusinessCard] = useState(false);
   const [showCompanyEmails, setShowCompanyEmails] = useState(false);
   const [showLocations, setShowLocations] = useState(false);
+  const [showCalculators, setShowCalculators] = useState(false);
+  const [showHelpingCalculators, setShowHelpingCalculators] = useState(false);
   
   // Product detail state
   const [isProductDetailOpen, setIsProductDetailOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [isFileViewerOpen, setIsFileViewerOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isBusinessCardOpen, setIsBusinessCardOpen] = useState(false);
+  const [isCompanyEmailsOpen, setIsCompanyEmailsOpen] = useState(false);
 
   // Cable data from original toolbox-interface
   const cableData = [
@@ -629,15 +583,97 @@ const ToolboxInterface = () => {
         rows: tempCorrection.data.rows
       });
       setIsTableOpen(true);
-    } else if (tool.name === "Approval") {
-      setIsApprovalSystemOpen(true);
-    } else if (tool.name === "BIS Licence") {
-      setIsBISLicenceSystemOpen(true);
-    } else if (tool.name === "GTP") {
-      setIsGTPSystemOpen(true);
-    } else if (tool.name === "Others") {
-      setIsOthersSystemOpen(true);
     } else if (tool.name === "Aerial Bunch Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Aluminium Conductor Galvanized Steel Reinforced") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "All Aluminium Alloy Conductor") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Paper Cover Aluminium Conductor") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Multi Core PVC Insulated Aluminium Armoured Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Multi Core XLPE Insulated Aluminium Armoured Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Multi Core PVC Insulated Aluminium Unarmoured Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Multi Core XLPE Insulated Aluminium Unarmoured Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Multistrand Single Core Copper Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Multi Core Copper Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Business Card") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Brochure") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "GST Details") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Company Emails") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Location") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "PVC Insulated Single Core Aluminium Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "PVC Insulated Submersible Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "PVC Insulated Multicore Aluminium Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Submersible Winding Wire") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Twin Twisted Copper Wire") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Speaker Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "CCTV Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "LAN Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Automobile Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "PV Solar Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Co Axial Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Uni-tube Unarmoured Optical Fibre Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Armoured Unarmoured PVC Insulated Copper Control Cable") {
+      setSelectedProduct(tool.name);
+      setIsProductDetailOpen(true);
+    } else if (tool.name === "Telecom Switch Board Cables") {
       setSelectedProduct(tool.name);
       setIsProductDetailOpen(true);
     }
@@ -768,25 +804,705 @@ const ToolboxInterface = () => {
     setIsTemperatureCorrectionOpen(false);
   };
 
-  const closeApprovalSystem = () => {
-    setIsApprovalSystemOpen(false);
-  };
-
-  const closeBISLicenceSystem = () => {
-    setIsBISLicenceSystemOpen(false);
-  };
-
-  const closeGTPSystem = () => {
-    setIsGTPSystemOpen(false);
-  };
-
-  const closeOthersSystem = () => {
-    setIsOthersSystemOpen(false);
-  };
 
   const closeProductDetail = () => {
     setIsProductDetailOpen(false);
     setSelectedProduct("");
+  };
+
+  const getProductData = (productName) => {
+    const productData = {
+      "Aerial Bunch Cable": {
+        title: "Aerial Bunch Cable",
+        description: "Overhead power distribution cable for electrical transmission",
+        imageUrl: "/images/products/aerial bunch cable.jpeg",
+        priceList: [
+          { size: "1x16 sq.mm", price: "₹45.50/m", stock: "Available", image: "/images/aerial-bunch-cable-16mm.jpg" },
+          { size: "1x25 sq.mm", price: "₹68.75/m", stock: "Available", image: "/images/aerial-bunch-cable-25mm.jpg" },
+          { size: "1x35 sq.mm", price: "₹92.30/m", stock: "Available", image: "/images/aerial-bunch-cable-35mm.jpg" },
+          { size: "1x50 sq.mm", price: "₹125.80/m", stock: "Available", image: "/images/aerial-bunch-cable-50mm.jpg" },
+          { size: "1x70 sq.mm", price: "₹168.90/m", stock: "Available", image: "/images/aerial-bunch-cable-70mm.jpg" },
+          { size: "1x95 sq.mm", price: "₹215.60/m", stock: "Available", image: "/images/aerial-bunch-cable-95mm.jpg" },
+          { size: "1x120 sq.mm", price: "₹268.40/m", stock: "Available", image: "/images/aerial-bunch-cable-120mm.jpg" },
+          { size: "1x150 sq.mm", price: "₹325.70/m", stock: "Available", image: "/images/aerial-bunch-cable-150mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "11 kV",
+          conductor: "Aluminum",
+          insulation: "XLPE",
+          sheath: "PVC",
+          temperature: "-15°C to +90°C",
+          bendingRadius: "12 times cable diameter",
+          standards: "IS 7098 (Part 1) & IS 7098 (Part 2)"
+        }
+      },
+      "Aluminium Conductor Galvanized Steel Reinforced": {
+        title: "ACSR Conductor",
+        description: "Aluminium Conductor Steel Reinforced for transmission lines",
+        imageUrl: "/images/products/all aluminium alloy conductor.jpeg",
+        priceList: [
+          { size: "25 sq.mm", price: "₹85.50/m", stock: "Available", image: "/images/acsr-25mm.jpg" },
+          { size: "50 sq.mm", price: "₹165.80/m", stock: "Available", image: "/images/acsr-50mm.jpg" },
+          { size: "70 sq.mm", price: "₹225.40/m", stock: "Available", image: "/images/acsr-70mm.jpg" },
+          { size: "95 sq.mm", price: "₹298.60/m", stock: "Available", image: "/images/acsr-95mm.jpg" },
+          { size: "120 sq.mm", price: "₹365.20/m", stock: "Available", image: "/images/acsr-120mm.jpg" },
+          { size: "150 sq.mm", price: "₹445.80/m", stock: "Available", image: "/images/acsr-150mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "33 kV",
+          conductor: "Aluminum + Steel",
+          insulation: "Bare Conductor",
+          sheath: "Galvanized Steel",
+          temperature: "-40°C to +80°C",
+          bendingRadius: "15 times conductor diameter",
+          standards: "IS 398 (Part 4)"
+        }
+      },
+      "All Aluminium Alloy Conductor": {
+        title: "AAAC Conductor",
+        description: "All Aluminium Alloy Conductor for overhead lines",
+        imageUrl: "/images/products/all aluminium alloy conductor.jpeg",
+        priceList: [
+          { size: "25 sq.mm", price: "₹78.50/m", stock: "Available", image: "/images/aaac-25mm.jpg" },
+          { size: "50 sq.mm", price: "₹145.20/m", stock: "Available", image: "/images/aaac-50mm.jpg" },
+          { size: "70 sq.mm", price: "₹198.80/m", stock: "Available", image: "/images/aaac-70mm.jpg" },
+          { size: "95 sq.mm", price: "₹265.40/m", stock: "Available", image: "/images/aaac-95mm.jpg" },
+          { size: "120 sq.mm", price: "₹325.60/m", stock: "Available", image: "/images/aaac-120mm.jpg" },
+          { size: "150 sq.mm", price: "₹398.20/m", stock: "Available", image: "/images/aaac-150mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "33 kV",
+          conductor: "Aluminum Alloy",
+          insulation: "Bare Conductor",
+          sheath: "None",
+          temperature: "-40°C to +80°C",
+          bendingRadius: "12 times conductor diameter",
+          standards: "IS 398 (Part 4)"
+        }
+      },
+      "Paper Cover Aluminium Conductor": {
+        title: "Paper Cover Aluminium Conductor",
+        description: "Traditional paper insulated conductor for overhead lines",
+        imageUrl: "/images/products/paper covered aluminium conductor.jpeg",
+        priceList: [
+          { size: "25 sq.mm", price: "₹65.80/m", stock: "Available", image: "/images/paper-25mm.jpg" },
+          { size: "50 sq.mm", price: "₹125.40/m", stock: "Available", image: "/images/paper-50mm.jpg" },
+          { size: "70 sq.mm", price: "₹168.90/m", stock: "Available", image: "/images/paper-70mm.jpg" },
+          { size: "95 sq.mm", price: "₹225.60/m", stock: "Available", image: "/images/paper-95mm.jpg" },
+          { size: "120 sq.mm", price: "₹285.40/m", stock: "Available", image: "/images/paper-120mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "11 kV",
+          conductor: "Aluminum",
+          insulation: "Paper",
+          sheath: "None",
+          temperature: "-20°C to +70°C",
+          bendingRadius: "10 times conductor diameter",
+          standards: "IS 398 (Part 1)"
+        }
+      },
+      "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable": {
+        title: "Single Core PVC Cable",
+        description: "Single core power cable with PVC insulation",
+        imageUrl: "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg",
+        priceList: [
+          { size: "25 sq.mm", price: "₹95.50/m", stock: "Available", image: "/images/pvc-25mm.jpg" },
+          { size: "50 sq.mm", price: "₹185.20/m", stock: "Available", image: "/images/pvc-50mm.jpg" },
+          { size: "70 sq.mm", price: "₹245.80/m", stock: "Available", image: "/images/pvc-70mm.jpg" },
+          { size: "95 sq.mm", price: "₹325.40/m", stock: "Available", image: "/images/pvc-95mm.jpg" },
+          { size: "120 sq.mm", price: "₹398.60/m", stock: "Available", image: "/images/pvc-120mm.jpg" },
+          { size: "150 sq.mm", price: "₹485.20/m", stock: "Available", image: "/images/pvc-150mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "1.1 kV",
+          conductor: "Aluminum/Copper",
+          insulation: "PVC",
+          sheath: "PVC",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "6 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable": {
+        title: "Single Core XLPE Cable",
+        description: "Single core power cable with XLPE insulation",
+        imageUrl: "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg",
+        priceList: [
+          { size: "25 sq.mm", price: "₹125.80/m", stock: "Available", image: "/images/xlpe-25mm.jpg" },
+          { size: "50 sq.mm", price: "₹245.60/m", stock: "Available", image: "/images/xlpe-50mm.jpg" },
+          { size: "70 sq.mm", price: "₹325.40/m", stock: "Available", image: "/images/xlpe-70mm.jpg" },
+          { size: "95 sq.mm", price: "₹425.80/m", stock: "Available", image: "/images/xlpe-95mm.jpg" },
+          { size: "120 sq.mm", price: "₹525.20/m", stock: "Available", image: "/images/xlpe-120mm.jpg" },
+          { size: "150 sq.mm", price: "₹645.60/m", stock: "Available", image: "/images/xlpe-150mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "1.1 kV",
+          conductor: "Aluminum/Copper",
+          insulation: "XLPE",
+          sheath: "PVC",
+          temperature: "-15°C to +90°C",
+          bendingRadius: "6 times cable diameter",
+          standards: "IS 7098 (Part 1)"
+        }
+      },
+      "Multi Core PVC Insulated Aluminium Armoured Cable": {
+        title: "Multi Core PVC Armoured Cable",
+        description: "Multi-core power cable with aluminium armour",
+        imageUrl: "/images/products/multi core pvc isulated aluminium armoured cable.jpeg",
+        priceList: [
+          { size: "2x25 sq.mm", price: "₹185.50/m", stock: "Available", image: "/images/multicore-pvc-25mm.jpg" },
+          { size: "2x50 sq.mm", price: "₹365.80/m", stock: "Available", image: "/images/multicore-pvc-50mm.jpg" },
+          { size: "3x25 sq.mm", price: "₹245.20/m", stock: "Available", image: "/images/multicore-pvc-3x25mm.jpg" },
+          { size: "3x50 sq.mm", price: "₹485.40/m", stock: "Available", image: "/images/multicore-pvc-3x50mm.jpg" },
+          { size: "4x25 sq.mm", price: "₹325.60/m", stock: "Available", image: "/images/multicore-pvc-4x25mm.jpg" },
+          { size: "4x50 sq.mm", price: "₹645.80/m", stock: "Available", image: "/images/multicore-pvc-4x50mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "1.1 kV",
+          conductor: "Aluminum",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "Aluminum",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "6 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "Multi Core XLPE Insulated Aluminium Armoured Cable": {
+        title: "Multi Core XLPE Armoured Cable",
+        description: "Multi-core XLPE cable with aluminium armour",
+        imageUrl: "/images/products/multi core xlpe insulated aluminium armoured cable.jpeg",
+        priceList: [
+          { size: "2x25 sq.mm", price: "₹245.80/m", stock: "Available", image: "/images/multicore-xlpe-25mm.jpg" },
+          { size: "2x50 sq.mm", price: "₹485.60/m", stock: "Available", image: "/images/multicore-xlpe-50mm.jpg" },
+          { size: "3x25 sq.mm", price: "₹325.40/m", stock: "Available", image: "/images/multicore-xlpe-3x25mm.jpg" },
+          { size: "3x50 sq.mm", price: "₹645.80/m", stock: "Available", image: "/images/multicore-xlpe-3x50mm.jpg" },
+          { size: "4x25 sq.mm", price: "₹425.60/m", stock: "Available", image: "/images/multicore-xlpe-4x25mm.jpg" },
+          { size: "4x50 sq.mm", price: "₹845.20/m", stock: "Available", image: "/images/multicore-xlpe-4x50mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "1.1 kV",
+          conductor: "Aluminum",
+          insulation: "XLPE",
+          sheath: "PVC",
+          armour: "Aluminum",
+          temperature: "-15°C to +90°C",
+          bendingRadius: "6 times cable diameter",
+          standards: "IS 7098 (Part 1)"
+        }
+      },
+      "Multi Core PVC Insulated Aluminium Unarmoured Cable": {
+        title: "Multi Core PVC Unarmoured Cable",
+        description: "Multi-core power cable without armour",
+        imageUrl: "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg",
+        priceList: [
+          { size: "2x25 sq.mm", price: "₹165.50/m", stock: "Available", image: "/images/multicore-pvc-unarmoured-25mm.jpg" },
+          { size: "2x50 sq.mm", price: "₹325.80/m", stock: "Available", image: "/images/multicore-pvc-unarmoured-50mm.jpg" },
+          { size: "3x25 sq.mm", price: "₹205.20/m", stock: "Available", image: "/images/multicore-pvc-unarmoured-3x25mm.jpg" },
+          { size: "3x50 sq.mm", price: "₹405.40/m", stock: "Available", image: "/images/multicore-pvc-unarmoured-3x50mm.jpg" },
+          { size: "4x25 sq.mm", price: "₹275.60/m", stock: "Available", image: "/images/multicore-pvc-unarmoured-4x25mm.jpg" },
+          { size: "4x50 sq.mm", price: "₹545.80/m", stock: "Available", image: "/images/multicore-pvc-unarmoured-4x50mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "1.1 kV",
+          conductor: "Aluminum",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "6 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "Multi Core XLPE Insulated Aluminium Unarmoured Cable": {
+        title: "Multi Core XLPE Unarmoured Cable",
+        description: "Multi-core XLPE cable without armour",
+        imageUrl: "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg",
+        priceList: [
+          { size: "2x25 sq.mm", price: "₹205.80/m", stock: "Available", image: "/images/multicore-xlpe-unarmoured-25mm.jpg" },
+          { size: "2x50 sq.mm", price: "₹405.60/m", stock: "Available", image: "/images/multicore-xlpe-unarmoured-50mm.jpg" },
+          { size: "3x25 sq.mm", price: "₹275.40/m", stock: "Available", image: "/images/multicore-xlpe-unarmoured-3x25mm.jpg" },
+          { size: "3x50 sq.mm", price: "₹545.80/m", stock: "Available", image: "/images/multicore-xlpe-unarmoured-3x50mm.jpg" },
+          { size: "4x25 sq.mm", price: "₹365.60/m", stock: "Available", image: "/images/multicore-xlpe-unarmoured-4x25mm.jpg" },
+          { size: "4x50 sq.mm", price: "₹725.20/m", stock: "Available", image: "/images/multicore-xlpe-unarmoured-4x50mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "1.1 kV",
+          conductor: "Aluminum",
+          insulation: "XLPE",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +90°C",
+          bendingRadius: "6 times cable diameter",
+          standards: "IS 7098 (Part 1)"
+        }
+      },
+      "Multistrand Single Core Copper Cable": {
+        title: "Multistrand Single Core Copper Cable",
+        description: "Flexible single core copper power cable",
+        imageUrl: "/images/products/multistrand single core copper cable.jpeg",
+        priceList: [
+          { size: "25 sq.mm", price: "₹185.50/m", stock: "Available", image: "/images/copper-single-25mm.jpg" },
+          { size: "50 sq.mm", price: "₹365.80/m", stock: "Available", image: "/images/copper-single-50mm.jpg" },
+          { size: "70 sq.mm", price: "₹485.40/m", stock: "Available", image: "/images/copper-single-70mm.jpg" },
+          { size: "95 sq.mm", price: "₹645.20/m", stock: "Available", image: "/images/copper-single-95mm.jpg" },
+          { size: "120 sq.mm", price: "₹785.60/m", stock: "Available", image: "/images/copper-single-120mm.jpg" },
+          { size: "150 sq.mm", price: "₹945.80/m", stock: "Available", image: "/images/copper-single-150mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "1.1 kV",
+          conductor: "Copper",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "4 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "Multi Core Copper Cable": {
+        title: "Multi Core Copper Cable",
+        description: "Multi-core copper power cable",
+        imageUrl: "/images/products/multi core copper cable.jpeg",
+        priceList: [
+          { size: "2x25 sq.mm", price: "₹325.50/m", stock: "Available", image: "/images/copper-multicore-25mm.jpg" },
+          { size: "2x50 sq.mm", price: "₹645.80/m", stock: "Available", image: "/images/copper-multicore-50mm.jpg" },
+          { size: "3x25 sq.mm", price: "₹425.20/m", stock: "Available", image: "/images/copper-multicore-3x25mm.jpg" },
+          { size: "3x50 sq.mm", price: "₹845.40/m", stock: "Available", image: "/images/copper-multicore-3x50mm.jpg" },
+          { size: "4x25 sq.mm", price: "₹565.60/m", stock: "Available", image: "/images/copper-multicore-4x25mm.jpg" },
+          { size: "4x50 sq.mm", price: "₹1125.80/m", stock: "Available", image: "/images/copper-multicore-4x50mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "1.1 kV",
+          conductor: "Copper",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "4 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "Business Card": {
+        title: "Business Card",
+        description: "Company contact information and details",
+        priceList: [],
+        technicalData: {},
+        businessInfo: {
+          companyName: "ANOCAB Electric Solutions",
+          contactPerson: "Rajvansh Samal",
+          designation: "Production Planning Controller",
+          phone: "+91 6262002105",
+          email: "rajvansh@anocab.com",
+          address: "Near Dhan Darai, Dadda Nagar, Jabalpur, MP",
+          website: "www.anocab.com",
+          gstin: "27ABCDE1234F1Z5",
+          pan: "ABCDE1234F",
+          cin: "U31909MH2010PTC123456"
+        }
+      },
+      "Brochure": {
+        title: "Company Brochure",
+        description: "Company brochure and product catalog",
+        priceList: [],
+        technicalData: {},
+        businessInfo: {
+          companyName: "Anode Electric Private Limited",
+          established: "2010",
+          employees: "150+",
+          certifications: ["ISO 9001:2015", "ISO 14001:2015", "OHSAS 18001:2007"],
+          products: ["Power Cables", "Control Cables", "Instrumentation Cables", "Telecom Cables"],
+          markets: ["Domestic", "Export", "Industrial", "Infrastructure"],
+          quality: "BIS Certified Products",
+          capacity: "5000 KM per month"
+        }
+      },
+      "GST Details": {
+        title: "GST Details",
+        description: "Tax registration and compliance information",
+        priceList: [],
+        technicalData: {},
+        businessInfo: {
+          gstin: "27ABCDE1234F1Z5",
+          pan: "ABCDE1234F",
+          state: "Maharashtra",
+          stateCode: "27",
+          registrationDate: "01-07-2017",
+          businessType: "Manufacturing",
+          address: "Industrial Area, Sector 5, Mumbai, Maharashtra - 400001",
+          contact: "+91-9876543210",
+          email: "gst@anodeelectric.com"
+        }
+      },
+      "Company Emails": {
+        title: "Company Emails",
+        description: "All company email addresses and contacts",
+        priceList: [],
+        technicalData: {},
+        businessInfo: {
+          general: "info@anodeelectric.com",
+          sales: "sales@anodeelectric.com",
+          support: "support@anodeelectric.com",
+          accounts: "accounts@anodeelectric.com",
+          hr: "hr@anodeelectric.com",
+          technical: "technical@anodeelectric.com",
+          export: "export@anodeelectric.com",
+          procurement: "procurement@anodeelectric.com"
+        }
+      },
+      "Location": {
+        title: "Company Location",
+        description: "Office and manufacturing facility locations",
+        priceList: [],
+        technicalData: {},
+        businessInfo: {
+          headOffice: {
+            address: "Industrial Area, Sector 5, Mumbai, Maharashtra - 400001",
+            phone: "+91-9876543210",
+            email: "info@anodeelectric.com"
+          },
+          manufacturing: {
+            address: "Plot No. 123, Industrial Estate, Pune, Maharashtra - 411001",
+            phone: "+91-9876543211",
+            email: "manufacturing@anodeelectric.com"
+          },
+          branch: {
+            address: "Office No. 456, Business Park, Delhi - 110001",
+            phone: "+91-9876543212",
+            email: "delhi@anodeelectric.com"
+          }
+        }
+      },
+      "PVC Insulated Single Core Aluminium Cable": {
+        title: "PVC Insulated Single Core Aluminium Cable",
+        description: "Single core aluminium cable with PVC insulation",
+        imageUrl: "/images/products/pvc insulated single core aluminium cables.jpeg",
+        priceList: [
+          { size: "25 sq.mm", price: "₹85.50/m", stock: "Available", image: "/images/pvc-aluminium-single-25mm.jpg" },
+          { size: "50 sq.mm", price: "₹165.80/m", stock: "Available", image: "/images/pvc-aluminium-single-50mm.jpg" },
+          { size: "70 sq.mm", price: "₹225.40/m", stock: "Available", image: "/images/pvc-aluminium-single-70mm.jpg" },
+          { size: "95 sq.mm", price: "₹298.60/m", stock: "Available", image: "/images/pvc-aluminium-single-95mm.jpg" },
+          { size: "120 sq.mm", price: "₹365.20/m", stock: "Available", image: "/images/pvc-aluminium-single-120mm.jpg" },
+          { size: "150 sq.mm", price: "₹445.80/m", stock: "Available", image: "/images/pvc-aluminium-single-150mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "1.1 kV",
+          conductor: "Aluminum",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "6 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "PVC Insulated Submersible Cable": {
+        title: "PVC Insulated Submersible Cable",
+        description: "Water-resistant submersible cable",
+        imageUrl: "/images/products/pvc insulated submersible cable.jpeg",
+        priceList: [
+          { size: "1.5 sq.mm", price: "₹45.50/m", stock: "Available", image: "/images/submersible-1.5mm.jpg" },
+          { size: "2.5 sq.mm", price: "₹68.75/m", stock: "Available", image: "/images/submersible-2.5mm.jpg" },
+          { size: "4 sq.mm", price: "₹92.30/m", stock: "Available", image: "/images/submersible-4mm.jpg" },
+          { size: "6 sq.mm", price: "₹125.80/m", stock: "Available", image: "/images/submersible-6mm.jpg" },
+          { size: "10 sq.mm", price: "₹168.90/m", stock: "Available", image: "/images/submersible-10mm.jpg" },
+          { size: "16 sq.mm", price: "₹215.60/m", stock: "Available", image: "/images/submersible-16mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "1.1 kV",
+          conductor: "Copper",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "6 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "PVC Insulated Multicore Aluminium Cable": {
+        title: "PVC Insulated Multicore Aluminium Cable",
+        description: "Multi-core aluminium cable with PVC insulation",
+        imageUrl: "/images/products/pvc insulated multicore aluminium cable.jpeg",
+        priceList: [
+          { size: "2x25 sq.mm", price: "₹165.50/m", stock: "Available", image: "/images/pvc-aluminium-multicore-25mm.jpg" },
+          { size: "2x50 sq.mm", price: "₹325.80/m", stock: "Available", image: "/images/pvc-aluminium-multicore-50mm.jpg" },
+          { size: "3x25 sq.mm", price: "₹205.20/m", stock: "Available", image: "/images/pvc-aluminium-multicore-3x25mm.jpg" },
+          { size: "3x50 sq.mm", price: "₹405.40/m", stock: "Available", image: "/images/pvc-aluminium-multicore-3x50mm.jpg" },
+          { size: "4x25 sq.mm", price: "₹275.60/m", stock: "Available", image: "/images/pvc-aluminium-multicore-4x25mm.jpg" },
+          { size: "4x50 sq.mm", price: "₹545.80/m", stock: "Available", image: "/images/pvc-aluminium-multicore-4x50mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "1.1 kV",
+          conductor: "Aluminum",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "6 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "Submersible Winding Wire": {
+        title: "Submersible Winding Wire",
+        description: "Specialized winding wire for submersible applications",
+        imageUrl: "/images/products/submersible winding wire.jpeg",
+        priceList: [
+          { size: "0.5 sq.mm", price: "₹25.50/m", stock: "Available", image: "/images/winding-wire-0.5mm.jpg" },
+          { size: "0.75 sq.mm", price: "₹35.80/m", stock: "Available", image: "/images/winding-wire-0.75mm.jpg" },
+          { size: "1.0 sq.mm", price: "₹45.20/m", stock: "Available", image: "/images/winding-wire-1.0mm.jpg" },
+          { size: "1.5 sq.mm", price: "₹65.40/m", stock: "Available", image: "/images/winding-wire-1.5mm.jpg" },
+          { size: "2.5 sq.mm", price: "₹95.60/m", stock: "Available", image: "/images/winding-wire-2.5mm.jpg" },
+          { size: "4.0 sq.mm", price: "₹145.80/m", stock: "Available", image: "/images/winding-wire-4.0mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "0.6/1 kV",
+          conductor: "Copper",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "4 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "Twin Twisted Copper Wire": {
+        title: "Twin Twisted Copper Wire",
+        description: "Twisted pair copper wire",
+        imageUrl: "/images/products/twin twisted copper wire.jpeg",
+        priceList: [
+          { size: "0.5 sq.mm", price: "₹15.50/m", stock: "Available", image: "/images/twin-twisted-0.5mm.jpg" },
+          { size: "0.75 sq.mm", price: "₹22.80/m", stock: "Available", image: "/images/twin-twisted-0.75mm.jpg" },
+          { size: "1.0 sq.mm", price: "₹28.20/m", stock: "Available", image: "/images/twin-twisted-1.0mm.jpg" },
+          { size: "1.5 sq.mm", price: "₹38.40/m", stock: "Available", image: "/images/twin-twisted-1.5mm.jpg" },
+          { size: "2.5 sq.mm", price: "₹55.60/m", stock: "Available", image: "/images/twin-twisted-2.5mm.jpg" },
+          { size: "4.0 sq.mm", price: "₹85.80/m", stock: "Available", image: "/images/twin-twisted-4.0mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "0.6/1 kV",
+          conductor: "Copper",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "4 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "Speaker Cable": {
+        title: "Speaker Cable",
+        description: "Audio speaker connection cable",
+        imageUrl: "/images/products/speaker cable.jpeg",
+        priceList: [
+          { size: "2x0.5 sq.mm", price: "₹25.50/m", stock: "Available", image: "/images/speaker-2x0.5mm.jpg" },
+          { size: "2x0.75 sq.mm", price: "₹35.80/m", stock: "Available", image: "/images/speaker-2x0.75mm.jpg" },
+          { size: "2x1.0 sq.mm", price: "₹45.20/m", stock: "Available", image: "/images/speaker-2x1.0mm.jpg" },
+          { size: "2x1.5 sq.mm", price: "₹65.40/m", stock: "Available", image: "/images/speaker-2x1.5mm.jpg" },
+          { size: "2x2.5 sq.mm", price: "₹95.60/m", stock: "Available", image: "/images/speaker-2x2.5mm.jpg" },
+          { size: "2x4.0 sq.mm", price: "₹145.80/m", stock: "Available", image: "/images/speaker-2x4.0mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "0.6/1 kV",
+          conductor: "Copper",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "4 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "CCTV Cable": {
+        title: "CCTV Cable",
+        description: "Closed-circuit television cable",
+        imageUrl: "/images/products/cctv cable.jpeg",
+        priceList: [
+          { size: "4+1 Core", price: "₹35.50/m", stock: "Available", image: "/images/cctv-4+1core.jpg" },
+          { size: "8+1 Core", price: "₹55.80/m", stock: "Available", image: "/images/cctv-8+1core.jpg" },
+          { size: "12+1 Core", price: "₹75.20/m", stock: "Available", image: "/images/cctv-12+1core.jpg" },
+          { size: "16+1 Core", price: "₹95.40/m", stock: "Available", image: "/images/cctv-16+1core.jpg" },
+          { size: "20+1 Core", price: "₹115.60/m", stock: "Available", image: "/images/cctv-20+1core.jpg" },
+          { size: "24+1 Core", price: "₹135.80/m", stock: "Available", image: "/images/cctv-24+1core.jpg" }
+        ],
+        technicalData: {
+          voltage: "0.6/1 kV",
+          conductor: "Copper",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "4 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "LAN Cable": {
+        title: "LAN Cable",
+        description: "Local area network cable",
+        imageUrl: "/images/products/telecom switch board cables.jpeg",
+        priceList: [
+          { size: "Cat5e", price: "₹25.50/m", stock: "Available", image: "/images/lan-cat5e.jpg" },
+          { size: "Cat6", price: "₹35.80/m", stock: "Available", image: "/images/lan-cat6.jpg" },
+          { size: "Cat6A", price: "₹55.20/m", stock: "Available", image: "/images/lan-cat6a.jpg" },
+          { size: "Cat7", price: "₹75.40/m", stock: "Available", image: "/images/lan-cat7.jpg" },
+          { size: "Cat8", price: "₹95.60/m", stock: "Available", image: "/images/lan-cat8.jpg" },
+          { size: "Fiber Optic", price: "₹125.80/m", stock: "Available", image: "/images/lan-fiber.jpg" }
+        ],
+        technicalData: {
+          voltage: "0.6/1 kV",
+          conductor: "Copper",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "4 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "Automobile Cable": {
+        title: "Automobile Cable",
+        description: "Automotive electrical cable",
+        imageUrl: "/images/products/automobile wire.jpeg",
+        priceList: [
+          { size: "0.5 sq.mm", price: "₹15.50/m", stock: "Available", image: "/images/automobile-0.5mm.jpg" },
+          { size: "0.75 sq.mm", price: "₹22.80/m", stock: "Available", image: "/images/automobile-0.75mm.jpg" },
+          { size: "1.0 sq.mm", price: "₹28.20/m", stock: "Available", image: "/images/automobile-1.0mm.jpg" },
+          { size: "1.5 sq.mm", price: "₹38.40/m", stock: "Available", image: "/images/automobile-1.5mm.jpg" },
+          { size: "2.5 sq.mm", price: "₹55.60/m", stock: "Available", image: "/images/automobile-2.5mm.jpg" },
+          { size: "4.0 sq.mm", price: "₹85.80/m", stock: "Available", image: "/images/automobile-4.0mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "0.6/1 kV",
+          conductor: "Copper",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "4 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "PV Solar Cable": {
+        title: "PV Solar Cable",
+        description: "Photovoltaic solar panel cable",
+        imageUrl: "/images/products/pv solar cable.jpeg",
+        priceList: [
+          { size: "2x2.5 sq.mm", price: "₹45.50/m", stock: "Available", image: "/images/pv-solar-2x2.5mm.jpg" },
+          { size: "2x4.0 sq.mm", price: "₹65.80/m", stock: "Available", image: "/images/pv-solar-2x4.0mm.jpg" },
+          { size: "2x6.0 sq.mm", price: "₹85.20/m", stock: "Available", image: "/images/pv-solar-2x6.0mm.jpg" },
+          { size: "2x10.0 sq.mm", price: "₹125.40/m", stock: "Available", image: "/images/pv-solar-2x10.0mm.jpg" },
+          { size: "2x16.0 sq.mm", price: "₹185.60/m", stock: "Available", image: "/images/pv-solar-2x16.0mm.jpg" },
+          { size: "2x25.0 sq.mm", price: "₹285.80/m", stock: "Available", image: "/images/pv-solar-2x25.0mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "1.8 kV",
+          conductor: "Copper",
+          insulation: "XLPE",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-40°C to +90°C",
+          bendingRadius: "4 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "Co Axial Cable": {
+        title: "Co Axial Cable",
+        description: "Coaxial transmission cable",
+        imageUrl: "/images/products/co axial cable.jpeg",
+        priceList: [
+          { size: "RG-6", price: "₹25.50/m", stock: "Available", image: "/images/coaxial-rg6.jpg" },
+          { size: "RG-11", price: "₹35.80/m", stock: "Available", image: "/images/coaxial-rg11.jpg" },
+          { size: "RG-58", price: "₹15.20/m", stock: "Available", image: "/images/coaxial-rg58.jpg" },
+          { size: "RG-59", price: "₹18.40/m", stock: "Available", image: "/images/coaxial-rg59.jpg" },
+          { size: "RG-174", price: "₹12.60/m", stock: "Available", image: "/images/coaxial-rg174.jpg" },
+          { size: "RG-213", price: "₹45.80/m", stock: "Available", image: "/images/coaxial-rg213.jpg" }
+        ],
+        technicalData: {
+          voltage: "0.6/1 kV",
+          conductor: "Copper",
+          insulation: "PE",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "4 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "Uni-tube Unarmoured Optical Fibre Cable": {
+        title: "Uni-tube Unarmoured Optical Fibre Cable",
+        description: "Single tube optical fibre cable",
+        imageUrl: "/images/products/unitube unarmoured optical fibre cable.jpeg",
+        priceList: [
+          { size: "2 Core", price: "₹45.50/m", stock: "Available", image: "/images/optical-2core.jpg" },
+          { size: "4 Core", price: "₹65.80/m", stock: "Available", image: "/images/optical-4core.jpg" },
+          { size: "6 Core", price: "₹85.20/m", stock: "Available", image: "/images/optical-6core.jpg" },
+          { size: "8 Core", price: "₹105.40/m", stock: "Available", image: "/images/optical-8core.jpg" },
+          { size: "12 Core", price: "₹145.60/m", stock: "Available", image: "/images/optical-12core.jpg" },
+          { size: "24 Core", price: "₹285.80/m", stock: "Available", image: "/images/optical-24core.jpg" }
+        ],
+        technicalData: {
+          voltage: "0.6/1 kV",
+          conductor: "Fiber Optic",
+          insulation: "PE",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "4 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "Armoured Unarmoured PVC Insulated Copper Control Cable": {
+        title: "Armoured Unarmoured PVC Insulated Copper Control Cable",
+        description: "Control cable for industrial applications",
+        imageUrl: "/images/products/armoured unarmoured pvc insulated copper control cable.jpeg",
+        priceList: [
+          { size: "2x1.5 sq.mm", price: "₹45.50/m", stock: "Available", image: "/images/control-2x1.5mm.jpg" },
+          { size: "3x1.5 sq.mm", price: "₹65.80/m", stock: "Available", image: "/images/control-3x1.5mm.jpg" },
+          { size: "4x1.5 sq.mm", price: "₹85.20/m", stock: "Available", image: "/images/control-4x1.5mm.jpg" },
+          { size: "6x1.5 sq.mm", price: "₹125.40/m", stock: "Available", image: "/images/control-6x1.5mm.jpg" },
+          { size: "8x1.5 sq.mm", price: "₹165.60/m", stock: "Available", image: "/images/control-8x1.5mm.jpg" },
+          { size: "12x1.5 sq.mm", price: "₹245.80/m", stock: "Available", image: "/images/control-12x1.5mm.jpg" }
+        ],
+        technicalData: {
+          voltage: "0.6/1 kV",
+          conductor: "Copper",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "Aluminum",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "6 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      },
+      "Telecom Switch Board Cables": {
+        title: "Telecom Switch Board Cables",
+        description: "Telecommunications switchboard cable",
+        imageUrl: "/images/products/telecom switch board cables.jpeg",
+        priceList: [
+          { size: "10 Pair", price: "₹25.50/m", stock: "Available", image: "/images/telecom-10pair.jpg" },
+          { size: "20 Pair", price: "₹45.80/m", stock: "Available", image: "/images/telecom-20pair.jpg" },
+          { size: "50 Pair", price: "₹95.20/m", stock: "Available", image: "/images/telecom-50pair.jpg" },
+          { size: "100 Pair", price: "₹185.40/m", stock: "Available", image: "/images/telecom-100pair.jpg" },
+          { size: "200 Pair", price: "₹365.60/m", stock: "Available", image: "/images/telecom-200pair.jpg" },
+          { size: "300 Pair", price: "₹545.80/m", stock: "Available", image: "/images/telecom-300pair.jpg" }
+        ],
+        technicalData: {
+          voltage: "0.6/1 kV",
+          conductor: "Copper",
+          insulation: "PVC",
+          sheath: "PVC",
+          armour: "None",
+          temperature: "-15°C to +70°C",
+          bendingRadius: "4 times cable diameter",
+          standards: "IS 1554 (Part 1)"
+        }
+      }
+    };
+    
+    return productData[productName] || {
+      title: productName,
+      description: "Product details and specifications",
+      priceList: [],
+      technicalData: {}
+    };
   };
 
   const openFileViewer = (file) => {
@@ -799,22 +1515,44 @@ const ToolboxInterface = () => {
     setSelectedFile(null);
   };
 
+  const openBusinessCard = () => {
+    setIsBusinessCardOpen(true);
+  };
+
+  const closeBusinessCard = () => {
+    setIsBusinessCardOpen(false);
+  };
+
+  const openBrochure = () => {
+    // Open the brochure PDF directly in a new tab
+    const pdfUrl = `${window.location.origin}/pdf/Anocab brochure.pdf`;
+    const newWindow = window.open(pdfUrl, '_blank');
+    if (!newWindow) {
+      alert('Please allow pop-ups for this site to view the brochure');
+    }
+  };
+
+  const openCompanyEmails = () => {
+    setIsCompanyEmailsOpen(true);
+  };
+
+  const closeCompanyEmails = () => {
+    setIsCompanyEmailsOpen(false);
+  };
+
+  const openCalculators = () => {
+    setShowCalculators(!showCalculators);
+  };
+
+  const openHelpingCalculators = () => {
+    setShowHelpingCalculators(!showHelpingCalculators);
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Main Content */}
       <div className="flex-1 p-6 pr-80">
         <div className="max-w-6xl mx-auto">
-          {/* Header Section */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-lg bg-blue-100">
-                <Wrench className="h-6 w-6 text-blue-600" />
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900">Toolbox</h1>
-            </div>
-            <p className="text-gray-600 ml-12">Access tools and resources</p>
-          </div>
-          
           <div className="space-y-12">
             {sections.map((section, sectionIndex) => {
               const IconComponent = section.icon;
@@ -837,21 +1575,37 @@ const ToolboxInterface = () => {
                           onClick={() => handleToolClick(tool)}
                         >
                           <div className="flex flex-col text-left space-y-3">
-                            {section.id === "products" && tool.imageUrl ? (
-                              <div className="relative w-full h-24 mb-2 rounded-lg overflow-hidden bg-gray-100">
-                                <img 
-                                  src={tool.imageUrl} 
-                                  alt={tool.name}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                    e.currentTarget.nextElementSibling.style.display = 'flex';
-                                  }}
-                                />
-                                <div className="absolute inset-0 bg-gray-200 flex items-center justify-center" style={{display: 'none'}}>
-                                  <ToolIcon className="h-8 w-8 text-gray-600" />
+                            {section.id === "products" ? (
+                              tool.imageUrl ? (
+                                <div className="relative w-full h-24 mb-2 rounded-lg overflow-hidden bg-gray-100">
+                                  <img 
+                                    src={tool.imageUrl} 
+                                    alt={tool.name}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                      e.currentTarget.nextElementSibling.style.display = 'flex';
+                                    }}
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center" style={{display: 'none'}}>
+                                    <div className="text-white text-center">
+                                      <div className="text-2xl font-bold mb-1">📦</div>
+                                      <div className="text-xs font-medium px-2 text-center leading-tight">
+                                        {tool.name.split(' ').slice(0, 2).join(' ')}
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
+                              ) : (
+                                <div className="relative w-full h-24 mb-2 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                                  <div className="text-white text-center">
+                                    <div className="text-2xl font-bold mb-1">📦</div>
+                                    <div className="text-xs font-medium px-2 text-center leading-tight">
+                                      {tool.name.split(' ').slice(0, 2).join(' ')}
+                                    </div>
+                                  </div>
+                                </div>
+                              )
                             ) : ToolIcon && (
                               <div className="p-3 rounded-lg bg-gray-100 group-hover:bg-blue-100 group-hover:scale-110 transition-all duration-300 ease-in-out">
                                 <ToolIcon className="h-6 w-6 text-gray-600 group-hover:text-blue-600 transition-all duration-300 ease-in-out group-hover:rotate-3" />
@@ -1004,25 +1758,25 @@ const ToolboxInterface = () => {
           </div>
 
           {/* Business Card */}
-          <div className="mb-6">
+          <div className="mb-4">
             <div 
-              className="p-4 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
-              onClick={() => setShowBusinessCard(!showBusinessCard)}
+              className="p-4 rounded-xl border border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md"
+              onClick={openBusinessCard}
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-100">
-                  <User className="h-4 w-4 text-blue-600" />
+                <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm">
+                  <User className="h-5 w-5 text-white" />
                 </div>
-                <div>
-                  <h3 className="font-medium text-gray-900">Business Card</h3>
-                  <p className="text-xs text-gray-500">Company contact information</p>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 text-sm">Business Card</h3>
+                  <p className="text-xs text-gray-600">Company contact information</p>
                 </div>
-                <ChevronRight className={`h-4 w-4 text-gray-500 ml-auto transition-transform ${showBusinessCard ? 'rotate-90' : ''}`} />
+                <ChevronRight className={`h-4 w-4 text-gray-500 transition-transform duration-300 ${showBusinessCard ? 'rotate-90' : ''}`} />
               </div>
             </div>
             
             {showBusinessCard && (
-              <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="mt-3 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Building className="h-4 w-4 text-blue-600" />
@@ -1046,60 +1800,165 @@ const ToolboxInterface = () => {
           </div>
 
           {/* Brochure */}
-          <div className="mb-6">
-            <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
+          <div className="mb-4">
+            <div 
+              className="p-4 rounded-xl border border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md"
+              onClick={openBrochure}
+            >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-100">
-                  <FileText className="h-4 w-4 text-blue-600" />
+                <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-sm">
+                  <FileText className="h-5 w-5 text-white" />
                 </div>
-                <div>
-                  <h3 className="font-medium text-gray-900">Brochure</h3>
-                  <p className="text-xs text-gray-500">Company brochure and catalog</p>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 text-sm">Brochure</h3>
+                  <p className="text-xs text-gray-600">Company brochure and catalog</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* GST Details */}
-          <div className="mb-6">
-            <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-100">
-                  <CreditCard className="h-4 w-4 text-blue-600" />
+          <div className="mb-4">
+            <div className="p-4 rounded-xl border border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50 shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-sm">
+                  <CreditCard className="h-5 w-5 text-white" />
                 </div>
-                <div>
-                  <h3 className="font-medium text-gray-900">GST Details</h3>
-                  <p className="text-xs text-gray-500">Tax registration information</p>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 text-sm">GST Details</h3>
+                  <p className="text-xs text-gray-600">Tax registration information</p>
                 </div>
               </div>
-              <div className="mt-3 text-sm">
-                <p><strong>GSTIN:</strong> 27ABCDE1234F1Z5</p>
-                <p><strong>PAN:</strong> ABCDE1234F</p>
-                <p><strong>State:</strong> Maharashtra</p>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between items-center py-1 border-b border-gray-100">
+                  <span className="font-medium text-gray-600">GSTIN:</span>
+                  <span className="text-gray-900 font-mono text-xs">27ABCDE1234F1Z5</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-gray-100">
+                  <span className="font-medium text-gray-600">PAN:</span>
+                  <span className="text-gray-900 font-mono text-xs">ABCDE1234F</span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="font-medium text-gray-600">State:</span>
+                  <span className="text-gray-900">Maharashtra</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Company Emails */}
-          <div className="mb-6">
+          {/* Calculators */}
+          <div className="mb-4">
             <div 
-              className="p-4 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
-              onClick={() => setShowCompanyEmails(!showCompanyEmails)}
+              className="p-4 rounded-xl border border-gray-200 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md"
+              onClick={openCalculators}
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-100">
-                  <Mail className="h-4 w-4 text-blue-600" />
+                <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-sm">
+                  <Calculator className="h-5 w-5 text-white" />
                 </div>
-                <div>
-                  <h3 className="font-medium text-gray-900">Company Emails</h3>
-                  <p className="text-xs text-gray-500">All company email addresses</p>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 text-sm">Calculators</h3>
+                  <p className="text-xs text-gray-600">Mathematical and conversion tools</p>
                 </div>
-                <ChevronRight className={`h-4 w-4 text-gray-500 ml-auto transition-transform ${showCompanyEmails ? 'rotate-90' : ''}`} />
+                <ChevronRight className={`h-4 w-4 text-gray-500 transition-transform duration-300 ${showCalculators ? 'rotate-90' : ''}`} />
+              </div>
+            </div>
+            
+            {showCalculators && (
+              <div className="mt-3 space-y-2">
+                {[
+                  { name: "Basic Calculator", description: "Standard calculations", icon: Calculator },
+                  { name: "Scientific Calculator", description: "Advanced mathematical functions", icon: Settings },
+                  { name: "Unit Converter", description: "Convert between units", icon: Wrench },
+                  { name: "Financial Calculator", description: "Financial computations", icon: DollarSign },
+                  { name: "Statistics Calculator", description: "Statistical analysis", icon: BarChart3 },
+                ].map((calculator, index) => (
+                  <div 
+                    key={index}
+                    className="p-3 rounded-lg border border-gray-200 bg-white hover:bg-orange-50 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md"
+                    onClick={() => handleToolClick(calculator)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-orange-100">
+                        <calculator.icon className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-gray-900">{calculator.name}</span>
+                        <p className="text-xs text-gray-500 mt-1">{calculator.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Helping Calculators */}
+          <div className="mb-4">
+            <div 
+              className="p-4 rounded-xl border border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md"
+              onClick={openHelpingCalculators}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-sm">
+                  <FileText className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 text-sm">Helping Calculators</h3>
+                  <p className="text-xs text-gray-600">Advanced calculation tools</p>
+                </div>
+                <ChevronRight className={`h-4 w-4 text-gray-500 transition-transform duration-300 ${showHelpingCalculators ? 'rotate-90' : ''}`} />
+              </div>
+            </div>
+            
+            {showHelpingCalculators && (
+              <div className="mt-3 space-y-2">
+                {[
+                  { name: "TECHNICAL CALCULATIONS", description: "Advanced technical calculation tools", icon: Calculator },
+                  { name: "CONVERSIONAL CALCULATIONS", description: "Unit conversion and calculation utilities", icon: Settings },
+                  { name: "WIRE GAUGE CHART", description: "Wire gauge reference and calculations", icon: BarChart3 },
+                  { name: "TEMPERATURE CORRECTION FACTORS kt FOR CONDUCTOR RESISTANCE TO CORRECT THE MEASURED RESISTANCE AT t°C TO 20°C", description: "Temperature correction factor calculations", icon: Wrench },
+                ].map((calculator, index) => (
+                  <div 
+                    key={index}
+                    className="p-3 rounded-lg border border-gray-200 bg-white hover:bg-teal-50 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md"
+                    onClick={() => handleToolClick(calculator)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-teal-100">
+                        <calculator.icon className="h-4 w-4 text-teal-600" />
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-gray-900">{calculator.name}</span>
+                        <p className="text-xs text-gray-500 mt-1">{calculator.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Company Emails */}
+          <div className="mb-4">
+            <div 
+              className="p-4 rounded-xl border border-gray-200 bg-gradient-to-r from-pink-50 to-rose-50 hover:from-pink-100 hover:to-rose-100 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md"
+              onClick={openCompanyEmails}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 shadow-sm">
+                  <Mail className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 text-sm">Company Emails</h3>
+                  <p className="text-xs text-gray-600">All company email addresses</p>
+                </div>
+                <ChevronRight className={`h-4 w-4 text-gray-500 transition-transform duration-300 ${showCompanyEmails ? 'rotate-90' : ''}`} />
               </div>
             </div>
             
             {showCompanyEmails && (
-              <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="mt-3 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
                 <div className="space-y-2">
                   <div className="text-sm">
                     <strong>General:</strong> info@anodeelectric.com
@@ -1119,96 +1978,100 @@ const ToolboxInterface = () => {
           </div>
 
           {/* Location Dropdown */}
-          <div className="mb-6">
+          <div className="mb-4">
             <div 
-              className="p-4 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+              className="p-4 rounded-xl border border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50 hover:from-slate-100 hover:to-gray-100 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md"
               onClick={() => setShowLocations(!showLocations)}
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-100">
-                  <MapPin className="h-4 w-4 text-blue-600" />
+                <div className="p-3 rounded-xl bg-gradient-to-br from-slate-500 to-gray-600 shadow-sm">
+                  <MapPin className="h-5 w-5 text-white" />
                 </div>
-                <div>
-                  <h3 className="font-medium text-gray-900">Location</h3>
-                  <p className="text-xs text-gray-500">Select company location</p>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 text-sm">Location</h3>
+                  <p className="text-xs text-gray-600">Select company location</p>
                 </div>
-                <ChevronRight className={`h-4 w-4 text-gray-500 ml-auto transition-transform ${showLocations ? 'rotate-90' : ''}`} />
+                <ChevronRight className={`h-4 w-4 text-gray-500 transition-transform duration-300 ${showLocations ? 'rotate-90' : ''}`} />
               </div>
             </div>
             
             {showLocations && (
               <div className="mt-3 space-y-2">
                 <div 
-                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
                     selectedLocation === "Anode Electric Private Limited" 
-                      ? "bg-blue-50 border-blue-200" 
-                      : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                      ? "bg-slate-50 border-slate-200 shadow-md" 
+                      : "bg-white border-gray-200 hover:bg-slate-50"
                   }`}
                   onClick={() => setSelectedLocation("Anode Electric Private Limited")}
                 >
-                  <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium">Anode Electric Private Limited</span>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-slate-100">
+                      <Building className="h-4 w-4 text-slate-600" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-900">Anode Electric Private Limited</span>
                   </div>
                 </div>
                 <div 
-                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
                     selectedLocation === "Samriddhi Industries" 
-                      ? "bg-blue-50 border-blue-200" 
-                      : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                      ? "bg-slate-50 border-slate-200 shadow-md" 
+                      : "bg-white border-gray-200 hover:bg-slate-50"
                   }`}
                   onClick={() => setSelectedLocation("Samriddhi Industries")}
                 >
-                  <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium">Samriddhi Industries</span>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-slate-100">
+                      <Building className="h-4 w-4 text-slate-600" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-900">Samriddhi Industries</span>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Catalogue */}
-          <div className="mb-6">
-            <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-blue-100">
-                  <BookOpen className="h-4 w-4 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-900">Catalogue</h3>
-                  <p className="text-xs text-gray-500">Product catalog and specifications</p>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Product Detail Modal - Aerial Bunch Cable */}
-      {isProductDetailOpen && (
+      {/* Product Detail Modal - Dynamic */}
+      {isProductDetailOpen && selectedProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-7xl max-h-[95vh] overflow-hidden bg-white rounded-lg">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-100">
-                    <Image className="h-6 w-6 text-blue-600" />
+            <div className="w-full max-w-7xl max-h-[95vh] overflow-hidden bg-white rounded-lg">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-blue-100">
+                      <Image className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">{getProductData(selectedProduct).title}</h2>
+                      <p className="text-gray-600">{getProductData(selectedProduct).description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Aerial Bunch Cable</h2>
-                    <p className="text-gray-600">Overhead power distribution cable for electrical transmission</p>
-                  </div>
+                  <button onClick={closeProductDetail} className="text-gray-400 hover:text-gray-600">
+                    <X className="h-6 w-6" />
+                  </button>
                 </div>
-                <button onClick={closeProductDetail} className="text-gray-400 hover:text-gray-600">
-                  <X className="h-6 w-6" />
-                </button>
               </div>
-            </div>
 
             <div className="p-6 overflow-auto max-h-[80vh]">
-              {/* Price List Section */}
-              <div className="mb-8">
+              {/* Business Information Section for Business Cards */}
+              {getProductData(selectedProduct).businessInfo && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Building className="h-5 w-5 text-blue-600" />
+                    Business Information
+                  </h3>
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <p className="text-gray-600">Business information will be displayed here based on the selected card.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Price List Section - Only for Product Cards */}
+              {getProductData(selectedProduct).priceList && getProductData(selectedProduct).priceList.length > 0 && (
+                <div className="mb-8">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                     <CreditCard className="h-5 w-5 text-blue-600" />
@@ -1220,7 +2083,7 @@ const ToolboxInterface = () => {
                         <!DOCTYPE html>
                         <html>
                         <head>
-                          <title>Aerial Bunch Cable - Price List</title>
+                          <title>${productData.title} - Price List</title>
                           <style>
                             body { font-family: Arial, sans-serif; margin: 20px; }
                             h1 { color: #2563eb; margin-bottom: 20px; }
@@ -1232,7 +2095,7 @@ const ToolboxInterface = () => {
                         </head>
                         <body>
                           <div class="header">
-                            <h1>Aerial Bunch Cable - Price List</h1>
+                            <h1>${getProductData(selectedProduct).title} - Price List</h1>
                             <p>Generated on ${new Date().toLocaleDateString()}</p>
                           </div>
                           <table>
@@ -1245,14 +2108,9 @@ const ToolboxInterface = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              <tr><td><img src="/images/aerial-bunch-cable-16mm.jpg" alt="Aerial Bunch Cable 1x16 sq.mm" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" /></td><td>1x16 sq.mm</td><td>₹45.50/m</td><td>Available</td></tr>
-                              <tr><td><img src="/images/aerial-bunch-cable-25mm.jpg" alt="Aerial Bunch Cable 1x25 sq.mm" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" /></td><td>1x25 sq.mm</td><td>₹68.75/m</td><td>Available</td></tr>
-                              <tr><td><img src="/images/aerial-bunch-cable-35mm.jpg" alt="Aerial Bunch Cable 1x35 sq.mm" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" /></td><td>1x35 sq.mm</td><td>₹92.30/m</td><td>Available</td></tr>
-                              <tr><td><img src="/images/aerial-bunch-cable-50mm.jpg" alt="Aerial Bunch Cable 1x50 sq.mm" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" /></td><td>1x50 sq.mm</td><td>₹125.80/m</td><td>Available</td></tr>
-                              <tr><td><img src="/images/aerial-bunch-cable-70mm.jpg" alt="Aerial Bunch Cable 1x70 sq.mm" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" /></td><td>1x70 sq.mm</td><td>₹168.90/m</td><td>Available</td></tr>
-                              <tr><td><img src="/images/aerial-bunch-cable-95mm.jpg" alt="Aerial Bunch Cable 1x95 sq.mm" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" /></td><td>1x95 sq.mm</td><td>₹215.60/m</td><td>Available</td></tr>
-                              <tr><td><img src="/images/aerial-bunch-cable-120mm.jpg" alt="Aerial Bunch Cable 1x120 sq.mm" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" /></td><td>1x120 sq.mm</td><td>₹268.40/m</td><td>Available</td></tr>
-                              <tr><td><img src="/images/aerial-bunch-cable-150mm.jpg" alt="Aerial Bunch Cable 1x150 sq.mm" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" /></td><td>1x150 sq.mm</td><td>₹325.70/m</td><td>Available</td></tr>
+                              ${getProductData(selectedProduct).priceList.map(item => 
+                                `<tr><td><img src="${item.image}" alt="${getProductData(selectedProduct).title} ${item.size}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" /></td><td>${item.size}</td><td>${item.price}</td><td>${item.stock}</td></tr>`
+                              ).join('')}
                             </tbody>
                           </table>
                         </body>
@@ -1262,7 +2120,7 @@ const ToolboxInterface = () => {
                       const url = window.URL.createObjectURL(blob);
                       const link = document.createElement('a');
                       link.href = url;
-                      link.download = 'aerial-bunch-cable-price-list.html';
+                      link.download = `${getProductData(selectedProduct).title.toLowerCase().replace(/\s+/g, '-')}-price-list.html`;
                       document.body.appendChild(link);
                       link.click();
                       document.body.removeChild(link);
@@ -1285,22 +2143,13 @@ const ToolboxInterface = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {[
-                        { size: "1x16 sq.mm", price: "₹45.50/m", stock: "Available", image: "/images/aerial-bunch-cable-16mm.jpg" },
-                        { size: "1x25 sq.mm", price: "₹68.75/m", stock: "Available", image: "/images/aerial-bunch-cable-25mm.jpg" },
-                        { size: "1x35 sq.mm", price: "₹92.30/m", stock: "Available", image: "/images/aerial-bunch-cable-35mm.jpg" },
-                        { size: "1x50 sq.mm", price: "₹125.80/m", stock: "Available", image: "/images/aerial-bunch-cable-50mm.jpg" },
-                        { size: "1x70 sq.mm", price: "₹168.90/m", stock: "Available", image: "/images/aerial-bunch-cable-70mm.jpg" },
-                        { size: "1x95 sq.mm", price: "₹215.60/m", stock: "Available", image: "/images/aerial-bunch-cable-95mm.jpg" },
-                        { size: "1x120 sq.mm", price: "₹268.40/m", stock: "Available", image: "/images/aerial-bunch-cable-120mm.jpg" },
-                        { size: "1x150 sq.mm", price: "₹325.70/m", stock: "Available", image: "/images/aerial-bunch-cable-150mm.jpg" }
-                      ].map((item, index) => (
+                      {getProductData(selectedProduct).priceList.map((item, index) => (
                         <tr key={index} className="hover:bg-gray-50">
                           <td className="px-4 py-3 border border-gray-200">
                             <div className="relative w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
                               <img 
                                 src={item.image} 
-                                alt={`Aerial Bunch Cable ${item.size}`}
+                                alt={`${getProductData(selectedProduct).title} ${item.size}`}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none'
@@ -1327,8 +2176,10 @@ const ToolboxInterface = () => {
                   </table>
                 </div>
               </div>
+              )}
 
-              {/* Technical Data Section */}
+              {/* Technical Data Section - Only for Product Cards */}
+              {getProductData(selectedProduct).technicalData && Object.keys(getProductData(selectedProduct).technicalData).length > 0 && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Wrench className="h-5 w-5 text-blue-600" />
@@ -1339,37 +2190,70 @@ const ToolboxInterface = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="p-3 bg-gray-50 rounded-lg">
                         <span className="text-sm font-medium text-gray-600">Voltage Rating</span>
-                        <p className="text-sm font-semibold">11 kV</p>
+                        <p className="text-sm font-semibold">{getProductData(selectedProduct).technicalData.voltage || 'N/A'}</p>
                       </div>
                       <div className="p-3 bg-gray-50 rounded-lg">
                         <span className="text-sm font-medium text-gray-600">Conductor</span>
-                        <p className="text-sm font-semibold">Aluminum</p>
+                        <p className="text-sm font-semibold">{getProductData(selectedProduct).technicalData.conductor || 'N/A'}</p>
                       </div>
                       <div className="p-3 bg-gray-50 rounded-lg">
                         <span className="text-sm font-medium text-gray-600">Insulation</span>
-                        <p className="text-sm font-semibold">XLPE</p>
+                        <p className="text-sm font-semibold">{getProductData(selectedProduct).technicalData.insulation || 'N/A'}</p>
                       </div>
                       <div className="p-3 bg-gray-50 rounded-lg">
                         <span className="text-sm font-medium text-gray-600">Sheath</span>
-                        <p className="text-sm font-semibold">PVC</p>
+                        <p className="text-sm font-semibold">{getProductData(selectedProduct).technicalData.sheath || 'N/A'}</p>
                       </div>
                       <div className="p-3 bg-gray-50 rounded-lg">
                         <span className="text-sm font-medium text-gray-600">Temperature Range</span>
-                        <p className="text-sm font-semibold">-15°C to +90°C</p>
+                        <p className="text-sm font-semibold">{getProductData(selectedProduct).technicalData.temperature || 'N/A'}</p>
                       </div>
                       <div className="p-3 bg-gray-50 rounded-lg">
                         <span className="text-sm font-medium text-gray-600">Bending Radius</span>
-                        <p className="text-sm font-semibold">12 times cable diameter</p>
+                        <p className="text-sm font-semibold">{getProductData(selectedProduct).technicalData.bendingRadius || 'N/A'}</p>
                       </div>
+                      {getProductData(selectedProduct).technicalData.armour && (
+                        <div className="p-3 bg-gray-50 rounded-lg">
+                          <span className="text-sm font-medium text-gray-600">Armour</span>
+                          <p className="text-sm font-semibold">{getProductData(selectedProduct).technicalData.armour}</p>
+                        </div>
+                      )}
                     </div>
                     <div className="p-3 bg-gray-50 rounded-lg">
                       <span className="text-sm font-medium text-gray-600">Standards</span>
-                      <p className="text-sm font-semibold">IS 7098 (Part 1) & IS 7098 (Part 2)</p>
+                      <p className="text-sm font-semibold">{getProductData(selectedProduct).technicalData.standards || 'N/A'}</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-center">
                     <div className="relative w-full h-80 bg-gray-100 rounded-lg overflow-hidden">
-                      <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
+                      {(() => {
+                        const productData = getProductData(selectedProduct);
+                        const productImage = productData?.imageUrl || null;
+                        
+                        if (productImage) {
+                          return (
+                            <img 
+                              src={productImage} 
+                              alt={selectedProduct}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextElementSibling.style.display = 'flex';
+                              }}
+                            />
+                          );
+                        }
+                        
+                        return (
+                          <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
+                            <div className="text-center">
+                              <Image className="h-16 w-16 text-gray-400 mx-auto mb-2" />
+                              <p className="text-gray-500">Product Image</p>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      <div className="absolute inset-0 bg-gray-200 flex items-center justify-center" style={{display: 'none'}}>
                         <div className="text-center">
                           <Image className="h-16 w-16 text-gray-400 mx-auto mb-2" />
                           <p className="text-gray-500">Product Image</p>
@@ -1379,8 +2263,10 @@ const ToolboxInterface = () => {
                   </div>
                 </div>
               </div>
+              )}
 
-              {/* Approvals, Licenses, GTP, Type Test, Others */}
+              {/* Approvals, Licenses, GTP, Type Test, Others - Only for Product Cards */}
+              {getProductData(selectedProduct).priceList && getProductData(selectedProduct).priceList.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Approvals */}
                 <div className="p-4 border border-gray-200 rounded-lg">
@@ -1389,27 +2275,90 @@ const ToolboxInterface = () => {
                     <h4 className="font-semibold text-gray-900">Approvals</h4>
                   </div>
                   <div className="space-y-2">
-                    {[
-                      { type: "BIS Certification", status: "Valid", expiry: "2025-12-31", file: "BIS_Certificate_2024.pdf" },
-                      { type: "ISO 9001:2015", status: "Valid", expiry: "2024-06-30", file: "ISO_9001_2015_Certificate.pdf" },
-                      { type: "CE Marking", status: "Valid", expiry: "2025-03-15", file: "CE_Marking_Certificate.pdf" }
-                    ].map((approval, index) => (
+                    {(() => {
+                      // Map PDFs to products
+                      const pdfMappings = {
+                        "Aerial Bunch Cable": "aerial bunch cable, bis certificate .pdf",
+                        "All Aluminium Alloy Conductor": "all aluminium alloy conductor,bis certificate .pdf",
+                        "Aluminium Conductor Galvanized Steel Reinforced": "aluminium conductor galvanised steel reinforced, bis certificate.pdf",
+                        "Multicore XLPE Insulated Aluminium Unarmoured Cable": "multicore xlpe insulated aluminium unrmoured cable,bis certificate.pdf"
+                      };
+                      
+                      const productName = selectedProduct; // Use the original product name from tools array
+                      const relevantPdfs = [];
+                      
+                      // Add product-specific BIS certificate if available
+                      if (pdfMappings[productName]) {
+                        relevantPdfs.push({
+                          type: `BIS Certification - ${productName}`,
+                          status: "Valid",
+                          expiry: "2025-12-31",
+                          file: pdfMappings[productName]
+                        });
+                      }
+                      
+                      // Add general certifications
+                      relevantPdfs.push(
+                        { type: "ISO 9001:2015", status: "Valid", expiry: "2024-06-30", file: "ISO_9001_2015_Certificate.pdf" },
+                        { type: "CE Marking", status: "Valid", expiry: "2025-03-15", file: "CE_Marking_Certificate.pdf" }
+                      );
+                      
+                      return relevantPdfs.map((approval, index) => (
                       <div key={index} className="p-2 bg-gray-50 rounded text-sm">
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium">{approval.type}</div>
-                          <button
-                            onClick={() => openFileViewer({
-                              title: approval.type,
-                              category: "Approvals",
-                              status: approval.status,
-                              expiry: approval.expiry,
-                              file: approval.file,
-                              content: `This is the ${approval.type} document for Aerial Bunch Cable. It contains detailed certification information, compliance standards, and validity details.`
-                            })}
-                            className="text-blue-600 hover:text-blue-800 transition-colors"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                // Check if PDF exists for this product
+                                if (pdfMappings[productName] && approval.file === pdfMappings[productName]) {
+                                  const pdfUrl = `${window.location.origin}/pdf/${approval.file}`;
+                                  console.log('Downloading PDF:', pdfUrl);
+                                  
+                                  const link = document.createElement('a');
+                                  link.href = pdfUrl;
+                                  link.download = approval.file;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                } else if (approval.type.includes('ISO') || approval.type.includes('CE')) {
+                                  // For general certifications, show placeholder message
+                                  alert('Certificate not available for download');
+                                } else {
+                                  // For products without PDFs, do nothing
+                                  return;
+                                }
+                              }}
+                              className={`${pdfMappings[productName] && approval.file === pdfMappings[productName] ? 'text-green-600 hover:text-green-800' : 'text-gray-400 cursor-not-allowed'} transition-colors`}
+                              title={pdfMappings[productName] && approval.file === pdfMappings[productName] ? "Download PDF" : "PDF not available"}
+                            >
+                              <Download className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                // Check if PDF exists for this product
+                                if (pdfMappings[productName] && approval.file === pdfMappings[productName]) {
+                                  const pdfUrl = `${window.location.origin}/pdf/${approval.file}`;
+                                  console.log('Opening PDF:', pdfUrl);
+                                  
+                                  const newWindow = window.open(pdfUrl, '_blank');
+                                  if (!newWindow) {
+                                    alert('Please allow pop-ups for this site to view the PDF');
+                                  }
+                                } else if (approval.type.includes('ISO') || approval.type.includes('CE')) {
+                                  // For general certifications, show placeholder message
+                                  alert('Certificate not available for viewing');
+                                } else {
+                                  // For products without PDFs, do nothing
+                                  return;
+                                }
+                              }}
+                              className={`${pdfMappings[productName] && approval.file === pdfMappings[productName] ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 cursor-not-allowed'} transition-colors`}
+                              title={pdfMappings[productName] && approval.file === pdfMappings[productName] ? "View Document" : "PDF not available"}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className={`px-2 py-1 rounded-full text-xs ${
@@ -1420,7 +2369,8 @@ const ToolboxInterface = () => {
                           <span className="text-xs text-gray-500">{approval.expiry}</span>
                         </div>
                       </div>
-                    ))}
+                    ));
+                    })()}
                   </div>
                 </div>
 
@@ -1438,19 +2388,38 @@ const ToolboxInterface = () => {
                       <div key={index} className="p-2 bg-gray-50 rounded text-sm">
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium">{license.type}</div>
-                          <button
-                            onClick={() => openFileViewer({
-                              title: license.type,
-                              category: "Licenses",
-                              number: license.number,
-                              status: license.status,
-                              file: license.file,
-                              content: `This is the ${license.type} document for Aerial Bunch Cable manufacturing. It contains license details, validity period, and regulatory compliance information.`
-                            })}
-                            className="text-blue-600 hover:text-blue-800 transition-colors"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                // Use BIS certificate as placeholder
+                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
+                                const link = document.createElement('a');
+                                link.href = actualPdfUrl;
+                                link.download = license.file;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="text-green-600 hover:text-green-800 transition-colors"
+                              title="Download PDF"
+                            >
+                              <Download className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                // Use BIS certificate as placeholder
+                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
+                                const newWindow = window.open(actualPdfUrl, '_blank');
+                                if (!newWindow) {
+                                  alert('Please allow pop-ups for this site to view the PDF');
+                                }
+                              }}
+                              className="text-blue-600 hover:text-blue-800 transition-colors"
+                              title="View Document"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                         <div className="text-xs text-gray-500 mb-1">{license.number}</div>
                         <span className={`px-2 py-1 rounded-full text-xs ${
@@ -1479,19 +2448,38 @@ const ToolboxInterface = () => {
                       <div key={index} className="p-2 bg-gray-50 rounded text-sm">
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium">{process.process}</div>
-                          <button
-                            onClick={() => openFileViewer({
-                              title: process.process,
-                              category: "GTP",
-                              status: process.status,
-                              date: process.date,
-                              file: process.file,
-                              content: `This is the ${process.process} report for Aerial Bunch Cable. It contains detailed test results, quality parameters, and compliance data.`
-                            })}
-                            className="text-blue-600 hover:text-blue-800 transition-colors"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                // Use BIS certificate as placeholder
+                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
+                                const link = document.createElement('a');
+                                link.href = actualPdfUrl;
+                                link.download = process.file;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="text-green-600 hover:text-green-800 transition-colors"
+                              title="Download PDF"
+                            >
+                              <Download className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                // Use BIS certificate as placeholder
+                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
+                                const newWindow = window.open(actualPdfUrl, '_blank');
+                                if (!newWindow) {
+                                  alert('Please allow pop-ups for this site to view the PDF');
+                                }
+                              }}
+                              className="text-blue-600 hover:text-blue-800 transition-colors"
+                              title="View Document"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className={`px-2 py-1 rounded-full text-xs ${
@@ -1522,19 +2510,38 @@ const ToolboxInterface = () => {
                       <div key={index} className="p-2 bg-gray-50 rounded text-sm">
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium">{test.test}</div>
-                          <button
-                            onClick={() => openFileViewer({
-                              title: test.test,
-                              category: "Type Test",
-                              result: test.result,
-                              certificate: test.certificate,
-                              file: test.file,
-                              content: `This is the ${test.test} test report for Aerial Bunch Cable. It contains detailed test procedures, results, and certification data.`
-                            })}
-                            className="text-blue-600 hover:text-blue-800 transition-colors"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                // Use BIS certificate as placeholder
+                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
+                                const link = document.createElement('a');
+                                link.href = actualPdfUrl;
+                                link.download = test.file;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="text-green-600 hover:text-green-800 transition-colors"
+                              title="Download PDF"
+                            >
+                              <Download className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                // Use BIS certificate as placeholder
+                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
+                                const newWindow = window.open(actualPdfUrl, '_blank');
+                                if (!newWindow) {
+                                  alert('Please allow pop-ups for this site to view the PDF');
+                                }
+                              }}
+                              className="text-blue-600 hover:text-blue-800 transition-colors"
+                              title="View Document"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className={`px-2 py-1 rounded-full text-xs ${
@@ -1565,19 +2572,38 @@ const ToolboxInterface = () => {
                       <div key={index} className="p-2 bg-gray-50 rounded text-sm">
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium">{doc.document}</div>
-                          <button
-                            onClick={() => openFileViewer({
-                              title: doc.document,
-                              category: "Others",
-                              status: doc.status,
-                              lastUpdated: doc.lastUpdated,
-                              file: doc.file,
-                              content: `This is the ${doc.document} document for Aerial Bunch Cable manufacturing facility. It contains detailed information about the facility setup and equipment.`
-                            })}
-                            className="text-blue-600 hover:text-blue-800 transition-colors"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                // Use BIS certificate as placeholder
+                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
+                                const link = document.createElement('a');
+                                link.href = actualPdfUrl;
+                                link.download = doc.file;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="text-green-600 hover:text-green-800 transition-colors"
+                              title="Download PDF"
+                            >
+                              <Download className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                // Use BIS certificate as placeholder
+                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
+                                const newWindow = window.open(actualPdfUrl, '_blank');
+                                if (!newWindow) {
+                                  alert('Please allow pop-ups for this site to view the PDF');
+                                }
+                              }}
+                              className="text-blue-600 hover:text-blue-800 transition-colors"
+                              title="View Document"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className={`px-2 py-1 rounded-full text-xs ${
@@ -1592,6 +2618,7 @@ const ToolboxInterface = () => {
                   </div>
                 </div>
               </div>
+              )}
             </div>
           </div>
         </div>
@@ -1678,88 +2705,90 @@ const ToolboxInterface = () => {
                       </div>
                     </div>
                     
-                    <h4 className="text-lg font-semibold text-gray-900 mb-2">{selectedFile.title}</h4>
-                    <p className="text-gray-600 mb-4">PDF Document Preview</p>
-                    <div className="bg-gray-100 rounded-lg p-4 mb-4">
-                      <p className="text-sm text-gray-700">
-                        <strong>Document Type:</strong> {selectedFile.category}<br/>
-                        <strong>File Size:</strong> 2.4 MB<br/>
-                        <strong>Pages:</strong> 8 pages<br/>
-                        <strong>Format:</strong> PDF<br/>
-                        <strong>Created:</strong> {selectedFile.date || selectedFile.lastUpdated || "2024-01-15"}
-                      </p>
-                    </div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">{selectedFile.title}</h4>
                     <div className="flex gap-2 justify-center">
                       <button 
                         onClick={() => {
-                          const htmlContent = `
-                            <!DOCTYPE html>
-                            <html>
-                            <head>
-                              <title>${selectedFile.title}</title>
-                              <style>
-                                body { font-family: Arial, sans-serif; margin: 20px; }
-                                h1 { color: #2563eb; margin-bottom: 20px; }
-                                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                                th, td { border: 1px solid #d1d5db; padding: 12px; text-align: left; }
-                                th { background-color: #f3f4f6; font-weight: 600; color: #374151; }
-                                .header { text-align: center; margin-bottom: 30px; }
-                              </style>
-                            </head>
-                            <body>
-                              <div class="header">
-                                <h1>${selectedFile.title}</h1>
-                                <p>Generated on ${new Date().toLocaleDateString()}</p>
-                              </div>
-                              
-                              <div style="margin: 30px 0; padding: 20px; background: #f8fafc; border-radius: 8px;">
-                                <h3 style="color: #2563eb; margin-bottom: 15px;">BIS Certificate Details</h3>
-                                <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
-                                  <h4 style="color: #1f2937; margin-bottom: 15px;">Certificate Information</h4>
-                                  <p style="margin-bottom: 10px;"><strong>Certificate Number:</strong> BIS/CR/123456/2024</p>
-                                  <p style="margin-bottom: 10px;"><strong>Product:</strong> Aerial Bunch Cable</p>
-                                  <p style="margin-bottom: 10px;"><strong>Standard:</strong> IS 7098 (Part 1) & IS 7098 (Part 2)</p>
-                                  <p style="margin-bottom: 10px;"><strong>Validity Period:</strong> 3 Years from Date of Issue</p>
-                                  <p style="margin-bottom: 10px;"><strong>Issue Date:</strong> January 15, 2024</p>
-                                  <p style="margin-bottom: 10px;"><strong>Expiry Date:</strong> January 15, 2027</p>
-                                  <p style="margin-bottom: 10px;"><strong>Manufacturer:</strong> Anode Electric Private Limited</p>
-                                  <p style="margin-bottom: 10px;"><strong>Address:</strong> Industrial Area, Sector 5, Mumbai, Maharashtra - 400001</p>
-                                  <p style="margin-bottom: 10px;"><strong>Testing Laboratory:</strong> BIS Testing Laboratory, Mumbai</p>
-                                  <p style="margin-bottom: 10px;"><strong>Test Report Number:</strong> BIS/TR/789012/2024</p>
+                          // Check if it's BIS Certification and download the actual PDF
+                          if (selectedFile.title === "BIS Certification") {
+                            const pdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
+                            const link = document.createElement('a');
+                            link.href = pdfUrl;
+                            link.download = 'aerial-bunch-cable-bis-certificate.pdf';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          } else {
+                            // For other documents, generate HTML content as before
+                            const htmlContent = `
+                              <!DOCTYPE html>
+                              <html>
+                              <head>
+                                <title>${selectedFile.title}</title>
+                                <style>
+                                  body { font-family: Arial, sans-serif; margin: 20px; }
+                                  h1 { color: #2563eb; margin-bottom: 20px; }
+                                  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                                  th, td { border: 1px solid #d1d5db; padding: 12px; text-align: left; }
+                                  th { background-color: #f3f4f6; font-weight: 600; color: #374151; }
+                                  .header { text-align: center; margin-bottom: 30px; }
+                                </style>
+                              </head>
+                              <body>
+                                <div class="header">
+                                  <h1>${selectedFile.title}</h1>
+                                  <p>Generated on ${new Date().toLocaleDateString()}</p>
                                 </div>
                                 
-                                <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 15px;">
-                                  <h4 style="color: #1f2937; margin-bottom: 15px;">Technical Specifications</h4>
-                                  <p style="margin-bottom: 8px;">• Voltage Rating: 11 kV</p>
-                                  <p style="margin-bottom: 8px;">• Conductor Material: Aluminum</p>
-                                  <p style="margin-bottom: 8px;">• Insulation: XLPE (Cross-linked Polyethylene)</p>
-                                  <p style="margin-bottom: 8px;">• Sheath: PVC (Polyvinyl Chloride)</p>
-                                  <p style="margin-bottom: 8px;">• Temperature Range: -15°C to +90°C</p>
-                                  <p style="margin-bottom: 8px;">• Bending Radius: 12 times cable diameter</p>
-                                  <p style="margin-bottom: 8px;">• Standards Compliance: IS 7098 (Part 1) & IS 7098 (Part 2)</p>
+                                <div style="margin: 30px 0; padding: 20px; background: #f8fafc; border-radius: 8px;">
+                                  <h3 style="color: #2563eb; margin-bottom: 15px;">BIS Certificate Details</h3>
+                                  <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                    <h4 style="color: #1f2937; margin-bottom: 15px;">Certificate Information</h4>
+                                    <p style="margin-bottom: 10px;"><strong>Certificate Number:</strong> BIS/CR/123456/2024</p>
+                                    <p style="margin-bottom: 10px;"><strong>Product:</strong> Aerial Bunch Cable</p>
+                                    <p style="margin-bottom: 10px;"><strong>Standard:</strong> IS 7098 (Part 1) & IS 7098 (Part 2)</p>
+                                    <p style="margin-bottom: 10px;"><strong>Validity Period:</strong> 3 Years from Date of Issue</p>
+                                    <p style="margin-bottom: 10px;"><strong>Issue Date:</strong> January 15, 2024</p>
+                                    <p style="margin-bottom: 10px;"><strong>Expiry Date:</strong> January 15, 2027</p>
+                                    <p style="margin-bottom: 10px;"><strong>Manufacturer:</strong> Anode Electric Private Limited</p>
+                                    <p style="margin-bottom: 10px;"><strong>Address:</strong> Industrial Area, Sector 5, Mumbai, Maharashtra - 400001</p>
+                                    <p style="margin-bottom: 10px;"><strong>Testing Laboratory:</strong> BIS Testing Laboratory, Mumbai</p>
+                                    <p style="margin-bottom: 10px;"><strong>Test Report Number:</strong> BIS/TR/789012/2024</p>
+                                  </div>
+                                  
+                                  <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 15px;">
+                                    <h4 style="color: #1f2937; margin-bottom: 15px;">Technical Specifications</h4>
+                                    <p style="margin-bottom: 8px;">• Voltage Rating: 11 kV</p>
+                                    <p style="margin-bottom: 8px;">• Conductor Material: Aluminum</p>
+                                    <p style="margin-bottom: 8px;">• Insulation: XLPE (Cross-linked Polyethylene)</p>
+                                    <p style="margin-bottom: 8px;">• Sheath: PVC (Polyvinyl Chloride)</p>
+                                    <p style="margin-bottom: 8px;">• Temperature Range: -15°C to +90°C</p>
+                                    <p style="margin-bottom: 8px;">• Bending Radius: 12 times cable diameter</p>
+                                    <p style="margin-bottom: 8px;">• Standards Compliance: IS 7098 (Part 1) & IS 7098 (Part 2)</p>
+                                  </div>
+                                  
+                                  <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 15px;">
+                                    <h4 style="color: #1f2937; margin-bottom: 15px;">Certification Authority</h4>
+                                    <p style="margin-bottom: 10px;"><strong>Bureau of Indian Standards (BIS)</strong></p>
+                                    <p style="margin-bottom: 10px;">Manak Bhavan, 9 Bahadur Shah Zafar Marg, New Delhi - 110002</p>
+                                    <p style="margin-bottom: 10px;">Phone: +91-11-23230131</p>
+                                    <p style="margin-bottom: 10px;">Email: info@bis.gov.in</p>
+                                    <p style="margin-bottom: 10px;">Website: www.bis.gov.in</p>
+                                  </div>
                                 </div>
-                                
-                                <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 15px;">
-                                  <h4 style="color: #1f2937; margin-bottom: 15px;">Certification Authority</h4>
-                                  <p style="margin-bottom: 10px;"><strong>Bureau of Indian Standards (BIS)</strong></p>
-                                  <p style="margin-bottom: 10px;">Manak Bhavan, 9 Bahadur Shah Zafar Marg, New Delhi - 110002</p>
-                                  <p style="margin-bottom: 10px;">Phone: +91-11-23230131</p>
-                                  <p style="margin-bottom: 10px;">Email: info@bis.gov.in</p>
-                                  <p style="margin-bottom: 10px;">Website: www.bis.gov.in</p>
-                                </div>
-                              </div>
-                            </body>
-                            </html>
-                          `;
-                          const blob = new Blob([htmlContent], { type: 'text/html' });
-                          const url = window.URL.createObjectURL(blob);
-                          const link = document.createElement('a');
-                          link.href = url;
-                          link.download = `${selectedFile.title.toLowerCase().replace(/\s+/g, '-')}.html`;
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                          window.URL.revokeObjectURL(url);
+                              </body>
+                              </html>
+                            `;
+                            const blob = new Blob([htmlContent], { type: 'text/html' });
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = `${selectedFile.title.toLowerCase().replace(/\s+/g, '-')}.html`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+                          }
                         }}
                         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                       >
@@ -2177,6 +3206,652 @@ const ToolboxInterface = () => {
           </div>
         </div>
       )}
+
+      {/* File Viewer Modal */}
+      {isFileViewerOpen && selectedFile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-lg">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-100">
+                    <FileText className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">{selectedFile.title}</h2>
+                    <p className="text-gray-600">{selectedFile.category} Document</p>
+                  </div>
+                </div>
+                <button onClick={closeFileViewer} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-auto max-h-[80vh]">
+              {/* Demo Document Preview */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Document Preview</h3>
+                <div className="border border-gray-200 rounded-lg p-6 bg-white">
+                  <div className="text-center">
+                    {/* Demo PDF Preview */}
+                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 mb-4">
+                      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                          </div>
+                          <div className="text-xs text-gray-500">PDF Viewer</div>
+                        </div>
+                        
+                        {/* Demo Certificate Header */}
+                        <div className="text-center mb-6">
+                          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Shield className="h-8 w-8 text-blue-600" />
+                          </div>
+                          <h4 className="text-lg font-bold text-gray-900 mb-2">BIS CERTIFICATION</h4>
+                          <p className="text-sm text-gray-600">Bureau of Indian Standards</p>
+                        </div>
+                        
+                        {/* Demo Certificate Content */}
+                        <div className="space-y-3 text-left">
+                          <div className="flex justify-between py-1">
+                            <span className="text-sm font-medium text-gray-600">Certificate No:</span>
+                            <span className="text-sm text-gray-900">BIS/CR/123456/2024</span>
+                          </div>
+                          <div className="flex justify-between py-1">
+                            <span className="text-sm font-medium text-gray-600">Product:</span>
+                            <span className="text-sm text-gray-900">Aerial Bunch Cable</span>
+                          </div>
+                          <div className="flex justify-between py-1">
+                            <span className="text-sm font-medium text-gray-600">Standard:</span>
+                            <span className="text-sm text-gray-900">IS 7098</span>
+                          </div>
+                          <div className="flex justify-between py-1">
+                            <span className="text-sm font-medium text-gray-600">Valid Until:</span>
+                            <span className="text-sm text-gray-900">Jan 15, 2027</span>
+                          </div>
+                          <div className="flex justify-between py-1">
+                            <span className="text-sm font-medium text-gray-600">Manufacturer:</span>
+                            <span className="text-sm text-gray-900">Anode Electric</span>
+                          </div>
+                        </div>
+                        
+                        {/* Demo Watermark */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
+                          <div className="text-6xl font-bold text-gray-400 transform -rotate-45">BIS</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">{selectedFile.title}</h4>
+                    <div className="flex gap-2 justify-center">
+                      <button 
+                        onClick={() => {
+                          // Check if it's BIS Certification and download the actual PDF
+                          if (selectedFile.title === "BIS Certification") {
+                            const pdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
+                            const link = document.createElement('a');
+                            link.href = pdfUrl;
+                            link.download = 'aerial-bunch-cable-bis-certificate.pdf';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          } else {
+                            // For other documents, generate HTML content as before
+                            const htmlContent = `
+                              <!DOCTYPE html>
+                              <html>
+                              <head>
+                                <title>${selectedFile.title}</title>
+                                <style>
+                                  body { font-family: Arial, sans-serif; margin: 20px; }
+                                  h1 { color: #2563eb; margin-bottom: 20px; }
+                                  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                                  th, td { border: 1px solid #d1d5db; padding: 12px; text-align: left; }
+                                  th { background-color: #f3f4f6; font-weight: 600; color: #374151; }
+                                  .header { text-align: center; margin-bottom: 30px; }
+                                </style>
+                              </head>
+                              <body>
+                                <div class="header">
+                                  <h1>${selectedFile.title}</h1>
+                                  <p>Generated on ${new Date().toLocaleDateString()}</p>
+                                </div>
+                                
+                                <div style="margin: 30px 0; padding: 20px; background: #f8fafc; border-radius: 8px;">
+                                  <h3 style="color: #2563eb; margin-bottom: 15px;">BIS Certificate Details</h3>
+                                  <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                    <h4 style="color: #1f2937; margin-bottom: 15px;">Certificate Information</h4>
+                                    <p style="margin-bottom: 10px;"><strong>Certificate Number:</strong> BIS/CR/123456/2024</p>
+                                    <p style="margin-bottom: 10px;"><strong>Product:</strong> Aerial Bunch Cable</p>
+                                    <p style="margin-bottom: 10px;"><strong>Standard:</strong> IS 7098 (Part 1) & IS 7098 (Part 2)</p>
+                                    <p style="margin-bottom: 10px;"><strong>Validity Period:</strong> 3 Years from Date of Issue</p>
+                                    <p style="margin-bottom: 10px;"><strong>Issue Date:</strong> January 15, 2024</p>
+                                    <p style="margin-bottom: 10px;"><strong>Expiry Date:</strong> January 15, 2027</p>
+                                    <p style="margin-bottom: 10px;"><strong>Manufacturer:</strong> Anode Electric Private Limited</p>
+                                    <p style="margin-bottom: 10px;"><strong>Address:</strong> Industrial Area, Sector 5, Mumbai, Maharashtra - 400001</p>
+                                    <p style="margin-bottom: 10px;"><strong>Testing Laboratory:</strong> BIS Testing Laboratory, Mumbai</p>
+                                    <p style="margin-bottom: 10px;"><strong>Test Report Number:</strong> BIS/TR/789012/2024</p>
+                                  </div>
+                                  
+                                  <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 15px;">
+                                    <h4 style="color: #1f2937; margin-bottom: 15px;">Technical Specifications</h4>
+                                    <p style="margin-bottom: 8px;">• Voltage Rating: 11 kV</p>
+                                    <p style="margin-bottom: 8px;">• Conductor Material: Aluminum</p>
+                                    <p style="margin-bottom: 8px;">• Insulation: XLPE (Cross-linked Polyethylene)</p>
+                                    <p style="margin-bottom: 8px;">• Sheath: PVC (Polyvinyl Chloride)</p>
+                                    <p style="margin-bottom: 8px;">• Temperature Range: -15°C to +90°C</p>
+                                    <p style="margin-bottom: 8px;">• Bending Radius: 12 times cable diameter</p>
+                                    <p style="margin-bottom: 8px;">• Standards Compliance: IS 7098 (Part 1) & IS 7098 (Part 2)</p>
+                                  </div>
+                                  
+                                  <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 15px;">
+                                    <h4 style="color: #1f2937; margin-bottom: 15px;">Certification Authority</h4>
+                                    <p style="margin-bottom: 10px;"><strong>Bureau of Indian Standards (BIS)</strong></p>
+                                    <p style="margin-bottom: 10px;">Manak Bhavan, 9 Bahadur Shah Zafar Marg, New Delhi - 110002</p>
+                                    <p style="margin-bottom: 10px;">Phone: +91-11-23230131</p>
+                                    <p style="margin-bottom: 10px;">Email: info@bis.gov.in</p>
+                                    <p style="margin-bottom: 10px;">Website: www.bis.gov.in</p>
+                                  </div>
+                                </div>
+                              </body>
+                              </html>
+                            `;
+                            const blob = new Blob([htmlContent], { type: 'text/html' });
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = `${selectedFile.title.toLowerCase().replace(/\s+/g, '-')}.html`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+                          }
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        <Download className="h-4 w-4 inline mr-2" />
+                        Download PDF
+                      </button>
+                      <button 
+                        onClick={() => {
+                          // Check if it's BIS Certification and open the PDF
+                          if (selectedFile.title === "BIS Certification") {
+                            console.log('Opening BIS Certification PDF...');
+                            const pdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
+                            console.log('PDF URL:', pdfUrl);
+                            const newWindow = window.open(pdfUrl, '_blank');
+                            if (!newWindow) {
+                              alert('Please allow pop-ups for this site to view the PDF');
+                            }
+                          } else {
+                            // For other documents, show the HTML content as before
+                            const htmlContent = `
+                              <!DOCTYPE html>
+                              <html>
+                              <head>
+                                <title>${selectedFile.title} - Full Document</title>
+                                <style>
+                                  body { 
+                                    font-family: Arial, sans-serif; 
+                                    margin: 0; 
+                                    background: #f8fafc; 
+                                    color: #333;
+                                  }
+                                  .container { 
+                                    max-width: 1200px; 
+                                    margin: 0 auto; 
+                                    background: white; 
+                                    min-height: 100vh;
+                                    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+                                  }
+                                  .header {
+                                    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+                                    color: white;
+                                    padding: 40px 20px;
+                                    text-align: center;
+                                  }
+                                  h1 {
+                                    margin: 0;
+                                    font-size: 32px;
+                                    font-weight: bold;
+                                  }
+                                  .subtitle {
+                                    margin: 10px 0 0 0;
+                                    font-size: 16px;
+                                    opacity: 0.9;
+                                  }
+                                  .content {
+                                    padding: 40px;
+                                  }
+                                  .document-content {
+                                    background: white;
+                                    padding: 30px;
+                                    border-radius: 8px;
+                                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                                    margin-bottom: 30px;
+                                  }
+                                  .content-title {
+                                    color: #2563eb;
+                                    font-size: 20px;
+                                    font-weight: 600;
+                                    margin-bottom: 15px;
+                                  }
+                                  .content-text {
+                                    line-height: 1.8;
+                                    color: #374151;
+                                    font-size: 16px;
+                                  }
+                                  .footer {
+                                    background: #f8fafc;
+                                    padding: 20px;
+                                    text-align: center;
+                                    color: #6b7280;
+                                    font-size: 14px;
+                                  }
+                                </style>
+                              </head>
+                              <body>
+                                <div class="container">
+                                  <div class="header">
+                                    <h1>${selectedFile.title}</h1>
+                                    <div class="subtitle">${selectedFile.category} Document</div>
+                                  </div>
+                                  
+                                  <div class="content">
+                                    
+                                    <div class="document-content">
+                                      <div class="content-title">BIS Certificate Details</div>
+                                      <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
+                                        <h4 style="color: #1f2937; margin-bottom: 15px;">Certificate Information</h4>
+                                        <p style="margin-bottom: 10px;"><strong>Certificate Number:</strong> BIS/CR/123456/2024</p>
+                                        <p style="margin-bottom: 10px;"><strong>Product:</strong> Aerial Bunch Cable</p>
+                                        <p style="margin-bottom: 10px;"><strong>Standard:</strong> IS 7098 (Part 1) & IS 7098 (Part 2)</p>
+                                        <p style="margin-bottom: 10px;"><strong>Validity Period:</strong> 3 Years from Date of Issue</p>
+                                        <p style="margin-bottom: 10px;"><strong>Issue Date:</strong> January 15, 2024</p>
+                                        <p style="margin-bottom: 10px;"><strong>Expiry Date:</strong> January 15, 2027</p>
+                                        <p style="margin-bottom: 10px;"><strong>Manufacturer:</strong> Anode Electric Private Limited</p>
+                                        <p style="margin-bottom: 10px;"><strong>Address:</strong> Industrial Area, Sector 5, Mumbai, Maharashtra - 400001</p>
+                                        <p style="margin-bottom: 10px;"><strong>Testing Laboratory:</strong> BIS Testing Laboratory, Mumbai</p>
+                                        <p style="margin-bottom: 10px;"><strong>Test Report Number:</strong> BIS/TR/789012/2024</p>
+                                      </div>
+                                      
+                                      <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
+                                        <h4 style="color: #1f2937; margin-bottom: 15px;">Technical Specifications</h4>
+                                        <p style="margin-bottom: 8px;">• Voltage Rating: 11 kV</p>
+                                        <p style="margin-bottom: 8px;">• Conductor Material: Aluminum</p>
+                                        <p style="margin-bottom: 8px;">• Insulation: XLPE (Cross-linked Polyethylene)</p>
+                                        <p style="margin-bottom: 8px;">• Sheath: PVC (Polyvinyl Chloride)</p>
+                                        <p style="margin-bottom: 8px;">• Temperature Range: -15°C to +90°C</p>
+                                        <p style="margin-bottom: 8px;">• Bending Radius: 12 times cable diameter</p>
+                                        <p style="margin-bottom: 8px;">• Standards Compliance: IS 7098 (Part 1) & IS 7098 (Part 2)</p>
+                                      </div>
+                                      
+                                      <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                                        <h4 style="color: #1f2937; margin-bottom: 15px;">Certification Authority</h4>
+                                        <p style="margin-bottom: 10px;"><strong>Bureau of Indian Standards (BIS)</strong></p>
+                                        <p style="margin-bottom: 10px;">Manak Bhavan, 9 Bahadur Shah Zafar Marg, New Delhi - 110002</p>
+                                        <p style="margin-bottom: 10px;">Phone: +91-11-23230131</p>
+                                        <p style="margin-bottom: 10px;">Email: info@bis.gov.in</p>
+                                    <p style="margin-bottom: 10px;">Website: www.bis.gov.in</p>
+                                      </div>
+                                    </div>
+                                    
+                                  </div>
+                                  
+                                  <div class="footer">
+                                    <p>This document was generated automatically on ${new Date().toLocaleDateString()}</p>
+                                  </div>
+                                </div>
+                              </body>
+                              </html>
+                            `;
+                            const newWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+                            if (newWindow) {
+                              newWindow.document.write(htmlContent);
+                              newWindow.document.close();
+                            } else {
+                              alert('Please allow pop-ups for this site to view the full document');
+                            }
+                          }
+                        }}
+                        className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                      >
+                        <Eye className="h-4 w-4 inline mr-2" />
+                        View Full Document
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Business Card Modal */}
+      {isBusinessCardOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Business Card</h3>
+                <button
+                  onClick={closeBusinessCard}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              {/* Business Card Design */}
+              <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg p-6 text-white mb-6">
+                {/* Header with Logo and Company Info */}
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center overflow-hidden">
+                      <img 
+                        src="/images/profiles/rajvansh samal.png" 
+                        alt="Rajvansh Samal"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling.style.display = 'flex';
+                        }}
+                      />
+                      <div className="w-full h-full bg-blue-600 flex items-center justify-center" style={{display: 'none'}}>
+                        <span className="text-white font-bold text-xl">RS</span>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-2xl font-bold">ANOCAB</h4>
+                      <p className="text-sm text-blue-100">Electric Solutions</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                      <span className="text-white font-bold text-lg">AE</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <div>
+                    <h5 className="font-semibold text-lg">Rajvansh Samal</h5>
+                    <p className="text-blue-100">Production Planning Controller</p>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="w-4 h-4">📞</span>
+                      <span>+91 6262002105</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-4 h-4">✉️</span>
+                      <span>rajvansh@anocab.com</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-4 h-4">🌐</span>
+                      <span>www.anocab.com</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="w-4 h-4 mt-1">📍</span>
+                      <span className="text-xs">Near Dhan Darai, Dadda Nagar<br/>Jabalpur, MP</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    // Generate and download business card as HTML
+                    const businessCardHTML = `
+                      <!DOCTYPE html>
+                      <html>
+                      <head>
+                        <title>ANOCAB Business Card</title>
+                        <style>
+                          body { 
+                            font-family: Arial, sans-serif; 
+                            margin: 0; 
+                            padding: 20px; 
+                            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+                            min-height: 100vh;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                          }
+                           .business-card {
+                             background: white;
+                             border-radius: 12px;
+                             padding: 30px;
+                             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                             max-width: 600px;
+                             width: 100%;
+                             aspect-ratio: 16/9;
+                           }
+                          .header {
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            margin-bottom: 25px;
+                          }
+                          .logo {
+                            width: 50px;
+                            height: 50px;
+                            background: #2563eb;
+                            border-radius: 8px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-weight: bold;
+                            font-size: 18px;
+                          }
+                          .company-logo {
+                            width: 50px;
+                            height: 50px;
+                            background: #2563eb;
+                            border-radius: 8px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-weight: bold;
+                            font-size: 18px;
+                          }
+                          .company-info h1 {
+                            color: #2563eb;
+                            font-size: 24px;
+                            margin: 0;
+                            font-weight: bold;
+                          }
+                          .company-info p {
+                            color: #64748b;
+                            margin: 0;
+                            font-size: 14px;
+                          }
+                          .contact-info {
+                            margin-bottom: 20px;
+                          }
+                          .contact-info h2 {
+                            color: #1e293b;
+                            font-size: 18px;
+                            margin: 0 0 5px 0;
+                          }
+                          .contact-info .title {
+                            color: #64748b;
+                            font-size: 14px;
+                            margin-bottom: 15px;
+                          }
+                          .contact-details {
+                            display: flex;
+                            flex-direction: column;
+                            gap: 8px;
+                          }
+                          .contact-details div {
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                            font-size: 14px;
+                            color: #374151;
+                          }
+                          .contact-details .icon {
+                            width: 16px;
+                            height: 16px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                          }
+                        </style>
+                      </head>
+                      <body>
+                        <div class="business-card">
+                           <div class="header">
+                             <div class="logo">
+                               <div style="width: 60px; height: 60px; background: #2563eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">RS</div>
+                             </div>
+                             <div class="company-info">
+                               <h1>ANOCAB</h1>
+                               <p>Electric Solutions</p>
+                             </div>
+                             <div class="company-logo">
+                               <div style="width: 50px; height: 50px; background: #2563eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">AE</div>
+                             </div>
+                           </div>
+                          
+                          <div class="contact-info">
+                            <h2>Rajvansh Samal</h2>
+                            <p class="title">Production Planning Controller</p>
+                            
+                            <div class="contact-details">
+                              <div>
+                                <span class="icon">📞</span>
+                                <span>+91 6262002105</span>
+                              </div>
+                              <div>
+                                <span class="icon">✉️</span>
+                                <span>rajvansh@anocab.com</span>
+                              </div>
+                              <div>
+                                <span class="icon">🌐</span>
+                                <span>www.anocab.com</span>
+                              </div>
+                              <div>
+                                <span class="icon">📍</span>
+                                <span>Near Dhan Darai, Dadda Nagar, Jabalpur, MP</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </body>
+                      </html>
+                    `;
+                    
+                    const blob = new Blob([businessCardHTML], { type: 'text/html' });
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'anocab-business-card.html';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                  }}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Card
+                </button>
+                <button
+                  onClick={closeBusinessCard}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Company Emails Modal */}
+      {isCompanyEmailsOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-end z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-96 max-h-[80vh] overflow-y-auto relative mt-16">
+            {/* Close Button - Positioned inside the frame */}
+            <button
+              onClick={closeCompanyEmails}
+              className="absolute top-3 right-3 w-6 h-6 text-gray-400 hover:text-gray-600 transition-colors flex items-center justify-center z-10"
+              title="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <div className="p-4">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Company Email Directory</h3>
+              </div>
+              
+              {/* Email List */}
+              <div className="space-y-2">
+                <div className="grid gap-2">
+                  {[
+                    { role: "Managing Director", email: "MD@anocab.in" },
+                    { role: "Chief Executive Officer", email: "CEO@anocab.in" },
+                    { role: "General Manager", email: "GM@anocab.in" },
+                    { role: "CM", email: "CM@anocab.in" },
+                    { role: "Chief Financial Officer", email: "CFO@anocab.in" },
+                    { role: "HR", email: "humanresourceanode@gmail.com" },
+                    { role: "Data Analyst", email: "admin@anocab.in" },
+                    { role: "Junior Accountant", email: "deepshikha@anocab.com" },
+                    { role: "Production Planning Controller", email: "rajvansh@anocab.com" },
+                    { role: "Senior Supervisor", email: "tukesh@anocab.com" },
+                    { role: "Junior Supervisor", email: "acnt.anocab@gmail.com" },
+                    { role: "Area Sales Manager", email: "sales@anocab.com" },
+                    { role: "Security", email: "vivian@anocab.com" }
+                  ].map((contact, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 font-semibold text-xs">
+                            {contact.role.split(' ').map(word => word[0]).join('').slice(0, 2)}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-medium text-gray-900 text-sm truncate">{contact.role}</h4>
+                          <p className="text-xs text-gray-600 truncate">{contact.email}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          window.open(`mailto:${contact.email}`, '_blank');
+                        }}
+                        className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors flex-shrink-0"
+                      >
+                        Email
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={closeCompanyEmails}
+                  className="px-3 py-1 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
