@@ -1571,7 +1571,11 @@ const ToolboxInterface = () => {
                       return (
                         <div
                           key={toolIndex}
-                          className="p-4 hover:bg-gray-50 hover:shadow-lg hover:scale-105 hover:-translate-y-1 transition-all duration-300 ease-in-out cursor-pointer border border-gray-200 bg-white group shadow-sm min-h-[140px] hover:border-blue-200 rounded-lg"
+                          className={`p-4 transition-all duration-300 ease-in-out cursor-pointer group min-h-[140px] rounded-xl shadow-sm border 
+                            ${section.id === "technical-size-chart"
+                              ? "bg-gradient-to-b from-white to-blue-50/50 border-blue-100 hover:border-blue-300 hover:shadow-xl hover:-translate-y-1 hover:ring-2 hover:ring-blue-200/60"
+                              : "bg-white border-gray-200 hover:bg-gray-50 hover:shadow-lg hover:scale-105 hover:-translate-y-1 hover:border-blue-200"}
+                          `}
                           onClick={() => handleToolClick(tool)}
                         >
                           <div className="flex flex-col text-left space-y-3">
@@ -1607,8 +1611,14 @@ const ToolboxInterface = () => {
                                 </div>
                               )
                             ) : ToolIcon && (
-                              <div className="p-3 rounded-lg bg-gray-100 group-hover:bg-blue-100 group-hover:scale-110 transition-all duration-300 ease-in-out">
-                                <ToolIcon className="h-6 w-6 text-gray-600 group-hover:text-blue-600 transition-all duration-300 ease-in-out group-hover:rotate-3" />
+                              <div className={`p-3 rounded-lg transition-all duration-300 ease-in-out group-hover:scale-110 
+                                ${section.id === "technical-size-chart" 
+                                  ? "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
+                                  : "bg-gray-100 group-hover:bg-blue-100"}
+                             `}>
+                                <ToolIcon className={`h-6 w-6 transition-all duration-300 ease-in-out group-hover:rotate-3 
+                                  ${section.id === "technical-size-chart" ? "text-blue-600" : "text-gray-600 group-hover:text-blue-600"}
+                                `} />
                               </div>
                             )}
                             <div className="flex-1">
@@ -1617,7 +1627,12 @@ const ToolboxInterface = () => {
                               }`}>
                                 {tool.name}
                               </h3>
-                              <p className="text-xs text-gray-500 leading-relaxed group-hover:text-gray-700 transition-colors duration-300">{tool.description}</p>
+                              <p className={`text-xs leading-relaxed transition-colors duration-300 
+                                ${section.id === "technical-size-chart" ? "text-gray-600 group-hover:text-gray-700" : "text-gray-500 group-hover:text-gray-700"}
+                              `}>{tool.description}</p>
+                              <p className={`text-xs leading-relaxed transition-colors duration-300 
+                                ${section.id === "technical-size-chart" ? "text-gray-600 group-hover:text-gray-700" : "text-gray-500 group-hover:text-gray-700"}
+                              `}>{tool.description}</p>
                             </div>
                           </div>
                         </div>
