@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  # Service ka naam 'frontend' hai
+  frontend:
+    # Image build karne ke liye current directory (.) mein Dockerfile use karo
+    build: .
+    # Container ka naam 'anode-frontend' rakho
+    container_name: anode-frontend
+    # Local machine ke port 80 ko container ke port 80 se jodo
+    # Aap browser mein server ki IP daal kar access kar payenge
+    ports:
+      - "8080:80"
+    # Agar container fail ho to automatically restart karo
+    restart: unless-stopped
