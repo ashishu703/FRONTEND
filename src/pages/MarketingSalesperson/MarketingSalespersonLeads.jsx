@@ -133,9 +133,10 @@ const EditLeadModal = ({ lead, onSave, onClose }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="Industrial Equipment">Industrial Equipment</option>
-                <option value="Commercial Lighting">Commercial Lighting</option>
-                <option value="Power Solutions">Power Solutions</option>
+                <option value="Industrial Cable">Industrial Cable</option>
+                <option value="Domestic Cable">Domestic Cable</option>
+                <option value="Power Cable">Power Cable</option>
+                <option value="Networking Cable">Networking Cable</option>
               </select>
             </div>
             <div>
@@ -162,10 +163,11 @@ const EditLeadModal = ({ lead, onSave, onClose }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="Website">Website</option>
-                <option value="Referral">Referral</option>
-                <option value="Cold Call">Cold Call</option>
-                <option value="Social Media">Social Media</option>
+                <option value="office">office</option>
+                <option value="indiamart">indiamart</option>
+                <option value="facebook">facebook</option>
+                <option value="whatsapp">whatsapp</option>
+                <option value="market">market</option>
               </select>
             </div>
             <div>
@@ -373,9 +375,10 @@ const AddCustomerModal = ({ onSave, onClose }) => {
                 required
               >
                 <option value="">Select Product Type</option>
-                <option value="Industrial Equipment">Industrial Equipment</option>
-                <option value="Commercial Lighting">Commercial Lighting</option>
-                <option value="Power Solutions">Power Solutions</option>
+                <option value="Industrial Cable">Industrial Cable</option>
+                <option value="Domestic Cable">Domestic Cable</option>
+                <option value="Power Cable">Power Cable</option>
+                <option value="Networking Cable">Networking Cable</option>
               </select>
             </div>
             <div>
@@ -404,10 +407,11 @@ const AddCustomerModal = ({ onSave, onClose }) => {
                 required
               >
                 <option value="">Select Lead Source</option>
-                <option value="Website">Website</option>
-                <option value="Referral">Referral</option>
-                <option value="Cold Call">Cold Call</option>
-                <option value="Social Media">Social Media</option>
+                <option value="office">office</option>
+                <option value="indiamart">indiamart</option>
+                <option value="facebook">facebook</option>
+                <option value="whatsapp">whatsapp</option>
+                <option value="market">market</option>
               </select>
             </div>
             <div>
@@ -553,7 +557,7 @@ const LeadImportModal = ({ onImport, onClose }) => {
           gstNo: lead.gstno || lead.gstno || '',
           productType: lead.producttype || lead.producttype || 'Industrial Equipment',
           state: lead.state || 'Madhya Pradesh',
-          leadSource: lead.leadsource || lead.leadsource || 'Website',
+          leadSource: lead.leadsource || lead.leadsource || 'office',
           customerType: lead.customertype || lead.customertype || 'B2B',
           date: lead.date || new Date().toISOString().split('T')[0],
           visitingStatus: lead.visitingstatus || lead.visitingstatus || 'Not Visited',
@@ -889,7 +893,7 @@ const MarketingSalespersonLeads = () => {
       gstNo: '23ABCDE1234F1Z5',
       productType: 'Industrial Equipment',
       state: 'Madhya Pradesh',
-      leadSource: 'Website',
+      leadSource: 'market',
       customerType: 'B2B',
       date: '2025-01-17',
       visitingStatus: 'Scheduled',
@@ -911,7 +915,7 @@ const MarketingSalespersonLeads = () => {
       gstNo: '23FGHIJ5678K2L6',
       productType: 'Commercial Lighting',
       state: 'Madhya Pradesh',
-      leadSource: 'Referral',
+      leadSource: 'indiamart',
       customerType: 'B2B',
       date: '2025-01-16',
       visitingStatus: 'Visited',
@@ -933,7 +937,7 @@ const MarketingSalespersonLeads = () => {
       gstNo: '23KLMNO9012P3M7',
       productType: 'Power Solutions',
       state: 'Madhya Pradesh',
-      leadSource: 'Cold Call',
+      leadSource: 'facebook',
       customerType: 'B2B',
       date: '2025-01-15',
       visitingStatus: 'Not Visited',
@@ -954,7 +958,7 @@ const MarketingSalespersonLeads = () => {
       gstNo: '23PQRST3456U4V8',
       productType: 'Industrial Equipment',
       state: 'Madhya Pradesh',
-      leadSource: 'Social Media',
+      leadSource: 'whatsapp',
       customerType: 'B2C',
       date: '2025-01-14',
       visitingStatus: 'Scheduled',
@@ -976,7 +980,7 @@ const MarketingSalespersonLeads = () => {
       gstNo: '23WXYZ7890A5B9',
       productType: 'Commercial Lighting',
       state: 'Madhya Pradesh',
-      leadSource: 'Website',
+      leadSource: 'market',
       customerType: 'B2B',
       date: '2025-01-13',
       visitingStatus: 'Visited',
@@ -1611,9 +1615,10 @@ const MarketingSalespersonLeads = () => {
                       className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
                       <option value="">All Type</option>
-                      <option value="Industrial Equipment">Industrial Equipment</option>
-                      <option value="Commercial Lighting">Commercial Lighting</option>
-                      <option value="Power Solutions">Power Solutions</option>
+                      <option value="Industrial Cable">Industrial Cable</option>
+                      <option value="Domestic Cable">Domestic Cable</option>
+                      <option value="Power Cable">Power Cable</option>
+                      <option value="Networking Cable">Networking Cable</option>
                     </select>
                   </th>
                   <th className="px-6 py-2">
@@ -1636,10 +1641,11 @@ const MarketingSalespersonLeads = () => {
                       className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
                       <option value="">All Sou</option>
-                      <option value="Website">Website</option>
-                      <option value="Referral">Referral</option>
-                      <option value="Cold Call">Cold Call</option>
-                      <option value="Social Media">Social Media</option>
+                      <option value="office">office</option>
+                      <option value="indiamart">indiamart</option>
+                      <option value="facebook">facebook</option>
+                      <option value="whatsapp">whatsapp</option>
+                      <option value="market">market</option>
                     </select>
                   </th>
                   <th className="px-6 py-2">
