@@ -6,6 +6,7 @@ import {
   CheckCircle, 
   FileText, 
   ChevronRight,
+  ChevronDown,
   Settings,
   Database,
   BarChart3,
@@ -27,7 +28,8 @@ import {
   BookOpen,
   X,
   Download,
-  Eye
+  Eye,
+  Plus
 } from 'lucide-react';
 
 const sections = [
@@ -196,47 +198,6 @@ const ToolboxInterface = () => {
       ]
     },
     {
-      id: "aaac-conductors",
-      name: "ALL ALUMINIUM ALLOY CONDUCTORS (AAAC) IS 398 PT-IV : 1994",
-      headers: ["AAAC Code", "Nominal Area (mm²)", "Stranding / Wire Dia (nos/mm)", "DC Res (N) (Ω/km)", "DC Res (M) (Ω/km)", "AC Res 65°C (Ω/km)", "AC Res 75°C (Ω/km)", "AC Res 90°C (Ω/km)", "Current Cap 65°C (A)", "Current Cap 75°C (A)", "Current Cap 90°C (A)"],
-      rows: [
-        ["Mole", "15", "3/2.50", "2.2286", "2.3040", "2.590", "2.670", "2.790", "33", "88", "105"],
-        ["", "", "", "", "", "2.656", "2.738", "2.862", "72", "87", "104"],
-        ["Squirrel", "20", "7/2.00", "1.4969", "1.5410", "1.740", "1.793", "1.874", "92", "110", "132"],
-        ["", "", "", "", "", "1.791", "1.847", "1.930", "90", "109", "130"],
-        ["Weasel", "34", "7/2.50", "0.9580", "0.9900", "1.113", "1.148", "1.195", "121", "146", "175"],
-        ["", "", "", "", "", "1.142", "1.177", "1.230", "119", "144", "173"],
-        ["Rabbit", "55", "7/3.15", "0.6034", "0.6210", "0.701", "0.723", "0.756", "160", "194", "234"],
-        ["", "", "", "", "", "0.722", "0.744", "0.777", "158", "191", "231"],
-        ["Raccoon", "80", "7/3.81", "0.4125", "0.4250", "0.480", "0.494", "0.517", "202", "246", "297"],
-        ["", "", "", "", "", "0.494", "0.510", "0.533", "199", "242", "293"],
-        ["Dog", "100", "7/4.26", "0.3299", "0.3390", "0.384", "0.396", "0.413", "232", "283", "343"],
-        ["", "", "", "", "", "0.395", "0.407", "0.425", "229", "272", "338"],
-        ["Dog(up)", "125", "19/2.89", "0.2654", "0.2735", "0.309", "0.318", "0.333", "266", "325", "394"],
-        ["", "", "", "", "", "0.318", "0.328", "0.343", "262", "320", "389"],
-        ["Coyote", "150", "19/3.15", "0.2234", "0.2290", "0.260", "0.268", "0.280", "291", "362", "440"],
-        ["", "", "", "", "", "0.267", "0.276", "0.288", "291", "357", "434"],
-        ["Wolf", "175", "19/3.40", "0.1918", "0.1969", "0.223", "0.230", "0.240", "324", "398", "485"],
-        ["", "", "", "", "", "0.229", "0.236", "0.247", "320", "393", "478"],
-        ["Wolf(up)", "200", "19/3.66", "0.1655", "0.1710", "0.193", "0.199", "0.208", "354", "436", "532"],
-        ["", "", "", "", "", "0.199", "0.205", "0.214", "349", "430", "524"],
-        ["Panther", "232", "19/3.94", "0.1428", "0.1471", "0.166", "0.172", "0.179", "387", "478", "584"],
-        ["", "", "", "", "", "0.171", "0.177", "0.185", "382", "471", "575"],
-        ["Panther(up)", "290", "37/3.15", "0.11500", "0.11820", "0.134", "0.138", "0.145", "442", "548", "670"],
-        ["", "", "", "", "", "0.138", "0.142", "0.149", "442", "548", "670"],
-        ["Panther(up)", "345", "37/3.45", "0.09585", "0.09840", "0.112", "0.116", "0.121", "493", "613", "752"],
-        ["", "", "", "", "", "0.115", "0.119", "0.124", "493", "613", "752"],
-        ["Kundah", "400", "37/3.71", "0.08289", "0.08550", "0.097", "0.100", "0.105", "538", "670", "824"],
-        ["", "", "", "", "", "0.100", "0.103", "0.108", "538", "670", "824"],
-        ["Zebra", "465", "37/4.00", "0.07130", "0.07340", "0.084", "0.086", "0.090", "589", "736", "905"],
-        ["", "", "", "", "", "0.086", "0.089", "0.093", "589", "736", "905"],
-        ["Zebra(up)", "525", "61/3.31", "0.06330", "0.06510", "0.075", "0.077", "0.080", "632", "792", "976"],
-        ["", "", "", "", "", "0.077", "0.079", "0.082", "632", "792", "976"],
-        ["Moose", "570", "61/3.45", "0.05827", "0.05980", "0.069", "0.071", "0.074", "663", "833", "1028"],
-        ["", "", "", "", "", "0.071", "0.073", "0.076", "663", "833", "1028"]
-      ]
-    },
-    {
       id: "aluminium-conductor-galvanised-steel",
       name: "ALUMINIUM CONDUCTOR GALVANISED STEEL REINFORCED IS 398 PT-II : 1996",
       headers: [
@@ -333,7 +294,6 @@ const ToolboxInterface = () => {
       }
     }
   ];
-
   const conversionCalculationsData = [
     {
       id: "length-conversion",
@@ -526,10 +486,9 @@ const ToolboxInterface = () => {
           ["21", "0.996", "44", "0.912"],
           ["22", "0.992", "45", "0.909"],
           ["23", "0.988", "46", "0.906"],
-          ["24", "0.984", "47", "0.903"],
-          ["25", "0.98", "48", "0.899"],
-          ["26", "0.977", "49", "0.896"],
-          ["27", "0.973", "50", "0.893"]
+          ["24", "0.984", "47", "0.899"],
+          ["25", "0.98", "48", "0.896"],
+          ["26", "0.977", "49", "0.893"]
         ]
       }
     }
@@ -542,7 +501,6 @@ const ToolboxInterface = () => {
       element.scrollIntoView({ behavior: "smooth" });
     }
   };
-
   const handleToolClick = (tool) => {
     if (tool.dataId) {
       console.log("Looking for dataId:", tool.dataId);
@@ -686,7 +644,6 @@ const ToolboxInterface = () => {
       setIsTableOpen(true);
     }
   };
-
   const closeTable = () => {
     setIsTableOpen(false);
     setSelectedTableData(null);
@@ -708,7 +665,6 @@ const ToolboxInterface = () => {
       [field]: value
     }));
   };
-
   const calculateResults = () => {
     const { conductorType, conductorSize, temperature, standard } = calculatorInputs;
     
@@ -817,23 +773,56 @@ const ToolboxInterface = () => {
         description: "Overhead power distribution cable for electrical transmission",
         imageUrl: "/images/products/aerial bunch cable.jpeg",
         priceList: [
-          { size: "1x16 sq.mm", price: "₹45.50/m", stock: "Available", image: "/images/aerial-bunch-cable-16mm.jpg" },
-          { size: "1x25 sq.mm", price: "₹68.75/m", stock: "Available", image: "/images/aerial-bunch-cable-25mm.jpg" },
-          { size: "1x35 sq.mm", price: "₹92.30/m", stock: "Available", image: "/images/aerial-bunch-cable-35mm.jpg" },
-          { size: "1x50 sq.mm", price: "₹125.80/m", stock: "Available", image: "/images/aerial-bunch-cable-50mm.jpg" },
-          { size: "1x70 sq.mm", price: "₹168.90/m", stock: "Available", image: "/images/aerial-bunch-cable-70mm.jpg" },
-          { size: "1x95 sq.mm", price: "₹215.60/m", stock: "Available", image: "/images/aerial-bunch-cable-95mm.jpg" },
-          { size: "1x120 sq.mm", price: "₹268.40/m", stock: "Available", image: "/images/aerial-bunch-cable-120mm.jpg" },
-          { size: "1x150 sq.mm", price: "₹325.70/m", stock: "Available", image: "/images/aerial-bunch-cable-150mm.jpg" }
+          { size: "AB CABLE 3CX16+1CX16+1CX25 SQMM", price: "", stock: "", image: "" },
+          { size: "AB CABLE 3CX25+1CX16+1CX25 SQMM", price: "", stock: "", image: "" },
+          { size: "AB CABLE 3CX35+1CX16+1CX25 SQMM", price: "", stock: "", image: "" },
+          { size: "AB CABLE 3CX50+1CX16+1CX35 SQMM", price: "", stock: "", image: "" },
+          { size: "AB CABLE 3CX70+1CX16+1CX50 SQMM", price: "", stock: "", image: "" },
+          { size: "AB CABLE 3CX95+1CX16+1CX70 SQMM", price: "", stock: "", image: "" },
+          { size: "AB CABLE 3CX120+1CX16+1CX95 SQMM", price: "", stock: "", image: "" }
         ],
-        technicalData: {
-          voltage: "11 kV",
-          conductor: "Aluminum",
-          insulation: "XLPE",
-          sheath: "PVC",
-          temperature: "-15°C to +90°C",
-          bendingRadius: "12 times cable diameter",
-          standards: "IS 7098 (Part 1) & IS 7098 (Part 2)"
+        // Replaced demo key-value specs with actual tabular technical data
+        technicalData: {},
+        technicalTables: {
+          note: "THE SIZE OF THE STREET LIGHT CONDUCTOR SHALL BE 16 SQMM UPTO 95 SQMM",
+          tables: [
+            {
+              title: "PHASE Φ",
+              columns: [
+                "CROSS SECTIONAL AREA OF PHASE CONDUCTOR (SQMM)",
+                "STRANDS/WIRE (nos/mm)",
+                "CONDUCTOR DIA (mm)",
+                "INSULATION THICKNESS (mm)",
+                "INSULATED CORE DIA (mm)",
+                "MAXIMUM RESISTANCE (Ohm/Km) @20°C"
+              ],
+              rows: [
+                { sqmm: "16", strands: "7/1.70", conductorDia: "5.10", insulationThickness: "1.20", insulatedCoreDia: "7.50", maxResistance: "1.910" },
+                { sqmm: "25", strands: "7/2.12", conductorDia: "6.36", insulationThickness: "1.20", insulatedCoreDia: "8.76", maxResistance: "1.200" },
+                { sqmm: "35", strands: "7/2.52", conductorDia: "7.56", insulationThickness: "1.20", insulatedCoreDia: "9.96", maxResistance: "0.868" },
+                { sqmm: "50", strands: "7/3.02", conductorDia: "9.06", insulationThickness: "1.50", insulatedCoreDia: "12.06", maxResistance: "0.641" },
+                { sqmm: "70", strands: "19/2.17", conductorDia: "10.85", insulationThickness: "1.50", insulatedCoreDia: "13.85", maxResistance: "0.443" },
+                { sqmm: "95", strands: "19/2.52", conductorDia: "12.60", insulationThickness: "1.50", insulatedCoreDia: "15.60", maxResistance: "0.320" }
+              ]
+            },
+            {
+              title: "MESSENGER Φ",
+              columns: [
+                "CROSS SECTIONAL AREA OF MESSENGER (SQMM)",
+                "STRANDS/WIRE (nos/mm)",
+                "CONDUCTOR DIA (mm)",
+                "INSULATION THICKNESS (mm)",
+                "MAXIMUM RESISTANCE (Ohm/Km) @20°C",
+                "MAXIMUM BREAKING LOAD (kN)"
+              ],
+              rows: [
+                { sqmm: "25", strands: "7/2.12", conductorDia: "6.36", insulationThickness: "1.20", maxResistance: "1.380", maxBreakingLoad: "7.560" },
+                { sqmm: "35", strands: "7/2.52", conductorDia: "7.56", insulationThickness: "1.20", maxResistance: "0.986", maxBreakingLoad: "8.760" },
+                { sqmm: "50", strands: "7/3.02", conductorDia: "9.06", insulationThickness: "1.50", maxResistance: "0.689", maxBreakingLoad: "10.560" },
+                { sqmm: "70", strands: "7/3.57", conductorDia: "10.71", insulationThickness: "1.50", maxResistance: "0.492", maxBreakingLoad: "12.210" }
+              ]
+            }
+          ]
         }
       },
       "Aluminium Conductor Galvanized Steel Reinforced": {
@@ -1684,7 +1673,6 @@ const ToolboxInterface = () => {
           </div>
         </div>
       )}
-
       {/* Technical Calculations Modal */}
       {isTechnicalCalculationsOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1743,7 +1731,6 @@ const ToolboxInterface = () => {
           </div>
         </div>
       )}
-
       {/* Other Modals - Simplified for now */}
       {isConversionCalculationsOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1907,7 +1894,6 @@ const ToolboxInterface = () => {
               </div>
             )}
           </div>
-
           {/* Helping Calculators */}
           <div className="mb-4">
             <div 
@@ -1991,7 +1977,6 @@ const ToolboxInterface = () => {
               </div>
             )}
           </div>
-
           {/* Location Dropdown */}
           <div className="mb-4">
             <div 
@@ -2069,7 +2054,6 @@ const ToolboxInterface = () => {
                   </button>
                 </div>
               </div>
-
             <div className="p-6 overflow-auto max-h-[80vh]">
               {/* Business Information Section for Business Cards */}
               {getProductData(selectedProduct).businessInfo && (
@@ -2120,11 +2104,12 @@ const ToolboxInterface = () => {
                                 <th>Size</th>
                                 <th>Price per Meter</th>
                                 <th>Stock Status</th>
+                                <th>Add Images</th>
                               </tr>
                             </thead>
                             <tbody>
                               ${getProductData(selectedProduct).priceList.map(item => 
-                                `<tr><td><img src="${item.image}" alt="${getProductData(selectedProduct).title} ${item.size}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" /></td><td>${item.size}</td><td>${item.price}</td><td>${item.stock}</td></tr>`
+                                `<tr><td><img src="${item.image}" alt="${getProductData(selectedProduct).title} ${item.size}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" /></td><td>${item.size}</td><td>${item.price}</td><td>${item.stock}</td><td>${item.stock === "Available" ? "<button className='w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center text-gray-300 cursor-not-allowed' title='Add images (coming soon)' disabled><Plus className='h-4 w-4' /></button>" : ""}</td></tr>`
                               ).join('')}
                             </tbody>
                           </table>
@@ -2151,31 +2136,16 @@ const ToolboxInterface = () => {
                   <table className="w-full border-collapse border border-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-3 text-left font-medium text-gray-700 border border-gray-200">Image</th>
                         <th className="px-4 py-3 text-left font-medium text-gray-700 border border-gray-200">Size</th>
                         <th className="px-4 py-3 text-left font-medium text-gray-700 border border-gray-200">Price per Meter</th>
                         <th className="px-4 py-3 text-left font-medium text-gray-700 border border-gray-200">Stock Status</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-700 border border-gray-200">Image</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-700 border border-gray-200">Add Images</th>
                       </tr>
                     </thead>
                     <tbody>
                       {getProductData(selectedProduct).priceList.map((item, index) => (
                         <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 border border-gray-200">
-                            <div className="relative w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                              <img 
-                                src={item.image} 
-                                alt={`${getProductData(selectedProduct).title} ${item.size}`}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none'
-                                  e.currentTarget.nextElementSibling.style.display = 'flex'
-                                }}
-                              />
-                              <div className="absolute inset-0 bg-gray-200 flex items-center justify-center" style={{display: 'none'}}>
-                                <Image className="h-6 w-6 text-gray-400" />
-                              </div>
-                            </div>
-                          </td>
                           <td className="px-4 py-3 border border-gray-200 text-sm font-medium">{item.size}</td>
                           <td className="px-4 py-3 border border-gray-200 text-sm text-blue-600 font-semibold">{item.price}</td>
                           <td className="px-4 py-3 border border-gray-200 text-sm">
@@ -2185,10 +2155,475 @@ const ToolboxInterface = () => {
                               {item.stock}
                             </span>
                           </td>
+                          <td className="px-4 py-3 border border-gray-200">
+                            <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center text-gray-400" title="Image">
+                              <Image className="h-4 w-4" />
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 border border-gray-200">
+                            <button className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center text-gray-300 cursor-not-allowed" title="Add images (coming soon)" disabled>
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+              )}
+
+              {/* Technical Tables Section (e.g., Aerial Bunch Cable) */}
+              {(() => {
+                const productData = getProductData(selectedProduct);
+                const techTables = productData && productData.technicalTables;
+                if (!techTables || !techTables.tables || techTables.tables.length === 0) return null;
+                
+                const tableKeyOrders = {
+                  'PHASE Φ': ['sqmm','strands','conductorDia','insulationThickness','insulatedCoreDia','maxResistance'],
+                  'MESSENGER Φ': ['sqmm','strands','conductorDia','insulationThickness','maxResistance','maxBreakingLoad']
+                };
+                
+                return (
+                  <div className="mb-8">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Wrench className="h-5 w-5 text-blue-600" />
+                      Technical Data
+                    </h3>
+                    <div className="space-y-6">
+                      {techTables.tables.map((tbl, idx) => (
+                        <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden">
+                          <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 font-semibold text-gray-800">{tbl.title}</div>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full bg-white">
+                              <thead>
+                                <tr>
+                                  {tbl.columns.map((col, cIdx) => (
+                                    <th key={cIdx} className="px-4 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">{col}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {tbl.rows.map((row, rIdx) => {
+                                  const order = tableKeyOrders[tbl.title] || Object.keys(row);
+                                  return (
+                                    <tr key={rIdx} className="hover:bg-gray-50">
+                                      {order.map((key, kIdx) => (
+                                        <td key={kIdx} className="px-4 py-2 text-sm text-gray-800 border border-gray-200">{row[key]}</td>
+                                      ))}
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
+                      {techTables.note && (
+                        <div className="text-xs text-gray-600">NOTE: {techTables.note}</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+              {/* Costing Calculator Section - Only for Aerial Bunch Cable */}
+              {selectedProduct === "Aerial Bunch Cable" && (
+              <div className="mb-8">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Calculator className="h-5 w-5 text-blue-600" />
+                  Costing Calculator
+                </h3>
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="flex justify-end items-center px-3 py-2 bg-gray-50 border-b">
+                    <button className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700" onClick={() => {/* TODO: compute Costing */}}>
+                      Calculate
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">DISC.</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">CORE Φ</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">N/O STRAND</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">STAND SIZE</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">CALCUS</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">GAUGE</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">KG/MTR</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">TOTAL</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* PHASE Row */}
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PHASE</td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" defaultValue="3" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" defaultValue="7" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" step="0.01" defaultValue="2.12" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">7.091</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">25 SQMM</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">203/KG</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">54775</td>
+                        </tr>
+                        {/* PH INN INS Row */}
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PH INN INS</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" step="0.01" defaultValue="1.20" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">6.36 mm</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">OD 8.76</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">80/KG</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">9640</td>
+                        </tr>
+                        {/* PH OUT INS Row */}
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PH OUT INS</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">8.76 mm</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">OD 8.76</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0/KG</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0</td>
+                        </tr>
+                        {/* STREET LIGHT Row */}
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STREET LIGHT</td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" defaultValue="1" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" defaultValue="7" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" step="0.01" defaultValue="1.70" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">7.091</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">16 SQMM</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">43/KG</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">11740</td>
+                        </tr>
+                        {/* STL INN INS Row */}
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STL INN INS</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" step="0.01" defaultValue="1.20" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">5.10 mm</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">OD 7.50</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">22/KG</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2678</td>
+                        </tr>
+                        {/* STL OUT INS Row */}
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STL OUT INS</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">7.50 mm</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">OD 7.50</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0/KG</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0</td>
+                        </tr>
+                        {/* MESSENGER Row */}
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MESSENGER</td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" defaultValue="1" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" defaultValue="7" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" step="0.01" defaultValue="2.12" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">7.091</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">25 SQMM</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">68/KG</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">18258</td>
+                        </tr>
+                        {/* MSN INN INS Row */}
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MSN INN INS</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">6.36 mm</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">OD 6.36</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0/KG</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0</td>
+                        </tr>
+                        {/* MSN OUT INS Row */}
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MSN OUT INS</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">6.36 mm</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">OD 6.36</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0/KG</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* Bottom Summary Tables */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50">
+                    {/* Material Inputs */}
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-gray-800 text-sm">Material Inputs</h4>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">ALUMINIUM:</span>
+                          <input type="number" step="0.01" defaultValue="270.00" className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">ALLOY:</span>
+                          <input type="number" step="0.01" defaultValue="270.00" className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">INNER INSU:</span>
+                          <input type="number" step="0.01" defaultValue="120.00" className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">OUTER INSU:</span>
+                          <input type="number" step="0.01" defaultValue="0.00" className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Cable Weights */}
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-gray-800 text-sm">Cable Weights</h4>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">CABLE WT:</span>
+                          <span className="text-xs text-gray-800 font-semibold">417 KG</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">ALUMINUM WT:</span>
+                          <span className="text-xs text-gray-800 font-semibold">246 KG</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">ALLOY WT:</span>
+                          <span className="text-xs text-gray-800 font-semibold">68 KG</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">INN XLPE WT:</span>
+                          <span className="text-xs text-gray-800 font-semibold">103 KG</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">OUT XLPE WT:</span>
+                          <span className="text-xs text-gray-800 font-semibold">0 KG</span>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Pricing and Drum Details */}
+                    <div className="mt-6"></div>
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* Reduction Gauge Calculator Section - Only for Aerial Bunch Cable */}
+              {selectedProduct === "Aerial Bunch Cable" && (
+              <div className="mb-8">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Calculator className="h-5 w-5 text-blue-600" />
+                  Reduction Gauge Calculator
+                </h3>
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="flex justify-end items-center px-3 py-2 bg-gray-50 border-b">
+                    <button className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700" onClick={() => {/* TODO: compute Reduction Gauge */}}>
+                      Calculate
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">AREA</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">AREA</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">REDUCTION %</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">STRAND</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">WIRE</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">INSULATION</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">OUTER DIA</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* PHASE Row */}
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PHASE</td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="text" defaultValue="25 SQMM" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">7</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">2.02 MM</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">1.30 MM</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">8.67 MM</td>
+                        </tr>
+                        {/* STREET LIGHT Row */}
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STREET LIGHT</td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="text" defaultValue="16 SQMM" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" defaultValue="10" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">7</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">1.62 MM</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">1.30 MM</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">7.46 MM</td>
+                        </tr>
+                        {/* MESSENGER Row */}
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MESSENGER</td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="text" defaultValue="25 SQMM" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">7</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">2.02 MM</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">1.30 MM</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">8.67 MM</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="px-4 py-2 bg-gray-50 text-xs text-gray-600">
+                    NOTE: UP TO & INCLUDED 150 SQMM.
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* Wire Selection Calculator Section - Only for Aerial Bunch Cable */}
+              {selectedProduct === "Aerial Bunch Cable" && (
+              <div className="mb-8">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Calculator className="h-5 w-5 text-blue-600" />
+                  Wire Selection Calculator
+                </h3>
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="flex justify-end items-center px-3 py-2 bg-gray-50 border-b">
+                    <button className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700" onClick={() => {/* TODO: compute Wire Selection */}}>
+                      Calculate
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white">
+                      <thead>
+                        <tr className="bg-black">
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-white border border-gray-200">PHASE Φ</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-white border border-gray-200">POWER CONSUMPTION</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-white border border-gray-200">LENGTH OF CABLE</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-white border border-gray-200">CURRENT (Ω)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-white border border-gray-200">ACTUAL GAUGE</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-white border border-gray-200">WIRE SIZE</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-3 py-2 border border-gray-200">
+                            <div className="flex items-center">
+                              <input type="number" defaultValue="3" className="w-16 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              <ChevronDown className="h-4 w-4 text-gray-400 ml-1" />
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <div className="flex items-center">
+                              <input type="number" step="0.01" defaultValue="20.00" className="w-20 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              <select className="ml-2 text-xs text-red-600 border-0 focus:ring-0 focus:outline-none bg-transparent font-semibold">
+                                <option>HP</option>
+                                <option>KW</option>
+                              </select>
+                              <ChevronDown className="h-4 w-4 text-gray-400 ml-1" />
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <div className="flex items-center">
+                              <input type="number" defaultValue="500" className="w-20 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              <select className="ml-2 text-xs text-red-600 border-0 focus:ring-0 focus:outline-none bg-transparent font-semibold">
+                                <option>MTR</option>
+                                <option>FT</option>
+                              </select>
+                              <ChevronDown className="h-4 w-4 text-gray-400 ml-1" />
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">29.08</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">20.21</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">25 SQMM</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+              )}
+              {/* Technical Specifications Section - Only for Aerial Bunch Cable */}
+              {selectedProduct === "Aerial Bunch Cable" && (
+              <div className="mb-8">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-blue-600" />
+                  Technical Specifications
+                </h3>
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="p-6">
+                    <div className="mb-6">
+                      <h4 className="text-lg font-semibold text-gray-800 mb-3">CORE IDENTIFICATION:</h4>
+                      <p className="text-gray-700 leading-relaxed">
+                        The phase conductors shall be provided with one, two or three 'ridges' and Outer neutral insulated conductors, 
+                        if provided, shall have four 'ridges' as shown in Fig. I for quick identification. The street lighting conductor 
+                        and messenger conductor (if insulated) shall not have any identification mark.
+                      </p>
+                    </div>
+                    
+                    <div className="mt-6">
+                      <div className="relative w-full max-w-2xl mx-auto h-64 md:h-72 bg-gray-100 rounded-lg overflow-hidden">
+                         <img 
+                           src="/images/core-identification.png"
+                           alt="Core Identification"
+                           className="w-full h-full object-contain"
+                           onError={(e) => {
+                             e.currentTarget.style.display = 'none';
+                             const fallback = e.currentTarget.nextElementSibling;
+                             if (fallback) fallback.style.display = 'flex';
+                           }}
+                         />
+                         <div className="absolute inset-0 items-center justify-center text-gray-400 hidden">
+                           <div className="text-center p-8">
+                             <Image className="h-10 w-10 mx-auto mb-2" />
+                             <p>Core identification image</p>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+                    
+                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                      <h6 className="font-semibold text-blue-800 mb-2">Key Points:</h6>
+                      <ul className="text-sm text-blue-700 space-y-1">
+                        <li>• Phase conductors: 1, 2, or 3 ridges for identification</li>
+                        <li>• Neutral conductors: 4 ridges for identification</li>
+                        <li>• Street lighting conductor: No identification marks</li>
+                        <li>• Messenger conductor: No identification marks (if insulated)</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </div>
               )}
@@ -2279,7 +2714,6 @@ const ToolboxInterface = () => {
                 </div>
               </div>
               )}
-
               {/* Approvals, Licenses, GTP, Type Test, Others - Only for Product Cards */}
               {getProductData(selectedProduct).priceList && getProductData(selectedProduct).priceList.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -2296,7 +2730,7 @@ const ToolboxInterface = () => {
                         "Aerial Bunch Cable": "aerial bunch cable, bis certificate .pdf",
                         "All Aluminium Alloy Conductor": "all aluminium alloy conductor,bis certificate .pdf",
                         "Aluminium Conductor Galvanized Steel Reinforced": "aluminium conductor galvanised steel reinforced, bis certificate.pdf",
-                        "Multicore XLPE Insulated Aluminium Unarmoured Cable": "multicore xlpe insulated aluminium unrmoured cable,bis certificate.pdf"
+                        "Multi Core XLPE Insulated Aluminium Unarmoured Cable": "multicore xlpe insulated aluminium unrmoured cable,bis certificate.pdf"
                       };
                       
                       const productName = selectedProduct; // Use the original product name from tools array
@@ -2404,36 +2838,12 @@ const ToolboxInterface = () => {
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium">{license.type}</div>
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => {
-                                // Use BIS certificate as placeholder
-                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
-                                const link = document.createElement('a');
-                                link.href = actualPdfUrl;
-                                link.download = license.file;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                              }}
-                              className="text-green-600 hover:text-green-800 transition-colors"
-                              title="Download PDF"
-                            >
+                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
                               <Download className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                // Use BIS certificate as placeholder
-                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
-                                const newWindow = window.open(actualPdfUrl, '_blank');
-                                if (!newWindow) {
-                                  alert('Please allow pop-ups for this site to view the PDF');
-                                }
-                              }}
-                              className="text-blue-600 hover:text-blue-800 transition-colors"
-                              title="View Document"
-                            >
+                            </span>
+                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
                               <Eye className="h-4 w-4" />
-                            </button>
+                            </span>
                           </div>
                         </div>
                         <div className="text-xs text-gray-500 mb-1">{license.number}</div>
@@ -2446,7 +2856,6 @@ const ToolboxInterface = () => {
                     ))}
                   </div>
                 </div>
-
                 {/* GTP */}
                 <div className="p-4 border border-gray-200 rounded-lg">
                   <div className="flex items-center gap-2 mb-3">
@@ -2464,36 +2873,12 @@ const ToolboxInterface = () => {
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium">{process.process}</div>
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => {
-                                // Use BIS certificate as placeholder
-                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
-                                const link = document.createElement('a');
-                                link.href = actualPdfUrl;
-                                link.download = process.file;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                              }}
-                              className="text-green-600 hover:text-green-800 transition-colors"
-                              title="Download PDF"
-                            >
+                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
                               <Download className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                // Use BIS certificate as placeholder
-                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
-                                const newWindow = window.open(actualPdfUrl, '_blank');
-                                if (!newWindow) {
-                                  alert('Please allow pop-ups for this site to view the PDF');
-                                }
-                              }}
-                              className="text-blue-600 hover:text-blue-800 transition-colors"
-                              title="View Document"
-                            >
+                            </span>
+                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
                               <Eye className="h-4 w-4" />
-                            </button>
+                            </span>
                           </div>
                         </div>
                         <div className="flex justify-between items-center">
@@ -2508,7 +2893,6 @@ const ToolboxInterface = () => {
                     ))}
                   </div>
                 </div>
-
                 {/* Type Test */}
                 <div className="p-4 border border-gray-200 rounded-lg">
                   <div className="flex items-center gap-2 mb-3">
@@ -2526,36 +2910,12 @@ const ToolboxInterface = () => {
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium">{test.test}</div>
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => {
-                                // Use BIS certificate as placeholder
-                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
-                                const link = document.createElement('a');
-                                link.href = actualPdfUrl;
-                                link.download = test.file;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                              }}
-                              className="text-green-600 hover:text-green-800 transition-colors"
-                              title="Download PDF"
-                            >
+                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
                               <Download className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                // Use BIS certificate as placeholder
-                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
-                                const newWindow = window.open(actualPdfUrl, '_blank');
-                                if (!newWindow) {
-                                  alert('Please allow pop-ups for this site to view the PDF');
-                                }
-                              }}
-                              className="text-blue-600 hover:text-blue-800 transition-colors"
-                              title="View Document"
-                            >
+                            </span>
+                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
                               <Eye className="h-4 w-4" />
-                            </button>
+                            </span>
                           </div>
                         </div>
                         <div className="flex justify-between items-center">
@@ -2570,7 +2930,6 @@ const ToolboxInterface = () => {
                     ))}
                   </div>
                 </div>
-
                 {/* Others */}
                 <div className="p-4 border border-gray-200 rounded-lg">
                   <div className="flex items-center gap-2 mb-3">
@@ -2588,36 +2947,12 @@ const ToolboxInterface = () => {
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium">{doc.document}</div>
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => {
-                                // Use BIS certificate as placeholder
-                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
-                                const link = document.createElement('a');
-                                link.href = actualPdfUrl;
-                                link.download = doc.file;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                              }}
-                              className="text-green-600 hover:text-green-800 transition-colors"
-                              title="Download PDF"
-                            >
+                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
                               <Download className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                // Use BIS certificate as placeholder
-                                const actualPdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
-                                const newWindow = window.open(actualPdfUrl, '_blank');
-                                if (!newWindow) {
-                                  alert('Please allow pop-ups for this site to view the PDF');
-                                }
-                              }}
-                              className="text-blue-600 hover:text-blue-800 transition-colors"
-                              title="View Document"
-                            >
+                            </span>
+                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
                               <Eye className="h-4 w-4" />
-                            </button>
+                            </span>
                           </div>
                         </div>
                         <div className="flex justify-between items-center">
@@ -2638,7 +2973,6 @@ const ToolboxInterface = () => {
           </div>
         </div>
       )}
-
       {/* File Viewer Modal */}
       {isFileViewerOpen && selectedFile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -2719,7 +3053,6 @@ const ToolboxInterface = () => {
                         </div>
                       </div>
                     </div>
-                    
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">{selectedFile.title}</h4>
                     <div className="flex gap-2 justify-center">
                       <button 
@@ -2995,7 +3328,6 @@ const ToolboxInterface = () => {
           </div>
         </div>
       )}
-
       {/* Technical Calculations Calculator Modal */}
       {isCalculatorOpen && selectedCalculator === "technical-calculations" && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -3072,7 +3404,6 @@ const ToolboxInterface = () => {
                   </button>
                 </div>
               </div>
-
               {/* Simple Input Form */}
               <div className="bg-gray-50 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-6">Quick Calculator</h3>
@@ -3174,7 +3505,6 @@ const ToolboxInterface = () => {
                   </div>
                 </div>
               </div>
-
               {/* Quick Reference Table */}
               <div className="mt-8">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Reference</h3>
@@ -3221,7 +3551,6 @@ const ToolboxInterface = () => {
           </div>
         </div>
       )}
-
       {/* File Viewer Modal */}
       {isFileViewerOpen && selectedFile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -3546,7 +3875,6 @@ const ToolboxInterface = () => {
           </div>
         </div>
       )}
-
       {/* Business Card Modal */}
       {isBusinessCardOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
