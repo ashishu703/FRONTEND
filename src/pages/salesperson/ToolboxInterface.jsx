@@ -120,6 +120,40 @@ const ToolboxInterface = () => {
   const [isCompanyEmailsOpen, setIsCompanyEmailsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredTools, setFilteredTools] = useState([]);
+  
+  // Image upload state
+  const [productImages, setProductImages] = useState({});
+  const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(null);
+
+  // Image upload handlers
+  const handleImageUpload = (index) => {
+    setSelectedImageIndex(index);
+    setIsImageUploadOpen(true);
+  };
+
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file && selectedImageIndex !== null) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProductImages(prev => ({
+          ...prev,
+          [selectedImageIndex]: e.target.result
+        }));
+      };
+      reader.readAsDataURL(file);
+      setIsImageUploadOpen(false);
+      setSelectedImageIndex(null);
+    }
+  };
+
+  const handleImageClick = (index) => {
+    if (productImages[index]) {
+      setSelectedFile(productImages[index]);
+      setIsFileViewerOpen(true);
+    }
+  };
 
   // Cable data from original toolbox-interface
   const cableData = [
@@ -2124,6 +2158,54 @@ const ToolboxInterface = () => {
                 </div>
               )}
 
+              {/* Technical Specifications Section - Only for Aerial Bunch Cable */}
+              {selectedProduct === "Aerial Bunch Cable" && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-blue-600" />
+                    Technical Specifications
+                  </h3>
+                  <div className="bg-gray-50 rounded-lg p-6 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-gray-600">Reference</span>
+                        <p className="text-sm font-semibold text-gray-800">IS 14255:1995</p>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-gray-600">Rated Voltage</span>
+                        <p className="text-sm font-semibold text-gray-800">1100 volts</p>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-gray-600">Conductor</span>
+                        <p className="text-sm font-semibold text-gray-800">Class-2 as per IS-8130</p>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-gray-600">Insulation</span>
+                        <p className="text-sm font-semibold text-gray-800">Cross link polythene insulated</p>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-gray-600">Messenger</span>
+                        <p className="text-sm font-semibold text-gray-800">Aluminium alloy conductor as per IS-398 pt-4</p>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-gray-600">Temperature Range</span>
+                        <p className="text-sm font-semibold text-gray-800">-30°C to 90°C</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <span className="text-sm font-medium text-gray-600">Features</span>
+                      <div className="text-sm text-gray-800">
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>UV radiation protected</li>
+                          <li>Higher current carrying capacity</li>
+                          <li>High temperature range -30°C to 90°C</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Price List Section - Only for Product Cards */}
               {getProductData(selectedProduct).priceList && getProductData(selectedProduct).priceList.length > 0 && (
                 <div className="mb-8">
@@ -2212,12 +2294,28 @@ const ToolboxInterface = () => {
                             </span>
                           </td>
                           <td className="px-4 py-3 border border-gray-200">
-                            <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center text-gray-400" title="Image">
-                              <Image className="h-4 w-4" />
+                            <div 
+                              className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors" 
+                              title={productImages[index] ? "Click to view image" : "No image uploaded"}
+                              onClick={() => handleImageClick(index)}
+                            >
+                              {productImages[index] ? (
+                                <img 
+                                  src={productImages[index]} 
+                                  alt={`${item.size} image`}
+                                  className="w-full h-full object-cover rounded-md"
+                                />
+                              ) : (
+                                <Image className="h-4 w-4 text-gray-400" />
+                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3 border border-gray-200">
-                            <button className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center text-gray-300 cursor-not-allowed" title="Add images (coming soon)" disabled>
+                            <button 
+                              className="w-10 h-10 bg-blue-100 rounded-md flex items-center justify-center text-blue-600 hover:bg-blue-200 transition-colors" 
+                              title="Add image"
+                              onClick={() => handleImageUpload(index)}
+                            >
                               <Plus className="h-4 w-4" />
                             </button>
                           </td>
@@ -2227,6 +2325,44 @@ const ToolboxInterface = () => {
                   </table>
                 </div>
               </div>
+              )}
+
+              {/* Hidden file input for image upload */}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+                id="image-upload-input"
+              />
+
+              {/* Image Upload Modal */}
+              {isImageUploadOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                    <h3 className="text-lg font-semibold mb-4">Upload Image</h3>
+                    <p className="text-gray-600 mb-4">Select an image file to upload for this cable size.</p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          document.getElementById('image-upload-input').click();
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        Choose File
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsImageUploadOpen(false);
+                          setSelectedImageIndex(null);
+                        }}
+                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* Technical Tables Section (e.g., Aerial Bunch Cable) */}
@@ -2487,7 +2623,37 @@ const ToolboxInterface = () => {
                       </div>
                     </div>
                     {/* Pricing and Drum Details */}
-                    <div className="mt-6"></div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-gray-800 text-sm">Pricing & Details</h4>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">DRUM 2X:</span>
+                          <div className="flex items-center">
+                            <input type="number" defaultValue="5000" className="w-16 text-xs text-blue-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                            <ChevronDown className="h-3 w-3 text-gray-400 ml-1" />
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">FREIGHT:</span>
+                          <input type="number" step="0.01" defaultValue="0" className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">LENGTH:</span>
+                          <div className="flex items-center">
+                            <input type="number" defaultValue="1000" className="w-16 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                            <span className="text-xs text-red-600 font-semibold ml-1">MTR</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">SALE PRICE:</span>
+                          <span className="text-xs text-green-600 font-semibold">₹ 122.51</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">PROFIT:</span>
+                          <span className="text-xs text-green-600 font-semibold">20 %</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
