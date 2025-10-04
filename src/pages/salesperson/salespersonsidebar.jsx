@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutDashboard, Users, LogOut, Menu, X, Package, Box } from "lucide-react"
+import { LayoutDashboard, Users, LogOut, Menu, X, Package, Box, Wrench } from "lucide-react"
 import FollowUpDropdown from './FollowUp/FollowUpDropdown'
 
 function cx(...classes) {
@@ -106,6 +106,20 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen
                 <span className="flex items-center space-x-3">
                   <Box className={cx("h-5 w-5", currentPage === "products" ? "text-blue-600" : "text-gray-500")} />
                   {sidebarOpen && <span className="text-sm font-medium">Toolbar</span>}
+                </span>
+              </button>
+            </li>
+            <li>
+              <button
+                className={cx(
+                  "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors",
+                  currentPage === "toolbox" ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50 text-gray-700",
+                )}
+                onClick={() => onNavigate("toolbox")}
+              >
+                <span className="flex items-center space-x-3">
+                  <Wrench className={cx("h-5 w-5", currentPage === "toolbox" ? "text-blue-600" : "text-gray-500")} />
+                  {sidebarOpen && <span className="text-sm font-medium">Toolbox Interface</span>}
                 </span>
               </button>
             </li>
