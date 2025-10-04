@@ -118,6 +118,8 @@ const ToolboxInterface = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isBusinessCardOpen, setIsBusinessCardOpen] = useState(false);
   const [isCompanyEmailsOpen, setIsCompanyEmailsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredTools, setFilteredTools] = useState([]);
 
   // Cable data from original toolbox-interface
   const cableData = [
@@ -1554,8 +1556,62 @@ const ToolboxInterface = () => {
                     <h2 className="text-2xl font-semibold text-gray-900">{section.title}</h2>
                   </div>
 
+                  {section.id === "products" && (
+                    <div className="mb-6">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search products..."
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            const query = e.target.value.toLowerCase();
+                            const filtered = section.tools.filter(tool => {
+                              const name = tool.name.toLowerCase();
+                              const description = tool.description.toLowerCase();
+                              
+                              // Direct matches
+                              if (name.includes(query) || description.includes(query)) {
+                                return true;
+                              }
+                              
+                              // Shortcuts and aliases
+                              const shortcuts = {
+                                'ab cable': 'aerial bunch cable',
+                                'acsr': 'aluminium conductor galvanized steel reinforced',
+                                'aaac': 'all aluminium alloy conductor',
+                                'pvc': 'pvc insulated',
+                                'xlpe': 'xlpe insulated',
+                                'armoured': 'armoured cable',
+                                'unarmoured': 'unarmoured cable',
+                                'single core': 'single core',
+                                'multi core': 'multi core'
+                              };
+                              
+                              // Check if query matches any shortcut
+                              for (const [shortcut, fullTerm] of Object.entries(shortcuts)) {
+                                if (query.includes(shortcut) && (name.includes(fullTerm) || description.includes(fullTerm))) {
+                                  return true;
+                                }
+                              }
+                              
+                              return false;
+                            });
+                            setFilteredTools(filtered);
+                          }}
+                          className="w-full px-4 py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {section.tools.map((tool, toolIndex) => {
+                    {(section.id === "products" && searchQuery ? filteredTools : section.tools).map((tool, toolIndex) => {
                       const ToolIcon = tool.icon;
                       return (
                         <div
