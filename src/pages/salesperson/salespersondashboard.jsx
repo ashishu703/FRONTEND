@@ -156,18 +156,28 @@ export default function DashboardContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Load leads data from API
+  // Demo data for leads
+  const demoLeads = [
+    { id: 1, name: 'ABC Corp', sales_status: 'new', source: 'Website', created_at: new Date('2025-09-01').toISOString() },
+    { id: 2, name: 'XYZ Ltd', sales_status: 'contacted', source: 'Referral', created_at: new Date('2025-09-05').toISOString() },
+    { id: 3, name: 'PQR Industries', sales_status: 'proposal_sent', source: 'Cold Call', created_at: new Date('2025-09-10').toISOString() },
+    { id: 4, name: 'MNO Enterprises', sales_status: 'meeting_scheduled', source: 'Email Campaign', created_at: new Date('2025-09-15').toISOString() },
+    { id: 5, name: 'DEF Solutions', sales_status: 'proposal_sent', source: 'Website', created_at: new Date('2025-09-20').toISOString() },
+    { id: 6, name: 'GHI Technologies', sales_status: 'closed_won', source: 'Referral', created_at: new Date('2025-09-25').toISOString() },
+    { id: 7, name: 'JKL Systems', sales_status: 'closed_lost', source: 'Cold Call', created_at: new Date('2025-09-28').toISOString() },
+  ]
+
+  // Load demo data
   useEffect(() => {
     const loadLeads = async () => {
       try {
         setLoading(true)
-        const res = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME())
-        const rows = res?.data || []
-        setLeads(rows)
+        // Use demo data instead of API call
+        setLeads(demoLeads)
         setError(null)
       } catch (err) {
-        console.error('Failed to load leads:', err)
-        setError('Failed to load dashboard data')
+        console.error('Error loading demo data:', err)
+        setError('Failed to load demo data')
       } finally {
         setLoading(false)
       }
@@ -209,62 +219,48 @@ export default function DashboardContent() {
     }
   }
 
-  // Calculate lead sources from real data
+  // Calculate lead sources with demo data
   const calculateLeadSources = () => {
-    const sourceCounts = {}
-    
-    leads.forEach(lead => {
-      // Try different possible source fields
-      const source = lead.source || lead.lead_source || lead.origin || 'Other'
-      sourceCounts[source] = (sourceCounts[source] || 0) + 1
-    })
-    
-    // If no sources found, create a default entry
-    if (Object.keys(sourceCounts).length === 0) {
-      sourceCounts['No Data'] = leads.length
+    const sourceCounts = {
+      'Website': 2,
+      'Referral': 2,
+      'Cold Call': 2,
+      'Email Campaign': 1,
+      'Social Media': 1,
+      'Trade Show': 1
     }
     
     // Convert to array format for charts
     const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6b7280']
-    const result = Object.entries(sourceCounts).map(([label, value], index) => ({
+    return Object.entries(sourceCounts).map(([label, value], index) => ({
       label,
       value,
       color: colors[index % colors.length]
     }))
-    
-    return result
   }
 
-  // Calculate weekly activity from real data
+  // Calculate weekly activity with demo data
   const calculateWeeklyActivity = () => {
-    const weeklyCounts = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 }
-    
-    leads.forEach(lead => {
-      if (lead.created_at) {
-        const date = new Date(lead.created_at)
-        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' })
-        if (weeklyCounts.hasOwnProperty(dayName)) {
-          weeklyCounts[dayName]++
-        }
-      }
-    })
-    
-    return Object.entries(weeklyCounts).map(([label, value]) => ({
-      label,
-      value,
-      color: '#3b82f6'
-    }))
+    return [
+      { label: 'Mon', value: 3, color: '#3b82f6' },
+      { label: 'Tue', value: 5, color: '#3b82f6' },
+      { label: 'Wed', value: 4, color: '#3b82f6' },
+      { label: 'Thu', value: 7, color: '#3b82f6' },
+      { label: 'Fri', value: 6, color: '#3b82f6' },
+      { label: 'Sat', value: 2, color: '#3b82f6' },
+      { label: 'Sun', value: 1, color: '#3b82f6' }
+    ]
   }
 
-  // Calculate monthly revenue trend (all 0 since revenue is 0)
+  // Calculate monthly revenue trend with demo data
   const calculateMonthlyRevenue = () => {
     return [
-      { label: "Jan", value: 0, color: "#3b82f6" },
-      { label: "Feb", value: 0, color: "#3b82f6" },
-      { label: "Mar", value: 0, color: "#3b82f6" },
-      { label: "Apr", value: 0, color: "#3b82f6" },
-      { label: "May", value: 0, color: "#3b82f6" },
-      { label: "Jun", value: 0, color: "#3b82f6" }
+      { label: "Jan", value: 45000, color: "#3b82f6" },
+      { label: "Feb", value: 52000, color: "#3b82f6" },
+      { label: "Mar", value: 48000, color: "#3b82f6" },
+      { label: "Apr", value: 55000, color: "#3b82f6" },
+      { label: "May", value: 61000, color: "#3b82f6" },
+      { label: "Jun", value: 68000, color: "#10b981" }
     ]
   }
 
@@ -278,30 +274,31 @@ export default function DashboardContent() {
   const calculatedMetrics = calculateMetrics()
   const statusData = calculateLeadStatusData()
 
-  // Generate performance data based on selected date
+  // Generate performance data with demo data
   const getPerformanceData = (selectedDate) => {
-    // Real performance data from API
+    // Demo performance data
     const baseData = {
       targets: {
-        monthlyLeads: { current: calculatedMetrics.totalLeads, target: 1000, label: "Monthly Leads" },
-        conversionRate: { current: parseFloat(calculatedMetrics.conversionRate), target: 25, label: "Conversion Rate (%)" },
-        revenue: { current: 0, target: 500000, label: "Monthly Revenue (₹)" },
-        calls: { current: 0, target: 300, label: "Daily Calls" }
+        monthlyLeads: { current: 45, target: 100, label: "Monthly Leads" },
+        conversionRate: { current: 28, target: 30, label: "Conversion Rate (%)" },
+        revenue: { current: 1250000, target: 1500000, label: "Quarterly Revenue (₹)" },
+        calls: { current: 45, target: 60, label: "Daily Calls" }
       },
       leadStatusData: [
-        { label: "Not Connected", value: statusData['not-connected'] || 0, color: "#ef4444" },
-        { label: "Connected", value: statusData['connected'] || 0, color: "#f97316" },
-        { label: "Next Meeting", value: statusData['next-meeting'] || 0, color: "#6b7280" },
-        { label: "Converted", value: statusData['converted'] || 0, color: "#22c55e" },
-        { label: "Closed", value: statusData['closed'] || 0, color: "#8b5cf6" }
+        { label: "New", value: 5, color: "#3b82f6" },
+        { label: "Contacted", value: 8, color: "#60a5fa" },
+        { label: "Proposal Sent", value: 6, color: "#f59e0b" },
+        { label: "Meeting Scheduled", value: 4, color: "#8b5cf6" },
+        { label: "Closed Won", value: 3, color: "#10b981" },
+        { label: "Closed Lost", value: 2, color: "#ef4444" }
       ],
       monthlyPerformance: [
         { label: "Jan", value: 78, color: "#3b82f6" },
-        { label: "Feb", value: 82, color: "#3b82f6" },
-        { label: "Mar", value: 85, color: "#3b82f6" },
+        { label: "Feb", value: 85, color: "#3b82f6" },
+        { label: "Mar", value: 92, color: "#3b82f6" },
         { label: "Apr", value: 88, color: "#3b82f6" },
-        { label: "May", value: 91, color: "#3b82f6" },
-        { label: "Jun", value: 94, color: "#3b82f6" }
+        { label: "May", value: 95, color: "#3b82f6" },
+        { label: "Jun", value: 102, color: "#10b981" }
       ],
       kpis: [
         {
@@ -719,25 +716,53 @@ export default function DashboardContent() {
 
           {/* Target Progress Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {Object.entries(performanceData.targets).map(([key, target]) => (
-              <Card key={key} className="border-2 border-blue-200 group">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-500 transition-all duration-300 group-hover:text-gray-700 group-hover:font-semibold">{target.label}</CardTitle>
-                  <Target className="h-5 w-5 text-blue-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold mb-3 transition-all duration-300 group-hover:scale-110">
-                    {key === 'revenue' ? `₹${target.current.toLocaleString()}` : target.current}
-                  </div>
-                  <ProgressBar 
-                    value={target.current} 
-                    max={target.target} 
-                    label={`Target: ${key === 'revenue' ? `₹${target.target.toLocaleString()}` : target.target}`}
-                    color="bg-blue-500"
-                  />
-                </CardContent>
-              </Card>
-            ))}
+            {Object.entries(performanceData.targets).map(([key, target]) => {
+              const progress = (target.current / target.target) * 100;
+              const remaining = target.target - target.current;
+              const isBelowTarget = remaining > 0;
+              
+              return (
+                <Card key={key} className={`border-2 ${isBelowTarget ? 'border-red-200' : 'border-green-200'} group relative overflow-hidden`}>
+                  {isBelowTarget && (
+                    <div className="absolute top-0 right-0 bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded-bl-lg">
+                      {remaining} to go
+                    </div>
+                  )}
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-700">{target.label}</CardTitle>
+                    <div className={`h-4 w-4 ${isBelowTarget ? 'text-red-500' : 'text-green-500'}`}>
+                      {isBelowTarget ? (
+                        <TrendingDown className="h-4 w-4" />
+                      ) : (
+                        <TrendingUp className="h-4 w-4" />
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold">{target.current}</span>
+                      <span className="text-sm text-gray-500">/ {target.target}</span>
+                      {isBelowTarget && (
+                        <span className="ml-auto text-sm font-semibold text-red-600">
+                          {Math.ceil(100 - progress)}% remaining
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${isBelowTarget ? 'bg-red-500' : 'bg-green-500'}`} 
+                        style={{ width: `${Math.min(100, progress)}%` }}
+                      ></div>
+                    </div>
+                    {isBelowTarget && (
+                      <p className="mt-1 text-xs text-red-600 font-medium">
+                        {remaining} more needed to hit target
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
 
           {/* KPI Cards */}

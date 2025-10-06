@@ -873,25 +873,53 @@ const ToolboxInterface = () => {
         }
       },
       "Aluminium Conductor Galvanized Steel Reinforced": {
-        title: "ACSR Conductor",
-        description: "Aluminium Conductor Steel Reinforced for transmission lines",
+        title: "Aluminium Conductor Galvanized Steel Reinforced",
+        description: "ACSR conductor for overhead transmission and distribution lines",
         imageUrl: "/images/products/all aluminium alloy conductor.jpeg",
         priceList: [
-          { size: "25 sq.mm", price: "₹85.50/m", stock: "Available", image: "/images/acsr-25mm.jpg" },
-          { size: "50 sq.mm", price: "₹165.80/m", stock: "Available", image: "/images/acsr-50mm.jpg" },
-          { size: "70 sq.mm", price: "₹225.40/m", stock: "Available", image: "/images/acsr-70mm.jpg" },
-          { size: "95 sq.mm", price: "₹298.60/m", stock: "Available", image: "/images/acsr-95mm.jpg" },
-          { size: "120 sq.mm", price: "₹365.20/m", stock: "Available", image: "/images/acsr-120mm.jpg" },
-          { size: "150 sq.mm", price: "₹445.80/m", stock: "Available", image: "/images/acsr-150mm.jpg" }
+          { size: "SQUIRREL (6/1/2.11) - 10.5mm", price: "", stock: "", image: "" },
+          { size: "RABBIT (6/2.11) - 6.33mm", price: "", stock: "", image: "" },
+          { size: "WEASEL (6/2.59) - 7.77mm", price: "", stock: "", image: "" },
+          { size: "MARTEN (6/3.35) - 10.05mm", price: "", stock: "", image: "" },
+          { size: "LYNX (6/3.71) - 11.13mm", price: "", stock: "", image: "" },
+          { size: "DOG (6/4.72) - 14.16mm", price: "", stock: "", image: "" },
+          { size: "WOLF (6/4.72 + 6/1.57) - 14.5mm", price: "", stock: "", image: "" },
+          { size: "PANTHER (30/3.00) - 15.0mm", price: "", stock: "", image: "" },
+          { size: "ZEBRA (30/3.00 + 7/1.95) - 15.75mm", price: "", stock: "", image: "" },
+          { size: "MOOSE (54/3.53) - 24.26mm", price: "", stock: "", image: "" }
         ],
-        technicalData: {
-          voltage: "33 kV",
-          conductor: "Aluminum + Steel",
-          insulation: "Bare Conductor",
-          sheath: "Galvanized Steel",
-          temperature: "-40°C to +80°C",
-          bendingRadius: "15 times conductor diameter",
-          standards: "IS 398 (Part 4)"
+        technicalData: {},
+        technicalTables: {
+          note: "ACSR CONDUCTOR AS PER IS 398 (PART II) : 1996",
+          tables: [
+            {
+              title: "ACSR CONDUCTOR SPECIFICATIONS",
+              columns: [
+                "CODE NAME",
+                "ALUMINIUM STRANDING (No. / mm)",
+                "STEEL STRANDING (No. / mm)",
+                "OVERALL DIAMETER (mm)",
+                "ALUMINIUM AREA (sq.mm)",
+                "STEEL AREA (sq.mm)",
+                "TOTAL AREA (sq.mm)",
+                "APPROX. WEIGHT (kg/km)",
+                "RATED STRENGTH (kN)",
+                "DC RESISTANCE (Ohm/km) at 20°C"
+              ],
+              rows: [
+                { code: "SQUIRREL", alStrand: "6/1.50", steelStrand: "1/1.50", dia: "4.50", alArea: "10.6", steelArea: "1.77", totalArea: "12.37", weight: "49.8", strength: "5.30", resistance: "2.706" },
+                { code: "RABBIT", alStrand: "6/1.50", steelStrand: "1/1.50", dia: "4.50", alArea: "10.6", steelArea: "1.77", totalArea: "12.37", weight: "49.8", strength: "5.30", resistance: "2.706" },
+                { code: "WEASEL", alStrand: "6/2.11", steelStrand: "1/2.11", dia: "6.33", alArea: "21.0", steelArea: "3.50", totalArea: "24.50", weight: "98.6", strength: "10.5", resistance: "1.369" },
+                { code: "MARTEN", alStrand: "6/3.35", steelStrand: "1/3.35", dia: "10.05", alArea: "52.9", steelArea: "8.82", totalArea: "61.72", weight: "248.0", strength: "26.5", resistance: "0.544" },
+                { code: "LYNX", alStrand: "6/3.71", steelStrand: "1/3.71", dia: "11.13", alArea: "65.0", steelArea: "10.8", totalArea: "75.80", weight: "304.0", strength: "32.6", resistance: "0.442" },
+                { code: "DOG", alStrand: "6/4.72", steelStrand: "1/4.72", dia: "14.16", alArea: "105.0", steelArea: "17.5", totalArea: "122.5", weight: "492.0", strength: "52.7", resistance: "0.274" },
+                { code: "WOLF", alStrand: "6/4.72", steelStrand: "7/1.57", dia: "14.5", alArea: "105.0", steelArea: "13.6", totalArea: "118.6", weight: "465.0", strength: "63.5", resistance: "0.274" },
+                { code: "PANTHER", alStrand: "30/3.00", steelStrand: "7/3.00", dia: "15.0", alArea: "212.0", steelArea: "49.5", totalArea: "261.5", weight: "1010.0", strength: "123.0", resistance: "0.136" },
+                { code: "ZEBRA", alStrand: "30/3.00", steelStrand: "7/1.95", dia: "15.75", alArea: "212.0", steelArea: "20.9", totalArea: "232.9", weight: "844.0", strength: "95.0", resistance: "0.136" },
+                { code: "MOOSE", alStrand: "54/3.53", steelStrand: "7/3.53", dia: "24.26", alArea: "528.0", steelArea: "68.6", totalArea: "596.6", weight: "2030.0", strength: "194.0", resistance: "0.055" }
+              ]
+            }
+          ]
         }
       },
       "All Aluminium Alloy Conductor": {
@@ -2281,53 +2309,88 @@ const ToolboxInterface = () => {
                     <Wrench className="h-5 w-5 text-blue-600" />
                     Technical Specifications
                   </h3>
-                  <div className="bg-gray-50 rounded-lg p-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <span className="text-sm font-semibold text-gray-800">REFERENCE</span>
-                        <p className="text-sm text-gray-800">IS 14255:1995</p>
+                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="p-6 flex flex-col lg:flex-row gap-8">
+                      <div className="flex-1">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">REFERENCE</span>
+                            <p className="text-sm text-gray-800">IS 14255:1995</p>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">RATED VOLTAGE</span>
+                            <p className="text-sm text-gray-800">1100 volts</p>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">CONDUCTOR</span>
+                            <p className="text-sm text-gray-800">Class-2 as per IS-8130</p>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">INSULATION</span>
+                            <p className="text-sm text-gray-800">Cross link polythene insulated</p>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">MESSENGER</span>
+                            <p className="text-sm text-gray-800">Aluminium alloy conductor as per IS-398 pt-4</p>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">TEMPERATURE RANGE</span>
+                            <p className="text-sm text-gray-800">-30°C to 90°C</p>
+                          </div>
+                        </div>
+                        <div className="space-y-2 mt-4">
+                          <span className="text-sm font-semibold text-gray-800">FEATURES</span>
+                          <div className="text-sm text-gray-800">
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>UV radiation protected</li>
+                              <li>Higher current carrying capacity</li>
+                              <li>High temperature range -30°C to 90°C</li>
+                            </ul>
+                          </div>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <span className="text-sm font-semibold text-gray-800">RATED VOLTAGE</span>
-                        <p className="text-sm text-gray-800">1100 volts</p>
-                      </div>
-                      <div className="space-y-2">
-                        <span className="text-sm font-semibold text-gray-800">CONDUCTOR</span>
-                        <p className="text-sm text-gray-800">Class-2 as per IS-8130</p>
-                      </div>
-                      <div className="space-y-2">
-                        <span className="text-sm font-semibold text-gray-800">INSULATION</span>
-                        <p className="text-sm text-gray-800">Cross link polythene insulated</p>
-                      </div>
-                      <div className="space-y-2">
-                        <span className="text-sm font-semibold text-gray-800">MESSENGER</span>
-                        <p className="text-sm text-gray-800">Aluminium alloy conductor as per IS-398 pt-4</p>
-                      </div>
-                      <div className="space-y-2">
-                        <span className="text-sm font-semibold text-gray-800">TEMPERATURE RANGE</span>
-                        <p className="text-sm text-gray-800">-30°C to 90°C</p>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <span className="text-sm font-semibold text-gray-800">FEATURES</span>
-                      <div className="text-sm text-gray-800">
-                        <ul className="list-disc list-inside space-y-1">
-                          <li>UV radiation protected</li>
-                          <li>Higher current carrying capacity</li>
-                          <li>High temperature range -30°C to 90°C</li>
-                        </ul>
+                      <div className="lg:w-1/3 flex flex-col items-center">
+                        <div className="w-full h-64 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                          <img 
+                            src="/images/products/aerial bunch cable.jpeg"
+                            alt="Aerial Bunch Cable"
+                            className="w-full h-full object-contain p-4"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              const fallback = e.currentTarget.nextElementSibling;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                          />
+                          <div className="hidden w-full h-full items-center justify-center text-gray-400">
+                            <div className="text-center p-4">
+                              <Image className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">Aerial Bunch Cable</p>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-2 text-center">Aerial Bunch Cable Sample</p>
+                        
+                        <div className="mt-6 w-full">
+                          <h4 className="font-semibold text-gray-800 mb-3">Standards Compliance:</h4>
+                          <ul className="text-sm text-gray-700 space-y-1">
+                            <li>• IS 14255: 1995 (Reaffirmed 2020)</li>
+                            <li>• IS 8130: 1984 (Reaffirmed 2021)</li>
+                            <li>• IS 1554 (Part-1): 1988 (Reaffirmed 2021)</li>
+                            <li>• IS 7098 (Part-1): 1988 (Reaffirmed 2021)</li>
+                          </ul>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Technical Specifications Section - Only for ACSR (blank) */}
+              {/* Identification Section - Only for ACSR */}
               {selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" && (
                 <div className="mb-8">
                   <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Wrench className="h-5 w-5 text-blue-600" />
-                    Technical Specifications
+                    Identification
                   </h3>
                   <div className="bg-gray-50 rounded-lg p-6 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2526,7 +2589,7 @@ const ToolboxInterface = () => {
               </div>
               )}
 
-              {/* Technical Tables Section (e.g., Aerial Bunch Cable) */}
+              {/* Technical Tables Section for Aerial Bunch Cable and ACSR */}
               {(() => {
                 const productData = getProductData(selectedProduct);
                 const techTables = productData && productData.technicalTables;
@@ -2579,8 +2642,8 @@ const ToolboxInterface = () => {
                   </div>
                 );
               })()}
-              {/* Costing Calculator Section - Only for Aerial Bunch Cable */}
-              {selectedProduct === "Aerial Bunch Cable" && (
+              {/* Costing Calculator Section - For Aerial Bunch Cable and ACSR */}
+              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced") && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-blue-600" />
@@ -2820,8 +2883,8 @@ const ToolboxInterface = () => {
               </div>
               )}
 
-              {/* Reduction Gauge Calculator Section - Only for Aerial Bunch Cable */}
-              {selectedProduct === "Aerial Bunch Cable" && (
+              {/* Reduction Gauge Calculator Section - For Aerial Bunch Cable and ACSR */}
+              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced") && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-blue-600" />
@@ -2894,8 +2957,8 @@ const ToolboxInterface = () => {
                 </div>
               </div>
               )}
-              {/* Wire Selection Calculator Section - Only for Aerial Bunch Cable */}
-              {selectedProduct === "Aerial Bunch Cable" && (
+              {/* Wire Selection Calculator Section - For Aerial Bunch Cable and ACSR */}
+              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced") && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-blue-600" />
@@ -2957,12 +3020,12 @@ const ToolboxInterface = () => {
                 </div>
               </div>
               )}
-              {/* Technical Specifications Section - Only for Aerial Bunch Cable */}
+              {/* Identification Section - Only for Aerial Bunch Cable */}
               {selectedProduct === "Aerial Bunch Cable" && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Wrench className="h-5 w-5 text-blue-600" />
-                  Technical Specifications
+                  Identification
                 </h3>
                 <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                   <div className="p-6">
@@ -2975,28 +3038,28 @@ const ToolboxInterface = () => {
                       </p>
                     </div>
                     
-                    <div className="mt-6">
-                      <div className="relative w-full max-w-2xl mx-auto h-64 md:h-72 bg-gray-100 rounded-lg overflow-hidden">
-                         <img 
-                           src="/images/core-identification.png"
-                           alt="Core Identification"
-                           className="w-full h-full object-contain"
-                           onError={(e) => {
-                             e.currentTarget.style.display = 'none';
-                             const fallback = e.currentTarget.nextElementSibling;
-                             if (fallback) fallback.style.display = 'flex';
-                           }}
-                         />
-                         <div className="absolute inset-0 items-center justify-center text-gray-400 hidden">
-                           <div className="text-center p-8">
-                             <Image className="h-10 w-10 mx-auto mb-2" />
-                             <p>Core identification image</p>
-                           </div>
-                         </div>
-                       </div>
-                     </div>
+                    <div className="mt-6 max-w-2xl mx-auto">
+                      <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
+                        <img 
+                          src="/images/core-identification.png"
+                          alt="Core Identification"
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const fallback = e.currentTarget.nextElementSibling;
+                            if (fallback) fallback.style.display = 'flex';
+                          }}
+                        />
+                        <div className="absolute inset-0 items-center justify-center text-gray-400 hidden">
+                          <div className="text-center p-8">
+                            <Image className="h-10 w-10 mx-auto mb-2" />
+                            <p>Core identification image</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                     
-                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                    <div className="mt-6 p-4 bg-blue-50 rounded-lg max-w-2xl mx-auto">
                       <h6 className="font-semibold text-blue-800 mb-2">Key Points:</h6>
                       <ul className="text-sm text-blue-700 space-y-1">
                         <li>• Phase conductors: 1, 2, or 3 ridges for identification</li>
