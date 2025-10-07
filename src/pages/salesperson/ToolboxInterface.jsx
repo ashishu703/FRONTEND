@@ -118,6 +118,53 @@ const ToolboxInterface = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isBusinessCardOpen, setIsBusinessCardOpen] = useState(false);
   const [isCompanyEmailsOpen, setIsCompanyEmailsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredTools, setFilteredTools] = useState([]);
+
+  // Image upload state
+  const [productImages, setProductImages] = useState({}); // { [productName]: { [rowIndex]: [dataUrl1, ...] } }
+  const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Image upload handlers
+  const handleImageUpload = (index) => {
+    setSelectedImageIndex(index);
+    setIsImageUploadOpen(true);
+  };
+
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file && selectedImageIndex !== null) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const productKey = selectedProduct || 'default';
+        setProductImages(prev => {
+          const productMap = prev[productKey] ? { ...prev[productKey] } : {};
+          const list = productMap[selectedImageIndex] ? [...productMap[selectedImageIndex]] : [];
+          list.push(e.target.result);
+          productMap[selectedImageIndex] = list;
+          return { ...prev, [productKey]: productMap };
+        });
+        setCurrentSlide((prev) => {
+          const listLen = (productImages[productKey]?.[selectedImageIndex]?.length || 0);
+          return listLen; // point to the newly appended image
+        });
+      };
+      reader.readAsDataURL(file);
+      setIsImageUploadOpen(false);
+      setSelectedImageIndex(null);
+    }
+  };
+
+  const handleImageClick = (index) => {
+    const list = (productImages[selectedProduct]?.[index]) || [];
+    if (list.length > 0) {
+      setSelectedFile(list); // pass array to modal
+      setCurrentSlide(list.length - 1); // start from latest
+      setIsFileViewerOpen(true);
+    }
+  };
 
   // Cable data from original toolbox-interface
   const cableData = [
@@ -826,25 +873,53 @@ const ToolboxInterface = () => {
         }
       },
       "Aluminium Conductor Galvanized Steel Reinforced": {
-        title: "ACSR Conductor",
-        description: "Aluminium Conductor Steel Reinforced for transmission lines",
+        title: "Aluminium Conductor Galvanized Steel Reinforced",
+        description: "ACSR conductor for overhead transmission and distribution lines",
         imageUrl: "/images/products/all aluminium alloy conductor.jpeg",
         priceList: [
-          { size: "25 sq.mm", price: "₹85.50/m", stock: "Available", image: "/images/acsr-25mm.jpg" },
-          { size: "50 sq.mm", price: "₹165.80/m", stock: "Available", image: "/images/acsr-50mm.jpg" },
-          { size: "70 sq.mm", price: "₹225.40/m", stock: "Available", image: "/images/acsr-70mm.jpg" },
-          { size: "95 sq.mm", price: "₹298.60/m", stock: "Available", image: "/images/acsr-95mm.jpg" },
-          { size: "120 sq.mm", price: "₹365.20/m", stock: "Available", image: "/images/acsr-120mm.jpg" },
-          { size: "150 sq.mm", price: "₹445.80/m", stock: "Available", image: "/images/acsr-150mm.jpg" }
+          { size: "SQUIRREL (6/1/2.11) - 10.5mm", price: "", stock: "", image: "" },
+          { size: "RABBIT (6/2.11) - 6.33mm", price: "", stock: "", image: "" },
+          { size: "WEASEL (6/2.59) - 7.77mm", price: "", stock: "", image: "" },
+          { size: "MARTEN (6/3.35) - 10.05mm", price: "", stock: "", image: "" },
+          { size: "LYNX (6/3.71) - 11.13mm", price: "", stock: "", image: "" },
+          { size: "DOG (6/4.72) - 14.16mm", price: "", stock: "", image: "" },
+          { size: "WOLF (6/4.72 + 6/1.57) - 14.5mm", price: "", stock: "", image: "" },
+          { size: "PANTHER (30/3.00) - 15.0mm", price: "", stock: "", image: "" },
+          { size: "ZEBRA (30/3.00 + 7/1.95) - 15.75mm", price: "", stock: "", image: "" },
+          { size: "MOOSE (54/3.53) - 24.26mm", price: "", stock: "", image: "" }
         ],
-        technicalData: {
-          voltage: "33 kV",
-          conductor: "Aluminum + Steel",
-          insulation: "Bare Conductor",
-          sheath: "Galvanized Steel",
-          temperature: "-40°C to +80°C",
-          bendingRadius: "15 times conductor diameter",
-          standards: "IS 398 (Part 4)"
+        technicalData: {},
+        technicalTables: {
+          note: "ACSR CONDUCTOR AS PER IS 398 (PART II) : 1996",
+          tables: [
+            {
+              title: "ACSR CONDUCTOR SPECIFICATIONS",
+              columns: [
+                "CODE NAME",
+                "ALUMINIUM STRANDING (No. / mm)",
+                "STEEL STRANDING (No. / mm)",
+                "OVERALL DIAMETER (mm)",
+                "ALUMINIUM AREA (sq.mm)",
+                "STEEL AREA (sq.mm)",
+                "TOTAL AREA (sq.mm)",
+                "APPROX. WEIGHT (kg/km)",
+                "RATED STRENGTH (kN)",
+                "DC RESISTANCE (Ohm/km) at 20°C"
+              ],
+              rows: [
+                { code: "SQUIRREL", alStrand: "6/1.50", steelStrand: "1/1.50", dia: "4.50", alArea: "10.6", steelArea: "1.77", totalArea: "12.37", weight: "49.8", strength: "5.30", resistance: "2.706" },
+                { code: "RABBIT", alStrand: "6/1.50", steelStrand: "1/1.50", dia: "4.50", alArea: "10.6", steelArea: "1.77", totalArea: "12.37", weight: "49.8", strength: "5.30", resistance: "2.706" },
+                { code: "WEASEL", alStrand: "6/2.11", steelStrand: "1/2.11", dia: "6.33", alArea: "21.0", steelArea: "3.50", totalArea: "24.50", weight: "98.6", strength: "10.5", resistance: "1.369" },
+                { code: "MARTEN", alStrand: "6/3.35", steelStrand: "1/3.35", dia: "10.05", alArea: "52.9", steelArea: "8.82", totalArea: "61.72", weight: "248.0", strength: "26.5", resistance: "0.544" },
+                { code: "LYNX", alStrand: "6/3.71", steelStrand: "1/3.71", dia: "11.13", alArea: "65.0", steelArea: "10.8", totalArea: "75.80", weight: "304.0", strength: "32.6", resistance: "0.442" },
+                { code: "DOG", alStrand: "6/4.72", steelStrand: "1/4.72", dia: "14.16", alArea: "105.0", steelArea: "17.5", totalArea: "122.5", weight: "492.0", strength: "52.7", resistance: "0.274" },
+                { code: "WOLF", alStrand: "6/4.72", steelStrand: "7/1.57", dia: "14.5", alArea: "105.0", steelArea: "13.6", totalArea: "118.6", weight: "465.0", strength: "63.5", resistance: "0.274" },
+                { code: "PANTHER", alStrand: "30/3.00", steelStrand: "7/3.00", dia: "15.0", alArea: "212.0", steelArea: "49.5", totalArea: "261.5", weight: "1010.0", strength: "123.0", resistance: "0.136" },
+                { code: "ZEBRA", alStrand: "30/3.00", steelStrand: "7/1.95", dia: "15.75", alArea: "212.0", steelArea: "20.9", totalArea: "232.9", weight: "844.0", strength: "95.0", resistance: "0.136" },
+                { code: "MOOSE", alStrand: "54/3.53", steelStrand: "7/3.53", dia: "24.26", alArea: "528.0", steelArea: "68.6", totalArea: "596.6", weight: "2030.0", strength: "194.0", resistance: "0.055" }
+              ]
+            }
+          ]
         }
       },
       "All Aluminium Alloy Conductor": {
@@ -1537,6 +1612,10 @@ const ToolboxInterface = () => {
     setShowHelpingCalculators(!showHelpingCalculators);
   };
 
+  // keep rendering more modals and UI below within the component
+
+  // (component continues)
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Main Content */}
@@ -1554,8 +1633,62 @@ const ToolboxInterface = () => {
                     <h2 className="text-2xl font-semibold text-gray-900">{section.title}</h2>
                   </div>
 
+                  {section.id === "products" && (
+                    <div className="mb-6">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search products..."
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            const query = e.target.value.toLowerCase();
+                            const filtered = section.tools.filter(tool => {
+                              const name = tool.name.toLowerCase();
+                              const description = tool.description.toLowerCase();
+                              
+                              // Direct matches
+                              if (name.includes(query) || description.includes(query)) {
+                                return true;
+                              }
+                              
+                              // Shortcuts and aliases
+                              const shortcuts = {
+                                'ab cable': 'aerial bunch cable',
+                                'acsr': 'aluminium conductor galvanized steel reinforced',
+                                'aaac': 'all aluminium alloy conductor',
+                                'pvc': 'pvc insulated',
+                                'xlpe': 'xlpe insulated',
+                                'armoured': 'armoured cable',
+                                'unarmoured': 'unarmoured cable',
+                                'single core': 'single core',
+                                'multi core': 'multi core'
+                              };
+                              
+                              // Check if query matches any shortcut
+                              for (const [shortcut, fullTerm] of Object.entries(shortcuts)) {
+                                if (query.includes(shortcut) && (name.includes(fullTerm) || description.includes(fullTerm))) {
+                                  return true;
+                                }
+                              }
+                              
+                              return false;
+                            });
+                            setFilteredTools(filtered);
+                          }}
+                          className="w-full px-4 py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {section.tools.map((tool, toolIndex) => {
+                    {(section.id === "products" && searchQuery ? filteredTools : section.tools).map((tool, toolIndex) => {
                       const ToolIcon = tool.icon;
                       return (
                         <div
@@ -1743,6 +1876,108 @@ const ToolboxInterface = () => {
             </div>
             <div className="p-6">
               <p className="text-gray-600">Conversion calculation tools will be implemented here.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Viewer Modal - images only */}
+      {isFileViewerOpen && Array.isArray(selectedFile) && selectedFile.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-lg">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-100">
+                    <FileText className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                  <h2 className="text-xl font-bold text-gray-900">Image Preview</h2>
+                  </div>
+                </div>
+                <button onClick={closeFileViewer} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-auto max-h-[70vh]">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Image Preview</h3>
+                <div className="border border-gray-200 rounded-lg p-6 bg-white">
+                  <div className="relative flex items-center justify-center">
+                    <button
+                      onClick={() => setCurrentSlide(s => Math.max(0, s - 1))}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow"
+                      disabled={currentSlide === 0}
+                      aria-label="Previous"
+                    >
+                      ‹
+                    </button>
+                    <img 
+                      src={selectedFile[currentSlide]}
+                      alt={`Preview ${currentSlide + 1}`}
+                      className="max-w-full max-h-[60vh] object-contain mx-auto rounded-lg shadow-sm"
+                    />
+                    <button
+                      onClick={() => setCurrentSlide(s => Math.min(selectedFile.length - 1, s + 1))}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow"
+                      disabled={currentSlide >= selectedFile.length - 1}
+                      aria-label="Next"
+                    >
+                      ›
+                    </button>
+                  </div>
+                  <div className="mt-4 flex items-center justify-center gap-2">
+                    {selectedFile.map((img, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentSlide(idx)}
+                        className={`w-2 h-2 rounded-full ${idx === currentSlide ? 'bg-blue-600' : 'bg-gray-300'}`}
+                        aria-label={`Go to slide ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* File Viewer Modal */}
+      {false && isFileViewerOpen && selectedFile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-lg">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-100">
+                    <FileText className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Document Preview</h2>
+                    <p className="text-sm text-gray-500">{selectedFile.name}</p>
+                  </div>
+                </div>
+                <button onClick={closeFileViewer} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-auto max-h-[70vh]">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Document Preview</h3>
+                <div className="border border-gray-200 rounded-lg p-6 bg-white">
+                  <div className="text-center">
+                    <Document
+                      file={selectedFile}
+                      onLoadSuccess={onDocumentLoadSuccess}
+                      onLoadError={onDocumentLoadError}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2033,7 +2268,6 @@ const ToolboxInterface = () => {
 
         </div>
       </div>
-
       {/* Product Detail Modal - Dynamic */}
       {isProductDetailOpen && selectedProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -2064,6 +2298,134 @@ const ToolboxInterface = () => {
                   </h3>
                   <div className="bg-white border border-gray-200 rounded-lg p-6">
                     <p className="text-gray-600">Business information will be displayed here based on the selected card.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Technical Specifications Section - Only for Aerial Bunch Cable */}
+              {selectedProduct === "Aerial Bunch Cable" && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-blue-600" />
+                    Technical Specifications
+                  </h3>
+                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="p-6 flex flex-col lg:flex-row gap-8">
+                      <div className="flex-1">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">REFERENCE</span>
+                            <p className="text-sm text-gray-800">IS 14255:1995</p>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">RATED VOLTAGE</span>
+                            <p className="text-sm text-gray-800">1100 volts</p>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">CONDUCTOR</span>
+                            <p className="text-sm text-gray-800">Class-2 as per IS-8130</p>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">INSULATION</span>
+                            <p className="text-sm text-gray-800">Cross link polythene insulated</p>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">MESSENGER</span>
+                            <p className="text-sm text-gray-800">Aluminium alloy conductor as per IS-398 pt-4</p>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">TEMPERATURE RANGE</span>
+                            <p className="text-sm text-gray-800">-30°C to 90°C</p>
+                          </div>
+                        </div>
+                        <div className="space-y-2 mt-4">
+                          <span className="text-sm font-semibold text-gray-800">FEATURES</span>
+                          <div className="text-sm text-gray-800">
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>UV radiation protected</li>
+                              <li>Higher current carrying capacity</li>
+                              <li>High temperature range -30°C to 90°C</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="lg:w-1/3 flex flex-col items-center">
+                        <div className="w-full h-64 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                          <img 
+                            src="/images/products/aerial bunch cable.jpeg"
+                            alt="Aerial Bunch Cable"
+                            className="w-full h-full object-contain p-4"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              const fallback = e.currentTarget.nextElementSibling;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                          />
+                          <div className="hidden w-full h-full items-center justify-center text-gray-400">
+                            <div className="text-center p-4">
+                              <Image className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">Aerial Bunch Cable</p>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-2 text-center">Aerial Bunch Cable Sample</p>
+                        
+                        <div className="mt-6 w-full">
+                          <h4 className="font-semibold text-gray-800 mb-3">Standards Compliance:</h4>
+                          <ul className="text-sm text-gray-700 space-y-1">
+                            <li>• IS 14255: 1995 (Reaffirmed 2020)</li>
+                            <li>• IS 8130: 1984 (Reaffirmed 2021)</li>
+                            <li>• IS 1554 (Part-1): 1988 (Reaffirmed 2021)</li>
+                            <li>• IS 7098 (Part-1): 1988 (Reaffirmed 2021)</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Identification Section - Only for ACSR */}
+              {selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-blue-600" />
+                    Identification
+                  </h3>
+                  <div className="bg-gray-50 rounded-lg p-6 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <span className="text-sm font-semibold text-gray-800">REFERENCE</span>
+                        <p className="text-sm text-gray-800">{"\u00A0"}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-semibold text-gray-800">RATED VOLTAGE</span>
+                        <p className="text-sm text-gray-800">{"\u00A0"}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-semibold text-gray-800">CONDUCTOR</span>
+                        <p className="text-sm text-gray-800">{"\u00A0"}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-semibold text-gray-800">INSULATION</span>
+                        <p className="text-sm text-gray-800">{"\u00A0"}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-semibold text-gray-800">MESSENGER</span>
+                        <p className="text-sm text-gray-800">{"\u00A0"}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-semibold text-gray-800">TEMPERATURE RANGE</span>
+                        <p className="text-sm text-gray-800">{"\u00A0"}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <span className="text-sm font-semibold text-gray-800">FEATURES</span>
+                      <div className="text-sm text-gray-800">
+                        <ul className="list-disc list-inside space-y-1">
+                        </ul>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -2156,12 +2518,28 @@ const ToolboxInterface = () => {
                             </span>
                           </td>
                           <td className="px-4 py-3 border border-gray-200">
-                            <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center text-gray-400" title="Image">
-                              <Image className="h-4 w-4" />
+                            <div 
+                              className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors" 
+                              title={((productImages[selectedProduct]?.[index]?.length > 0)) ? "Click to view images" : "No image uploaded"}
+                              onClick={() => handleImageClick(index)}
+                            >
+                              {(productImages[selectedProduct]?.[index]?.length > 0) ? (
+                                <img 
+                                  src={productImages[selectedProduct][index][productImages[selectedProduct][index].length - 1]} 
+                                  alt={`${item.size} image`}
+                                  className="w-full h-full object-cover rounded-md"
+                                />
+                              ) : (
+                                <Image className="h-4 w-4 text-gray-400" />
+                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3 border border-gray-200">
-                            <button className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center text-gray-300 cursor-not-allowed" title="Add images (coming soon)" disabled>
+                            <button 
+                              className="w-10 h-10 bg-blue-100 rounded-md flex items-center justify-center text-blue-600 hover:bg-blue-200 transition-colors" 
+                              title="Add image"
+                              onClick={() => handleImageUpload(index)}
+                            >
                               <Plus className="h-4 w-4" />
                             </button>
                           </td>
@@ -2173,7 +2551,45 @@ const ToolboxInterface = () => {
               </div>
               )}
 
-              {/* Technical Tables Section (e.g., Aerial Bunch Cable) */}
+              {/* Hidden file input for image upload */}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+                id="image-upload-input"
+              />
+
+              {/* Image Upload Modal */}
+              {isImageUploadOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                    <h3 className="text-lg font-semibold mb-4">Upload Image</h3>
+                    <p className="text-gray-600 mb-4">Select an image file to upload for this cable size.</p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          document.getElementById('image-upload-input').click();
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        Choose File
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsImageUploadOpen(false);
+                          setSelectedImageIndex(null);
+                        }}
+                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                </div>
+              </div>
+              )}
+
+              {/* Technical Tables Section for Aerial Bunch Cable and ACSR */}
               {(() => {
                 const productData = getProductData(selectedProduct);
                 const techTables = productData && productData.technicalTables;
@@ -2226,8 +2642,8 @@ const ToolboxInterface = () => {
                   </div>
                 );
               })()}
-              {/* Costing Calculator Section - Only for Aerial Bunch Cable */}
-              {selectedProduct === "Aerial Bunch Cable" && (
+              {/* Costing Calculator Section - For Aerial Bunch Cable and ACSR */}
+              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced") && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-blue-600" />
@@ -2431,14 +2847,44 @@ const ToolboxInterface = () => {
                       </div>
                     </div>
                     {/* Pricing and Drum Details */}
-                    <div className="mt-6"></div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-gray-800 text-sm">Pricing & Details</h4>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">DRUM 2X:</span>
+                          <div className="flex items-center">
+                            <input type="number" defaultValue="5000" className="w-16 text-xs text-blue-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                            <ChevronDown className="h-3 w-3 text-gray-400 ml-1" />
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">FREIGHT:</span>
+                          <input type="number" step="0.01" defaultValue="0" className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">LENGTH:</span>
+                          <div className="flex items-center">
+                            <input type="number" defaultValue="1000" className="w-16 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                            <span className="text-xs text-red-600 font-semibold ml-1">MTR</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">SALE PRICE:</span>
+                          <span className="text-xs text-green-600 font-semibold">₹ 122.51</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-600">PROFIT:</span>
+                          <span className="text-xs text-green-600 font-semibold">20 %</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
               )}
 
-              {/* Reduction Gauge Calculator Section - Only for Aerial Bunch Cable */}
-              {selectedProduct === "Aerial Bunch Cable" && (
+              {/* Reduction Gauge Calculator Section - For Aerial Bunch Cable and ACSR */}
+              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced") && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-blue-600" />
@@ -2511,9 +2957,8 @@ const ToolboxInterface = () => {
                 </div>
               </div>
               )}
-
-              {/* Wire Selection Calculator Section - Only for Aerial Bunch Cable */}
-              {selectedProduct === "Aerial Bunch Cable" && (
+              {/* Wire Selection Calculator Section - For Aerial Bunch Cable and ACSR */}
+              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced") && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-blue-600" />
@@ -2575,12 +3020,12 @@ const ToolboxInterface = () => {
                 </div>
               </div>
               )}
-              {/* Technical Specifications Section - Only for Aerial Bunch Cable */}
+              {/* Identification Section - Only for Aerial Bunch Cable */}
               {selectedProduct === "Aerial Bunch Cable" && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-blue-600" />
-                  Technical Specifications
+                  <Wrench className="h-5 w-5 text-blue-600" />
+                  Identification
                 </h3>
                 <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                   <div className="p-6">
@@ -2593,28 +3038,28 @@ const ToolboxInterface = () => {
                       </p>
                     </div>
                     
-                    <div className="mt-6">
-                      <div className="relative w-full max-w-2xl mx-auto h-64 md:h-72 bg-gray-100 rounded-lg overflow-hidden">
-                         <img 
-                           src="/images/core-identification.png"
-                           alt="Core Identification"
-                           className="w-full h-full object-contain"
-                           onError={(e) => {
-                             e.currentTarget.style.display = 'none';
-                             const fallback = e.currentTarget.nextElementSibling;
-                             if (fallback) fallback.style.display = 'flex';
-                           }}
-                         />
-                         <div className="absolute inset-0 items-center justify-center text-gray-400 hidden">
-                           <div className="text-center p-8">
-                             <Image className="h-10 w-10 mx-auto mb-2" />
-                             <p>Core identification image</p>
-                           </div>
-                         </div>
-                       </div>
-                     </div>
+                    <div className="mt-6 max-w-2xl mx-auto">
+                      <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
+                        <img 
+                          src="/images/core-identification.png"
+                          alt="Core Identification"
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const fallback = e.currentTarget.nextElementSibling;
+                            if (fallback) fallback.style.display = 'flex';
+                          }}
+                        />
+                        <div className="absolute inset-0 items-center justify-center text-gray-400 hidden">
+                          <div className="text-center p-8">
+                            <Image className="h-10 w-10 mx-auto mb-2" />
+                            <p>Core identification image</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                     
-                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                    <div className="mt-6 p-4 bg-blue-50 rounded-lg max-w-2xl mx-auto">
                       <h6 className="font-semibold text-blue-800 mb-2">Key Points:</h6>
                       <ul className="text-sm text-blue-700 space-y-1">
                         <li>• Phase conductors: 1, 2, or 3 ridges for identification</li>
@@ -2973,8 +3418,7 @@ const ToolboxInterface = () => {
           </div>
         </div>
       )}
-      {/* File Viewer Modal */}
-      {isFileViewerOpen && selectedFile && (
+      {isFileViewerOpen && Array.isArray(selectedFile) && selectedFile.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-lg">
             <div className="p-6 border-b border-gray-200">
@@ -2984,8 +3428,7 @@ const ToolboxInterface = () => {
                     <FileText className="h-6 w-6 text-blue-600" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">{selectedFile.title}</h2>
-                    <p className="text-gray-600">{selectedFile.category} Document</p>
+                  <h2 className="text-xl font-bold text-gray-900">Image Preview</h2>
                   </div>
                 </div>
                 <button onClick={closeFileViewer} className="text-gray-400 hover:text-gray-600">
@@ -2995,332 +3438,79 @@ const ToolboxInterface = () => {
             </div>
 
             <div className="p-6 overflow-auto max-h-[70vh]">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Image Preview</h3>
+                <div className="border border-gray-200 rounded-lg p-6 bg-white">
+                  <div className="relative flex items-center justify-center">
+                      <button 
+                      onClick={() => setCurrentSlide(s => Math.max(0, s - 1))}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow"
+                      disabled={currentSlide === 0}
+                      aria-label="Previous"
+                    >
+                      ‹
+                      </button>
+                    <img 
+                      src={selectedFile[currentSlide]}
+                      alt={`Preview ${currentSlide + 1}`}
+                      className="max-w-full max-h-[60vh] object-contain mx-auto rounded-lg shadow-sm"
+                    />
+                      <button 
+                      onClick={() => setCurrentSlide(s => Math.min(selectedFile.length - 1, s + 1))}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow"
+                      disabled={currentSlide >= selectedFile.length - 1}
+                      aria-label="Next"
+                    >
+                      ›
+                    </button>
+                                </div>
+                  <div className="mt-4 flex items-center justify-center gap-2">
+                    {selectedFile.map((img, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentSlide(idx)}
+                        className={`w-2 h-2 rounded-full ${idx === currentSlide ? 'bg-blue-600' : 'bg-gray-300'}`}
+                        aria-label={`Go to slide ${idx + 1}`}
+                      />
+                    ))}
+                                    </div>
+                                    </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                </div>
+      )}
+      {/* File Viewer Modal */}
+      {false && isFileViewerOpen && selectedFile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-lg">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-100">
+                    <FileText className="h-6 w-6 text-blue-600" />
+                              </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Document Preview</h2>
+                    <p className="text-sm text-gray-500">{selectedFile.name}</p>
+                  </div>
+                </div>
+                <button onClick={closeFileViewer} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-6 w-6" />
+                      </button>
+                    </div>
+            </div>
 
-
-              {/* Demo Document Preview */}
+            <div className="p-6 overflow-auto max-h-[70vh]">
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Document Preview</h3>
                 <div className="border border-gray-200 rounded-lg p-6 bg-white">
                   <div className="text-center">
-                    {/* Demo PDF Preview */}
-                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 mb-4">
-                      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                          </div>
-                          <div className="text-xs text-gray-500">PDF Viewer</div>
-                        </div>
-                        
-                        {/* Demo Certificate Header */}
-                        <div className="text-center mb-6">
-                          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <Shield className="h-8 w-8 text-blue-600" />
-                          </div>
-                          <h4 className="text-lg font-bold text-gray-900 mb-2">BIS CERTIFICATION</h4>
-                          <p className="text-sm text-gray-600">Bureau of Indian Standards</p>
-                        </div>
-                        
-                        {/* Demo Certificate Content */}
-                        <div className="space-y-3 text-left">
-                          <div className="flex justify-between py-1">
-                            <span className="text-sm font-medium text-gray-600">Certificate No:</span>
-                            <span className="text-sm text-gray-900">BIS/CR/123456/2024</span>
-                          </div>
-                          <div className="flex justify-between py-1">
-                            <span className="text-sm font-medium text-gray-600">Product:</span>
-                            <span className="text-sm text-gray-900">Aerial Bunch Cable</span>
-                          </div>
-                          <div className="flex justify-between py-1">
-                            <span className="text-sm font-medium text-gray-600">Standard:</span>
-                            <span className="text-sm text-gray-900">IS 7098</span>
-                          </div>
-                          <div className="flex justify-between py-1">
-                            <span className="text-sm font-medium text-gray-600">Valid Until:</span>
-                            <span className="text-sm text-gray-900">Jan 15, 2027</span>
-                          </div>
-                          <div className="flex justify-between py-1">
-                            <span className="text-sm font-medium text-gray-600">Manufacturer:</span>
-                            <span className="text-sm text-gray-900">Anode Electric</span>
-                          </div>
-                        </div>
-                        
-                        {/* Demo Watermark */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
-                          <div className="text-6xl font-bold text-gray-400 transform -rotate-45">BIS</div>
-                        </div>
-                      </div>
-                    </div>
-                    <h4 className="text-lg font-semibold text-gray-900 mb-4">{selectedFile.title}</h4>
-                    <div className="flex gap-2 justify-center">
-                      <button 
-                        onClick={() => {
-                          // Check if it's BIS Certification and download the actual PDF
-                          if (selectedFile.title === "BIS Certification") {
-                            const pdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
-                            const link = document.createElement('a');
-                            link.href = pdfUrl;
-                            link.download = 'aerial-bunch-cable-bis-certificate.pdf';
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                          } else {
-                            // For other documents, generate HTML content as before
-                            const htmlContent = `
-                              <!DOCTYPE html>
-                              <html>
-                              <head>
-                                <title>${selectedFile.title}</title>
-                                <style>
-                                  body { font-family: Arial, sans-serif; margin: 20px; }
-                                  h1 { color: #2563eb; margin-bottom: 20px; }
-                                  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                                  th, td { border: 1px solid #d1d5db; padding: 12px; text-align: left; }
-                                  th { background-color: #f3f4f6; font-weight: 600; color: #374151; }
-                                  .header { text-align: center; margin-bottom: 30px; }
-                                </style>
-                              </head>
-                              <body>
-                                <div class="header">
-                                  <h1>${selectedFile.title}</h1>
-                                  <p>Generated on ${new Date().toLocaleDateString()}</p>
-                                </div>
-                                
-                                <div style="margin: 30px 0; padding: 20px; background: #f8fafc; border-radius: 8px;">
-                                  <h3 style="color: #2563eb; margin-bottom: 15px;">BIS Certificate Details</h3>
-                                  <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
-                                    <h4 style="color: #1f2937; margin-bottom: 15px;">Certificate Information</h4>
-                                    <p style="margin-bottom: 10px;"><strong>Certificate Number:</strong> BIS/CR/123456/2024</p>
-                                    <p style="margin-bottom: 10px;"><strong>Product:</strong> Aerial Bunch Cable</p>
-                                    <p style="margin-bottom: 10px;"><strong>Standard:</strong> IS 7098 (Part 1) & IS 7098 (Part 2)</p>
-                                    <p style="margin-bottom: 10px;"><strong>Validity Period:</strong> 3 Years from Date of Issue</p>
-                                    <p style="margin-bottom: 10px;"><strong>Issue Date:</strong> January 15, 2024</p>
-                                    <p style="margin-bottom: 10px;"><strong>Expiry Date:</strong> January 15, 2027</p>
-                                    <p style="margin-bottom: 10px;"><strong>Manufacturer:</strong> Anode Electric Private Limited</p>
-                                    <p style="margin-bottom: 10px;"><strong>Address:</strong> Industrial Area, Sector 5, Mumbai, Maharashtra - 400001</p>
-                                    <p style="margin-bottom: 10px;"><strong>Testing Laboratory:</strong> BIS Testing Laboratory, Mumbai</p>
-                                    <p style="margin-bottom: 10px;"><strong>Test Report Number:</strong> BIS/TR/789012/2024</p>
-                                  </div>
-                                  
-                                  <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 15px;">
-                                    <h4 style="color: #1f2937; margin-bottom: 15px;">Technical Specifications</h4>
-                                    <p style="margin-bottom: 8px;">• Voltage Rating: 11 kV</p>
-                                    <p style="margin-bottom: 8px;">• Conductor Material: Aluminum</p>
-                                    <p style="margin-bottom: 8px;">• Insulation: XLPE (Cross-linked Polyethylene)</p>
-                                    <p style="margin-bottom: 8px;">• Sheath: PVC (Polyvinyl Chloride)</p>
-                                    <p style="margin-bottom: 8px;">• Temperature Range: -15°C to +90°C</p>
-                                    <p style="margin-bottom: 8px;">• Bending Radius: 12 times cable diameter</p>
-                                    <p style="margin-bottom: 8px;">• Standards Compliance: IS 7098 (Part 1) & IS 7098 (Part 2)</p>
-                                  </div>
-                                  
-                                  <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 15px;">
-                                    <h4 style="color: #1f2937; margin-bottom: 15px;">Certification Authority</h4>
-                                    <p style="margin-bottom: 10px;"><strong>Bureau of Indian Standards (BIS)</strong></p>
-                                    <p style="margin-bottom: 10px;">Manak Bhavan, 9 Bahadur Shah Zafar Marg, New Delhi - 110002</p>
-                                    <p style="margin-bottom: 10px;">Phone: +91-11-23230131</p>
-                                    <p style="margin-bottom: 10px;">Email: info@bis.gov.in</p>
-                                    <p style="margin-bottom: 10px;">Website: www.bis.gov.in</p>
-                                  </div>
-                                </div>
-                              </body>
-                              </html>
-                            `;
-                            const blob = new Blob([htmlContent], { type: 'text/html' });
-                            const url = window.URL.createObjectURL(blob);
-                            const link = document.createElement('a');
-                            link.href = url;
-                            link.download = `${selectedFile.title.toLowerCase().replace(/\s+/g, '-')}.html`;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                            window.URL.revokeObjectURL(url);
-                          }
-                        }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                      >
-                        <Download className="h-4 w-4 inline mr-2" />
-                        Download PDF
-                      </button>
-                      <button 
-                        onClick={() => {
-                          const htmlContent = `
-                            <!DOCTYPE html>
-                            <html>
-                            <head>
-                              <title>${selectedFile.title} - Full Document</title>
-                              <style>
-                                body { 
-                                  font-family: Arial, sans-serif; 
-                                  margin: 0; 
-                                  background: #f8fafc; 
-                                  color: #333;
-                                }
-                                .container { 
-                                  max-width: 1200px; 
-                                  margin: 0 auto; 
-                                  background: white; 
-                                  min-height: 100vh;
-                                  box-shadow: 0 0 20px rgba(0,0,0,0.1);
-                                }
-                                .header { 
-                                  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-                                  color: white;
-                                  padding: 40px 20px;
-                                  text-align: center;
-                                }
-                                h1 { 
-                                  margin: 0; 
-                                  font-size: 32px;
-                                  font-weight: bold;
-                                }
-                                .subtitle {
-                                  margin: 10px 0 0 0;
-                                  font-size: 16px;
-                                  opacity: 0.9;
-                                }
-                                .content {
-                                  padding: 40px;
-                                }
-                                .document-info {
-                                  background: #f8fafc;
-                                  padding: 30px;
-                                  border-radius: 8px;
-                                  margin-bottom: 30px;
-                                  border-left: 4px solid #2563eb;
-                                }
-                                .info-grid {
-                                  display: grid;
-                                  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                                  gap: 20px;
-                                  margin-bottom: 30px;
-                                }
-                                .info-item {
-                                  background: white;
-                                  padding: 20px;
-                                  border-radius: 8px;
-                                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                                }
-                                .info-label {
-                                  font-weight: 600;
-                                  color: #6b7280;
-                                  font-size: 14px;
-                                  margin-bottom: 5px;
-                                }
-                                .info-value {
-                                  font-size: 16px;
-                                  color: #1f2937;
-                                  font-weight: 500;
-                                }
-                                .badge { 
-                                  display: inline-block; 
-                                  padding: 6px 12px; 
-                                  border-radius: 20px; 
-                                  font-size: 12px; 
-                                  font-weight: 600; 
-                                }
-                                .badge-valid { background: #dcfce7; color: #166534; }
-                                .badge-active { background: #dbeafe; color: #1e40af; }
-                                .badge-completed { background: #dcfce7; color: #166534; }
-                                .badge-pass { background: #dcfce7; color: #166534; }
-                                .badge-available { background: #dcfce7; color: #166534; }
-                                .document-content {
-                                  background: white;
-                                  padding: 30px;
-                                  border-radius: 8px;
-                                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                                  margin-bottom: 30px;
-                                }
-                                .content-title {
-                                  color: #2563eb;
-                                  font-size: 20px;
-                                  font-weight: 600;
-                                  margin-bottom: 15px;
-                                }
-                                .content-text {
-                                  line-height: 1.8;
-                                  color: #374151;
-                                  font-size: 16px;
-                                }
-                                .footer {
-                                  background: #f8fafc;
-                                  padding: 20px;
-                                  text-align: center;
-                                  color: #6b7280;
-                                  font-size: 14px;
-                                }
-                              </style>
-                            </head>
-                            <body>
-                              <div class="container">
-                                <div class="header">
-                                  <h1>${selectedFile.title}</h1>
-                                  <div class="subtitle">${selectedFile.category} Document</div>
-                                </div>
-                                
-                                <div class="content">
-                                  
-                                  <div class="document-content">
-                                    <div class="content-title">BIS Certificate Details</div>
-                                    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
-                                      <h4 style="color: #1f2937; margin-bottom: 15px;">Certificate Information</h4>
-                                      <p style="margin-bottom: 10px;"><strong>Certificate Number:</strong> BIS/CR/123456/2024</p>
-                                      <p style="margin-bottom: 10px;"><strong>Product:</strong> Aerial Bunch Cable</p>
-                                      <p style="margin-bottom: 10px;"><strong>Standard:</strong> IS 7098 (Part 1) & IS 7098 (Part 2)</p>
-                                      <p style="margin-bottom: 10px;"><strong>Validity Period:</strong> 3 Years from Date of Issue</p>
-                                      <p style="margin-bottom: 10px;"><strong>Issue Date:</strong> January 15, 2024</p>
-                                      <p style="margin-bottom: 10px;"><strong>Expiry Date:</strong> January 15, 2027</p>
-                                      <p style="margin-bottom: 10px;"><strong>Manufacturer:</strong> Anode Electric Private Limited</p>
-                                      <p style="margin-bottom: 10px;"><strong>Address:</strong> Industrial Area, Sector 5, Mumbai, Maharashtra - 400001</p>
-                                      <p style="margin-bottom: 10px;"><strong>Testing Laboratory:</strong> BIS Testing Laboratory, Mumbai</p>
-                                      <p style="margin-bottom: 10px;"><strong>Test Report Number:</strong> BIS/TR/789012/2024</p>
-                                    </div>
-                                    
-                                    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
-                                      <h4 style="color: #1f2937; margin-bottom: 15px;">Technical Specifications</h4>
-                                      <p style="margin-bottom: 8px;">• Voltage Rating: 11 kV</p>
-                                      <p style="margin-bottom: 8px;">• Conductor Material: Aluminum</p>
-                                      <p style="margin-bottom: 8px;">• Insulation: XLPE (Cross-linked Polyethylene)</p>
-                                      <p style="margin-bottom: 8px;">• Sheath: PVC (Polyvinyl Chloride)</p>
-                                      <p style="margin-bottom: 8px;">• Temperature Range: -15°C to +90°C</p>
-                                      <p style="margin-bottom: 8px;">• Bending Radius: 12 times cable diameter</p>
-                                      <p style="margin-bottom: 8px;">• Standards Compliance: IS 7098 (Part 1) & IS 7098 (Part 2)</p>
-                                    </div>
-                                    
-                                    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
-                                      <h4 style="color: #1f2937; margin-bottom: 15px;">Certification Authority</h4>
-                                      <p style="margin-bottom: 10px;"><strong>Bureau of Indian Standards (BIS)</strong></p>
-                                      <p style="margin-bottom: 10px;">Manak Bhavan, 9 Bahadur Shah Zafar Marg, New Delhi - 110002</p>
-                                      <p style="margin-bottom: 10px;">Phone: +91-11-23230131</p>
-                                      <p style="margin-bottom: 10px;">Email: info@bis.gov.in</p>
-                                      <p style="margin-bottom: 10px;">Website: www.bis.gov.in</p>
-                                    </div>
-                                  </div>
-                                  
-                                </div>
-                                
-                                <div class="footer">
-                                  <p>This document was generated automatically on ${new Date().toLocaleDateString()}</p>
-                                </div>
-                              </div>
-                            </body>
-                            </html>
-                          `;
-                          const newWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
-                          if (newWindow) {
-                            newWindow.document.write(htmlContent);
-                            newWindow.document.close();
-                          } else {
-                            alert('Please allow pop-ups for this site to view the full document');
-                          }
-                        }}
-                        className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
-                      >
-                        <Eye className="h-4 w-4 inline mr-2" />
-                        View Full Document
-                      </button>
-                    </div>
+                    <Document
+                      file={selectedFile}
+                      onLoadSuccess={onDocumentLoadSuccess}
+                      onLoadError={onDocumentLoadError}
+                    />
                   </div>
                 </div>
               </div>
@@ -3328,6 +3518,7 @@ const ToolboxInterface = () => {
           </div>
         </div>
       )}
+
       {/* Technical Calculations Calculator Modal */}
       {isCalculatorOpen && selectedCalculator === "technical-calculations" && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -3551,650 +3742,6 @@ const ToolboxInterface = () => {
           </div>
         </div>
       )}
-      {/* File Viewer Modal */}
-      {isFileViewerOpen && selectedFile && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-lg">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-100">
-                    <FileText className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">{selectedFile.title}</h2>
-                    <p className="text-gray-600">{selectedFile.category} Document</p>
-                  </div>
-                </div>
-                <button onClick={closeFileViewer} className="text-gray-400 hover:text-gray-600">
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 overflow-auto max-h-[80vh]">
-              {/* Demo Document Preview */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Document Preview</h3>
-                <div className="border border-gray-200 rounded-lg p-6 bg-white">
-                  <div className="text-center">
-                    {/* Demo PDF Preview */}
-                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 mb-4">
-                      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                          </div>
-                          <div className="text-xs text-gray-500">PDF Viewer</div>
-                        </div>
-                        
-                        {/* Demo Certificate Header */}
-                        <div className="text-center mb-6">
-                          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <Shield className="h-8 w-8 text-blue-600" />
-                          </div>
-                          <h4 className="text-lg font-bold text-gray-900 mb-2">BIS CERTIFICATION</h4>
-                          <p className="text-sm text-gray-600">Bureau of Indian Standards</p>
-                        </div>
-                        
-                        {/* Demo Certificate Content */}
-                        <div className="space-y-3 text-left">
-                          <div className="flex justify-between py-1">
-                            <span className="text-sm font-medium text-gray-600">Certificate No:</span>
-                            <span className="text-sm text-gray-900">BIS/CR/123456/2024</span>
-                          </div>
-                          <div className="flex justify-between py-1">
-                            <span className="text-sm font-medium text-gray-600">Product:</span>
-                            <span className="text-sm text-gray-900">Aerial Bunch Cable</span>
-                          </div>
-                          <div className="flex justify-between py-1">
-                            <span className="text-sm font-medium text-gray-600">Standard:</span>
-                            <span className="text-sm text-gray-900">IS 7098</span>
-                          </div>
-                          <div className="flex justify-between py-1">
-                            <span className="text-sm font-medium text-gray-600">Valid Until:</span>
-                            <span className="text-sm text-gray-900">Jan 15, 2027</span>
-                          </div>
-                          <div className="flex justify-between py-1">
-                            <span className="text-sm font-medium text-gray-600">Manufacturer:</span>
-                            <span className="text-sm text-gray-900">Anode Electric</span>
-                          </div>
-                        </div>
-                        
-                        {/* Demo Watermark */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
-                          <div className="text-6xl font-bold text-gray-400 transform -rotate-45">BIS</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <h4 className="text-lg font-semibold text-gray-900 mb-4">{selectedFile.title}</h4>
-                    <div className="flex gap-2 justify-center">
-                      <button 
-                        onClick={() => {
-                          // Check if it's BIS Certification and download the actual PDF
-                          if (selectedFile.title === "BIS Certification") {
-                            const pdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
-                            const link = document.createElement('a');
-                            link.href = pdfUrl;
-                            link.download = 'aerial-bunch-cable-bis-certificate.pdf';
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                          } else {
-                            // For other documents, generate HTML content as before
-                            const htmlContent = `
-                              <!DOCTYPE html>
-                              <html>
-                              <head>
-                                <title>${selectedFile.title}</title>
-                                <style>
-                                  body { font-family: Arial, sans-serif; margin: 20px; }
-                                  h1 { color: #2563eb; margin-bottom: 20px; }
-                                  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                                  th, td { border: 1px solid #d1d5db; padding: 12px; text-align: left; }
-                                  th { background-color: #f3f4f6; font-weight: 600; color: #374151; }
-                                  .header { text-align: center; margin-bottom: 30px; }
-                                </style>
-                              </head>
-                              <body>
-                                <div class="header">
-                                  <h1>${selectedFile.title}</h1>
-                                  <p>Generated on ${new Date().toLocaleDateString()}</p>
-                                </div>
-                                
-                                <div style="margin: 30px 0; padding: 20px; background: #f8fafc; border-radius: 8px;">
-                                  <h3 style="color: #2563eb; margin-bottom: 15px;">BIS Certificate Details</h3>
-                                  <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
-                                    <h4 style="color: #1f2937; margin-bottom: 15px;">Certificate Information</h4>
-                                    <p style="margin-bottom: 10px;"><strong>Certificate Number:</strong> BIS/CR/123456/2024</p>
-                                    <p style="margin-bottom: 10px;"><strong>Product:</strong> Aerial Bunch Cable</p>
-                                    <p style="margin-bottom: 10px;"><strong>Standard:</strong> IS 7098 (Part 1) & IS 7098 (Part 2)</p>
-                                    <p style="margin-bottom: 10px;"><strong>Validity Period:</strong> 3 Years from Date of Issue</p>
-                                    <p style="margin-bottom: 10px;"><strong>Issue Date:</strong> January 15, 2024</p>
-                                    <p style="margin-bottom: 10px;"><strong>Expiry Date:</strong> January 15, 2027</p>
-                                    <p style="margin-bottom: 10px;"><strong>Manufacturer:</strong> Anode Electric Private Limited</p>
-                                    <p style="margin-bottom: 10px;"><strong>Address:</strong> Industrial Area, Sector 5, Mumbai, Maharashtra - 400001</p>
-                                    <p style="margin-bottom: 10px;"><strong>Testing Laboratory:</strong> BIS Testing Laboratory, Mumbai</p>
-                                    <p style="margin-bottom: 10px;"><strong>Test Report Number:</strong> BIS/TR/789012/2024</p>
-                                  </div>
-                                  
-                                  <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 15px;">
-                                    <h4 style="color: #1f2937; margin-bottom: 15px;">Technical Specifications</h4>
-                                    <p style="margin-bottom: 8px;">• Voltage Rating: 11 kV</p>
-                                    <p style="margin-bottom: 8px;">• Conductor Material: Aluminum</p>
-                                    <p style="margin-bottom: 8px;">• Insulation: XLPE (Cross-linked Polyethylene)</p>
-                                    <p style="margin-bottom: 8px;">• Sheath: PVC (Polyvinyl Chloride)</p>
-                                    <p style="margin-bottom: 8px;">• Temperature Range: -15°C to +90°C</p>
-                                    <p style="margin-bottom: 8px;">• Bending Radius: 12 times cable diameter</p>
-                                    <p style="margin-bottom: 8px;">• Standards Compliance: IS 7098 (Part 1) & IS 7098 (Part 2)</p>
-                                  </div>
-                                  
-                                  <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 15px;">
-                                    <h4 style="color: #1f2937; margin-bottom: 15px;">Certification Authority</h4>
-                                    <p style="margin-bottom: 10px;"><strong>Bureau of Indian Standards (BIS)</strong></p>
-                                    <p style="margin-bottom: 10px;">Manak Bhavan, 9 Bahadur Shah Zafar Marg, New Delhi - 110002</p>
-                                    <p style="margin-bottom: 10px;">Phone: +91-11-23230131</p>
-                                    <p style="margin-bottom: 10px;">Email: info@bis.gov.in</p>
-                                    <p style="margin-bottom: 10px;">Website: www.bis.gov.in</p>
-                                  </div>
-                                </div>
-                              </body>
-                              </html>
-                            `;
-                            const blob = new Blob([htmlContent], { type: 'text/html' });
-                            const url = window.URL.createObjectURL(blob);
-                            const link = document.createElement('a');
-                            link.href = url;
-                            link.download = `${selectedFile.title.toLowerCase().replace(/\s+/g, '-')}.html`;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                            window.URL.revokeObjectURL(url);
-                          }
-                        }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                      >
-                        <Download className="h-4 w-4 inline mr-2" />
-                        Download PDF
-                      </button>
-                      <button 
-                        onClick={() => {
-                          // Check if it's BIS Certification and open the PDF
-                          if (selectedFile.title === "BIS Certification") {
-                            console.log('Opening BIS Certification PDF...');
-                            const pdfUrl = `${window.location.origin}/pdf/aerial bunch cable, bis certificate .pdf`;
-                            console.log('PDF URL:', pdfUrl);
-                            const newWindow = window.open(pdfUrl, '_blank');
-                            if (!newWindow) {
-                              alert('Please allow pop-ups for this site to view the PDF');
-                            }
-                          } else {
-                            // For other documents, show the HTML content as before
-                            const htmlContent = `
-                              <!DOCTYPE html>
-                              <html>
-                              <head>
-                                <title>${selectedFile.title} - Full Document</title>
-                                <style>
-                                  body { 
-                                    font-family: Arial, sans-serif; 
-                                    margin: 0; 
-                                    background: #f8fafc; 
-                                    color: #333;
-                                  }
-                                  .container { 
-                                    max-width: 1200px; 
-                                    margin: 0 auto; 
-                                    background: white; 
-                                    min-height: 100vh;
-                                    box-shadow: 0 0 20px rgba(0,0,0,0.1);
-                                  }
-                                  .header {
-                                    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-                                    color: white;
-                                    padding: 40px 20px;
-                                    text-align: center;
-                                  }
-                                  h1 {
-                                    margin: 0;
-                                    font-size: 32px;
-                                    font-weight: bold;
-                                  }
-                                  .subtitle {
-                                    margin: 10px 0 0 0;
-                                    font-size: 16px;
-                                    opacity: 0.9;
-                                  }
-                                  .content {
-                                    padding: 40px;
-                                  }
-                                  .document-content {
-                                    background: white;
-                                    padding: 30px;
-                                    border-radius: 8px;
-                                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                                    margin-bottom: 30px;
-                                  }
-                                  .content-title {
-                                    color: #2563eb;
-                                    font-size: 20px;
-                                    font-weight: 600;
-                                    margin-bottom: 15px;
-                                  }
-                                  .content-text {
-                                    line-height: 1.8;
-                                    color: #374151;
-                                    font-size: 16px;
-                                  }
-                                  .footer {
-                                    background: #f8fafc;
-                                    padding: 20px;
-                                    text-align: center;
-                                    color: #6b7280;
-                                    font-size: 14px;
-                                  }
-                                </style>
-                              </head>
-                              <body>
-                                <div class="container">
-                                  <div class="header">
-                                    <h1>${selectedFile.title}</h1>
-                                    <div class="subtitle">${selectedFile.category} Document</div>
-                                  </div>
-                                  
-                                  <div class="content">
-                                    
-                                    <div class="document-content">
-                                      <div class="content-title">BIS Certificate Details</div>
-                                      <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
-                                        <h4 style="color: #1f2937; margin-bottom: 15px;">Certificate Information</h4>
-                                        <p style="margin-bottom: 10px;"><strong>Certificate Number:</strong> BIS/CR/123456/2024</p>
-                                        <p style="margin-bottom: 10px;"><strong>Product:</strong> Aerial Bunch Cable</p>
-                                        <p style="margin-bottom: 10px;"><strong>Standard:</strong> IS 7098 (Part 1) & IS 7098 (Part 2)</p>
-                                        <p style="margin-bottom: 10px;"><strong>Validity Period:</strong> 3 Years from Date of Issue</p>
-                                        <p style="margin-bottom: 10px;"><strong>Issue Date:</strong> January 15, 2024</p>
-                                        <p style="margin-bottom: 10px;"><strong>Expiry Date:</strong> January 15, 2027</p>
-                                        <p style="margin-bottom: 10px;"><strong>Manufacturer:</strong> Anode Electric Private Limited</p>
-                                        <p style="margin-bottom: 10px;"><strong>Address:</strong> Industrial Area, Sector 5, Mumbai, Maharashtra - 400001</p>
-                                        <p style="margin-bottom: 10px;"><strong>Testing Laboratory:</strong> BIS Testing Laboratory, Mumbai</p>
-                                        <p style="margin-bottom: 10px;"><strong>Test Report Number:</strong> BIS/TR/789012/2024</p>
-                                      </div>
-                                      
-                                      <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
-                                        <h4 style="color: #1f2937; margin-bottom: 15px;">Technical Specifications</h4>
-                                        <p style="margin-bottom: 8px;">• Voltage Rating: 11 kV</p>
-                                        <p style="margin-bottom: 8px;">• Conductor Material: Aluminum</p>
-                                        <p style="margin-bottom: 8px;">• Insulation: XLPE (Cross-linked Polyethylene)</p>
-                                        <p style="margin-bottom: 8px;">• Sheath: PVC (Polyvinyl Chloride)</p>
-                                        <p style="margin-bottom: 8px;">• Temperature Range: -15°C to +90°C</p>
-                                        <p style="margin-bottom: 8px;">• Bending Radius: 12 times cable diameter</p>
-                                        <p style="margin-bottom: 8px;">• Standards Compliance: IS 7098 (Part 1) & IS 7098 (Part 2)</p>
-                                      </div>
-                                      
-                                      <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
-                                        <h4 style="color: #1f2937; margin-bottom: 15px;">Certification Authority</h4>
-                                        <p style="margin-bottom: 10px;"><strong>Bureau of Indian Standards (BIS)</strong></p>
-                                        <p style="margin-bottom: 10px;">Manak Bhavan, 9 Bahadur Shah Zafar Marg, New Delhi - 110002</p>
-                                        <p style="margin-bottom: 10px;">Phone: +91-11-23230131</p>
-                                        <p style="margin-bottom: 10px;">Email: info@bis.gov.in</p>
-                                    <p style="margin-bottom: 10px;">Website: www.bis.gov.in</p>
-                                      </div>
-                                    </div>
-                                    
-                                  </div>
-                                  
-                                  <div class="footer">
-                                    <p>This document was generated automatically on ${new Date().toLocaleDateString()}</p>
-                                  </div>
-                                </div>
-                              </body>
-                              </html>
-                            `;
-                            const newWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
-                            if (newWindow) {
-                              newWindow.document.write(htmlContent);
-                              newWindow.document.close();
-                            } else {
-                              alert('Please allow pop-ups for this site to view the full document');
-                            }
-                          }
-                        }}
-                        className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
-                      >
-                        <Eye className="h-4 w-4 inline mr-2" />
-                        View Full Document
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Business Card Modal */}
-      {isBusinessCardOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Business Card</h3>
-                <button
-                  onClick={closeBusinessCard}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              
-              {/* Business Card Design */}
-              <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg p-6 text-white mb-6">
-                {/* Header with Logo and Company Info */}
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center overflow-hidden">
-                      <img 
-                        src="/images/profiles/rajvansh samal.png" 
-                        alt="Rajvansh Samal"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.nextElementSibling.style.display = 'flex';
-                        }}
-                      />
-                      <div className="w-full h-full bg-blue-600 flex items-center justify-center" style={{display: 'none'}}>
-                        <span className="text-white font-bold text-xl">RS</span>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="text-2xl font-bold">ANOCAB</h4>
-                      <p className="text-sm text-blue-100">Electric Solutions</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">AE</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <div>
-                    <h5 className="font-semibold text-lg">Rajvansh Samal</h5>
-                    <p className="text-blue-100">Production Planning Controller</p>
-                  </div>
-                  
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="w-4 h-4">📞</span>
-                      <span>+91 6262002105</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-4 h-4">✉️</span>
-                      <span>rajvansh@anocab.com</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-4 h-4">🌐</span>
-                      <span>www.anocab.com</span>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="w-4 h-4 mt-1">📍</span>
-                      <span className="text-xs">Near Dhan Darai, Dadda Nagar<br/>Jabalpur, MP</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    // Generate and download business card as HTML
-                    const businessCardHTML = `
-                      <!DOCTYPE html>
-                      <html>
-                      <head>
-                        <title>ANOCAB Business Card</title>
-                        <style>
-                          body { 
-                            font-family: Arial, sans-serif; 
-                            margin: 0; 
-                            padding: 20px; 
-                            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-                            min-height: 100vh;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                          }
-                           .business-card {
-                             background: white;
-                             border-radius: 12px;
-                             padding: 30px;
-                             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-                             max-width: 600px;
-                             width: 100%;
-                             aspect-ratio: 16/9;
-                           }
-                          .header {
-                            display: flex;
-                            align-items: center;
-                            justify-content: space-between;
-                            margin-bottom: 25px;
-                          }
-                          .logo {
-                            width: 50px;
-                            height: 50px;
-                            background: #2563eb;
-                            border-radius: 8px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            color: white;
-                            font-weight: bold;
-                            font-size: 18px;
-                          }
-                          .company-logo {
-                            width: 50px;
-                            height: 50px;
-                            background: #2563eb;
-                            border-radius: 8px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            color: white;
-                            font-weight: bold;
-                            font-size: 18px;
-                          }
-                          .company-info h1 {
-                            color: #2563eb;
-                            font-size: 24px;
-                            margin: 0;
-                            font-weight: bold;
-                          }
-                          .company-info p {
-                            color: #64748b;
-                            margin: 0;
-                            font-size: 14px;
-                          }
-                          .contact-info {
-                            margin-bottom: 20px;
-                          }
-                          .contact-info h2 {
-                            color: #1e293b;
-                            font-size: 18px;
-                            margin: 0 0 5px 0;
-                          }
-                          .contact-info .title {
-                            color: #64748b;
-                            font-size: 14px;
-                            margin-bottom: 15px;
-                          }
-                          .contact-details {
-                            display: flex;
-                            flex-direction: column;
-                            gap: 8px;
-                          }
-                          .contact-details div {
-                            display: flex;
-                            align-items: center;
-                            gap: 10px;
-                            font-size: 14px;
-                            color: #374151;
-                          }
-                          .contact-details .icon {
-                            width: 16px;
-                            height: 16px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                          }
-                        </style>
-                      </head>
-                      <body>
-                        <div class="business-card">
-                           <div class="header">
-                             <div class="logo">
-                               <div style="width: 60px; height: 60px; background: #2563eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">RS</div>
-                             </div>
-                             <div class="company-info">
-                               <h1>ANOCAB</h1>
-                               <p>Electric Solutions</p>
-                             </div>
-                             <div class="company-logo">
-                               <div style="width: 50px; height: 50px; background: #2563eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">AE</div>
-                             </div>
-                           </div>
-                          
-                          <div class="contact-info">
-                            <h2>Rajvansh Samal</h2>
-                            <p class="title">Production Planning Controller</p>
-                            
-                            <div class="contact-details">
-                              <div>
-                                <span class="icon">📞</span>
-                                <span>+91 6262002105</span>
-                              </div>
-                              <div>
-                                <span class="icon">✉️</span>
-                                <span>rajvansh@anocab.com</span>
-                              </div>
-                              <div>
-                                <span class="icon">🌐</span>
-                                <span>www.anocab.com</span>
-                              </div>
-                              <div>
-                                <span class="icon">📍</span>
-                                <span>Near Dhan Darai, Dadda Nagar, Jabalpur, MP</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </body>
-                      </html>
-                    `;
-                    
-                    const blob = new Blob([businessCardHTML], { type: 'text/html' });
-                    const url = window.URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = 'anocab-business-card.html';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
-                  }}
-                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Download className="h-4 w-4" />
-                  Download Card
-                </button>
-                <button
-                  onClick={closeBusinessCard}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Company Emails Modal */}
-      {isCompanyEmailsOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-end z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-96 max-h-[80vh] overflow-y-auto relative mt-16">
-            {/* Close Button - Positioned inside the frame */}
-            <button
-              onClick={closeCompanyEmails}
-              className="absolute top-3 right-3 w-6 h-6 text-gray-400 hover:text-gray-600 transition-colors flex items-center justify-center z-10"
-              title="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <div className="p-4">
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Company Email Directory</h3>
-              </div>
-              
-              {/* Email List */}
-              <div className="space-y-2">
-                <div className="grid gap-2">
-                  {[
-                    { role: "Managing Director", email: "MD@anocab.in" },
-                    { role: "Chief Executive Officer", email: "CEO@anocab.in" },
-                    { role: "General Manager", email: "GM@anocab.in" },
-                    { role: "CM", email: "CM@anocab.in" },
-                    { role: "Chief Financial Officer", email: "CFO@anocab.in" },
-                    { role: "HR", email: "humanresourceanode@gmail.com" },
-                    { role: "Data Analyst", email: "admin@anocab.in" },
-                    { role: "Junior Accountant", email: "deepshikha@anocab.com" },
-                    { role: "Production Planning Controller", email: "rajvansh@anocab.com" },
-                    { role: "Senior Supervisor", email: "tukesh@anocab.com" },
-                    { role: "Junior Supervisor", email: "acnt.anocab@gmail.com" },
-                    { role: "Area Sales Manager", email: "sales@anocab.com" },
-                    { role: "Security", email: "vivian@anocab.com" }
-                  ].map((contact, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 font-semibold text-xs">
-                            {contact.role.split(' ').map(word => word[0]).join('').slice(0, 2)}
-                          </span>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="font-medium text-gray-900 text-sm truncate">{contact.role}</h4>
-                          <p className="text-xs text-gray-600 truncate">{contact.email}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          window.open(`mailto:${contact.email}`, '_blank');
-                        }}
-                        className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors flex-shrink-0"
-                      >
-                        Email
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={closeCompanyEmails}
-                  className="px-3 py-1 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 };
