@@ -26,6 +26,31 @@ import OfficeSalesPersonDashboard from './OfficeSalesPersonDashboard';
 const SalesDashboard = ({ setActiveView }) => {
   const [selectedSalesperson, setSelectedSalesperson] = useState('All Salespersons');
   const [dateRange, setDateRange] = useState('Select date range');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const formatDisplayRange = (start, end) => {
+    if (!start && !end) return 'Select date range';
+    if (start && end) return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`;
+    if (start) return `${new Date(start).toLocaleDateString()} - ...`;
+    return `... - ${new Date(end).toLocaleDateString()}`;
+  };
+
+  const applyDateRange = () => {
+    setDateRange(formatDisplayRange(startDate, endDate));
+    setShowDatePicker(false);
+    // Hook to refetch data based on date range can be placed here
+    // fetchDashboardData({ startDate, endDate })
+  };
+
+  const clearDateRange = () => {
+    setStartDate('');
+    setEndDate('');
+    setDateRange('Select date range');
+    setShowDatePicker(false);
+    // Optionally refetch without filters
+  };
 
   const leadCards = [
     {
@@ -164,6 +189,18 @@ const SalesDashboard = ({ setActiveView }) => {
     }
   ];
 
+  // Centralized department performance data to compute targets and reuse in UI
+  const departmentPerformanceData = [
+    { department: 'Sales Department', leads: 350, target: 400, percentage: 87.5, color: 'bg-blue-500' },
+    { department: 'Marketing Department', leads: 280, target: 300, percentage: 93.3, color: 'bg-green-500' },
+    { department: 'Support Department', leads: 120, target: 150, percentage: 80.0, color: 'bg-yellow-500' },
+    { department: 'Development Department', leads: 90, target: 100, percentage: 90.0, color: 'bg-purple-500' }
+  ];
+
+  const totalTarget = departmentPerformanceData.reduce((sum, d) => sum + (d.target || 0), 0);
+  const achievedLeads = departmentPerformanceData.reduce((sum, d) => sum + (d.leads || 0), 0);
+  const pendingTarget = Math.max(totalTarget - achievedLeads, 0);
+
   // Function to render content based on selected salesperson
   const renderSalespersonContent = () => {
     switch (selectedSalesperson) {
@@ -228,17 +265,44 @@ const SalesDashboard = ({ setActiveView }) => {
               <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
           </div>
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-            <div className="relative">
-              <input 
-                type="text"
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                placeholder="Select date range"
-                className="bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-48"
-              />
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowDatePicker((v) => !v)}
+              className="bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-60 text-left"
+            >
+              {dateRange}
+            </button>
+            {showDatePicker && (
+              <div className="absolute z-20 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-80">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Start</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">End</label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-end space-x-2 mt-4">
+                  <button onClick={clearDateRange} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800">Clear</button>
+                  <button onClick={() => setShowDatePicker(false)} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+                  <button onClick={applyDateRange} className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Apply</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -305,6 +369,53 @@ const SalesDashboard = ({ setActiveView }) => {
             <p className="text-xs text-gray-500">{card.description}</p>
           </div>
         ))}
+      </div>
+
+      {/* Target Overview */
+      }
+      <div className="mb-8">
+        <div className="flex items-center space-x-2 mb-4">
+          <Target className="w-5 h-5 text-purple-600" />
+          <h2 className="text-xl font-semibold text-purple-600">Target Overview</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className={`bg-blue-50 border border-blue-200 rounded-xl p-4 hover:shadow-md transition-shadow`}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className={`text-sm font-medium text-blue-600`}>Total Target</h3>
+              <div className="text-blue-600">
+                <Target className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`text-2xl font-bold text-blue-600 mb-1`}>
+              {totalTarget.toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-500">Sum of targets across departments</p>
+          </div>
+          <div className={`bg-green-50 border border-green-200 rounded-xl p-4 hover:shadow-md transition-shadow`}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className={`text-sm font-medium text-green-600`}>Target Achieved</h3>
+              <div className="text-green-600">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`text-2xl font-bold text-green-600 mb-1`}>
+              {achievedLeads.toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-500">Total completed towards target</p>
+          </div>
+          <div className={`bg-red-50 border border-red-200 rounded-xl p-4 hover:shadow-md transition-shadow`}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className={`text-sm font-medium text-red-600`}>Pending Target</h3>
+              <div className="text-red-600">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`text-2xl font-bold text-red-600 mb-1`}>
+              {pendingTarget.toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-500">Remaining vs. achieved leads</p>
+          </div>
+        </div>
       </div>
 
       {/* Sales Analytics Section */}
@@ -512,12 +623,7 @@ const SalesDashboard = ({ setActiveView }) => {
             <Target className="w-5 h-5 text-purple-600" />
           </div>
           <div className="space-y-4">
-            {[
-              { department: 'Sales Department', leads: 350, target: 400, percentage: 87.5, color: 'bg-blue-500' },
-              { department: 'Marketing Department', leads: 280, target: 300, percentage: 93.3, color: 'bg-green-500' },
-              { department: 'Support Department', leads: 120, target: 150, percentage: 80.0, color: 'bg-yellow-500' },
-              { department: 'Development Department', leads: 90, target: 100, percentage: 90.0, color: 'bg-purple-500' }
-            ].map((dept, index) => (
+            {departmentPerformanceData.map((dept, index) => (
               <div key={index} className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-gray-700">{dept.department}</span>

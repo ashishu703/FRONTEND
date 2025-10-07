@@ -1781,62 +1781,14 @@ const MarketingSalespersonLeads = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
            onMouseDown={(e) => e.stopPropagation()}
            onClick={(e) => e.stopPropagation()}>
-        <div ref={tableScrollRef} className="overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100" 
+        <div ref={tableScrollRef} className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100" 
              onMouseDown={(e) => e.stopPropagation()}
              onClick={(e) => e.stopPropagation()}
-             onWheelCapture={(e) => {
-               const el = tableScrollRef.current;
-               if (!el) return;
-               const deltaX = e.deltaX || 0;
-               const deltaY = e.deltaY || 0;
-               const horizontal = Math.abs(deltaX) >= Math.abs(deltaY) ? deltaX : deltaY;
-               el.scrollLeft += horizontal;
-               e.preventDefault();
-               e.stopPropagation();
-             }}
-             onWheel={(e) => {
-               const el = tableScrollRef.current;
-               if (!el) return;
-               const deltaX = e.deltaX || 0;
-               const deltaY = e.deltaY || 0;
-               const horizontal = Math.abs(deltaX) >= Math.abs(deltaY) ? deltaX : deltaY;
-               el.scrollLeft += horizontal;
-               e.preventDefault();
-               e.stopPropagation();
-             }}
-             onTouchStart={(e) => {
-               const el = tableScrollRef.current;
-               if (!el || e.touches.length !== 1) return;
-               touchStartXRef.current = e.touches[0].pageX;
-               touchScrollLeftRef.current = el.scrollLeft;
-             }}
-             onTouchMove={(e) => {
-               const el = tableScrollRef.current;
-               if (!el || e.touches.length !== 1) return;
-               const dx = e.touches[0].pageX - touchStartXRef.current;
-               el.scrollLeft = touchScrollLeftRef.current - dx;
-               e.preventDefault();
-               e.stopPropagation();
-             }}
-             onPointerDown={(e) => {
-               const el = tableScrollRef.current;
-               if (!el) return;
-               pointerDownRef.current = true;
-               pointerStartXRef.current = e.clientX;
-               pointerScrollLeftRef.current = el.scrollLeft;
-               try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
-             }}
-             onPointerMove={(e) => {
-               const el = tableScrollRef.current;
-               if (!el || !pointerDownRef.current) return;
-               const dx = e.clientX - pointerStartXRef.current;
-               el.scrollLeft = pointerScrollLeftRef.current - dx;
-               e.preventDefault();
-               e.stopPropagation();
-             }}
-             onPointerUp={() => { pointerDownRef.current = false; }}
-             onPointerCancel={() => { pointerDownRef.current = false; }}
-        >
+             style={{
+               overscrollBehavior: 'contain',
+               overscrollBehaviorX: 'none',
+               touchAction: 'pan-x'
+             }}>
           <table className="min-w-full divide-y divide-gray-200" style={{minWidth: '1700px'}}
                  onMouseDown={(e) => e.stopPropagation()}
                  onClick={(e) => e.stopPropagation()}>
