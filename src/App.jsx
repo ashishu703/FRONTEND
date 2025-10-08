@@ -7,6 +7,8 @@ import SalesDepartmentHeadLayout from './pages/SalesDepartmentHead/SalesDepartme
 import SalesDepartmentHeadDashboard from './pages/SalesDepartmentHead/SalesDepartmentHeadDashboard.jsx'
 import MarketingDepartmentHeadLayout from './pages/MarketingDepartmentHead/MarketingDepartmentHeadLayout.jsx'
 import MarketingDepartmentHeadDashboard from './pages/MarketingDepartmentHead/MarketingDepartmentHeadDashboard.jsx'
+import HRDepartmentLayout from './pages/HRDepartment/HRDepartmentLayout.jsx'
+import HRDepartmentDashboard from './pages/HRDepartment/HRDepartmentDashboard.jsx'
 import SalespersonLayout from './pages/salesperson/salespersonlayout.jsx'
 import MarketingSalespersonLayout from './pages/MarketingSalesperson/MarketingSalespersonLayout.jsx'
 import TeleSalesLayout from './pages/TeleSales/TeleSalesLayout.jsx'
@@ -47,10 +49,14 @@ function AppContent() {
           <SalesDepartmentHeadLayout onLogout={handleLogout} activeView={activeView} setActiveView={setActiveView}>
             <SalesDepartmentHeadDashboard activeView={activeView} setActiveView={setActiveView} />
           </SalesDepartmentHeadLayout>
-        ) : userType === 'marketingdepartmenthead' ? (
+        ) :         userType === 'marketingdepartmenthead' ? (
           <MarketingDepartmentHeadLayout onLogout={handleLogout} activeView={activeView} setActiveView={setActiveView}>
             <MarketingDepartmentHeadDashboard activeView={activeView} setActiveView={setActiveView} />
           </MarketingDepartmentHeadLayout>
+        ) : userType === 'hrdepartmenthead' ? (
+          <HRDepartmentLayout onLogout={handleLogout} activeView={activeView} setActiveView={setActiveView}>
+            <HRDepartmentDashboard activeView={activeView} setActiveView={setActiveView} />
+          </HRDepartmentLayout>
         ) : userType === 'salesperson' ? (
           <SalespersonLayout onLogout={handleLogout} />
         ) : userType === 'marketing-salesperson' ? (
