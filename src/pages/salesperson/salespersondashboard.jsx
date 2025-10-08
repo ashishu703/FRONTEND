@@ -559,7 +559,7 @@ export default function DashboardContent() {
           <Target className="h-5 w-5 text-indigo-600" />
           <h2 className="text-lg font-semibold">Target & Timeline</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className={cx("border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50", "bg-indigo-50 text-indigo-600 border-indigo-200")}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600 transition-all duration-300 group-hover:text-gray-800 group-hover:font-semibold">Monthly Target</CardTitle>
@@ -570,6 +570,20 @@ export default function DashboardContent() {
             <CardContent>
               <div className="text-3xl font-bold transition-all duration-300 group-hover:scale-110">{monthlyTarget}</div>
               <p className="text-sm text-gray-600 transition-all duration-300 group-hover:text-gray-800 mb-3">Leads target this month</p>
+              <div className="w-full bg-gradient-to-r from-current to-transparent opacity-30 h-2 rounded-full transition-all duration-300 group-hover:opacity-50 group-hover:h-2.5"></div>
+            </CardContent>
+          </Card>
+
+          <Card className={cx("border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50", "bg-green-50 text-green-700 border-green-200")}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600 transition-all duration-300 group-hover:text-gray-800 group-hover:font-semibold">Target Achieved</CardTitle>
+              <div className="p-2 rounded-full bg-white shadow-md">
+                <CheckCircle className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold transition-all duration-300 group-hover:scale-110">{performanceData?.targets?.monthlyLeads?.current || 0}</div>
+              <p className="text-sm text-gray-600 transition-all duration-300 group-hover:text-gray-800 mb-3">Leads achieved this month</p>
               <div className="w-full bg-gradient-to-r from-current to-transparent opacity-30 h-2 rounded-full transition-all duration-300 group-hover:opacity-50 group-hover:h-2.5"></div>
             </CardContent>
           </Card>

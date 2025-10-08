@@ -157,10 +157,11 @@ function QuotationPreview({ data, onEdit, companyBranches, user }) {
             <thead>
               <tr className="bg-gray-100">
                 <th className="border border-gray-300 p-1 text-center w-10">Sr.</th>
-                <th className="border border-gray-300 p-2 text-left w-2/3">Name of Product / Service</th>
+                <th className="border border-gray-300 p-2 text-left">Name of Product / Service</th>
                 <th className="border border-gray-300 p-1 text-center w-16">HSN / SAC</th>
                 <th className="border border-gray-300 p-1 text-center w-12">Qty</th>
                 <th className="border border-gray-300 p-1 text-center w-12">Unit</th>
+                <th className="border border-gray-300 p-1 text-right w-20">Buyer Rate</th>
                 <th className="border border-gray-300 p-1 text-right w-20">Taxable Value</th>
                 <th className="border border-gray-300 p-0.5 text-center w-8 text-[10px] whitespace-nowrap">GST%</th>
                 <th className="border border-gray-300 p-1 text-right w-24">Total</th>
@@ -175,6 +176,7 @@ function QuotationPreview({ data, onEdit, companyBranches, user }) {
                     <td className="border border-gray-300 p-1 text-center">85446090</td>
                     <td className="border border-gray-300 p-1 text-center">{item.quantity}</td>
                     <td className="border border-gray-300 p-1 text-center">{item.unit}</td>
+                    <td className="border border-gray-300 p-1 text-right">{parseFloat(item.buyerRate || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                     <td className="border border-gray-300 p-1 text-right">{parseFloat(item.amount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                     <td className="border border-gray-300 p-0 text-center text-xs">18%</td>
                     <td className="border border-gray-300 p-1 text-right">{parseFloat(item.amount * 1.18).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
@@ -188,6 +190,7 @@ function QuotationPreview({ data, onEdit, companyBranches, user }) {
                     <td className="border border-gray-300 p-1 text-center">76042910</td>
                     <td className="border border-gray-300 p-1 text-center">120,000</td>
                     <td className="border border-gray-300 p-1 text-center">MTR</td>
+                    <td className="border border-gray-300 p-1 text-right">82.00</td>
                     <td className="border border-gray-300 p-1 text-right">9,840,000.00</td>
                     <td className="border border-gray-300 p-0 text-center text-xs">18%</td>
                     <td className="border border-gray-300 p-1 text-right">11,612,400.00</td>
@@ -198,6 +201,7 @@ function QuotationPreview({ data, onEdit, companyBranches, user }) {
                     <td className="border border-gray-300 p-1 text-center">85446090</td>
                     <td className="border border-gray-300 p-1 text-center">120,000</td>
                     <td className="border border-gray-300 p-1 text-center">MTR</td>
+                    <td className="border border-gray-300 p-1 text-right">205.00</td>
                     <td className="border border-gray-300 p-1 text-right">24,600,000.00</td>
                     <td className="border border-gray-300 p-0 text-center text-xs">18%</td>
                     <td className="border border-gray-300 p-1 text-right">29,028,000.00</td>
@@ -218,11 +222,23 @@ function QuotationPreview({ data, onEdit, companyBranches, user }) {
                 </tr>
               ))}
               <tr className="bg-gray-100 font-bold">
-                <td className="border border-gray-300 p-2" colSpan="5">
-                  Total
-                </td>
+                {/* Sr. */}
+                <td className="border border-gray-300 p-2 text-left">Total</td>
+                {/* Name of Product / Service */}
+                <td className="border border-gray-300 p-2"></td>
+                {/* HSN / SAC */}
+                <td className="border border-gray-300 p-2"></td>
+                {/* Qty */}
+                <td className="border border-gray-300 p-2"></td>
+                {/* Unit */}
+                <td className="border border-gray-300 p-2"></td>
+                {/* Buyer Rate */}
+                <td className="border border-gray-300 p-2"></td>
+                {/* Taxable Value */}
                 <td className="border border-gray-300 p-2">{data?.subtotal?.toFixed(2) || '34,440,000'}</td>
+                {/* GST% Amount */}
                 <td className="border border-gray-300 p-2">{data?.taxAmount?.toFixed(2) || '6,200,400'}</td>
+                {/* Total */}
                 <td className="border border-gray-300 p-2">{data?.total?.toFixed(2) || '40,640,400'}</td>
               </tr>
             </tbody>
@@ -251,11 +267,19 @@ function QuotationPreview({ data, onEdit, companyBranches, user }) {
           <div className="border border-black p-3">
             <div className="text-xs space-y-1">
               <div className="flex justify-between">
-                <span>Taxable Amount</span>
+                <span>Subtotal</span>
                 <span>{data?.subtotal?.toFixed(2) || '34,440,000'}</span>
               </div>
               <div className="flex justify-between">
-                <span>Add: Total GST (18%)</span>
+                <span>Less: Discount ({data?.discountRate || 0}%)</span>
+                <span>{data?.discountAmount?.toFixed(2) || '0.00'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Taxable Amount</span>
+                <span>{(data?.subtotal - (data?.discountAmount || 0))?.toFixed(2) || '34,440,000'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Add: Total GST ({data?.taxRate || 18}%)</span>
                 <span>{data?.taxAmount?.toFixed(2) || '6,200,400'}</span>
               </div>
               <div className="flex justify-between font-bold border-t pt-1">
@@ -438,19 +462,35 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
       }
     ],
     subtotal: 0,
+    discountRate: 0,
+    discountAmount: 0,
     taxRate: 18,
     taxAmount: 0,
     total: 0,
     terms: "1. Payment terms: 30 days from invoice date\n2. Delivery: 15-20 working days\n3. Prices are subject to change without notice\n4. All disputes subject to Jabalpur jurisdiction",
-    // Editable bill-to information
+    // Editable bill-to information (auto-filled from lead)
     billTo: {
-      business: customer?.business || "",
-      address: customer?.address || "",
+      business: (customer?.business && customer.business !== 'N/A') ? customer.business : (customer?.name || ""),
+      address: (customer?.address && customer.address !== 'N/A') ? customer.address : "",
       phone: customer?.phone || "",
-      gstNo: customer?.gstNo || "",
+      gstNo: (customer?.gstNo && customer.gstNo !== 'N/A') ? customer.gstNo : "",
       state: customer?.state || ""
     }
   })
+
+  // If the customer prop changes while modal is open, keep bill-to in sync
+  useEffect(() => {
+    setQuotationData(prev => ({
+      ...prev,
+      billTo: {
+        business: (customer?.business && customer.business !== 'N/A') ? customer.business : (customer?.name || prev.billTo.business),
+        address: (customer?.address && customer.address !== 'N/A') ? customer.address : prev.billTo.address,
+        phone: customer?.phone || prev.billTo.phone,
+        gstNo: (customer?.gstNo && customer.gstNo !== 'N/A') ? customer.gstNo : prev.billTo.gstNo,
+        state: customer?.state || prev.billTo.state
+      }
+    }))
+  }, [customer])
 
   const handleInputChange = (field, value) => {
     const newData = {
@@ -461,6 +501,21 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
     // If quotationDate changes, update validUpto to be 7 days later
     if (field === 'quotationDate') {
       newData.validUpto = getSevenDaysLater(value);
+    }
+
+    // Recalculate totals when discount or tax changes
+    if (field === 'discountRate' || field === 'taxRate') {
+      const subtotal = newData.items.reduce((sum, item) => sum + item.amount, 0)
+      const discountRateNum = parseFloat(newData.discountRate) || 0
+      const taxRateNum = parseFloat(newData.taxRate) || 0
+      const discountAmount = (subtotal * discountRateNum) / 100
+      const taxable = Math.max(0, subtotal - discountAmount)
+      const taxAmount = (taxable * taxRateNum) / 100
+      const total = taxable + taxAmount
+      newData.subtotal = subtotal
+      newData.discountAmount = discountAmount
+      newData.taxAmount = taxAmount
+      newData.total = total
     }
 
     setQuotationData(newData);
@@ -479,15 +534,18 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
       updatedItems[index].amount = updatedItems[index].quantity * updatedItems[index].buyerRate;
     }
     
-    // Calculate totals
+    // Calculate totals with discount before tax
     const subtotal = updatedItems.reduce((sum, item) => sum + item.amount, 0)
-    const taxAmount = (subtotal * quotationData.taxRate) / 100
-    const total = subtotal + taxAmount
+    const discountAmount = (subtotal * (quotationData.discountRate || 0)) / 100
+    const taxable = Math.max(0, subtotal - discountAmount)
+    const taxAmount = (taxable * quotationData.taxRate) / 100
+    const total = taxable + taxAmount
     
     setQuotationData(prev => ({
       ...prev,
       items: updatedItems,
       subtotal,
+      discountAmount,
       taxAmount,
       total
     }))
@@ -512,13 +570,16 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
     if (quotationData.items.length > 1) {
       const updatedItems = quotationData.items.filter((_, i) => i !== index)
       const subtotal = updatedItems.reduce((sum, item) => sum + item.amount, 0)
-      const taxAmount = (subtotal * quotationData.taxRate) / 100
-      const total = subtotal + taxAmount
+      const discountAmount = (subtotal * (quotationData.discountRate || 0)) / 100
+      const taxable = Math.max(0, subtotal - discountAmount)
+      const taxAmount = (taxable * quotationData.taxRate) / 100
+      const total = taxable + taxAmount
       
       setQuotationData(prev => ({
         ...prev,
         items: updatedItems,
         subtotal,
+        discountAmount,
         taxAmount,
         total
       }))
@@ -859,10 +920,25 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
                     <span>Subtotal:</span>
                     <span>₹{quotationData.subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span>GST ({quotationData.taxRate}%):</span>
-                    <span>₹{quotationData.taxAmount.toFixed(2)}</span>
-                  </div>
+              <div className="flex justify-between text-sm items-center gap-2">
+                <span>Discount (%):</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={quotationData.discountRate}
+                    onChange={(e) => handleInputChange('discountRate', e.target.value)}
+                    className="w-20 px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-right"
+                  />
+                  <span className="text-gray-600">₹{quotationData.discountAmount.toFixed(2)}</span>
+                </div>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>GST (18%):</span>
+                <span>₹{quotationData.taxAmount.toFixed(2)}</span>
+              </div>
                   <div className="flex justify-between text-lg font-semibold border-t pt-2">
                     <span>Total:</span>
                     <span>₹{quotationData.total.toFixed(2)}</span>
