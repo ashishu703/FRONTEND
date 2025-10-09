@@ -34,6 +34,7 @@ import MarketingQuotationForm from './MarketingCreateQuotationForm';
 import MarketingQuotation from './MarketingQuotation';
 import { MarketingCorporateStandardInvoice } from './MarketingProformaInvoice';
 import MarketingFollowUpBase from './FollowUp/MarketingFollowUpBase';
+import MarketingQuotationPreview from "./MarketingQuotationPreview"
 
 // Edit Lead Modal Component
 const EditLeadModal = ({ lead, onSave, onClose }) => {
@@ -2817,118 +2818,34 @@ const MarketingSalespersonLeads = () => {
               </div>
               
               {/* Quotation Content */}
-              <div id="quotation-preview-content" className="border-2 border-black p-6 bg-white">
-                {/* Header */}
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h1 className="text-xl font-bold">ANODE ELECTRIC PRIVATE LIMITED</h1>
-                    <p className="text-sm font-semibold text-gray-700">(23AANCA7455R1ZX)</p>
-                    <p className="text-xs">MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.</p>
-                  </div>
-                  <div className="text-right">
-                    <img
-                      src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
-                      alt="Company Logo"
-                      className="h-12 w-auto bg-white p-1 rounded"
-                    />
-                  </div>
-                </div>
-                
-                {/* Company Details */}
-                <div className="border-2 border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Company Details</h3>
-                  <p className="text-sm">KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.</p>
-                  <p className="text-sm">Tel: 6262002116, 6262002113</p>
-                  <p className="text-sm">Web: www.anocab.com</p>
-                  <p className="text-sm">Email: info@anocab.com</p>
-                </div>
-              
-                {/* Quotation Details Table */}
-                <div className="border border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Quotation Details</h3>
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-black">
-                        <th className="text-left p-2 border-r border-black">Quotation Date</th>
-                        <th className="text-left p-2 border-r border-black">Quotation Number</th>
-                        <th className="text-left p-2 border-r border-black">Valid Upto</th>
-                        <th className="text-left p-2">Voucher Number</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="p-2 border-r border-black">{quotationPopupData.quotationDate}</td>
-                        <td className="p-2 border-r border-black">{quotationPopupData.quotationNumber}</td>
-                        <td className="p-2 border-r border-black">{quotationPopupData.validUpto}</td>
-                        <td className="p-2">{quotationPopupData.voucherNumber}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Customer Details */}
-                <div className="border border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Bill To:</h3>
-                  <p className="font-semibold">{quotationPopupData.customer.name}</p>
-                  <p>{quotationPopupData.customer.business}</p>
-                  <p>{quotationPopupData.customer.address}</p>
-                  <p>Phone: {quotationPopupData.customer.phone}</p>
-                  <p>Email: {quotationPopupData.customer.email}</p>
-                </div>
-                
-                {/* Items Table */}
-                <div className="border border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Items</h3>
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-black">
-                        <th className="text-left p-2 border-r border-black">Description</th>
-                        <th className="text-center p-2 border-r border-black">Quantity</th>
-                        <th className="text-right p-2 border-r border-black">Unit Price</th>
-                        <th className="text-right p-2">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {quotationPopupData.items.map((item, index) => (
-                        <tr key={index}>
-                          <td className="p-2 border-r border-black">{item.description}</td>
-                          <td className="p-2 text-center border-r border-black">{item.quantity}</td>
-                          <td className="p-2 text-right border-r border-black">₹{item.unitPrice.toFixed(2)}</td>
-                          <td className="p-2 text-right">₹{item.total.toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Totals */}
-                <div className="border border-black p-4">
-                  <div className="flex justify-end">
-                    <div className="w-64">
-                      <div className="flex justify-between p-2 border-b">
-                        <span>Subtotal:</span>
-                        <span>₹{quotationPopupData.subtotal.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between p-2 border-b">
-                        <span>Tax (18%):</span>
-                        <span>₹{quotationPopupData.tax.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between p-2 font-bold">
-                        <span>Total:</span>
-                        <span>₹{quotationPopupData.total.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Footer */}
-                <div className="text-right text-xs mt-4">
-                  <p className="mb-4">
-                    For <strong>ANODE ELECTRIC PRIVATE LIMITED</strong>
-                  </p>
-                  <p className="mb-8">This is computer generated quotation no signature required.</p>
-                  <p className="font-bold">Authorized Signatory</p>
-                </div>
+              <div id="quotation-preview-content" className="bg-white">
+                <MarketingQuotationPreview
+                  data={{
+                    quotationNumber: quotationPopupData.quotationNumber,
+                    quotationDate: quotationPopupData.quotationDate,
+                    validUpto: quotationPopupData.validUpto,
+                    voucherNumber: quotationPopupData.voucherNumber,
+                    billTo: {
+                      business: quotationPopupData.customer.name || quotationPopupData.customer.business,
+                      address: quotationPopupData.customer.address,
+                      phone: quotationPopupData.customer.phone,
+                      gstNo: quotationPopupData.customer.gstNo,
+                      state: quotationPopupData.customer.state
+                    },
+                    items: quotationPopupData.items?.map(i => ({
+                      productName: i.description,
+                      quantity: i.quantity,
+                      unit: i.unit || 'Nos',
+                      buyerRate: i.unitPrice,
+                      amount: i.total
+                    })),
+                    subtotal: quotationPopupData.subtotal,
+                    taxAmount: quotationPopupData.tax,
+                    total: quotationPopupData.total,
+                    selectedBranch: selectedBranch
+                  }}
+                  companyBranches={companyBranches}
+                />
               </div>
             </div>
             

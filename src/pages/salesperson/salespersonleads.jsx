@@ -10,6 +10,7 @@ import AddCustomerForm from './salespersonaddcustomer.jsx'
 import CreateQuotationForm from './salespersoncreatequotation.jsx'
 import { CorporateStandardInvoice } from './salespersonpi'
 import { useSharedData } from './SharedDataContext'
+import QuotationPreview from "../../components/QuotationPreview"
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")
@@ -2820,139 +2821,79 @@ export default function CustomerListContent() {
                 </button>
               </div>
               
-              {/* Quotation Content - Same as Preview */}
-              <div className="border-2 border-black p-6 bg-white">
-                {/* Header */}
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h1 className="text-xl font-bold">{companyBranches[selectedBranch].name}</h1>
-                    <p className="text-sm font-semibold text-gray-700">{companyBranches[selectedBranch].gstNumber}</p>
-                    <p className="text-xs">{companyBranches[selectedBranch].description}</p>
-                  </div>
-                  <div className="text-right">
-                    <img
-                      src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
-                      alt="Company Logo"
-                      className="h-12 w-auto bg-white p-1 rounded"
-                    />
-                  </div>
-                </div>
-                
-                {/* Company Details */}
-                <div className="border-2 border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Company Details</h3>
-                  <p className="text-sm">{companyBranches[selectedBranch].address}</p>
-                  <p className="text-sm">Tel: {companyBranches[selectedBranch].tel}</p>
-                  <p className="text-sm">Web: {companyBranches[selectedBranch].web}</p>
-                  <p className="text-sm">Email: {companyBranches[selectedBranch].email}</p>
-              </div>
-              
-                {/* Quotation Details Table */}
-                <div className="border border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Quotation Details</h3>
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-black">
-                        <th className="text-left p-2 border-r border-black">Quotation Date</th>
-                        <th className="text-left p-2 border-r border-black">Quotation Number</th>
-                        <th className="text-left p-2 border-r border-black">Valid Upto</th>
-                        <th className="text-left p-2">Voucher Number</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="p-2 border-r border-black">{quotationPopupData.quotationDate}</td>
-                        <td className="p-2 border-r border-black">{quotationPopupData.quotationNumber}</td>
-                        <td className="p-2 border-r border-black">{quotationPopupData.validUpto}</td>
-                        <td className="p-2">{quotationPopupData.voucherNumber}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Customer Details */}
-                <div className="border border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Bill To:</h3>
-                  <p className="font-semibold">{quotationPopupData.customer.name}</p>
-                  <p>{quotationPopupData.customer.business}</p>
-                  <p>{quotationPopupData.customer.address}</p>
-                  <p>Phone: {quotationPopupData.customer.phone}</p>
-                  <p>Email: {quotationPopupData.customer.email}</p>
-                </div>
-                
-                {/* Items Table */}
-                <div className="border border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Items</h3>
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-black">
-                        <th className="text-left p-2 border-r border-black">Description</th>
-                        <th className="text-center p-2 border-r border-black">Quantity</th>
-                        <th className="text-right p-2 border-r border-black">Unit Price</th>
-                        <th className="text-right p-2">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {quotationPopupData.items.map((item, index) => (
-                        <tr key={index}>
-                          <td className="p-2 border-r border-black">{item.description}</td>
-                          <td className="p-2 text-center border-r border-black">{item.quantity}</td>
-                          <td className="p-2 text-right border-r border-black">₹{item.unitPrice.toFixed(2)}</td>
-                          <td className="p-2 text-right">₹{item.total.toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Totals */}
-                <div className="border border-black p-4">
-                  <div className="flex justify-end">
-                    <div className="w-64">
-                      <div className="flex justify-between p-2 border-b">
-                        <span>Subtotal:</span>
-                        <span>₹{quotationPopupData.subtotal.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between p-2 border-b">
-                        <span>Tax (18%):</span>
-                        <span>₹{quotationPopupData.tax.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between p-2 font-bold">
-                        <span>Total:</span>
-                        <span>₹{quotationPopupData.total.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Footer */}
-                <div className="text-right text-xs mt-4">
-                  <p className="mb-4">
-                    For <strong>{companyBranches[selectedBranch].name}</strong>
-                  </p>
-                  <p className="mb-8">This is computer generated quotation no signature required.</p>
-                  <p className="font-bold">Authorized Signatory</p>
-                </div>
-              </div>
+              {/* Quotation Content */}
+              <QuotationPreview
+                data={{
+                  quotationNumber: quotationPopupData.quotationNumber,
+                  quotationDate: quotationPopupData.quotationDate,
+                  validUpto: quotationPopupData.validUpto,
+                  voucherNumber: quotationPopupData.voucherNumber,
+                  billTo: {
+                    business: quotationPopupData.customer.name || quotationPopupData.customer.business,
+                    address: quotationPopupData.customer.address,
+                    phone: quotationPopupData.customer.phone,
+                    gstNo: quotationPopupData.customer.gstNo,
+                    state: quotationPopupData.customer.state
+                  },
+                  items: quotationPopupData.items?.map(i => ({
+                    productName: i.description,
+                    quantity: i.quantity,
+                    unit: i.unit || 'Nos',
+                    buyerRate: i.unitPrice,
+                    amount: i.total
+                  })),
+                  subtotal: quotationPopupData.subtotal,
+                  taxAmount: quotationPopupData.tax,
+                  total: quotationPopupData.total,
+                  selectedBranch
+                }}
+                companyBranches={companyBranches}
+                user={user}
+              />
             </div>
             
             <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex justify-end space-x-3">
-                      <button
+              <button
                 type="button"
                 onClick={() => setShowQuotationPopup(false)}
                 className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50"
-                      >
+              >
                 Close
-                      </button>
-                      <button
+              </button>
+              <button
                 type="button"
-                className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded shadow-sm hover:bg-blue-700"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 border border-transparent rounded shadow-sm hover:bg-green-700 flex items-center gap-2"
                 onClick={() => {
-                  alert('Print functionality would open here');
+                  const element = document.getElementById('quotation-preview-content') || document.getElementById('quotation-content')
+                  if (element) {
+                    const opt = {
+                      margin: [0.4, 0.4, 0.4, 0.4],
+                      filename: `Quotation-${quotationPopupData.quotationNumber}-${quotationPopupData.customer.name.replace(/\s+/g, '-')}.pdf`,
+                      image: { type: 'jpeg', quality: 0.8 },
+                      html2canvas: { 
+                        scale: 1.1,
+                        useCORS: true,
+                        letterRendering: true,
+                        allowTaint: true,
+                        backgroundColor: '#ffffff'
+                      },
+                      jsPDF: { 
+                        unit: 'in', 
+                        format: 'a4', 
+                        orientation: 'portrait',
+                        compress: true,
+                        putOnlyUsedFonts: true
+                      }
+                    }
+                    html2pdf().set(opt).from(element).save()
+                  } else {
+                    alert('No quotation content to download')
+                  }
                 }}
               >
-                Print
-                      </button>
+                <Download className="w-4 h-4" />
+                Download PDF
+              </button>
             </div>
           </div>
         </div>
