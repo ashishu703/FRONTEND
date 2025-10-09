@@ -10,6 +10,7 @@ import TodayVisit from './SalesDepartmentHead/TodayVisit';
 import MarketingSalespersonDashboard from './SuperAdmin/MarketingSalespersonDashboard';
 import TeleSalesDashboard from './SuperAdmin/TeleSalesDashboard';
 import OfficeSalesPersonDashboard from './SuperAdmin/OfficeSalesPersonDashboard';
+import HRDepartmentDashboard from './SuperAdmin/HRDepartmentDashboard';
 
 const MainDashboard = ({ activeView, setActiveView }) => {
   const renderContent = () => {
@@ -46,6 +47,8 @@ const MainDashboard = ({ activeView, setActiveView }) => {
         return <TeleSalesDashboard />;
       case 'office-sales-person':
         return <OfficeSalesPersonDashboard />;
+      case 'hr-department':
+        return <HRDepartmentDashboard />;
       default:
         return <SuperAdminSalesDashboard setActiveView={setActiveView} />;
     }
@@ -53,7 +56,9 @@ const MainDashboard = ({ activeView, setActiveView }) => {
 
   return (
     <div className="h-full">
-      {renderContent()}
+      <div key={activeView} className="animate-fade-up">
+        {renderContent()}
+      </div>
     </div>
   );
 };

@@ -22,6 +22,7 @@ import {
 import MarketingSalespersonDashboard from './MarketingSalespersonDashboard';
 import TeleSalesDashboard from './TeleSalesDashboard';
 import OfficeSalesPersonDashboard from './OfficeSalesPersonDashboard';
+import HRDepartmentDashboard from './HRDepartmentDashboard';
 
 const SalesDashboard = ({ setActiveView }) => {
   const [selectedSalesperson, setSelectedSalesperson] = useState('All Salespersons');
@@ -208,6 +209,8 @@ const SalesDashboard = ({ setActiveView }) => {
         return <MarketingSalespersonDashboard />;
       case 'Office Sales Department':
         return <OfficeSalesPersonDashboard />;
+      case 'HR Department':
+        return <HRDepartmentDashboard />;
       default:
         return null;
     }
@@ -223,7 +226,9 @@ const SalesDashboard = ({ setActiveView }) => {
               {selectedSalesperson === 'All Salespersons' ? 'Sales Dashboard' : selectedSalesperson + ' Dashboard'}
             </h1>
             <p className="text-gray-600">
-              {selectedSalesperson === 'All Salespersons' ? 'Sales Department Performance Overview' : selectedSalesperson + ' Performance Overview'}
+              {selectedSalesperson === 'All Salespersons' ? 'Sales Department Performance Overview' : 
+               selectedSalesperson === 'HR Department' ? 'Human Resources Management Overview' : 
+               selectedSalesperson + ' Performance Overview'}
             </p>
           </div>
           <div className="flex items-center space-x-4">
@@ -248,7 +253,7 @@ const SalesDashboard = ({ setActiveView }) => {
         {/* Filters */}
         <div className="flex items-center justify-between">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Sales Department</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
             <div className="relative">
               <select 
                 value={selectedSalesperson}
@@ -261,6 +266,7 @@ const SalesDashboard = ({ setActiveView }) => {
                 <option>All Salespersons</option>
                 <option>Marketing Salesperson</option>
                 <option>Office Sales Department</option>
+                <option>HR Department</option>
               </select>
               <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
@@ -308,7 +314,9 @@ const SalesDashboard = ({ setActiveView }) => {
       </div>
 
       {/* Salesperson Specific Content */}
-      {renderSalespersonContent()}
+      <div key={selectedSalesperson} className="animate-fade-up">
+        {renderSalespersonContent()}
+      </div>
 
       {/* Default Content - Only show when All Salespersons is selected */}
       {selectedSalesperson === 'All Salespersons' && (

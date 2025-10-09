@@ -52,6 +52,8 @@ const DepartmentManagement = () => {
         return 'bg-green-50 text-green-600 border border-green-200';
       case 'Marketing Department':
         return 'bg-purple-50 text-purple-600 border border-purple-200';
+      case 'HR Department':
+        return 'bg-blue-50 text-blue-600 border border-blue-200';
       case 'Telesales Department':
         return 'bg-gray-50 text-gray-600 border border-gray-200';
       default:
@@ -280,6 +282,7 @@ const DepartmentManagement = () => {
                 <option>All Departments</option>
                 <option>Sales Department</option>
                 <option>Marketing Department</option>
+                <option>HR Department</option>
                 <option>Telesales Department</option>
               </select>
 
@@ -651,6 +654,7 @@ const DepartmentManagement = () => {
                     >
                       <option value="office_sales">Sales Department</option>
                       <option value="marketing_sales">Marketing Department</option>
+                      <option value="hr">HR Department</option>
                       <option value="telesales">Telesales Department</option>
                     </select>
                   </div>
