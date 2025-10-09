@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Plus, DollarSign, Eye, Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import MarketingQuotationPreview from "./MarketingQuotationPreview.jsx"
 
 // CreateQuotationForm Component for Marketing Salesperson
 const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
@@ -552,122 +553,8 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
               </div>
               
               {/* Quotation Preview Content */}
-              <div id="quotation-preview-content" className="border-2 border-black p-6 bg-white">
-                {/* Header */}
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h1 className="text-xl font-bold">{companyBranches[quotationData.selectedBranch].name}</h1>
-                    <p className="text-sm font-semibold text-gray-700">{companyBranches[quotationData.selectedBranch].gstNumber}</p>
-                    <p className="text-xs">{companyBranches[quotationData.selectedBranch].description}</p>
-                  </div>
-                  <div className="text-right">
-                    <img
-                      src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
-                      alt="Company Logo"
-                      className="h-12 w-auto bg-white p-1 rounded"
-                    />
-                  </div>
-                </div>
-                
-                {/* Company Details */}
-                <div className="border-2 border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Company Details</h3>
-                  <p className="text-sm">{companyBranches[quotationData.selectedBranch].address}</p>
-                  <p className="text-sm">Tel: {companyBranches[quotationData.selectedBranch].tel}</p>
-                  <p className="text-sm">Web: {companyBranches[quotationData.selectedBranch].web}</p>
-                  <p className="text-sm">Email: {companyBranches[quotationData.selectedBranch].email}</p>
-                </div>
-              
-                {/* Quotation Details Table */}
-                <div className="border border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Quotation Details</h3>
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-black">
-                        <th className="text-left p-2 border-r border-black">Quotation Date</th>
-                        <th className="text-left p-2 border-r border-black">Quotation Number</th>
-                        <th className="text-left p-2">Valid Upto</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="p-2 border-r border-black">{quotationData.quotationDate}</td>
-                        <td className="p-2 border-r border-black">{quotationData.quotationNumber}</td>
-                        <td className="p-2">{quotationData.validUpto}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Customer Details */}
-                <div className="border border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Bill To:</h3>
-                  <p className="font-semibold">{quotationData.billTo.business}</p>
-                  <p>{quotationData.billTo.address}</p>
-                  <p>Phone: {quotationData.billTo.phone}</p>
-                  {quotationData.billTo.gstNo ? <p>GST: {quotationData.billTo.gstNo}</p> : null}
-                  <p>State: {quotationData.billTo.state}</p>
-                </div>
-                
-                {/* Items Table */}
-                <div className="border border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Items</h3>
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-black">
-                        <th className="text-left p-2 border-r border-black">Description</th>
-                        <th className="text-center p-2 border-r border-black">Quantity</th>
-                        <th className="text-right p-2 border-r border-black">Unit Price</th>
-                        <th className="text-right p-2">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {quotationData.items.map((item, index) => (
-                        <tr key={index}>
-                          <td className="p-2 border-r border-black">{item.productName}</td>
-                          <td className="p-2 text-center border-r border-black">{item.quantity} {item.unit}</td>
-                          <td className="p-2 text-right border-r border-black">₹{item.buyerRate.toFixed(2)}</td>
-                          <td className="p-2 text-right">₹{item.amount.toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Totals */}
-                <div className="border border-black p-4 mb-4">
-                  <div className="flex justify-end">
-                    <div className="w-64">
-                      <div className="flex justify-between p-2 border-b">
-                        <span>Subtotal:</span>
-                        <span>₹{quotationData.subtotal.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between p-2 border-b">
-                        <span>GST ({quotationData.taxRate}%):</span>
-                        <span>₹{quotationData.taxAmount.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between p-2 font-bold">
-                        <span>Total:</span>
-                        <span>₹{quotationData.total.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Terms & Conditions */}
-                <div className="border border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Terms & Conditions</h3>
-                  <p className="text-sm whitespace-pre-line">{quotationData.terms}</p>
-                </div>
-                
-                {/* Footer */}
-                <div className="text-right text-xs mt-4">
-                  <p className="mb-4">
-                    For <strong>{companyBranches[quotationData.selectedBranch].name}</strong>
-                  </p>
-                  <p className="mb-8">This is computer generated quotation no signature required.</p>
-                  <p className="font-bold">Authorized Signatory</p>
-                </div>
+              <div id="quotation-preview-content">
+                <MarketingQuotationPreview data={quotationData} companyBranches={companyBranches} user={user} />
               </div>
             </div>
             
