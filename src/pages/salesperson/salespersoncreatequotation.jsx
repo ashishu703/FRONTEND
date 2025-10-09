@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { X, FileText, Calendar, User, Package, DollarSign, Plus, Minus, Eye, Edit, Building2 } from "lucide-react"
 
 function Card({ className, children }) {
@@ -45,15 +45,62 @@ function Button({ children, onClick, type = "button", variant = "default", size 
   )
 }
 
+// Function to convert number to words
+function numberToWords(num) {
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+  const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  const scales = ['', 'Thousand', 'Lakh', 'Crore'];
+
+  if (num === 0) return 'Zero';
+
+  function convertHundreds(n) {
+    let result = '';
+    if (n > 99) {
+      result += ones[Math.floor(n / 100)] + ' Hundred ';
+      n %= 100;
+    }
+    if (n > 19) {
+      result += tens[Math.floor(n / 10)] + ' ';
+      n %= 10;
+    } else if (n > 9) {
+      result += teens[n - 10] + ' ';
+      return result;
+    }
+    if (n > 0) {
+      result += ones[n] + ' ';
+    }
+    return result;
+  }
+
+  let result = '';
+  let scaleIndex = 0;
+  
+  while (num > 0) {
+    if (num % 1000 !== 0) {
+      let chunk = num % 1000;
+      let chunkWords = convertHundreds(chunk);
+      if (chunkWords.trim()) {
+        result = chunkWords + scales[scaleIndex] + ' ' + result;
+      }
+    }
+    num = Math.floor(num / 1000);
+    scaleIndex++;
+  }
+
+  return result.trim();
+}
+
 // Preview Component
 function QuotationPreview({ data, onEdit, companyBranches, user }) {
   // Debug: Log user data
   console.log('QuotationPreview received user:', user);
   
   const selectedBranch = companyBranches[data?.selectedBranch] || companyBranches.ANODE;
+  const contentRef = useRef(null);
   
   return (
-    <div className="max-w-4xl mx-auto bg-white font-sans text-sm">        
+    <div ref={contentRef} className="max-w-4xl mx-auto bg-white font-sans text-sm">        
       {/* Quotation Content */}
       <div className="p-6">
         {/* Header */}
@@ -127,9 +174,11 @@ function QuotationPreview({ data, onEdit, companyBranches, user }) {
               <p>
                 <strong>PHONE:</strong> {data?.billTo?.phone || '7039542259'}
               </p>
-              <p>
-                <strong>GSTIN:</strong> {data?.billTo?.gstNo || '27DVTPS2973B1Z0'}
-              </p>
+              {data?.billTo?.gstNo ? (
+                <p>
+                  <strong>GSTIN:</strong> {data.billTo.gstNo}
+                </p>
+              ) : null}
               <p>
                 <strong>State:</strong> {data?.billTo?.state || 'Maharashtra'}
               </p>
@@ -287,7 +336,7 @@ function QuotationPreview({ data, onEdit, companyBranches, user }) {
                 <span>₹ {data?.total?.toFixed(2) || '40,640,400'}</span>
               </div>
               <div className="text-center mt-2">
-                <span className="text-xs">(Rupees Four Crore Six Lakh Forty Thousand Four Hundred Only)</span>
+                <span className="text-xs">(Rupees {numberToWords(Math.floor(data?.total || 0))} Only)</span>
               </div>
             </div>
           </div>
@@ -355,38 +404,31 @@ function QuotationPreview({ data, onEdit, companyBranches, user }) {
         <button
           onClick={async () => {
             try {
-              // Import html2pdf dynamically
-              const html2pdf = (await import('html2pdf.js')).default;
-              
-              // Create a temporary div with the quotation content
-              const tempDiv = document.createElement('div');
-              tempDiv.style.position = 'absolute';
-              tempDiv.style.left = '-9999px';
-              tempDiv.innerHTML = document.querySelector('.max-w-4xl').innerHTML;
-              document.body.appendChild(tempDiv);
-              
-              // Generate PDF
+              const mod = await import('html2pdf.js');
+              const html2pdf = mod.default || mod;
+
               const opt = {
                 margin: 0.5,
                 filename: `quotation-${data?.quotationNumber || 'quotation'}-${new Date().toISOString().split('T')[0]}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { 
+                html2canvas: {
                   scale: 2,
                   useCORS: true,
+                  backgroundColor: '#ffffff',
                   logging: false,
                   letterRendering: true
                 },
-                jsPDF: { 
-                  unit: 'in', 
-                  format: 'letter', 
-                  orientation: 'portrait' 
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+                jsPDF: {
+                  unit: 'in',
+                  format: 'letter',
+                  orientation: 'portrait'
                 }
               };
-              
-              await html2pdf().set(opt).from(tempDiv).save();
-              
-              // Clean up
-              document.body.removeChild(tempDiv);
+
+              if (!contentRef.current) throw new Error('PDF content not found');
+
+              await html2pdf().set(opt).from(contentRef.current).save();
             } catch (error) {
               console.error('Error generating PDF:', error);
               alert('Failed to generate PDF. Please try again.');
@@ -775,10 +817,9 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">GST Number *</label>
+                  <label className="text-sm font-medium text-gray-700">GST Number</label>
                   <input
                     type="text"
-                    required
                     value={quotationData.billTo.gstNo}
                     onChange={(e) => setQuotationData(prev => ({
                       ...prev,

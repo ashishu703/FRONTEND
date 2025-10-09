@@ -155,7 +155,7 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
     const { billTo, items } = quotationData;
     
     // Check bill-to information
-    if (!billTo.business || !billTo.phone || !billTo.address || !billTo.gstNo || !billTo.state) {
+    if (!billTo.business || !billTo.phone || !billTo.address || !billTo.state) {
       return false;
     }
     
@@ -323,10 +323,9 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">GST Number *</label>
+                  <label className="text-sm font-medium text-gray-700">GST Number</label>
                   <input
                     type="text"
-                    required
                     value={quotationData.billTo.gstNo}
                     onChange={(e) => setQuotationData(prev => ({
                       ...prev,
@@ -606,7 +605,7 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
                   <p className="font-semibold">{quotationData.billTo.business}</p>
                   <p>{quotationData.billTo.address}</p>
                   <p>Phone: {quotationData.billTo.phone}</p>
-                  <p>GST: {quotationData.billTo.gstNo}</p>
+                  {quotationData.billTo.gstNo ? <p>GST: {quotationData.billTo.gstNo}</p> : null}
                   <p>State: {quotationData.billTo.state}</p>
                 </div>
                 

@@ -1,5 +1,49 @@
 import { Printer } from "lucide-react"
 
+// Convert number to words (Indian system)
+function numberToWords(num) {
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine']
+  const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
+  const scales = ['', 'Thousand', 'Lakh', 'Crore']
+
+  if (!num || num === 0) return 'Zero'
+
+  function convertHundreds(n) {
+    let result = ''
+    if (n > 99) {
+      result += ones[Math.floor(n / 100)] + ' Hundred '
+      n %= 100
+    }
+    if (n > 19) {
+      result += tens[Math.floor(n / 10)] + ' '
+      n %= 10
+    } else if (n > 9) {
+      result += teens[n - 10] + ' '
+      return result
+    }
+    if (n > 0) {
+      result += ones[n] + ' '
+    }
+    return result
+  }
+
+  let result = ''
+  let scaleIndex = 0
+  while (num > 0) {
+    if (num % 1000 !== 0) {
+      const chunk = num % 1000
+      const chunkWords = convertHundreds(chunk)
+      if (chunkWords.trim()) {
+        result = chunkWords + scales[scaleIndex] + ' ' + result
+      }
+    }
+    num = Math.floor(num / 1000)
+    scaleIndex++
+  }
+  return result.trim()
+}
+
 const MarketingQuotation = ({ quotationData, customer, selectedBranch = 'ANODE' }) => {
   // Company branch configuration
   const companyBranches = {
@@ -36,6 +80,20 @@ const MarketingQuotation = ({ quotationData, customer, selectedBranch = 'ANODE' 
   }
   
   const currentCompany = companyBranches[selectedBranch] || companyBranches.ANODE
+  // Compute amounts like salesperson template
+  const discountRate = parseFloat(quotationData?.discountRate || 0)
+  const subtotal = parseFloat(quotationData?.subtotal || 0)
+  const discountAmount = quotationData?.discountAmount != null 
+    ? parseFloat(quotationData.discountAmount) 
+    : (subtotal * discountRate) / 100
+  const taxableAmount = Math.max(0, subtotal - discountAmount)
+  const taxRate = parseFloat(quotationData?.taxRate != null ? quotationData.taxRate : 18)
+  const taxAmount = quotationData?.taxAmount != null 
+    ? parseFloat(quotationData.taxAmount) 
+    : (taxableAmount * taxRate) / 100
+  const totalAmount = quotationData?.total != null 
+    ? parseFloat(quotationData.total) 
+    : (taxableAmount + taxAmount)
   const handlePrint = async () => {
     // Create a new window for printing
     const printWindow = window.open('', '_blank')
@@ -76,14 +134,17 @@ const MarketingQuotation = ({ quotationData, customer, selectedBranch = 'ANODE' 
             <title>Marketing Quotation - ${quotationData?.quotationNumber || 'ANO/25-26/458'}</title>
             <style>
               * { margin: 0; padding: 0; box-sizing: border-box; }
-              body { 
-                margin: 0; 
-                padding: 20px; 
-                font-family: Arial, sans-serif; 
-                font-size: 14px;
+              @page { size: A4; margin: 12mm; }
+              html, body { width: 210mm; background: #ffffff; }
+              body {
+                margin: 0;
+                padding: 0;
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 12px;
                 line-height: 1.4;
                 color: #000;
               }
+              .container { width: calc(210mm - 24mm); margin: 0 auto; }
               .border-2 { border: 2px solid #000; }
               .border { border: 1px solid #000; }
               .border-black { border-color: #000; }
@@ -95,9 +156,9 @@ const MarketingQuotation = ({ quotationData, customer, selectedBranch = 'ANODE' 
               .p-3 { padding: 0.75rem; }
               .p-6 { padding: 1.5rem; }
               .pt-1 { padding-top: 0.25rem; }
-              .text-xl { font-size: 1.25rem; }
-              .text-xs { font-size: 0.75rem; }
-              .text-sm { font-size: 0.875rem; }
+              .text-xl { font-size: 18px; }
+              .text-xs { font-size: 10px; }
+              .text-sm { font-size: 12px; }
               .font-bold { font-weight: bold; }
               .font-semibold { font-weight: 600; }
               .text-center { text-align: center; }
@@ -124,21 +185,30 @@ const MarketingQuotation = ({ quotationData, customer, selectedBranch = 'ANODE' 
               .flex-col { flex-direction: column; }
               .bg-blue-600 { background-color: #2563eb; }
               .text-white { color: white; }
-              table { border-collapse: collapse; width: 100%; }
-              th, td { border: 1px solid #d1d5db; padding: 0.5rem; text-align: left; }
-              th { background-color: #f3f4f6; font-weight: bold; }
+              table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+              th, td { border: 1px solid #d1d5db; padding: 8px; }
+              th { background-color: #f3f4f6; font-weight: bold; text-align: left; }
               .border-t { border-top: 1px solid #000; }
               .no-print { display: none !important; }
               img { max-width: 100%; height: auto; }
+              /* Column sizing to match template */
+              .col-sr { width: 28px; text-align:center; }
+              .col-hsn { width: 80px; text-align:center; }
+              .col-qty { width: 40px; text-align:center; }
+              .col-unit { width: 50px; text-align:center; }
+              .col-rate { width: 90px; text-align:right; }
+              .col-taxable { width: 110px; text-align:right; }
+              .col-gst { width: 48px; text-align:center; }
+              .col-total { width: 110px; text-align:right; }
               @media print {
-                body { margin: 0; padding: 10px; }
+                body { margin: 0; padding: 0; }
                 .no-print { display: none !important; }
                 * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
               }
             </style>
           </head>
           <body>
-            ${clonedContent.innerHTML}
+            <div class="container">${clonedContent.innerHTML}</div>
           </body>
         </html>
       `)
@@ -154,11 +224,9 @@ const MarketingQuotation = ({ quotationData, customer, selectedBranch = 'ANODE' 
         <div id="marketing-quotation-content" className="p-6">
         {/* Header */}
         <div className="border-2 border-black mb-4">
-          {/* Removed header background color and updated company name and tagline */}
           <div className="p-2 flex justify-between items-center">
             <div>
               <h1 className="text-xl font-bold">{currentCompany.name}</h1>
-              <p className="text-sm font-semibold text-gray-700">{currentCompany.gstNumber}</p>
               <p className="text-xs">{currentCompany.description}</p>
             </div>
             <div className="text-right">
@@ -174,15 +242,13 @@ const MarketingQuotation = ({ quotationData, customer, selectedBranch = 'ANODE' 
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div>
                 <p>
-                  <strong>KHASRA NO. 805/5, PLOT NO. 10, IT PARK</strong>
+                  <strong>{currentCompany.address}</strong>
                 </p>
-                <p>BARGI HILLS, JABALPUR - 482003</p>
-                <p>MADHYA PRADESH, INDIA</p>
               </div>
               <div className="text-right">
-                <p>Tel: 6262002116, 6262002113</p>
-                <p>Web: www.anocab.com</p>
-                <p>Email: info@anocab.com</p>
+                <p>Tel: {currentCompany.tel}</p>
+                <p>Web: {currentCompany.web}</p>
+                <p>Email: {currentCompany.email}</p>
               </div>
             </div>
           </div>
@@ -191,7 +257,7 @@ const MarketingQuotation = ({ quotationData, customer, selectedBranch = 'ANODE' 
         {/* Quotation Details */}
         <div className="border border-black mb-4">
           <div className="bg-gray-100 p-2 text-center font-bold">
-            <h2>Marketing Quotation Details</h2>
+            <h2>Quotation Details</h2>
           </div>
           <div className="grid grid-cols-4 gap-2 p-2 text-xs border-b">
             <div>
@@ -227,9 +293,11 @@ const MarketingQuotation = ({ quotationData, customer, selectedBranch = 'ANODE' 
               <p>
                 <strong>PHONE:</strong> {quotationData?.billTo?.phone || customer?.phone || '7039542259'}
               </p>
-              <p>
-                <strong>GSTIN:</strong> {quotationData?.billTo?.gstNo || customer?.gstNo || '27DVTPS2973B1Z0'}
-              </p>
+              {quotationData?.billTo?.gstNo || customer?.gstNo ? (
+                <p>
+                  <strong>GSTIN:</strong> {quotationData?.billTo?.gstNo || customer?.gstNo}
+                </p>
+              ) : null}
               <p>
                 <strong>State:</strong> {quotationData?.billTo?.state || customer?.state || 'Maharashtra'}
               </p>
@@ -261,6 +329,7 @@ const MarketingQuotation = ({ quotationData, customer, selectedBranch = 'ANODE' 
                 <th className="border border-gray-300 p-1 text-center w-16">HSN / SAC</th>
                 <th className="border border-gray-300 p-1 text-center w-12">Qty</th>
                 <th className="border border-gray-300 p-1 text-center w-12">Unit</th>
+                <th className="border border-gray-300 p-1 text-right w-20">Buyer Rate</th>
                 <th className="border border-gray-300 p-1 text-right w-20">Taxable Value</th>
                 <th className="border border-gray-300 p-0.5 text-center w-8 text-[10px] whitespace-nowrap">GST%</th>
                 <th className="border border-gray-300 p-1 text-right w-24">Total</th>
@@ -271,10 +340,11 @@ const MarketingQuotation = ({ quotationData, customer, selectedBranch = 'ANODE' 
                 quotationData.items.map((item, index) => (
                   <tr key={index}>
                     <td className="border border-gray-300 p-1 text-center">{index + 1}</td>
-                    <td className="border border-gray-300 p-2">{item.description}</td>
+                    <td className="border border-gray-300 p-2">{item.productName || item.description}</td>
                     <td className="border border-gray-300 p-1 text-center">85446090</td>
                     <td className="border border-gray-300 p-1 text-center">{item.quantity}</td>
                     <td className="border border-gray-300 p-1 text-center">{item.unit}</td>
+                    <td className="border border-gray-300 p-1 text-right">{parseFloat(item.buyerRate || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                     <td className="border border-gray-300 p-1 text-right">{parseFloat(item.amount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                     <td className="border border-gray-300 p-0 text-center text-xs">18%</td>
                     <td className="border border-gray-300 p-1 text-right">{parseFloat(item.amount * 1.18).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
@@ -321,9 +391,9 @@ const MarketingQuotation = ({ quotationData, customer, selectedBranch = 'ANODE' 
                 <td className="border border-gray-300 p-2" colSpan="5">
                   Total
                 </td>
-                <td className="border border-gray-300 p-2">{quotationData?.subtotal?.toFixed(2) || '34,440,000'}</td>
-                <td className="border border-gray-300 p-2">{quotationData?.taxAmount?.toFixed(2) || '6,200,400'}</td>
-                <td className="border border-gray-300 p-2">{quotationData?.total?.toFixed(2) || '40,640,400'}</td>
+                <td className="border border-gray-300 p-2">{subtotal.toFixed(2)}</td>
+                <td className="border border-gray-300 p-2">{taxAmount.toFixed(2)}</td>
+                <td className="border border-gray-300 p-2">{totalAmount.toFixed(2)}</td>
               </tr>
             </tbody>
           </table>
@@ -349,21 +419,29 @@ const MarketingQuotation = ({ quotationData, customer, selectedBranch = 'ANODE' 
             </div>
           </div>
           <div className="border border-black p-3">
-            <div className="text-xs space-y-1">
+              <div className="text-xs space-y-1">
               <div className="flex justify-between">
-                <span>Taxable Amount</span>
-                <span>{quotationData?.subtotal?.toFixed(2) || '34,440,000'}</span>
+                <span>Subtotal</span>
+                <span>{subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Add: Total GST (18%)</span>
-                <span>{quotationData?.taxAmount?.toFixed(2) || '6,200,400'}</span>
+                <span>Less: Discount ({discountRate || 0}%)</span>
+                <span>{discountAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Taxable Amount</span>
+                <span>{taxableAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Add: Total GST ({taxRate || 18}%)</span>
+                <span>{taxAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-bold border-t pt-1">
                 <span>Total Amount After Tax</span>
-                <span>₹ {quotationData?.total?.toFixed(2) || '40,640,400'}</span>
+                <span>₹ {totalAmount.toFixed(2)}</span>
               </div>
               <div className="text-center mt-2">
-                <span className="text-xs">(Rupees Four Crore Six Lakh Forty Thousand Four Hundred Only)</span>
+                <span className="text-xs">(Rupees {numberToWords(Math.floor(totalAmount || 0))} Only)</span>
               </div>
             </div>
           </div>
