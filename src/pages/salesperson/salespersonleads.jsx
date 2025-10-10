@@ -1,11 +1,56 @@
 "use client"
 
 import React from "react"
+
+// Convert number to words (Indian system)
+function numberToWords(num) {
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine']
+  const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
+  const scales = ['', 'Thousand', 'Lakh', 'Crore']
+
+  if (!num || num === 0) return 'Zero'
+
+  function convertHundreds(n) {
+    let result = ''
+    if (n > 99) {
+      result += ones[Math.floor(n / 100)] + ' Hundred '
+      n %= 100
+    }
+    if (n > 19) {
+      result += tens[Math.floor(n / 10)] + ' '
+      n %= 10
+    } else if (n > 9) {
+      result += teens[n - 10] + ' '
+      return result
+    }
+    if (n > 0) {
+      result += ones[n] + ' '
+    }
+    return result
+  }
+
+  let result = ''
+  let scaleIndex = 0
+  while (num > 0) {
+    if (num % 1000 !== 0) {
+      const chunk = num % 1000
+      const chunkWords = convertHundreds(chunk)
+      if (chunkWords.trim()) {
+        result = chunkWords + scales[scaleIndex] + ' ' + result
+      }
+    }
+    num = Math.floor(num / 1000)
+    scaleIndex++
+  }
+  return result.trim()
+}
 import apiClient from '../../utils/apiClient'
 import { API_ENDPOINTS } from '../../api/admin_api/api'
-import { Search, RefreshCw, User, Mail, Building2, Pencil, Eye, Plus, Download, Filter, Wallet, MessageCircle, Package, MapPin, Map, BadgeCheck, XCircle, FileText, Globe, X, Clock, Check, Clock as ClockIcon, ArrowRightLeft, Upload, Send } from "lucide-react"
+import { Search, RefreshCw, User, Mail, Building2, Pencil, Eye, Plus, Download, Filter, Wallet, MessageCircle, Package, MapPin, Map, BadgeCheck, XCircle, FileText, Globe, X, Clock, Check, Clock as ClockIcon, ArrowRightLeft, Upload, Send, Trash2 } from "lucide-react"
 import html2pdf from 'html2pdf.js'
 import Quotation from './salespersonquotation.jsx'
+// using html2pdf.js (already imported above); no direct html2canvas/jsPDF imports needed
 import AddCustomerForm from './salespersonaddcustomer.jsx'
 import CreateQuotationForm from './salespersoncreatequotation.jsx'
 import { CorporateStandardInvoice } from './salespersonpi'
@@ -43,8 +88,30 @@ export default function CustomerListContent() {
   const [selectedCustomerForQuotation, setSelectedCustomerForQuotation] = React.useState(null)
   const [showCreatePI, setShowCreatePI] = React.useState(false)
   const [selectedCustomerForPI, setSelectedCustomerForPI] = React.useState(null)
+  const [showFollowUpPicker, setShowFollowUpPicker] = React.useState(null) // lead id or null
   const [piData, setPiData] = React.useState(null)
   const [showPIPreview, setShowPIPreview] = React.useState(false)
+  const [piFormData, setPiFormData] = React.useState({
+    items: [{
+      id: 1,
+      description: '',
+      subDescription: '',
+      hsn: '76141000',
+      dueOn: new Date().toISOString().split('T')[0],
+      quantity: 1,
+      unit: 'MTR',
+      rate: 0,
+      amount: 0
+    }],
+    discountRate: 0,
+    customer: {
+      business: '',
+      address: '',
+      phone: '',
+      gstNo: '',
+      state: ''
+    }
+  })
   const [quotationData, setQuotationData] = React.useState(null)
   const [lastQuotationData, setLastQuotationData] = React.useState(null)
   const [isRefreshing, setIsRefreshing] = React.useState(false)
@@ -1628,6 +1695,12 @@ export default function CustomerListContent() {
                             Quotation
                           </span>
                         </button>
+                        <button onClick={() => setShowFollowUpPicker(customer.id)} className="p-1.5 rounded-md hover:bg-yellow-50 text-yellow-600 relative group" title="Set Follow-up">
+                          <ClockIcon className="h-4 w-4" />
+                          <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                            Set Follow-up
+                          </span>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1638,6 +1711,42 @@ export default function CustomerListContent() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Follow-up Picker Modal */}
+      {showFollowUpPicker && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm">
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">Set Follow-up Category</h3>
+              <button className="text-gray-400 hover:text-gray-600" onClick={() => setShowFollowUpPicker(null)}>
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              {['Connected','Not Connected','Today\'s Meeting','Converted','Closed'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={async () => {
+                    try {
+                      const formData = new FormData()
+                      formData.append('connectedStatus', cat)
+                      await apiClient.putFormData(API_ENDPOINTS.SALESPERSON_LEAD_BY_ID(showFollowUpPicker), formData)
+                      setShowFollowUpPicker(null)
+                      await fetchAssigned()
+                    } catch (e) {
+                      console.error('Failed to update follow-up:', e)
+                      alert('Failed to update follow-up status')
+                    }
+                  }}
+                  className="w-full text-left px-3 py-2 rounded border border-gray-200 hover:bg-gray-50"
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pagination Controls */}
       {filteredCustomers.length > 0 && (
@@ -2122,34 +2231,88 @@ export default function CustomerListContent() {
                 Save PI
               </button>
               <button
-                onClick={() => {
-                  const element = document.getElementById('pi-preview-content');
-                  const opt = {
-                    margin: [0.4, 0.4, 0.4, 0.4],
-                    filename: `PI-${companyBranches[selectedBranch].name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`,
-                    image: { type: 'jpeg', quality: 0.8 },
-                    html2canvas: { 
-                      scale: 1.1,
-                      useCORS: true,
-                      letterRendering: true,
-                      allowTaint: true,
-                      backgroundColor: '#ffffff'
-                    },
-                    jsPDF: { 
-                      unit: 'in', 
-                      format: 'a4', 
-                      orientation: 'portrait',
-                      compress: true,
-                      putOnlyUsedFonts: true
-                    },
-                    pagebreak: { 
-                      mode: ['avoid-all', 'css', 'legacy'],
-                      before: '.page-break-before',
-                      after: '.page-break-after',
-                      avoid: '.no-page-break'
+                onClick={async () => {
+                  try {
+                    const element = document.getElementById('pi-preview-content');
+                    if (!element) {
+                      alert('Unable to find PI content for PDF.');
+                      return;
                     }
-                  };
-                  html2pdf().set(opt).from(element).save();
+
+                    // Convert images to base64 to avoid CORS/tainted canvas issues
+                    const convertImageToBase64 = (imgUrl) => {
+                      return new Promise((resolve) => {
+                        try {
+                          const img = new Image();
+                          img.crossOrigin = 'anonymous';
+                          img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0);
+                            resolve(canvas.toDataURL('image/png'));
+                          };
+                          img.onerror = () => resolve(imgUrl);
+                          img.src = imgUrl;
+                        } catch (e) {
+                          resolve(imgUrl);
+                        }
+                      });
+                    };
+
+                    const imgs = Array.from(element.querySelectorAll('img'));
+                    await Promise.all(
+                      imgs.map(async (img) => {
+                        if (img && img.src && !img.src.startsWith('data:')) {
+                          const b64 = await convertImageToBase64(img.src);
+                          img.setAttribute('src', b64);
+                        }
+                      })
+                    );
+
+                    // Compute scale to fit a single A4 page
+                    const originalTransform = element.style.transform
+                    const originalTransformOrigin = element.style.transformOrigin
+                    const DPI = 96
+                    const A4_WIDTH_PX = Math.round(8.27 * DPI)
+                    const A4_HEIGHT_PX = Math.round(11.69 * DPI)
+                    const marginPxX = Math.round(0.4 * DPI) * 2
+                    const marginPxY = Math.round(0.4 * DPI) * 2
+                    const availableWidth = A4_WIDTH_PX - marginPxX
+                    const availableHeight = A4_HEIGHT_PX - marginPxY
+                    const contentWidth = Math.max(element.scrollWidth, element.getBoundingClientRect().width)
+                    const contentHeight = Math.max(element.scrollHeight, element.getBoundingClientRect().height)
+                    const scaleFactor = Math.min(1, availableWidth / contentWidth, availableHeight / contentHeight)
+                    if (scaleFactor < 1) {
+                      element.style.transform = `scale(${scaleFactor})`
+                      element.style.transformOrigin = 'top left'
+                    }
+
+                    // Robust html2pdf one-page export
+                    const opt = {
+                      margin: [0.4, 0.4, 0.4, 0.4],
+                      filename: `PI-${companyBranches[selectedBranch].name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`,
+                      image: { type: 'jpeg', quality: 0.95 },
+                      html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: false,
+                        backgroundColor: '#ffffff',
+                        logging: false
+                      },
+                      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait', compress: true, putOnlyUsedFonts: true },
+                      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+                    }
+                    await html2pdf().set(opt).from(element).save()
+
+                    // restore styles
+                    element.style.transform = originalTransform
+                    element.style.transformOrigin = originalTransformOrigin
+                  } catch (err) {
+                    console.error('PDF generation failed:', err);
+                    alert('Failed to generate PDF. Please try again, or use the Print button as a fallback.');
+                  }
                 }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-2 shadow-lg"
               >
@@ -2173,7 +2336,42 @@ export default function CustomerListContent() {
                   <div id="pi-preview-content">
                     <CorporateStandardInvoice 
                       selectedBranch={selectedBranch} 
-                      companyBranches={companyBranches} 
+                      companyBranches={companyBranches}
+                      quotations={[(() => {
+                        const items = piFormData.items.map(item => ({
+                          productName: item.description || item.subDescription || 'Product',
+                          description: item.description || item.subDescription || 'Product',
+                          quantity: item.quantity,
+                          unit: item.unit,
+                          buyerRate: item.rate,
+                          amount: item.amount,
+                          hsn: item.hsn
+                        }))
+                        const subtotal = items.reduce((sum, it) => sum + (it.amount || 0), 0)
+                        const discountRate = parseFloat(piFormData.discountRate || 0)
+                        const discountAmount = (subtotal * discountRate) / 100
+                        const taxable = Math.max(0, subtotal - discountAmount)
+                        const taxRate = 18
+                        const taxAmount = taxable * (taxRate / 100)
+                        const total = taxable + taxAmount
+                        return ({
+                          quotationNumber: `PI-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+                          items,
+                          subtotal,
+                          discountRate,
+                          discountAmount,
+                          taxRate,
+                          taxAmount,
+                          total,
+                          billTo: {
+                            business: piFormData.customer.business || 'Customer Business Name',
+                            address: piFormData.customer.address || 'Customer Address',
+                            phone: piFormData.customer.phone || 'Customer Phone',
+                            gstNo: piFormData.customer.gstNo || 'Customer GST',
+                            state: piFormData.customer.state || 'Customer State'
+                          }
+                        })
+                      })()]}
                     />
                   </div>
                 </div>
@@ -2316,128 +2514,304 @@ export default function CustomerListContent() {
                   </div>
                 </div>
 
+                {/* Customer Information */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
+                      <input
+                        type="text"
+                        value={piFormData.customer.business}
+                        onChange={(e) => setPiFormData(prev => ({
+                          ...prev,
+                          customer: { ...prev.customer, business: e.target.value }
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter business name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                      <input
+                        type="tel"
+                        value={piFormData.customer.phone}
+                        onChange={(e) => setPiFormData(prev => ({
+                          ...prev,
+                          customer: { ...prev.customer, phone: e.target.value }
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter phone number"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                      <textarea
+                        value={piFormData.customer.address}
+                        onChange={(e) => setPiFormData(prev => ({
+                          ...prev,
+                          customer: { ...prev.customer, address: e.target.value }
+                        }))}
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter complete address"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">GST Number</label>
+                      <input
+                        type="text"
+                        value={piFormData.customer.gstNo}
+                        onChange={(e) => setPiFormData(prev => ({
+                          ...prev,
+                          customer: { ...prev.customer, gstNo: e.target.value }
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter GST number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                      <input
+                        type="text"
+                        value={piFormData.customer.state}
+                        onChange={(e) => setPiFormData(prev => ({
+                          ...prev,
+                          customer: { ...prev.customer, state: e.target.value }
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter state"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Items Section */}
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-medium text-gray-900">Items</h3>
-                    <button className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const newItem = {
+                          id: Date.now(),
+                          description: '',
+                          subDescription: '',
+                          hsn: '76141000',
+                          dueOn: new Date().toISOString().split('T')[0],
+                          quantity: 1,
+                          unit: 'MTR',
+                          rate: 0,
+                          amount: 0
+                        }
+                        setPiFormData(prev => ({
+                          ...prev,
+                          items: [...prev.items, newItem]
+                        }))
+                      }}
+                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                    >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Item
                     </button>
                   </div>
                   
                   <div className="space-y-4">
-                    {/* Item 1 */}
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex justify-between items-center mb-4">
-                        <h4 className="text-sm font-medium text-gray-900">Item 1</h4>
+                    {piFormData.items.map((item, index) => (
+                      <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex justify-between items-center mb-4">
+                          <h4 className="text-sm font-medium text-gray-900">Item {index + 1}</h4>
+                          {piFormData.items.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPiFormData(prev => ({
+                                  ...prev,
+                                  items: prev.items.filter((_, i) => i !== index)
+                                }))
+                              }}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <select 
+                              value={item.description}
+                              onChange={(e) => {
+                                const updatedItems = [...piFormData.items]
+                                updatedItems[index].description = e.target.value
+                                setPiFormData(prev => ({ ...prev, items: updatedItems }))
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">Select Description</option>
+                              <option value="COVERED CONDUCTOR 34 SQMM">COVERED CONDUCTOR 34 SQMM</option>
+                              <option value="XLPE CABLE 1.5MM">XLPE CABLE 1.5MM</option>
+                              <option value="ACSR CONDUCTOR 50MM²">ACSR CONDUCTOR 50MM²</option>
+                              <option value="AAAC CONDUCTOR 70MM²">AAAC CONDUCTOR 70MM²</option>
+                              <option value="ALUMINIUM WIRE">ALUMINIUM WIRE</option>
+                              <option value="COPPER WIRE">COPPER WIRE</option>
+                              <option value="ELECTRICAL PANEL">ELECTRICAL PANEL</option>
+                              <option value="TRANSFORMER">TRANSFORMER</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Sub Description</label>
+                            <select 
+                              value={item.subDescription}
+                              onChange={(e) => {
+                                const updatedItems = [...piFormData.items]
+                                updatedItems[index].subDescription = e.target.value
+                                setPiFormData(prev => ({ ...prev, items: updatedItems }))
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">Select Sub Description</option>
+                              <option value="COVERED CONDUCTOR 34SQMM XLPE 3 LAYER">COVERED CONDUCTOR 34SQMM XLPE 3 LAYER</option>
+                              <option value="XLPE CABLE 1.5MM SINGLE CORE">XLPE CABLE 1.5MM SINGLE CORE</option>
+                              <option value="XLPE CABLE 1.5MM MULTI CORE">XLPE CABLE 1.5MM MULTI CORE</option>
+                              <option value="ACSR CONDUCTOR 50MM² 7 STRAND">ACSR CONDUCTOR 50MM² 7 STRAND</option>
+                              <option value="ACSR CONDUCTOR 50MM² 19 STRAND">ACSR CONDUCTOR 50MM² 19 STRAND</option>
+                              <option value="AAAC CONDUCTOR 70MM² 7 STRAND">AAAC CONDUCTOR 70MM² 7 STRAND</option>
+                              <option value="AAAC CONDUCTOR 70MM² 19 STRAND">AAAC CONDUCTOR 70MM² 19 STRAND</option>
+                              <option value="ALUMINIUM WIRE 4MM">ALUMINIUM WIRE 4MM</option>
+                              <option value="ALUMINIUM WIRE 6MM">ALUMINIUM WIRE 6MM</option>
+                              <option value="COPPER WIRE 2.5MM">COPPER WIRE 2.5MM</option>
+                              <option value="COPPER WIRE 4MM">COPPER WIRE 4MM</option>
+                              <option value="ELECTRICAL PANEL 3 PHASE">ELECTRICAL PANEL 3 PHASE</option>
+                              <option value="ELECTRICAL PANEL SINGLE PHASE">ELECTRICAL PANEL SINGLE PHASE</option>
+                              <option value="TRANSFORMER 11KV/440V">TRANSFORMER 11KV/440V</option>
+                              <option value="TRANSFORMER 33KV/11KV">TRANSFORMER 33KV/11KV</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">HSN/SAC</label>
+                            <input
+                              type="text"
+                              value={item.hsn}
+                              onChange={(e) => {
+                                const updatedItems = [...piFormData.items]
+                                updatedItems[index].hsn = e.target.value
+                                setPiFormData(prev => ({ ...prev, items: updatedItems }))
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Due On</label>
+                            <input
+                              type="date"
+                              value={item.dueOn}
+                              onChange={(e) => {
+                                const updatedItems = [...piFormData.items]
+                                updatedItems[index].dueOn = e.target.value
+                                setPiFormData(prev => ({ ...prev, items: updatedItems }))
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => {
+                                const updatedItems = [...piFormData.items]
+                                updatedItems[index].quantity = parseFloat(e.target.value) || 0
+                                updatedItems[index].amount = updatedItems[index].quantity * updatedItems[index].rate
+                                setPiFormData(prev => ({ ...prev, items: updatedItems }))
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                            <select 
+                              value={item.unit}
+                              onChange={(e) => {
+                                const updatedItems = [...piFormData.items]
+                                updatedItems[index].unit = e.target.value
+                                setPiFormData(prev => ({ ...prev, items: updatedItems }))
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="MTR">MTR</option>
+                              <option value="KG">KG</option>
+                              <option value="PCS">PCS</option>
+                              <option value="SET">SET</option>
+                              <option value="BOX">BOX</option>
+                              <option value="ROLL">ROLL</option>
+                              <option value="BUNDLE">BUNDLE</option>
+                              <option value="LOT">LOT</option>
+                              <option value="TON">TON</option>
+                              <option value="QUINTAL">QUINTAL</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Rate</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.rate}
+                              onChange={(e) => {
+                                const updatedItems = [...piFormData.items]
+                                updatedItems[index].rate = parseFloat(e.target.value) || 0
+                                updatedItems[index].amount = updatedItems[index].quantity * updatedItems[index].rate
+                                setPiFormData(prev => ({ ...prev, items: updatedItems }))
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Amount (Auto-Calculated)</label>
+                            <input
+                              type="text"
+                              value={item.amount.toFixed(2)}
+                              readOnly
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
+                              style={{backgroundColor: '#f9fafb', color: '#6b7280'}}
+                            />
+                          </div>
+                        </div>
                       </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                          <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="COVERED CONDUCTOR 34 SQMM">COVERED CONDUCTOR 34 SQMM</option>
-                            <option value="XLPE CABLE 1.5MM">XLPE CABLE 1.5MM</option>
-                            <option value="ACSR CONDUCTOR 50MM²">ACSR CONDUCTOR 50MM²</option>
-                            <option value="AAAC CONDUCTOR 70MM²">AAAC CONDUCTOR 70MM²</option>
-                            <option value="ALUMINIUM WIRE">ALUMINIUM WIRE</option>
-                            <option value="COPPER WIRE">COPPER WIRE</option>
-                            <option value="ELECTRICAL PANEL">ELECTRICAL PANEL</option>
-                            <option value="TRANSFORMER">TRANSFORMER</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Sub Description</label>
-                          <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="COVERED CONDUCTOR 34SQMM XLPE 3 LAYER">COVERED CONDUCTOR 34SQMM XLPE 3 LAYER</option>
-                            <option value="XLPE CABLE 1.5MM SINGLE CORE">XLPE CABLE 1.5MM SINGLE CORE</option>
-                            <option value="XLPE CABLE 1.5MM MULTI CORE">XLPE CABLE 1.5MM MULTI CORE</option>
-                            <option value="ACSR CONDUCTOR 50MM² 7 STRAND">ACSR CONDUCTOR 50MM² 7 STRAND</option>
-                            <option value="ACSR CONDUCTOR 50MM² 19 STRAND">ACSR CONDUCTOR 50MM² 19 STRAND</option>
-                            <option value="AAAC CONDUCTOR 70MM² 7 STRAND">AAAC CONDUCTOR 70MM² 7 STRAND</option>
-                            <option value="AAAC CONDUCTOR 70MM² 19 STRAND">AAAC CONDUCTOR 70MM² 19 STRAND</option>
-                            <option value="ALUMINIUM WIRE 4MM">ALUMINIUM WIRE 4MM</option>
-                            <option value="ALUMINIUM WIRE 6MM">ALUMINIUM WIRE 6MM</option>
-                            <option value="COPPER WIRE 2.5MM">COPPER WIRE 2.5MM</option>
-                            <option value="COPPER WIRE 4MM">COPPER WIRE 4MM</option>
-                            <option value="ELECTRICAL PANEL 3 PHASE">ELECTRICAL PANEL 3 PHASE</option>
-                            <option value="ELECTRICAL PANEL SINGLE PHASE">ELECTRICAL PANEL SINGLE PHASE</option>
-                            <option value="TRANSFORMER 11KV/440V">TRANSFORMER 11KV/440V</option>
-                            <option value="TRANSFORMER 33KV/11KV">TRANSFORMER 33KV/11KV</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">HSN/SAC</label>
-                          <input
-                            type="text"
-                            defaultValue="76141000"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Due On</label>
-                          <input
-                            type="date"
-                            defaultValue={new Date().toISOString().split('T')[0]}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
-                          <input
-                            type="text"
-                            defaultValue="600"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
-                          <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="MTR">MTR</option>
-                            <option value="KG">KG</option>
-                            <option value="PCS">PCS</option>
-                            <option value="SET">SET</option>
-                            <option value="BOX">BOX</option>
-                            <option value="ROLL">ROLL</option>
-                            <option value="BUNDLE">BUNDLE</option>
-                            <option value="LOT">LOT</option>
-                            <option value="TON">TON</option>
-                            <option value="QUINTAL">QUINTAL</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Rate (Auto-Calculated)</label>
-                          <input
-                            type="text"
-                            value="48.00"
-                            readOnly
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
-                            style={{backgroundColor: '#f9fafb', color: '#6b7280'}}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Amount (Auto-Calculated)</label>
-                          <input
-                            type="text"
-                            value="28,800.00"
-                            readOnly
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
-                            style={{backgroundColor: '#f9fafb', color: '#6b7280'}}
-                          />
-                        </div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
 
                 {/* Totals Section */}
                 <div className="grid grid-cols-3 gap-4">
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={piFormData.discountRate}
+                      onChange={(e) => {
+                        const discountRate = parseFloat(e.target.value) || 0
+                        setPiFormData(prev => ({ ...prev, discountRate }))
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700"
+                    />
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">IGST (18%) - Auto-Calculated</label>
                     <input
                       type="text"
-                      value="5,184.00"
+                      value={(() => {
+                        const subtotal = piFormData.items.reduce((sum, item) => sum + item.amount, 0)
+                        const discount = (subtotal * (piFormData.discountRate || 0)) / 100
+                        const taxable = Math.max(0, subtotal - discount)
+                        return (taxable * 0.18).toFixed(2)
+                      })()}
                       readOnly
                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
                       style={{backgroundColor: '#f9fafb', color: '#6b7280'}}
@@ -2447,7 +2821,13 @@ export default function CustomerListContent() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount - Auto-Calculated</label>
                     <input
                       type="text"
-                      value="33,984.00"
+                      value={(() => {
+                        const subtotal = piFormData.items.reduce((sum, item) => sum + item.amount, 0)
+                        const discount = (subtotal * (piFormData.discountRate || 0)) / 100
+                        const taxable = Math.max(0, subtotal - discount)
+                        const tax = taxable * 0.18
+                        return (taxable + tax).toFixed(2)
+                      })()}
                       readOnly
                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
                       style={{backgroundColor: '#f9fafb', color: '#6b7280'}}
@@ -2457,7 +2837,7 @@ export default function CustomerListContent() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Amount in Words - Auto-Generated</label>
                     <input
                       type="text"
-                      value="INR Thirty Three Thousand Nine Hundred Eighty Four Only"
+                      value={`INR ${numberToWords(Math.floor(piFormData.items.reduce((sum, item) => sum + item.amount, 0) * 1.18))} Only`}
                       readOnly
                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
                       style={{backgroundColor: '#f9fafb', color: '#6b7280'}}
