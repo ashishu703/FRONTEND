@@ -2393,37 +2393,60 @@ const ToolboxInterface = () => {
                     Identification
                   </h3>
                   <div className="bg-gray-50 rounded-lg p-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <span className="text-sm font-semibold text-gray-800">REFERENCE</span>
-                        <p className="text-sm text-gray-800">{"\u00A0"}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="md:col-span-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">REFERENCE</span>
+                            <p className="text-sm text-gray-800">IS-398 (Pt-2): 1996</p>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">APPLICATION</span>
+                            <p className="text-sm text-gray-800">Overhead power transmission purposes</p>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">CONDUCTOR</span>
+                            <p className="text-sm text-gray-800">Conductor containing aluminium and galvanised steel wires built in concentric layers</p>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">RESISTIVITY</span>
+                            <p className="text-sm text-gray-800">Max 0.032 ohm·mm²/m at 20°C</p>
+                          </div>
+                          <div className="space-y-2">
+                            <span className="text-sm font-semibold text-gray-800">INSULATION</span>
+                            <p className="text-sm text-gray-800">Not insulated (bare conductor)</p>
+                          </div>
+                        </div>
+                        <div className="space-y-2 mt-4">
+                          <span className="text-sm font-semibold text-gray-800">FEATURES</span>
+                          <div className="text-sm text-gray-800">
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>100% pure EC grade aluminium</li>
+                              <li>Heavy duty cable suitable for outdoor installation</li>
+                            </ul>
+                          </div>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <span className="text-sm font-semibold text-gray-800">RATED VOLTAGE</span>
-                        <p className="text-sm text-gray-800">{"\u00A0"}</p>
-                      </div>
-                      <div className="space-y-2">
-                        <span className="text-sm font-semibold text-gray-800">CONDUCTOR</span>
-                        <p className="text-sm text-gray-800">{"\u00A0"}</p>
-                      </div>
-                      <div className="space-y-2">
-                        <span className="text-sm font-semibold text-gray-800">INSULATION</span>
-                        <p className="text-sm text-gray-800">{"\u00A0"}</p>
-                      </div>
-                      <div className="space-y-2">
-                        <span className="text-sm font-semibold text-gray-800">MESSENGER</span>
-                        <p className="text-sm text-gray-800">{"\u00A0"}</p>
-                      </div>
-                      <div className="space-y-2">
-                        <span className="text-sm font-semibold text-gray-800">TEMPERATURE RANGE</span>
-                        <p className="text-sm text-gray-800">{"\u00A0"}</p>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <span className="text-sm font-semibold text-gray-800">FEATURES</span>
-                      <div className="text-sm text-gray-800">
-                        <ul className="list-disc list-inside space-y-1">
-                        </ul>
+                      <div className="md:col-span-1 flex flex-col items-center">
+                        <div className="w-full h-64 bg-white rounded-lg border border-gray-200 overflow-hidden">
+                          <img 
+                            src="/images/products/acsr-conductor.jpg"
+                            alt="ACSR Conductor"
+                            className="w-full h-full object-contain p-4"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              const fallback = e.currentTarget.nextElementSibling;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                          />
+                          <div className="hidden w-full h-full items-center justify-center text-gray-400">
+                            <div className="text-center p-4">
+                              <Image className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">ACSR Conductor</p>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-2 text-center">ACSR Conductor Sample</p>
                       </div>
                     </div>
                   </div>

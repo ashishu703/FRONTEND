@@ -17,18 +17,19 @@ import {
 const Sidebar = ({ onLogout, activeView, setActiveView }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [openDropdowns, setOpenDropdowns] = useState({
-    dashboard: true,
+    dashboard: false,
     department: false,
-    salesDepartment: true,
+    salesDepartment: false,
     marketingSalesperson: false
   });
+  const [activeDashboardDepartment, setActiveDashboardDepartment] = useState('Sales Department');
 
   const toggleSidebar = () => {
     setIsExpanded(!isExpanded);
     if (!isExpanded) {
       setOpenDropdowns({ dashboard: false, department: false, salesDepartment: false, marketingSalesperson: false });
     } else {
-      setOpenDropdowns({ dashboard: true, department: false, salesDepartment: true, marketingSalesperson: false });
+      setOpenDropdowns({ dashboard: false, department: false, salesDepartment: false, marketingSalesperson: false });
     }
   };
 
@@ -174,7 +175,7 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
                   {item.dropdownItems.map((subItem, index) => (
                     <li key={index}>
                       <div className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                        subItem.active ? 'bg-blue-500 text-white' : 'hover:bg-gray-50 text-gray-600'
+                        (item.id === 'dashboard' && activeDashboardDepartment === subItem.label) ? 'bg-blue-500 text-white' : 'hover:bg-gray-50 text-gray-600'
                       }`}
                       onClick={() => {
                         if (subItem.hasSubDropdown) {
@@ -184,17 +185,20 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
                             toggleDropdown('salesDepartment');
                           }
                         } else {
+                          if (item.id === 'dashboard') {
+                            setActiveDashboardDepartment(subItem.label);
+                          }
                           setActiveView(subItem.label.toLowerCase().replace(/\s+/g, '-'));
                         }
                       }}>
                         <div className="flex items-center space-x-2">
                           <div className={`w-1.5 h-1.5 rounded-full ${
-                            subItem.active ? 'bg-white' : 'bg-gray-400'
+                            (item.id === 'dashboard' && activeDashboardDepartment === subItem.label) ? 'bg-white' : 'bg-gray-400'
                           }`}></div>
                           <span className="text-sm">{subItem.label}</span>
                         </div>
                         {subItem.hasSubDropdown && (
-                          <div className={subItem.active ? 'text-white' : 'text-gray-400'}>
+                          <div className={(item.id === 'dashboard' && activeDashboardDepartment === subItem.label) ? 'text-white' : 'text-gray-400'}>
                             {(subItem.label === 'Marketing Salesperson' ? openDropdowns.marketingSalesperson : openDropdowns.salesDepartment) ? (
                               <ChevronDown className="w-4 h-4" />
                             ) : (
