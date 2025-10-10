@@ -1,6 +1,7 @@
 import html2pdf from 'html2pdf.js'
+import React, { useMemo, useState } from 'react'
 
-export function CorporateStandardInvoice({ selectedBranch = 'SAMRIDDHI_CABLE', companyBranches }) {
+export function CorporateStandardInvoice({ selectedBranch = 'SAMRIDDHI_CABLE', companyBranches, quotations = [] }) {
     // Default company branches if not provided
     const defaultBranches = {
         ANODE: {
@@ -34,6 +35,18 @@ export function CorporateStandardInvoice({ selectedBranch = 'SAMRIDDHI_CABLE', c
     
     const branches = companyBranches || defaultBranches
     const currentBranch = branches[selectedBranch] || branches.SAMRIDDHI_CABLE
+
+    // New: Allow selecting a Quotation to prefill PI lines
+    const [selectedQuotationNumber, setSelectedQuotationNumber] = useState(quotations?.[0]?.quotationNumber || '')
+    const selectedQuotation = useMemo(() => {
+      return quotations?.find(q => q.quotationNumber === selectedQuotationNumber) || quotations?.[0] || null
+    }, [quotations, selectedQuotationNumber])
+    const items = selectedQuotation?.items || []
+    const billTo = selectedQuotation?.billTo || {}
+    const subtotal = selectedQuotation?.subtotal || items.reduce((s,i)=> s + (i.amount||0), 0)
+    const taxRate = selectedQuotation?.taxRate ?? 18
+    const taxAmount = selectedQuotation?.taxAmount ?? (subtotal * taxRate / 100)
+    const total = selectedQuotation?.total ?? (subtotal + taxAmount)
     
     return (
       <div id="pi-content" className="mx-auto bg-white border border-gray-300" style={{fontSize: '12px', lineHeight: '1.2', width: '8.5in', minHeight: '11in', margin: '0 auto', padding: '0.5in', maxWidth: '100%'}}>
@@ -118,6 +131,21 @@ export function CorporateStandardInvoice({ selectedBranch = 'SAMRIDDHI_CABLE', c
               <p className="text-xl font-bold">415</p>
             </div>
           </div>
+          {/* Quotation selector - visible only on screen */}
+          {quotations?.length > 0 && (
+            <div className="mt-3 no-print">
+              <label className="text-sm font-medium text-gray-700 mr-2">Select Quotation:</label>
+              <select
+                value={selectedQuotationNumber}
+                onChange={(e)=> setSelectedQuotationNumber(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded text-sm"
+              >
+                {quotations.map((q)=> (
+                  <option key={q.quotationNumber} value={q.quotationNumber}>{q.quotationNumber}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
   
         <div className="mb-4">
@@ -153,18 +181,15 @@ export function CorporateStandardInvoice({ selectedBranch = 'SAMRIDDHI_CABLE', c
               <h3 className="font-bold text-black">Consignee (Ship to)</h3>
             </div>
             <div className="p-4 text-sm">
-              <p className="font-bold text-black mb-2">FAIRDEAL CABLE AND ELECTRICALS PRIVATE LIMITED</p>
-              <p className="text-gray-700">Chandrapur Transport, Chandrapur Transport</p>
-              <p className="text-gray-700">Maharashtra - 442406, India</p>
+              <p className="font-bold text-black mb-2">{billTo.business || '—'}</p>
+              <p className="text-gray-700">{billTo.address || '—'}</p>
+              <p className="text-gray-700">{billTo.state || ''}</p>
               <div className="mt-3 pt-3 border-t border-gray-200 text-xs">
                 <p>
-                  <span className="font-bold">GSTIN/UIN:</span> 27AADCF6974E1ZF
+                  <span className="font-bold">GSTIN/UIN:</span> {billTo.gstNo || ''}
                 </p>
                 <p>
-                  <span className="font-bold">PAN/IT No:</span> AADCF6974E
-                </p>
-                <p>
-                  <span className="font-bold">State Name:</span> Maharashtra, Code: 27
+                  <span className="font-bold">Phone:</span> {billTo.phone || ''}
                 </p>
               </div>
             </div>
@@ -175,16 +200,15 @@ export function CorporateStandardInvoice({ selectedBranch = 'SAMRIDDHI_CABLE', c
               <h3 className="font-bold text-black">Buyer (Bill to)</h3>
             </div>
             <div className="p-4 text-sm">
-              <p className="font-bold text-black mb-2">FAIRDEAL CABLE AND ELECTRICALS PRIVATE LIMITED</p>
-              <p className="text-gray-700">Plot No.FA-42, Ghugus Road, Chinchala</p>
-              <p className="text-gray-700">Sai Mobile Training Institute</p>
-              <p className="text-gray-700">Additional Chandrapur Maharashtra - 442406, India</p>
+              <p className="font-bold text-black mb-2">{billTo.business || '—'}</p>
+              <p className="text-gray-700">{billTo.address || '—'}</p>
+              <p className="text-gray-700">{billTo.state || ''}</p>
               <div className="mt-3 pt-3 border-t border-gray-200 text-xs">
                 <p>
-                  <span className="font-bold">GSTIN/UIN:</span> 27AADCF6974E1ZF
+                  <span className="font-bold">GSTIN/UIN:</span> {billTo.gstNo || ''}
                 </p>
                 <p>
-                  <span className="font-bold">PAN/IT No:</span> AADCF6974E
+                  <span className="font-bold">Phone:</span> {billTo.phone || ''}
                 </p>
               </div>
             </div>
@@ -243,18 +267,21 @@ export function CorporateStandardInvoice({ selectedBranch = 'SAMRIDDHI_CABLE', c
             </div>
           </div>
           <div className="p-4 bg-white">
-            <div className="grid grid-cols-8 gap-2 text-sm">
-              <div className="font-bold">1</div>
-              <div className="col-span-2">
-                <p className="font-bold text-black">COVERED CONDUCTOR 34 SQMM</p>
-                <p className="text-gray-600 mt-1">COVERED CONDUCTOR 34SQMM XLPE 3 LAYER</p>
+            {items.length > 0 ? items.map((it, idx) => (
+              <div key={idx} className="grid grid-cols-8 gap-2 text-sm">
+                <div className="font-bold">{idx + 1}</div>
+                <div className="col-span-2">
+                  <p className="font-bold text-black">{it.productName || it.description || 'Item'}</p>
+                </div>
+                <div className="text-gray-700">{it.hsn || '76141000'}</div>
+                <div className="text-gray-700">{it.quantity} {it.unit}</div>
+                <div className="text-gray-700">{Number(it.buyerRate || 0).toFixed(2)}</div>
+                <div className="text-gray-700">{it.unit || ''}</div>
+                <div className="text-right font-bold">{Number(it.amount || 0).toFixed(2)}</div>
               </div>
-              <div className="text-gray-700">76141000</div>
-              <div className="text-gray-700">600 MTR</div>
-              <div className="text-gray-700">48.00</div>
-              <div className="text-gray-700">MTR</div>
-              <div className="text-right font-bold">28,800.00</div>
-            </div>
+            )) : (
+              <div className="text-sm text-gray-600">No items found for selected quotation.</div>
+            )}
           </div>
         </div>
   
@@ -263,15 +290,15 @@ export function CorporateStandardInvoice({ selectedBranch = 'SAMRIDDHI_CABLE', c
             <div className="p-4 bg-white">
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-700">IGST (18%)</span>
-                  <span className="font-bold">5,184.00</span>
+                  <span className="text-gray-700">GST ({taxRate}%)</span>
+                  <span className="font-bold">{Number(taxAmount).toFixed(2)}</span>
                 </div>
                 <div className="border-t border-gray-300 pt-2 mt-2">
                   <div className="flex justify-between font-bold text-lg text-black">
                     <span>Total Amount</span>
-                    <span>33,984.00</span>
+                    <span>{Number(total).toFixed(2)}</span>
                   </div>
-                  <div className="text-right text-sm text-gray-700">600 MTR</div>
+                  <div className="text-right text-sm text-gray-700">{items.reduce((s,i)=> s + (i.quantity||0), 0)} {items[0]?.unit || ''}</div>
                 </div>
               </div>
             </div>

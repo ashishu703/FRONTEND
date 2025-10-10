@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { X, FileText, Calendar, User, Package, DollarSign, Plus, Minus, Eye, Edit, Building2 } from "lucide-react"
 import QuotationPreview from "../../components/QuotationPreview"
 
@@ -422,10 +422,9 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">GST Number *</label>
+                  <label className="text-sm font-medium text-gray-700">GST Number</label>
                   <input
                     type="text"
-                    required
                     value={quotationData.billTo.gstNo}
                     onChange={(e) => setQuotationData(prev => ({
                       ...prev,

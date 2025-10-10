@@ -32,6 +32,7 @@ import {
   Globe,
   MessageCircle
 } from 'lucide-react';
+import MarketingQuotation from './MarketingQuotation';
 import AllLeads from './MarketingSalespersonLeads';
 import Visits from './MarketingSalespersonVisits';
 import TestVisits from './TestVisits';
@@ -67,6 +68,8 @@ const MarketingSalespersonDashboard = ({ activeView, setActiveView }) => {
         return <Orders />;
       case 'toolbox':
         return <ToolboxContent />;
+      case 'doc-style':
+        return <DocStyleDashboard />;
       default:
         return <MarketingDashboardContent selectedTab={selectedTab} setSelectedTab={setSelectedTab} />;
     }
@@ -108,12 +111,24 @@ const MarketingDashboardContent = ({ selectedTab, setSelectedTab }) => {
               <BarChart3 className="w-4 h-4" />
               <span>Performance</span>
             </button>
+            <button
+              onClick={() => setSelectedTab('doc-style')}
+              className={`flex items-center space-x-2 pb-2 font-medium text-sm transition-colors ${
+                selectedTab === 'doc-style'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Quotation Style</span>
+            </button>
           </nav>
         </div>
 
       {/* Tab Content */}
       {selectedTab === 'overview' && <OverviewContent />}
       {selectedTab === 'performance' && <PerformanceContent />}
+      {selectedTab === 'doc-style' && <DocStyleDashboard />}
     </div>
   );
 };
@@ -413,6 +428,29 @@ const OverviewContent = () => {
           </div>
           <p className="text-sm text-gray-500 text-center">Revenue in Thousands (₹)</p>
         </div>
+      </div>
+    </div>
+  );
+};
+// Quotation-style Dashboard View
+const DocStyleDashboard = () => {
+  // Use the existing MarketingQuotation component as the centerpiece inside a clean container,
+  // with the same margins/fonts/borders as the print template so the dashboard view matches.
+  const sampleQuotation = {
+    quotationDate: new Date().toISOString().split('T')[0],
+    quotationNumber: `ANQ${Date.now().toString().slice(-6)}`,
+    validUpto: new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0],
+    billTo: { business: '—', address: '—', phone: '—', gstNo: '', state: '—' },
+    items: [],
+    subtotal: 0,
+    taxAmount: 0,
+    total: 0
+  };
+
+  return (
+    <div className="bg-white min-h-[85vh] px-6 py-6">
+      <div className="max-w-4xl mx-auto">
+        <MarketingQuotation quotationData={sampleQuotation} selectedBranch="ANODE" />
       </div>
     </div>
   );
