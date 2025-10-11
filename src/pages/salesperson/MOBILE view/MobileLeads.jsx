@@ -14,7 +14,7 @@ const MobileLeads = () => {
       email: 'john@abc.com',
       phone: '+91 98765 43210',
       location: 'Mumbai, Maharashtra',
-      status: 'new',
+      status: 'win',
       value: '₹2,50,000',
       assignedDate: '2024-01-15',
       lastContact: '2 hours ago',
@@ -27,7 +27,7 @@ const MobileLeads = () => {
       email: 'jane@xyz.com',
       phone: '+91 87654 32109',
       location: 'Delhi, NCR',
-      status: 'contacted',
+      status: 'loose',
       value: '₹1,80,000',
       assignedDate: '2024-01-14',
       lastContact: '1 day ago',
@@ -40,7 +40,7 @@ const MobileLeads = () => {
       email: 'mike@tech.com',
       phone: '+91 76543 21098',
       location: 'Bangalore, Karnataka',
-      status: 'qualified',
+      status: 'win',
       value: '₹3,20,000',
       assignedDate: '2024-01-13',
       lastContact: '3 days ago',
@@ -53,7 +53,7 @@ const MobileLeads = () => {
       email: 'sarah@global.com',
       phone: '+91 65432 10987',
       location: 'Chennai, Tamil Nadu',
-      status: 'proposal',
+      status: 'closed',
       value: '₹4,50,000',
       assignedDate: '2024-01-12',
       lastContact: '5 days ago',
@@ -63,19 +63,17 @@ const MobileLeads = () => {
 
   const statusFilters = [
     { id: 'all', label: 'All Leads', count: leads.length },
-    { id: 'new', label: 'New', count: leads.filter(l => l.status === 'new').length },
-    { id: 'contacted', label: 'Contacted', count: leads.filter(l => l.status === 'contacted').length },
-    { id: 'qualified', label: 'Qualified', count: leads.filter(l => l.status === 'qualified').length },
-    { id: 'proposal', label: 'Proposal', count: leads.filter(l => l.status === 'proposal').length }
+    { id: 'win', label: 'Win Leads', count: leads.filter(l => l.status === 'win').length },
+    { id: 'loose', label: 'Loose Leads', count: leads.filter(l => l.status === 'loose').length },
+    { id: 'closed', label: 'Closed Leads', count: leads.filter(l => l.status === 'closed').length }
   ];
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'new': return 'bg-blue-100 text-blue-800';
-      case 'contacted': return 'bg-yellow-100 text-yellow-800';
-      case 'qualified': return 'bg-green-100 text-green-800';
-      case 'proposal': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'win': return 'bg-green-100 text-green-800';
+      case 'loose': return 'bg-red-100 text-red-800';
+      case 'closed': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-blue-100 text-blue-800';
     }
   };
 
@@ -99,31 +97,31 @@ const MobileLeads = () => {
     <div className="p-4 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Leads</h1>
-        <button className="p-2 bg-blue-600 text-white rounded-lg">
-          <Plus className="h-5 w-5" />
+        <h1 className="text-lg font-bold text-gray-900">Leads</h1>
+        <button className="p-1.5 bg-blue-600 text-white rounded-lg">
+          <Plus className="h-4 w-4" />
         </button>
       </div>
 
       {/* Search Bar */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
         <input
           type="text"
           placeholder="Search leads..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-transparent text-sm"
         />
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex space-x-2 overflow-x-auto pb-2">
+      <div className="flex space-x-1 overflow-x-auto pb-1">
         {statusFilters.map((filter) => (
           <button
             key={filter.id}
             onClick={() => setSelectedFilter(filter.id)}
-            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
               selectedFilter === filter.id
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -135,46 +133,46 @@ const MobileLeads = () => {
       </div>
 
       {/* Leads List */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {filteredLeads.map((lead) => (
-          <div key={lead.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-            <div className="flex items-start justify-between mb-3">
+          <div key={lead.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+            <div className="flex items-start justify-between mb-2">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-1">
-                  <h3 className="font-semibold text-gray-900">{lead.name}</h3>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(lead.priority)}`}>
+                  <h3 className="font-semibold text-sm text-gray-900">{lead.name}</h3>
+                  <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(lead.priority)}`}>
                     {lead.priority}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600">{lead.company}</p>
+                <p className="text-xs text-gray-600">{lead.company}</p>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(lead.status)}`}>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(lead.status)}`}>
                 {lead.status}
               </span>
             </div>
 
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Phone className="h-4 w-4" />
-                <span>{lead.phone}</span>
+            <div className="space-y-1 mb-2">
+              <div className="flex items-center space-x-1 text-xs text-gray-600">
+                <Phone className="h-3 w-3" />
+                <span className="truncate">{lead.phone}</span>
               </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Mail className="h-4 w-4" />
-                <span>{lead.email}</span>
+              <div className="flex items-center space-x-1 text-xs text-gray-600">
+                <Mail className="h-3 w-3" />
+                <span className="truncate">{lead.email}</span>
               </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <MapPin className="h-4 w-4" />
-                <span>{lead.location}</span>
+              <div className="flex items-center space-x-1 text-xs text-gray-600">
+                <MapPin className="h-3 w-3" />
+                <span className="truncate">{lead.location}</span>
               </div>
             </div>
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-900">{lead.value}</p>
-                <p className="text-xs text-gray-500">Last contact: {lead.lastContact}</p>
+                <p className="text-xs font-medium text-gray-900">{lead.value}</p>
+                <p className="text-xs text-gray-500">Last: {lead.lastContact}</p>
               </div>
-              <button className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-                <ChevronRight className="h-4 w-4 text-gray-600" />
+              <button className="p-1.5 bg-gray-100 rounded hover:bg-gray-200 transition-colors">
+                <ChevronRight className="h-3 w-3 text-gray-600" />
               </button>
             </div>
           </div>

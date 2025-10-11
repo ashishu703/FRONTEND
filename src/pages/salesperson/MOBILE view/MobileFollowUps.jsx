@@ -124,31 +124,31 @@ const MobileFollowUps = () => {
     <div className="p-4 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Follow-ups</h1>
-        <button className="p-2 bg-blue-600 text-white rounded-lg">
-          <Plus className="h-5 w-5" />
+        <h1 className="text-lg font-bold text-gray-900">Follow-ups</h1>
+        <button className="p-1.5 bg-blue-600 text-white rounded-lg">
+          <Plus className="h-4 w-4" />
         </button>
       </div>
 
       {/* Search Bar */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-gray-400" />
         <input
           type="text"
           placeholder="Search follow-ups..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-transparent text-sm"
         />
       </div>
 
       {/* Status Filters */}
-      <div className="flex space-x-2 overflow-x-auto pb-2">
+      <div className="flex space-x-1 overflow-x-auto pb-1">
         {statusFilters.map((filter) => (
           <button
             key={filter.id}
             onClick={() => setSelectedStatus(filter.id)}
-            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
               selectedStatus === filter.id
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -160,79 +160,79 @@ const MobileFollowUps = () => {
       </div>
 
       {/* Follow-ups List */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {filteredFollowUps.map((followUp) => {
           const TypeIcon = getTypeIcon(followUp.type);
           return (
-            <div key={followUp.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <div className="flex items-start justify-between mb-3">
+            <div key={followUp.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+              <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-1">
-                    <h3 className="font-semibold text-gray-900">{followUp.customerName}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(followUp.priority)}`}>
+                    <h3 className="font-semibold text-sm text-gray-900">{followUp.customerName}</h3>
+                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(followUp.priority)}`}>
                       {followUp.priority}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600">{followUp.company}</p>
+                  <p className="text-xs text-gray-600">{followUp.company}</p>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(followUp.status)}`}>
+                <div className="flex items-center space-x-1">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(followUp.status)}`}>
                     {followUp.status}
                   </span>
                   <div className="p-1 bg-gray-100 rounded">
-                    <TypeIcon className="h-4 w-4 text-gray-600" />
+                    <TypeIcon className="h-3 w-3 text-gray-600" />
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center justify-between text-sm">
+              <div className="space-y-1 mb-2">
+                <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-500">Scheduled:</span>
                   <span className="font-medium text-gray-900">{followUp.scheduledDate} at {followUp.scheduledTime}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-500">Type:</span>
                   <span className="text-gray-900 capitalize">{followUp.type}</span>
                 </div>
-                <div className="text-sm">
+                <div className="text-xs">
                   <span className="text-gray-500">Notes:</span>
-                  <span className="ml-2 text-gray-900">{followUp.notes}</span>
+                  <span className="ml-2 text-gray-900 truncate">{followUp.notes}</span>
                 </div>
               </div>
 
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Phone className="h-4 w-4" />
-                  <span>{followUp.contactInfo.phone}</span>
+              <div className="space-y-1 mb-2">
+                <div className="flex items-center space-x-1 text-xs text-gray-600">
+                  <Phone className="h-3 w-3" />
+                  <span className="truncate">{followUp.contactInfo.phone}</span>
                 </div>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Mail className="h-4 w-4" />
-                  <span>{followUp.contactInfo.email}</span>
+                <div className="flex items-center space-x-1 text-xs text-gray-600">
+                  <Mail className="h-3 w-3" />
+                  <span className="truncate">{followUp.contactInfo.email}</span>
                 </div>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <MapPin className="h-4 w-4" />
-                  <span>{followUp.contactInfo.location}</span>
+                <div className="flex items-center space-x-1 text-xs text-gray-600">
+                  <MapPin className="h-3 w-3" />
+                  <span className="truncate">{followUp.contactInfo.location}</span>
                 </div>
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="text-xs text-gray-500">
-                  Last contact: {followUp.lastContact}
+                  Last: {followUp.lastContact}
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex space-x-1">
                   {followUp.status === 'pending' && (
-                    <button className="px-3 py-1 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors">
+                    <button className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors">
                       <CheckCircle className="h-3 w-3 inline mr-1" />
                       Complete
                     </button>
                   )}
                   {followUp.status === 'overdue' && (
-                    <button className="px-3 py-1 bg-red-600 text-white text-xs rounded-lg hover:bg-red-700 transition-colors">
+                    <button className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors">
                       <Clock className="h-3 w-3 inline mr-1" />
                       Reschedule
                     </button>
                   )}
-                  <button className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 transition-colors">
+                  <button className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded hover:bg-gray-200 transition-colors">
                     <Phone className="h-3 w-3 inline mr-1" />
                     Call
                   </button>
