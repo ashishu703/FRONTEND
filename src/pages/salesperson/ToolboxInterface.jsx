@@ -877,46 +877,48 @@ const ToolboxInterface = () => {
         description: "ACSR conductor for overhead transmission and distribution lines",
         imageUrl: "/images/products/all aluminium alloy conductor.jpeg",
         priceList: [
-          { size: "SQUIRREL (6/1/2.11) - 10.5mm", price: "", stock: "", image: "" },
-          { size: "RABBIT (6/2.11) - 6.33mm", price: "", stock: "", image: "" },
-          { size: "WEASEL (6/2.59) - 7.77mm", price: "", stock: "", image: "" },
-          { size: "MARTEN (6/3.35) - 10.05mm", price: "", stock: "", image: "" },
-          { size: "LYNX (6/3.71) - 11.13mm", price: "", stock: "", image: "" },
-          { size: "DOG (6/4.72) - 14.16mm", price: "", stock: "", image: "" },
-          { size: "WOLF (6/4.72 + 6/1.57) - 14.5mm", price: "", stock: "", image: "" },
-          { size: "PANTHER (30/3.00) - 15.0mm", price: "", stock: "", image: "" },
-          { size: "ZEBRA (30/3.00 + 7/1.95) - 15.75mm", price: "", stock: "", image: "" },
-          { size: "MOOSE (54/3.53) - 24.26mm", price: "", stock: "", image: "" }
+          { size: "10 SQMM", price: "", stock: "", image: "" },
+          { size: "18 SQMM", price: "", stock: "", image: "" },
+          { size: "20 SQMM", price: "", stock: "", image: "" },
+          { size: "30 SQMM", price: "", stock: "", image: "" },
+          { size: "50 SQMM", price: "", stock: "", image: "" },
+          { size: "80 SQMM", price: "", stock: "", image: "" },
+          { size: "100 SQMM", price: "", stock: "", image: "" }
         ],
         technicalData: {},
         technicalTables: {
-          note: "ACSR CONDUCTOR AS PER IS 398 (PART II) : 1996",
+          note: "ALUMINIUM CONDUCTOR GALVANISED STEEL REINFORCED IS 398 PT-II : 1996",
           tables: [
             {
               title: "ACSR CONDUCTOR SPECIFICATIONS",
               columns: [
-                "CODE NAME",
-                "ALUMINIUM STRANDING (No. / mm)",
-                "STEEL STRANDING (No. / mm)",
-                "OVERALL DIAMETER (mm)",
-                "ALUMINIUM AREA (sq.mm)",
-                "STEEL AREA (sq.mm)",
-                "TOTAL AREA (sq.mm)",
-                "APPROX. WEIGHT (kg/km)",
-                "RATED STRENGTH (kN)",
-                "DC RESISTANCE (Ohm/km) at 20°C"
+                "ACSR Code",
+                "Nom. Aluminium Area (mm²)",
+                "Stranding and Wire Diameter - Aluminium (nos/mm)",
+                "Stranding and Wire Diameter - Steel (nos/mm)",
+                "DC Resistance at 20°C (Ω/km)",
+                "AC Resistance at 65°C (Ω/km)",
+                "AC Resistance at 75°C (Ω/km)",
+                "Current Capacity at 65°C (Amps)",
+                "Current Capacity at 75°C (Amps)"
               ],
               rows: [
-                { code: "SQUIRREL", alStrand: "6/1.50", steelStrand: "1/1.50", dia: "4.50", alArea: "10.6", steelArea: "1.77", totalArea: "12.37", weight: "49.8", strength: "5.30", resistance: "2.706" },
-                { code: "RABBIT", alStrand: "6/1.50", steelStrand: "1/1.50", dia: "4.50", alArea: "10.6", steelArea: "1.77", totalArea: "12.37", weight: "49.8", strength: "5.30", resistance: "2.706" },
-                { code: "WEASEL", alStrand: "6/2.11", steelStrand: "1/2.11", dia: "6.33", alArea: "21.0", steelArea: "3.50", totalArea: "24.50", weight: "98.6", strength: "10.5", resistance: "1.369" },
-                { code: "MARTEN", alStrand: "6/3.35", steelStrand: "1/3.35", dia: "10.05", alArea: "52.9", steelArea: "8.82", totalArea: "61.72", weight: "248.0", strength: "26.5", resistance: "0.544" },
-                { code: "LYNX", alStrand: "6/3.71", steelStrand: "1/3.71", dia: "11.13", alArea: "65.0", steelArea: "10.8", totalArea: "75.80", weight: "304.0", strength: "32.6", resistance: "0.442" },
-                { code: "DOG", alStrand: "6/4.72", steelStrand: "1/4.72", dia: "14.16", alArea: "105.0", steelArea: "17.5", totalArea: "122.5", weight: "492.0", strength: "52.7", resistance: "0.274" },
-                { code: "WOLF", alStrand: "6/4.72", steelStrand: "7/1.57", dia: "14.5", alArea: "105.0", steelArea: "13.6", totalArea: "118.6", weight: "465.0", strength: "63.5", resistance: "0.274" },
-                { code: "PANTHER", alStrand: "30/3.00", steelStrand: "7/3.00", dia: "15.0", alArea: "212.0", steelArea: "49.5", totalArea: "261.5", weight: "1010.0", strength: "123.0", resistance: "0.136" },
-                { code: "ZEBRA", alStrand: "30/3.00", steelStrand: "7/1.95", dia: "15.75", alArea: "212.0", steelArea: "20.9", totalArea: "232.9", weight: "844.0", strength: "95.0", resistance: "0.136" },
-                { code: "MOOSE", alStrand: "54/3.53", steelStrand: "7/3.53", dia: "24.26", alArea: "528.0", steelArea: "68.6", totalArea: "596.6", weight: "2030.0", strength: "194.0", resistance: "0.055" }
+                { code: "Mole", alArea: "10", alStrand: "6/1.50", steelStrand: "1/1.50", dcResistance: "2.780", acResistance65: "3.777", acResistance75: "3.905", current65: "58", current75: "70" },
+                { code: "Squirrel", alArea: "20", alStrand: "6/1.96", steelStrand: "1/1.96", dcResistance: "1.394", acResistance65: "1.894", acResistance75: "1.958", current65: "89", current75: "107" },
+                { code: "Weasel", alArea: "30", alStrand: "6/2.59", steelStrand: "1/2.59", dcResistance: "0.929", acResistance65: "1.262", acResistance75: "1.308", current65: "114", current75: "138" },
+                { code: "Rabbit", alArea: "50", alStrand: "6/3.35", steelStrand: "1/3.35", dcResistance: "0.552", acResistance65: "0.705", acResistance75: "0.776", current65: "157", current75: "190" },
+                { code: "Raccoon", alArea: "80", alStrand: "6/4.09", steelStrand: "1/4.09", dcResistance: "0.371", acResistance65: "0.504", acResistance75: "0.522", current65: "200", current75: "244" },
+                { code: "Dog", alArea: "100", alStrand: "6/4.72", steelStrand: "7/1.57", dcResistance: "0.279", acResistance65: "0.379", acResistance75: "0.392", current65: "239", current75: "291" },
+                { code: "Coyote", alArea: "130", alStrand: "26/2.54", steelStrand: "7/1.91", dcResistance: "0.225", acResistance65: "0.266", acResistance75: "0.275", current65: "292", current75: "358" },
+                { code: "Wolf", alArea: "150", alStrand: "30/2.59", steelStrand: "7/2.59", dcResistance: "0.187", acResistance65: "0.222", acResistance75: "0.230", current65: "329", current75: "405" },
+                { code: "Lynx", alArea: "180", alStrand: "30/2.79", steelStrand: "7/2.79", dcResistance: "0.161", acResistance65: "0.191", acResistance75: "0.197", current65: "361", current75: "445" },
+                { code: "Panther", alArea: "200", alStrand: "30/3.00", steelStrand: "7/3.00", dcResistance: "0.139", acResistance65: "0.165", acResistance75: "0.171", current65: "395", current75: "487" },
+                { code: "Goat", alArea: "320", alStrand: "30/3.71", steelStrand: "7/3.71", dcResistance: "0.091", acResistance65: "0.108", acResistance75: "0.112", current65: "510", current75: "634" },
+                { code: "Kundah", alArea: "400", alStrand: "42/3.50", steelStrand: "7/1.96", dcResistance: "0.073", acResistance65: "0.089", acResistance75: "0.092", current65: "566", current75: "705" },
+                { code: "Zebra", alArea: "420", alStrand: "54/3.18", steelStrand: "7/3.18", dcResistance: "0.069", acResistance65: "0.084", acResistance75: "0.087", current65: "590", current75: "737" },
+                { code: "Moose", alArea: "520", alStrand: "54/3.53", steelStrand: "7/3.53", dcResistance: "0.056", acResistance65: "0.069", acResistance75: "0.071", current65: "667", current75: "836" },
+                { code: "Morkulla", alArea: "560", alStrand: "42/4.13", steelStrand: "7/2.30", dcResistance: "0.052", acResistance65: "0.065", acResistance75: "0.067", current65: "688", current75: "862" },
+                { code: "Bersimis", alArea: "690", alStrand: "42/4.57", steelStrand: "7/2.54", dcResistance: "0.042", acResistance65: "0.051", acResistance75: "0.052", current65: "791", current75: "998" }
               ]
             }
           ]
@@ -2430,8 +2432,8 @@ const ToolboxInterface = () => {
                       <div className="md:col-span-1 flex flex-col items-center">
                         <div className="w-full h-64 bg-white rounded-lg border border-gray-200 overflow-hidden">
                           <img 
-                            src="/images/products/acsr-conductor.jpg"
-                            alt="ACSR Conductor"
+                            src={getProductData(selectedProduct)?.imageUrl || "/images/products/acsr-conductor.jpg"}
+                            alt={getProductData(selectedProduct)?.title || "ACSR Conductor"}
                             className="w-full h-full object-contain p-4"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';

@@ -5,6 +5,7 @@ import CustomerListContent from './salespersonleads.jsx'
 import StockManagement from './salespersonstock.jsx'
 import ProductsPage from './salespersonproducts.jsx'
 import ToolboxInterface from './ToolboxInterface.jsx'
+import MobileLayout from './MOBILE view/MobileLayout.jsx'
 import FixedHeader from '../../Header.jsx'
 
 // Follow Up Components
@@ -27,6 +28,7 @@ const followUpPages = {
 export default function SalespersonLayout({ onLogout }) {
   const [currentPage, setCurrentPage] = useState('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [isMobileView, setIsMobileView] = useState(false)
   
   // Set default follow-up page if a follow-up page is loaded directly
   useEffect(() => {
@@ -44,6 +46,11 @@ export default function SalespersonLayout({ onLogout }) {
     window.history.pushState({}, '', `/${page}`);
   };
 
+  // If mobile view is active, render mobile layout
+  if (isMobileView) {
+    return <MobileLayout onLogout={onLogout} onToggleDesktopView={() => setIsMobileView(false)} />
+  }
+
   return (
     <SharedDataProvider>
       <div className="min-h-screen bg-gray-50 relative">
@@ -55,7 +62,12 @@ export default function SalespersonLayout({ onLogout }) {
           setSidebarOpen={setSidebarOpen} 
         />
         <div className={sidebarOpen ? "flex-1 ml-64 transition-all duration-300" : "flex-1 ml-16 transition-all duration-300"}>
-          <FixedHeader userType="salesperson" currentPage={currentPage} />
+          <FixedHeader 
+            userType="salesperson" 
+            currentPage={currentPage} 
+            onToggleMobileView={() => setIsMobileView(!isMobileView)}
+            isMobileView={isMobileView}
+          />
           <div className="flex-1">
             {currentPage === 'dashboard' && <DashboardContent />}
             {currentPage === 'customers' && <CustomerListContent />}
