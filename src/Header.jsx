@@ -2,7 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 
+<<<<<<< HEAD
 const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onMobileMenuClick, isMobile = false }) => {
+=======
+const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onToggleMobileView, isMobileView = false }) => {
+>>>>>>> e9aed2c9266622a452891a18465e04be97901825
   const { user, logout } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showNotificationHistory, setShowNotificationHistory] = useState(false);
@@ -437,6 +441,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onMob
 
         {/* Right Section - Notifications and User */}
         <div className="flex items-center space-x-4">
+<<<<<<< HEAD
           {/* Mobile Toggle Button - Only show for marketing-salesperson */}
           {userType === "marketing-salesperson" && (
             <button
@@ -448,6 +453,23 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onMob
             </button>
           )}
 
+=======
+          {/* Mobile Toggle Button - Only for salesperson */}
+          {userType === "salesperson" && onToggleMobileView && (
+            <button
+              onClick={onToggleMobileView}
+              className={`p-2 rounded-lg transition-colors ${
+                isMobileView 
+                  ? 'bg-blue-100 text-blue-600' 
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
+              title={isMobileView ? 'Switch to Desktop View' : 'Switch to Mobile View'}
+            >
+              <Smartphone className="w-5 h-5" />
+            </button>
+          )}
+          
+>>>>>>> e9aed2c9266622a452891a18465e04be97901825
           {/* Notification Bell */}
           <div className="relative" ref={notificationRef}>
             <button 
