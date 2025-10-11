@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign } from 'lucide-react';
+import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 
-const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => {
+const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onMobileMenuClick, isMobile = false }) => {
   const { user, logout } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showNotificationHistory, setShowNotificationHistory] = useState(false);
@@ -437,6 +437,17 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => 
 
         {/* Right Section - Notifications and User */}
         <div className="flex items-center space-x-4">
+          {/* Mobile Toggle Button - Only show for marketing-salesperson */}
+          {userType === "marketing-salesperson" && (
+            <button
+              onClick={onMobileMenuClick}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Switch to Mobile View"
+            >
+              <Smartphone className="w-5 h-5 text-gray-600" />
+            </button>
+          )}
+
           {/* Notification Bell */}
           <div className="relative" ref={notificationRef}>
             <button 
