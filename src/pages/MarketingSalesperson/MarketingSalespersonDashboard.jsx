@@ -111,24 +111,13 @@ const MarketingDashboardContent = ({ selectedTab, setSelectedTab }) => {
               <BarChart3 className="w-4 h-4" />
               <span>Performance</span>
             </button>
-            <button
-              onClick={() => setSelectedTab('doc-style')}
-              className={`flex items-center space-x-2 pb-2 font-medium text-sm transition-colors ${
-                selectedTab === 'doc-style'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              <span>Quotation Style</span>
-            </button>
+            
           </nav>
         </div>
 
       {/* Tab Content */}
       {selectedTab === 'overview' && <OverviewContent />}
       {selectedTab === 'performance' && <PerformanceContent />}
-      {selectedTab === 'doc-style' && <DocStyleDashboard />}
     </div>
   );
 };
