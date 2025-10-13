@@ -138,13 +138,18 @@ const MobileToolbox = () => {
       {/* Products Grid */}
       <div className="space-y-4">
         {filteredProducts.map((product) => (
-          <div key={product.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div
+            key={product.id}
+            role="button"
+            tabIndex={0}
+            className="group cursor-pointer bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transform transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-200"
+          >
             {/* Product Image */}
-            <div className="relative h-48 bg-gray-100">
+            <div className="relative h-48 bg-gray-100 overflow-hidden">
               <img
                 src={product.image}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transform transition-transform duration-300 group-hover:scale-105"
                 onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.nextElementSibling.style.display = 'flex';
