@@ -4,7 +4,7 @@ import MarketingSalespersonDashboard from './MarketingSalespersonDashboard';
 import FixedHeader from '../../Header';
 import { MarketingSharedDataProvider } from './MarketingSharedDataContext';
 import { MarketingFollowUpDataProvider } from './FollowUp/MarketingFollowUpDataContext';
-import MobileMarketingSalespersonLayout from '../MARKETING SALESPERSON MOBILE VIEW/MobileMarketingSalespersonLayout';
+import MobileMarketingSalespersonLayout from './MOBILE view/MobileMarketingSalespersonLayout.jsx';
 
 const MarketingSalespersonLayout = () => {
   const [activeView, setActiveView] = useState('dashboard');
@@ -17,7 +17,16 @@ const MarketingSalespersonLayout = () => {
   };
 
   if (isMobileView) {
-    return <MobileMarketingSalespersonLayout />;
+    return (
+      <MarketingSharedDataProvider>
+        <MarketingFollowUpDataProvider>
+          <MobileMarketingSalespersonLayout 
+            onLogout={() => {}} 
+            onToggleDesktopView={() => setIsMobileView(false)} 
+          />
+        </MarketingFollowUpDataProvider>
+      </MarketingSharedDataProvider>
+    );
   }
 
   return (
