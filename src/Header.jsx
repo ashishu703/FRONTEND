@@ -451,10 +451,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
               <Smartphone className="w-5 h-5" />
             </button>
           )}
-<<<<<<< HEAD
-          
-=======
->>>>>>> b86a9075f2840de777f26f5d78f997dba3df335a
+
           {/* Notification Bell */}
           <div className="relative" ref={notificationRef}>
             <button 
