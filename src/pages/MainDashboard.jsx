@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useCompany } from '../context/CompanyContext';
 import SuperAdminSalesDashboard from './SuperAdmin/SuperAdminSalesDashboard';
 import AllcustomerList from './SuperAdmin/AllcustomerList';
 import SuperAdminDepartmentList from './SuperAdmin/SuperAdminDepartmentList';
@@ -13,6 +14,12 @@ import OfficeSalesPersonDashboard from './SuperAdmin/OfficeSalesPersonDashboard'
 import HRDepartmentDashboard from './SuperAdmin/HRDepartmentDashboard';
 
 const MainDashboard = ({ activeView, setActiveView }) => {
+  const { selectedCompany } = useCompany();
+
+  // If any child widgets need to re-fetch on company change, key the tree by company
+  useEffect(() => {
+    // placeholder to trigger effects/data refetch in children via props/context if needed
+  }, [selectedCompany]);
   const renderContent = () => {
     console.log('MainDashboard - activeView:', activeView);
     switch (activeView) {
@@ -56,7 +63,7 @@ const MainDashboard = ({ activeView, setActiveView }) => {
 
   return (
     <div className="h-full">
-      <div key={activeView} className="animate-fade-up">
+      <div key={`${activeView}-${selectedCompany}`} className="animate-fade-up">
         {renderContent()}
       </div>
     </div>

@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
+import { useCompany } from './context/CompanyContext';
 
 const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onToggleMobileView, isMobileView = false }) => {
   const { user, logout } = useAuth();
+  const { selectedCompany, setSelectedCompany } = useCompany();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showNotificationHistory, setShowNotificationHistory] = useState(false);
   const notificationRef = useRef(null);
@@ -186,6 +188,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -435,8 +438,22 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
           </div>
         </div>
 
-        {/* Right Section - Notifications and User */}
+        {/* Right Section - Company switcher (SuperAdmin), Notifications and User */}
         <div className="flex items-center space-x-4">
+          {userType === 'superadmin' && (
+            <div className="">
+              <select
+                value={selectedCompany}
+                onChange={(e) => setSelectedCompany(e.target.value)}
+                className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                title="Select Company"
+              >
+                <option value="Anode Electric Pvt.">Anode Electric Pvt.</option>
+                <option value="Samriddhi Industries Pvt.">Samriddhi Industries Pvt.</option>
+                <option value="Samriddhi Cables Pvt.">Samriddhi Cables Pvt.</option>
+              </select>
+            </div>
+          )}
           {/* Mobile Toggle Button - Only for salesperson */}
           {userType === "salesperson" && onToggleMobileView && (
             <button
