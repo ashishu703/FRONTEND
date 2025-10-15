@@ -7,8 +7,7 @@ services:
     build: .
     # Container ka naam 'anode-frontend' rakho
     container_name: anode-frontend
-    # Local machine ke port 80 ko container ke port 80 se jodo
-    # Aap browser mein server ki IP daal kar access kar payenge
+    # Local machine ke port 8080 ko container ke port 80 se jodo
     ports:
       - "8080:80"
     # Agar container fail ho to automatically restart karo
