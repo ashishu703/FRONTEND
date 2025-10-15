@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, 
   RefreshCw, 
@@ -34,6 +34,7 @@ import MarketingQuotationForm from './MarketingCreateQuotationForm';
 import MarketingQuotation from './MarketingQuotation';
 import { MarketingCorporateStandardInvoice } from './MarketingProformaInvoice';
 import MarketingFollowUpBase from './FollowUp/MarketingFollowUpBase';
+import MarketingQuotationPreview from "./MarketingQuotationPreview"
 
 // Edit Lead Modal Component
 const EditLeadModal = ({ lead, onSave, onClose }) => {
@@ -41,6 +42,8 @@ const EditLeadModal = ({ lead, onSave, onClose }) => {
     name: lead.name,
     phone: lead.phone,
     address: lead.address,
+    area: lead.area || '',
+    division: lead.division || '',
     gstNo: lead.gstNo,
     productType: lead.productType,
     state: lead.state,
@@ -113,6 +116,85 @@ const EditLeadModal = ({ lead, onSave, onClose }) => {
                 required
               />
             </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
+          <select
+            name="area"
+            value={formData.area}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select Area</option>
+            <option value="Indore">Indore</option>
+            <option value="Bhopal">Bhopal</option>
+            <option value="Jabalpur">Jabalpur</option>
+            <option value="Gwalior">Gwalior</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Division</label>
+          <select
+            name="division"
+            value={formData.division}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select Division</option>
+            <option value="Bhopal">Bhopal</option>
+            <option value="Raisen">Raisen</option>
+            <option value="Rajgarh">Rajgarh</option>
+            <option value="Sehore">Sehore</option>
+            <option value="Vidisha">Vidisha</option>
+            <option value="Bhind">Bhind</option>
+            <option value="Morena">Morena</option>
+            <option value="Sheopur">Sheopur</option>
+            <option value="Ashoknagar">Ashoknagar</option>
+            <option value="Datia">Datia</option>
+            <option value="Guna">Guna</option>
+            <option value="Gwalior">Gwalior</option>
+            <option value="Shivpuri">Shivpuri</option>
+            <option value="Alirajpur">Alirajpur</option>
+            <option value="Barwani">Barwani</option>
+            <option value="Burhanpur">Burhanpur</option>
+            <option value="Dhar">Dhar</option>
+            <option value="Indore">Indore</option>
+            <option value="Jhabua">Jhabua</option>
+            <option value="Khandwa">Khandwa</option>
+            <option value="Khargone">Khargone</option>
+            <option value="Balaghat">Balaghat</option>
+            <option value="Chhindwara">Chhindwara</option>
+            <option value="Dindori">Dindori</option>
+            <option value="Jabalpur">Jabalpur</option>
+            <option value="Katni">Katni</option>
+            <option value="Mandla">Mandla</option>
+            <option value="Narsinghpur">Narsinghpur</option>
+            <option value="Seoni">Seoni</option>
+            <option value="Betul">Betul</option>
+            <option value="Harda">Harda</option>
+            <option value="Hoshangabad">Hoshangabad</option>
+            <option value="Maihar">Maihar</option>
+            <option value="Rewa">Rewa</option>
+            <option value="Satna">Satna</option>
+            <option value="Sidhi">Sidhi</option>
+            <option value="Singrauli">Singrauli</option>
+            <option value="Chhatarpur">Chhatarpur</option>
+            <option value="Damoh">Damoh</option>
+            <option value="Niwari">Niwari</option>
+            <option value="Panna">Panna</option>
+            <option value="Sagar">Sagar</option>
+            <option value="Tikamgarh">Tikamgarh</option>
+            <option value="Anuppur">Anuppur</option>
+            <option value="Shahdol">Shahdol</option>
+            <option value="Umaria">Umaria</option>
+            <option value="Agar Malwa">Agar Malwa</option>
+            <option value="Dewas">Dewas</option>
+            <option value="Mandsaur">Mandsaur</option>
+            <option value="Neemuch">Neemuch</option>
+            <option value="Ratlam">Ratlam</option>
+            <option value="Shajapur">Shajapur</option>
+            <option value="Ujjain">Ujjain</option>
+          </select>
+        </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">GST No.</label>
               <input
@@ -133,9 +215,10 @@ const EditLeadModal = ({ lead, onSave, onClose }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="Industrial Equipment">Industrial Equipment</option>
-                <option value="Commercial Lighting">Commercial Lighting</option>
-                <option value="Power Solutions">Power Solutions</option>
+                <option value="Industrial Cable">Industrial Cable</option>
+                <option value="Domestic Cable">Domestic Cable</option>
+                <option value="Power Cable">Power Cable</option>
+                <option value="Networking Cable">Networking Cable</option>
               </select>
             </div>
             <div>
@@ -162,10 +245,11 @@ const EditLeadModal = ({ lead, onSave, onClose }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="Website">Website</option>
-                <option value="Referral">Referral</option>
-                <option value="Cold Call">Cold Call</option>
-                <option value="Social Media">Social Media</option>
+                <option value="office">office</option>
+                <option value="indiamart">indiamart</option>
+                <option value="facebook">facebook</option>
+                <option value="whatsapp">whatsapp</option>
+                <option value="market">market</option>
               </select>
             </div>
             <div>
@@ -179,6 +263,17 @@ const EditLeadModal = ({ lead, onSave, onClose }) => {
               >
                 <option value="B2B">B2B</option>
                 <option value="B2C">B2C</option>
+                <option value="Electrical Shop">Electrical Shop</option>
+                <option value="Camera Installer">Camera Installer</option>
+                <option value="Internet Provider">Internet Provider</option>
+                <option value="Automobile Shops">Automobile Shops</option>
+                <option value="Solar Panel Installer">Solar Panel Installer</option>
+                <option value="Local Rea Disk Provider">Local Rea Disk Provider</option>
+                <option value="Transformer Winding Service">Transformer Winding Service</option>
+                <option value="Motor Winding Shop">Motor Winding Shop</option>
+                <option value="Harware shop">Harware shop</option>
+                <option value="Tent house">Tent house</option>
+                <option value="Contractor">Contractor</option>
               </select>
             </div>
             <div>
@@ -281,6 +376,8 @@ const AddCustomerModal = ({ onSave, onClose }) => {
     name: '',
     phone: '',
     address: '',
+    area: '',
+    division: '',
     gstNo: '',
     productType: '',
     state: '',
@@ -353,6 +450,86 @@ const AddCustomerModal = ({ onSave, onClose }) => {
               />
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Area</label>
+              <select
+                name="area"
+                value={formData.area}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Area</option>
+                <option value="Indore">Indore</option>
+                <option value="Bhopal">Bhopal</option>
+                <option value="Jabalpur">Jabalpur</option>
+                <option value="Gwalior">Gwalior</option>
+                <option value="Ujjain">Ujjain</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Division</label>
+              <select
+                name="division"
+                value={formData.division}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Division</option>
+                <option value="Bhopal">Bhopal</option>
+                <option value="Raisen">Raisen</option>
+                <option value="Rajgarh">Rajgarh</option>
+                <option value="Sehore">Sehore</option>
+                <option value="Vidisha">Vidisha</option>
+                <option value="Bhind">Bhind</option>
+                <option value="Morena">Morena</option>
+                <option value="Sheopur">Sheopur</option>
+                <option value="Ashoknagar">Ashoknagar</option>
+                <option value="Datia">Datia</option>
+                <option value="Guna">Guna</option>
+                <option value="Gwalior">Gwalior</option>
+                <option value="Shivpuri">Shivpuri</option>
+                <option value="Alirajpur">Alirajpur</option>
+                <option value="Barwani">Barwani</option>
+                <option value="Burhanpur">Burhanpur</option>
+                <option value="Dhar">Dhar</option>
+                <option value="Indore">Indore</option>
+                <option value="Jhabua">Jhabua</option>
+                <option value="Khandwa">Khandwa</option>
+                <option value="Khargone">Khargone</option>
+                <option value="Balaghat">Balaghat</option>
+                <option value="Chhindwara">Chhindwara</option>
+                <option value="Dindori">Dindori</option>
+                <option value="Jabalpur">Jabalpur</option>
+                <option value="Katni">Katni</option>
+                <option value="Mandla">Mandla</option>
+                <option value="Narsinghpur">Narsinghpur</option>
+                <option value="Seoni">Seoni</option>
+                <option value="Betul">Betul</option>
+                <option value="Harda">Harda</option>
+                <option value="Hoshangabad">Hoshangabad</option>
+                <option value="Maihar">Maihar</option>
+                <option value="Rewa">Rewa</option>
+                <option value="Satna">Satna</option>
+                <option value="Sidhi">Sidhi</option>
+                <option value="Singrauli">Singrauli</option>
+                <option value="Chhatarpur">Chhatarpur</option>
+                <option value="Damoh">Damoh</option>
+                <option value="Niwari">Niwari</option>
+                <option value="Panna">Panna</option>
+                <option value="Sagar">Sagar</option>
+                <option value="Tikamgarh">Tikamgarh</option>
+                <option value="Anuppur">Anuppur</option>
+                <option value="Shahdol">Shahdol</option>
+                <option value="Umaria">Umaria</option>
+                <option value="Agar Malwa">Agar Malwa</option>
+                <option value="Dewas">Dewas</option>
+                <option value="Mandsaur">Mandsaur</option>
+                <option value="Neemuch">Neemuch</option>
+                <option value="Ratlam">Ratlam</option>
+                <option value="Shajapur">Shajapur</option>
+                <option value="Ujjain">Ujjain</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">GST No. *</label>
               <input
                 type="text"
@@ -373,9 +550,10 @@ const AddCustomerModal = ({ onSave, onClose }) => {
                 required
               >
                 <option value="">Select Product Type</option>
-                <option value="Industrial Equipment">Industrial Equipment</option>
-                <option value="Commercial Lighting">Commercial Lighting</option>
-                <option value="Power Solutions">Power Solutions</option>
+                <option value="Industrial Cable">Industrial Cable</option>
+                <option value="Domestic Cable">Domestic Cable</option>
+                <option value="Power Cable">Power Cable</option>
+                <option value="Networking Cable">Networking Cable</option>
               </select>
             </div>
             <div>
@@ -404,10 +582,11 @@ const AddCustomerModal = ({ onSave, onClose }) => {
                 required
               >
                 <option value="">Select Lead Source</option>
-                <option value="Website">Website</option>
-                <option value="Referral">Referral</option>
-                <option value="Cold Call">Cold Call</option>
-                <option value="Social Media">Social Media</option>
+                <option value="office">office</option>
+                <option value="indiamart">indiamart</option>
+                <option value="facebook">facebook</option>
+                <option value="whatsapp">whatsapp</option>
+                <option value="market">market</option>
               </select>
             </div>
             <div>
@@ -422,6 +601,17 @@ const AddCustomerModal = ({ onSave, onClose }) => {
                 <option value="">Select Customer Type</option>
                 <option value="B2B">B2B</option>
                 <option value="B2C">B2C</option>
+                <option value="Electrical Shop">Electrical Shop</option>
+                <option value="Camera Installer">Camera Installer</option>
+                <option value="Internet Provider">Internet Provider</option>
+                <option value="Automobile Shops">Automobile Shops</option>
+                <option value="Solar Panel Installer">Solar Panel Installer</option>
+                <option value="Local Rea Disk Provider">Local Rea Disk Provider</option>
+                <option value="Transformer Winding Service">Transformer Winding Service</option>
+                <option value="Motor Winding Shop">Motor Winding Shop</option>
+                <option value="Harware shop">Harware shop</option>
+                <option value="Tent house">Tent house</option>
+                <option value="Contractor">Contractor</option>
               </select>
             </div>
             <div>
@@ -553,7 +743,7 @@ const LeadImportModal = ({ onImport, onClose }) => {
           gstNo: lead.gstno || lead.gstno || '',
           productType: lead.producttype || lead.producttype || 'Industrial Equipment',
           state: lead.state || 'Madhya Pradesh',
-          leadSource: lead.leadsource || lead.leadsource || 'Website',
+          leadSource: lead.leadsource || lead.leadsource || 'office',
           customerType: lead.customertype || lead.customertype || 'B2B',
           date: lead.date || new Date().toISOString().split('T')[0],
           visitingStatus: lead.visitingstatus || lead.visitingstatus || 'Not Visited',
@@ -824,6 +1014,12 @@ const MarketingSalespersonLeads = () => {
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [totalAmount, setTotalAmount] = useState(0);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const tableScrollRef = useRef(null);
+  const touchStartXRef = useRef(0);
+  const touchScrollLeftRef = useRef(0);
+  const pointerDownRef = useRef(false);
+  const pointerStartXRef = useRef(0);
+  const pointerScrollLeftRef = useRef(0);
   
   // Sync quotations with localStorage whenever quotations change
   useEffect(() => {
@@ -871,6 +1067,8 @@ const MarketingSalespersonLeads = () => {
   const [filters, setFilters] = useState({
     name: '',
     address: '',
+    area: '',
+    division: '',
     gstNo: '',
     visitingStatus: '',
     leadSource: '',
@@ -886,11 +1084,13 @@ const MarketingSalespersonLeads = () => {
       name: 'Rajesh Kumar',
       phone: '+91 98765 43210',
       address: '123 MG Road, Indore, MP',
+      area: 'Indore',
+      division: 'Dewas',
       gstNo: '23ABCDE1234F1Z5',
       productType: 'Industrial Equipment',
       state: 'Madhya Pradesh',
-      leadSource: 'Website',
-      customerType: 'B2B',
+      leadSource: 'market',
+      customerType: 'Electrical Shop',
       date: '2025-01-17',
       visitingStatus: 'Scheduled',
       visitingStatusUpdated: '2025-01-17T10:30:00',
@@ -908,11 +1108,13 @@ const MarketingSalespersonLeads = () => {
       name: 'Priya Sharma',
       phone: '+91 87654 32109',
       address: '456 Business Park, Bhopal, MP',
+      area: 'Bhopal',
+      division: 'Raisen',
       gstNo: '23FGHIJ5678K2L6',
       productType: 'Commercial Lighting',
       state: 'Madhya Pradesh',
-      leadSource: 'Referral',
-      customerType: 'B2B',
+      leadSource: 'indiamart',
+      customerType: 'Camera Installer',
       date: '2025-01-16',
       visitingStatus: 'Visited',
       visitingStatusUpdated: '2025-01-16T14:45:00',
@@ -930,11 +1132,13 @@ const MarketingSalespersonLeads = () => {
       name: 'Amit Patel',
       phone: '+91 76543 21098',
       address: '789 Industrial Area, Jabalpur, MP',
+      area: 'Jabalpur',
+      division: 'Narsinghpur',
       gstNo: '23KLMNO9012P3M7',
       productType: 'Power Solutions',
       state: 'Madhya Pradesh',
-      leadSource: 'Cold Call',
-      customerType: 'B2B',
+      leadSource: 'facebook',
+      customerType: 'Internet Provider',
       date: '2025-01-15',
       visitingStatus: 'Not Visited',
       visitingStatusUpdated: '2025-01-15T09:15:00',
@@ -951,11 +1155,13 @@ const MarketingSalespersonLeads = () => {
       name: 'Sneha Gupta',
       phone: '+91 65432 10987',
       address: '321 Tech Hub, Gwalior, MP',
+      area: 'Gwalior',
+      division: 'Morena',
       gstNo: '23PQRST3456U4V8',
       productType: 'Industrial Equipment',
       state: 'Madhya Pradesh',
-      leadSource: 'Social Media',
-      customerType: 'B2C',
+      leadSource: 'whatsapp',
+      customerType: 'Contractor',
       date: '2025-01-14',
       visitingStatus: 'Scheduled',
       visitingStatusUpdated: '2025-01-14T16:20:00',
@@ -973,11 +1179,13 @@ const MarketingSalespersonLeads = () => {
       name: 'Vikram Singh',
       phone: '+91 54321 09876',
       address: '654 Corporate Plaza, Ujjain, MP',
+      area: 'Ujjain',
+      division: 'Ratlam',
       gstNo: '23WXYZ7890A5B9',
       productType: 'Commercial Lighting',
       state: 'Madhya Pradesh',
-      leadSource: 'Website',
-      customerType: 'B2B',
+      leadSource: 'market',
+      customerType: 'Automobile Shops',
       date: '2025-01-13',
       visitingStatus: 'Visited',
       visitingStatusUpdated: '2025-01-13T11:30:00',
@@ -996,6 +1204,8 @@ const MarketingSalespersonLeads = () => {
       lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.phone.includes(searchTerm) ||
       lead.address.toLowerCase().includes(searchTerm) ||
+      (lead.area || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (lead.division || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.gstNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.productType.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.leadId.toLowerCase().includes(searchTerm.toLowerCase());
@@ -1004,6 +1214,8 @@ const MarketingSalespersonLeads = () => {
     const matchesFilters = 
       (filters.name === '' || lead.name.toLowerCase().includes(filters.name.toLowerCase())) &&
       (filters.address === '' || lead.address.toLowerCase().includes(filters.address.toLowerCase())) &&
+      (filters.area === '' || (lead.area || '') === filters.area) &&
+      (filters.division === '' || (lead.division || '') === filters.division) &&
       (filters.gstNo === '' || lead.gstNo.toLowerCase().includes(filters.gstNo.toLowerCase())) &&
       (filters.visitingStatus === '' || lead.visitingStatus === filters.visitingStatus) &&
       (filters.leadSource === '' || lead.leadSource === filters.leadSource) &&
@@ -1487,7 +1699,9 @@ const MarketingSalespersonLeads = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen pb-16">
+    <div className="p-6 bg-gray-50 min-h-screen pb-16" 
+         onMouseDown={(e) => e.stopPropagation()}
+         onClick={(e) => e.stopPropagation()}>
       <style jsx>{`
         .overflow-x-auto::-webkit-scrollbar {
           height: 8px;
@@ -1502,6 +1716,12 @@ const MarketingSalespersonLeads = () => {
         }
         .overflow-x-auto::-webkit-scrollbar-thumb:hover {
           background: #64748b;
+        }
+        /* Prevent scroll chaining/back navigation on horizontal scroll */
+        .overflow-x-auto {
+          overscroll-behavior-x: none; /* fully stop back/forward gestures */
+          overscroll-behavior: contain;
+          touch-action: pan-x; /* allow horizontal pan, block vertical */
         }
       `}</style>
       {/* Top Section - Search and Actions */}
@@ -1559,9 +1779,20 @@ const MarketingSalespersonLeads = () => {
 
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
-          <table className="min-w-full divide-y divide-gray-200" style={{minWidth: '1200px'}}>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+           onMouseDown={(e) => e.stopPropagation()}
+           onClick={(e) => e.stopPropagation()}>
+        <div ref={tableScrollRef} className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100" 
+             onMouseDown={(e) => e.stopPropagation()}
+             onClick={(e) => e.stopPropagation()}
+             style={{
+               overscrollBehavior: 'contain',
+               overscrollBehaviorX: 'none',
+               touchAction: 'pan-x'
+             }}>
+          <table className="min-w-full divide-y divide-gray-200" style={{minWidth: '1700px'}}
+                 onMouseDown={(e) => e.stopPropagation()}
+                 onClick={(e) => e.stopPropagation()}>
             <thead className="bg-gray-50">
               {/* Filter Row */}
               {showFilters && (
@@ -1588,6 +1819,81 @@ const MarketingSalespersonLeads = () => {
                     />
                   </th>
                   <th className="px-6 py-2">
+                    <select
+                      value={filters.area}
+                      onChange={(e) => setFilters({...filters, area: e.target.value})}
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">All Areas</option>
+                      <option value="Indore">Indore</option>
+                      <option value="Bhopal">Bhopal</option>
+                      <option value="Jabalpur">Jabalpur</option>
+                      <option value="Gwalior">Gwalior</option>
+                    </select>
+                  </th>
+                  <th className="px-6 py-2">
+                    <select
+                      value={filters.division}
+                      onChange={(e) => setFilters({...filters, division: e.target.value})}
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">All Divisions</option>
+                      <option value="Bhopal">Bhopal</option>
+                      <option value="Raisen">Raisen</option>
+                      <option value="Rajgarh">Rajgarh</option>
+                      <option value="Sehore">Sehore</option>
+                      <option value="Vidisha">Vidisha</option>
+                      <option value="Bhind">Bhind</option>
+                      <option value="Morena">Morena</option>
+                      <option value="Sheopur">Sheopur</option>
+                      <option value="Ashoknagar">Ashoknagar</option>
+                      <option value="Datia">Datia</option>
+                      <option value="Guna">Guna</option>
+                      <option value="Gwalior">Gwalior</option>
+                      <option value="Shivpuri">Shivpuri</option>
+                      <option value="Alirajpur">Alirajpur</option>
+                      <option value="Barwani">Barwani</option>
+                      <option value="Burhanpur">Burhanpur</option>
+                      <option value="Dhar">Dhar</option>
+                      <option value="Indore">Indore</option>
+                      <option value="Jhabua">Jhabua</option>
+                      <option value="Khandwa">Khandwa</option>
+                      <option value="Khargone">Khargone</option>
+                      <option value="Balaghat">Balaghat</option>
+                      <option value="Chhindwara">Chhindwara</option>
+                      <option value="Dindori">Dindori</option>
+                      <option value="Jabalpur">Jabalpur</option>
+                      <option value="Katni">Katni</option>
+                      <option value="Mandla">Mandla</option>
+                      <option value="Narsinghpur">Narsinghpur</option>
+                      <option value="Seoni">Seoni</option>
+                      <option value="Betul">Betul</option>
+                      <option value="Harda">Harda</option>
+                      <option value="Hoshangabad">Hoshangabad</option>
+                      <option value="Maihar">Maihar</option>
+                      <option value="Rewa">Rewa</option>
+                      <option value="Satna">Satna</option>
+                      <option value="Sidhi">Sidhi</option>
+                      <option value="Singrauli">Singrauli</option>
+                      <option value="Chhatarpur">Chhatarpur</option>
+                      <option value="Damoh">Damoh</option>
+                      <option value="Niwari">Niwari</option>
+                      <option value="Panna">Panna</option>
+                      <option value="Sagar">Sagar</option>
+                      <option value="Tikamgarh">Tikamgarh</option>
+                      <option value="Anuppur">Anuppur</option>
+                      <option value="Shahdol">Shahdol</option>
+                      <option value="Umaria">Umaria</option>
+                      <option value="Agar Malwa">Agar Malwa</option>
+                      <option value="Dewas">Dewas</option>
+                      <option value="Mandsaur">Mandsaur</option>
+                      <option value="Neemuch">Neemuch</option>
+                      <option value="Ratlam">Ratlam</option>
+                      <option value="Shajapur">Shajapur</option>
+                      <option value="Ujjain">Ujjain</option>
+                    </select>
+                  </th>
+                  <th className="px-6 py-2">
                     <input
                       type="text"
                       placeholder="Filter GST"
@@ -1603,9 +1909,10 @@ const MarketingSalespersonLeads = () => {
                       className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
                       <option value="">All Type</option>
-                      <option value="Industrial Equipment">Industrial Equipment</option>
-                      <option value="Commercial Lighting">Commercial Lighting</option>
-                      <option value="Power Solutions">Power Solutions</option>
+                      <option value="Industrial Cable">Industrial Cable</option>
+                      <option value="Domestic Cable">Domestic Cable</option>
+                      <option value="Power Cable">Power Cable</option>
+                      <option value="Networking Cable">Networking Cable</option>
                     </select>
                   </th>
                   <th className="px-6 py-2">
@@ -1628,10 +1935,11 @@ const MarketingSalespersonLeads = () => {
                       className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
                       <option value="">All Sou</option>
-                      <option value="Website">Website</option>
-                      <option value="Referral">Referral</option>
-                      <option value="Cold Call">Cold Call</option>
-                      <option value="Social Media">Social Media</option>
+                      <option value="office">office</option>
+                      <option value="indiamart">indiamart</option>
+                      <option value="facebook">facebook</option>
+                      <option value="whatsapp">whatsapp</option>
+                      <option value="market">market</option>
                     </select>
                   </th>
                   <th className="px-6 py-2">
@@ -1643,6 +1951,17 @@ const MarketingSalespersonLeads = () => {
                       <option value="">All Types</option>
                       <option value="B2B">B2B</option>
                       <option value="B2C">B2C</option>
+                      <option value="Electrical Shop">Electrical Shop</option>
+                      <option value="Camera Installer">Camera Installer</option>
+                      <option value="Internet Provider">Internet Provider</option>
+                      <option value="Automobile Shops">Automobile Shops</option>
+                      <option value="Solar Panel Installer">Solar Panel Installer</option>
+                      <option value="Local Rea Disk Provider">Local Rea Disk Provider</option>
+                      <option value="Transformer Winding Service">Transformer Winding Service</option>
+                      <option value="Motor Winding Shop">Motor Winding Shop</option>
+                      <option value="Harware shop">Harware shop</option>
+                      <option value="Tent house">Tent house</option>
+                      <option value="Contractor">Contractor</option>
                     </select>
                   </th>
                   <th className="px-6 py-2">
@@ -1692,6 +2011,18 @@ const MarketingSalespersonLeads = () => {
                   <div className="flex items-center space-x-2">
                     <MapPin className="w-4 h-4 text-green-600" />
                     <span>ADDRESS</span>
+                  </div>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '140px', minWidth: '140px'}}>
+                  <div className="flex items-center space-x-2">
+                    <Map className="w-4 h-4 text-green-600" />
+                    <span>AREA</span>
+                  </div>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '140px', minWidth: '140px'}}>
+                  <div className="flex items-center space-x-2">
+                    <Globe className="w-4 h-4 text-green-600" />
+                    <span>DIVISION</span>
                   </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '150px', minWidth: '150px'}}>
@@ -1753,7 +2084,9 @@ const MarketingSalespersonLeads = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredLeads.length > 0 ? (
                 filteredLeads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-gray-50">
+                  <tr key={lead.id} className="hover:bg-gray-50" 
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {lead.leadId}
                     </td>
@@ -1786,6 +2119,12 @@ const MarketingSalespersonLeads = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
                       <div className="truncate">{lead.address}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {lead.area || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {lead.division || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {lead.gstNo}
@@ -1867,7 +2206,7 @@ const MarketingSalespersonLeads = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="13" className="px-6 py-12 text-center">
+                  <td colSpan="14" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center">
                       <Search className="w-12 h-12 text-gray-300 mb-4" />
                       <p className="text-gray-500 text-lg">No customers available</p>
@@ -1966,6 +2305,14 @@ const MarketingSalespersonLeads = () => {
                     <span className="text-gray-500">Address</span>
                     <span className="font-medium text-gray-900 text-right max-w-[60%]">{selectedLead.address}</span>
                     </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Area</span>
+                    <span className="font-medium text-gray-900">{selectedLead.area || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Division</span>
+                    <span className="font-medium text-gray-900">{selectedLead.division || '-'}</span>
+                  </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">GST No.</span>
                     <span className="font-medium text-gray-900">{selectedLead.gstNo || '-'}</span>
@@ -2471,118 +2818,34 @@ const MarketingSalespersonLeads = () => {
               </div>
               
               {/* Quotation Content */}
-              <div id="quotation-preview-content" className="border-2 border-black p-6 bg-white">
-                {/* Header */}
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h1 className="text-xl font-bold">ANODE ELECTRIC PRIVATE LIMITED</h1>
-                    <p className="text-sm font-semibold text-gray-700">(23AANCA7455R1ZX)</p>
-                    <p className="text-xs">MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.</p>
-                  </div>
-                  <div className="text-right">
-                    <img
-                      src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
-                      alt="Company Logo"
-                      className="h-12 w-auto bg-white p-1 rounded"
-                    />
-                  </div>
-                </div>
-                
-                {/* Company Details */}
-                <div className="border-2 border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Company Details</h3>
-                  <p className="text-sm">KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.</p>
-                  <p className="text-sm">Tel: 6262002116, 6262002113</p>
-                  <p className="text-sm">Web: www.anocab.com</p>
-                  <p className="text-sm">Email: info@anocab.com</p>
-                </div>
-              
-                {/* Quotation Details Table */}
-                <div className="border border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Quotation Details</h3>
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-black">
-                        <th className="text-left p-2 border-r border-black">Quotation Date</th>
-                        <th className="text-left p-2 border-r border-black">Quotation Number</th>
-                        <th className="text-left p-2 border-r border-black">Valid Upto</th>
-                        <th className="text-left p-2">Voucher Number</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="p-2 border-r border-black">{quotationPopupData.quotationDate}</td>
-                        <td className="p-2 border-r border-black">{quotationPopupData.quotationNumber}</td>
-                        <td className="p-2 border-r border-black">{quotationPopupData.validUpto}</td>
-                        <td className="p-2">{quotationPopupData.voucherNumber}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Customer Details */}
-                <div className="border border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Bill To:</h3>
-                  <p className="font-semibold">{quotationPopupData.customer.name}</p>
-                  <p>{quotationPopupData.customer.business}</p>
-                  <p>{quotationPopupData.customer.address}</p>
-                  <p>Phone: {quotationPopupData.customer.phone}</p>
-                  <p>Email: {quotationPopupData.customer.email}</p>
-                </div>
-                
-                {/* Items Table */}
-                <div className="border border-black p-4 mb-4">
-                  <h3 className="font-bold mb-2">Items</h3>
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b border-black">
-                        <th className="text-left p-2 border-r border-black">Description</th>
-                        <th className="text-center p-2 border-r border-black">Quantity</th>
-                        <th className="text-right p-2 border-r border-black">Unit Price</th>
-                        <th className="text-right p-2">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {quotationPopupData.items.map((item, index) => (
-                        <tr key={index}>
-                          <td className="p-2 border-r border-black">{item.description}</td>
-                          <td className="p-2 text-center border-r border-black">{item.quantity}</td>
-                          <td className="p-2 text-right border-r border-black">₹{item.unitPrice.toFixed(2)}</td>
-                          <td className="p-2 text-right">₹{item.total.toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {/* Totals */}
-                <div className="border border-black p-4">
-                  <div className="flex justify-end">
-                    <div className="w-64">
-                      <div className="flex justify-between p-2 border-b">
-                        <span>Subtotal:</span>
-                        <span>₹{quotationPopupData.subtotal.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between p-2 border-b">
-                        <span>Tax (18%):</span>
-                        <span>₹{quotationPopupData.tax.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between p-2 font-bold">
-                        <span>Total:</span>
-                        <span>₹{quotationPopupData.total.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Footer */}
-                <div className="text-right text-xs mt-4">
-                  <p className="mb-4">
-                    For <strong>ANODE ELECTRIC PRIVATE LIMITED</strong>
-                  </p>
-                  <p className="mb-8">This is computer generated quotation no signature required.</p>
-                  <p className="font-bold">Authorized Signatory</p>
-                </div>
+              <div id="quotation-preview-content" className="bg-white">
+                <MarketingQuotationPreview
+                  data={{
+                    quotationNumber: quotationPopupData.quotationNumber,
+                    quotationDate: quotationPopupData.quotationDate,
+                    validUpto: quotationPopupData.validUpto,
+                    voucherNumber: quotationPopupData.voucherNumber,
+                    billTo: {
+                      business: quotationPopupData.customer.name || quotationPopupData.customer.business,
+                      address: quotationPopupData.customer.address,
+                      phone: quotationPopupData.customer.phone,
+                      gstNo: quotationPopupData.customer.gstNo,
+                      state: quotationPopupData.customer.state
+                    },
+                    items: quotationPopupData.items?.map(i => ({
+                      productName: i.description,
+                      quantity: i.quantity,
+                      unit: i.unit || 'Nos',
+                      buyerRate: i.unitPrice,
+                      amount: i.total
+                    })),
+                    subtotal: quotationPopupData.subtotal,
+                    taxAmount: quotationPopupData.tax,
+                    total: quotationPopupData.total,
+                    selectedBranch: selectedBranch
+                  }}
+                  companyBranches={companyBranches}
+                />
               </div>
             </div>
             

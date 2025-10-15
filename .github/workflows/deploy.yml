@@ -9,27 +9,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the repository and its submodules
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          # FIX: This line fetches the submodules along with your main code.
+          submodules: 'recursive'
 
+      # Step 2: Setup SSH key to connect to your VPS
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          # Ensure you are using the correct secret name for the private key
           echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H 62.72.12.249 >> ~/.ssh/known_hosts
 
+      # Step 3: Deploy the application on the VPS
       - name: Deploy on VPS
         env:
-          # This makes the new secret available to the runner
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
         run: |
-          # The SSH command now uses the correct path and passes the API URL
-          # as a build argument to Docker Compose.
           ssh -i ~/.ssh/id_ed25519 deploy@62.72.12.249 "
             cd /home/deploy/app && \
             git fetch origin main && \
             git reset --hard origin/main && \
-            docker compose build --build-arg VITE_API_BASE_URL=${VITE_API_BASE_URL} && \
+            # FIX: This command updates the submodules on your server.
+            git submodule update --init --recursive && \
+            # FIX: Single quotes around the variable prevent script errors.
+            docker compose build --build-arg VITE_API_BASE_URL='${VITE_API_BASE_URL}' && \
             docker compose up -d
+          "
