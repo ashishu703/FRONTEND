@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Plus, DollarSign, Eye, Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import MarketingQuotationPreview from "./MarketingQuotationPreview.jsx"
+// Removed PI template import; PI functionality is limited to salesperson module
 
 // CreateQuotationForm Component for Marketing Salesperson
 const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
@@ -217,6 +218,8 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
     });
     onClose();
   };
+
+  // Removed PI click handler; PI functionality belongs to salesperson module
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -515,6 +518,7 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
                   <Download className="w-4 h-4" />
                   Download
                 </button>
+                {/* PI button removed for Marketing form */}
               </div>
               <div className="flex gap-3">
                 <button 
@@ -577,6 +581,8 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
           </div>
         </div>
       )}
+
+      {/* PI Preview removed for Marketing form */}
     </div>
   );
 };
