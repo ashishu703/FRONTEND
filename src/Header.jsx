@@ -324,6 +324,12 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
           title: "Customer Visits",
           subtitle: "Plan and track customer visits"
         };
+      case 'expenses':
+        return {
+          icon: <DollarSign className="w-6 h-6 text-white" />,
+          title: "Expenses",
+          subtitle: "Track your marketing expenses"
+        };
       case 'orders':
         return {
           icon: <TrendingUp className="w-6 h-6 text-white" />,

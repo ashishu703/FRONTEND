@@ -12,7 +12,8 @@ import {
   UserCheck,
   MapPin,
   ShoppingCart,
-  Clock
+  Clock,
+  IndianRupee
 } from 'lucide-react';
 
 const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
@@ -50,6 +51,12 @@ const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
       id: 'orders',
       label: 'Orders',
       icon: <ShoppingCart className="w-5 h-5" />,
+      hasDropdown: false
+    },
+    {
+      id: 'expenses',
+      label: 'Expenses',
+      icon: <IndianRupee className="w-5 h-5" />,
       hasDropdown: false
     },
     {

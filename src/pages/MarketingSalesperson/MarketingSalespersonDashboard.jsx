@@ -37,6 +37,7 @@ import AllLeads from './MarketingSalespersonLeads';
 import Visits from './MarketingSalespersonVisits';
 import TestVisits from './TestVisits';
 import Orders from './MarketingSalespersonOrders';
+import MarketingSalespersonExpenses from './MarketingSalespersonExpenses';
 import MarketingFollowUpBase from './FollowUp/MarketingFollowUpBase';
 import { useMarketingFollowUpData } from './FollowUp/MarketingFollowUpDataContext';
 
@@ -66,6 +67,8 @@ const MarketingSalespersonDashboard = ({ activeView, setActiveView }) => {
         return <Visits />;
       case 'orders':
         return <Orders />;
+      case 'expenses':
+        return <MarketingSalespersonExpenses />;
       case 'toolbox':
         return <ToolboxContent />;
       case 'doc-style':
