@@ -9,33 +9,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository and its submodules
       - name: Checkout repo
         uses: actions/checkout@v4
+
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          # FIX: This line fetches the submodules along with your main code.
-          submodules: 'recursive'
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
 
-      # Step 2: Setup SSH key to connect to your VPS
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H 62.72.12.249 >> ~/.ssh/known_hosts
+      - name: Add remote server to known_hosts
+        run: ssh-keyscan -H 62.72.12.249 >> ~/.ssh/known_hosts
 
-      # Step 3: Deploy the application on the VPS
       - name: Deploy on VPS
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 deploy@62.72.12.249 "
+          ssh -A deploy@62.72.12.249 "
             cd /home/deploy/app && \
             git fetch origin main && \
             git reset --hard origin/main && \
-            # FIX: This command updates the submodules on your server.
-            git submodule update --init --recursive && \
-            # FIX: Single quotes around the variable prevent script errors.
-            docker compose build --build-arg VITE_API_BASE_URL='${VITE_API_BASE_URL}' && \
-            docker compose up -d
-          "
+            echo '>>> Building and starting Docker containers...' && \
+            docker compose build --build-arg VITE_API_BASE_URL=${VITE_API_BASE_URL} && \
+            docker compose up -d"
