@@ -450,28 +450,67 @@ const DocStyleDashboard = () => {
 
 // Performance Content
 const PerformanceContent = () => {
-  // Performance data structure matching salesperson dashboard
+  const { leadsData = [], loading, getStatusCounts } = useMarketingFollowUpData();
+
+  // Status counts derived from shared context
+  const statusCounts = getStatusCounts ? getStatusCounts() : { connected: 0, 'not-connected': 0, 'next-meeting': 0, closed: 0, total: 0 };
+
+  const totalLeads = statusCounts.total || 0;
+  const closedLeads = statusCounts.closed || 0;
+  const conversionRateCurrent = totalLeads > 0 ? Math.round((closedLeads / totalLeads) * 100) : 0;
+
+  // Revenue derived from closed leads expectedValue sum
+  const revenueCurrent = (leadsData || [])
+    .filter(l => (l.finalStatus || '').toLowerCase() === 'closed')
+    .reduce((sum, l) => sum + (Number(l.expectedValue) || 0), 0);
+
+  // Use interaction counts as proxy for calls (connected + not-connected)
+  const callsCurrent = (statusCounts.connected || 0) + (statusCounts['not-connected'] || 0);
+
+  // Load configurable targets from localStorage; fall back to current values (no hardcoding)
+  const targetsFromStorage = (() => {
+    try { return JSON.parse(localStorage.getItem('marketingPerformanceTargets') || '{}'); } catch { return {}; }
+  })();
+
+  const resolvedTargets = {
+    monthlyLeads: Number(targetsFromStorage.monthlyLeads) || totalLeads,
+    conversionRate: Number(targetsFromStorage.conversionRate) || conversionRateCurrent,
+    revenue: Number(targetsFromStorage.revenue) || revenueCurrent,
+    calls: Number(targetsFromStorage.calls) || callsCurrent
+  };
+
+  // Build performance data dynamically
   const performanceData = {
     targets: {
-      monthlyLeads: { current: 0, target: 100, label: "Monthly Leads" },
-      conversionRate: { current: 0, target: 25, label: "Conversion Rate (%)" },
-      revenue: { current: 0, target: 300000, label: "Monthly Revenue (₹)" },
-      calls: { current: 0, target: 300, label: "Daily Calls" }
+      monthlyLeads: { current: totalLeads, target: resolvedTargets.monthlyLeads, label: "Monthly Leads" },
+      conversionRate: { current: conversionRateCurrent, target: resolvedTargets.conversionRate, label: "Conversion Rate (%)" },
+      revenue: { current: revenueCurrent, target: resolvedTargets.revenue, label: "Quarterly Revenue (₹)" },
+      calls: { current: callsCurrent, target: resolvedTargets.calls, label: "Daily Calls" }
     },
     leadStatusData: [
-      { label: "Hot", value: 0, color: "#ef4444" },
-      { label: "Warm", value: 0, color: "#f97316" },
-      { label: "Cold", value: 0, color: "#6b7280" },
-      { label: "Converted", value: 0, color: "#22c55e" }
+      { label: "Connected", value: statusCounts.connected || 0, color: "#3b82f6" },
+      { label: "Not Connected", value: statusCounts['not-connected'] || 0, color: "#ef4444" },
+      { label: "Next Meeting", value: statusCounts['next-meeting'] || 0, color: "#8b5cf6" },
+      { label: "Closed", value: statusCounts.closed || 0, color: "#10b981" }
     ],
-    monthlyPerformance: [
-      { label: "Jan", value: 0, color: "#3b82f6" },
-      { label: "Feb", value: 0, color: "#3b82f6" },
-      { label: "Mar", value: 0, color: "#3b82f6" },
-      { label: "Apr", value: 0, color: "#3b82f6" },
-      { label: "May", value: 0, color: "#3b82f6" },
-      { label: "Jun", value: 0, color: "#3b82f6" }
-    ],
+    monthlyPerformance: (() => {
+      // Simple last-6-months leads-per-month metric from connectedStatusDate
+      const now = new Date();
+      const months = Array.from({ length: 6 }).map((_, idx) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - (5 - idx), 1);
+        const label = d.toLocaleString('en-US', { month: 'short' });
+        const value = (leadsData || []).filter(l => {
+          const dateStr = l.connectedStatusDate || l.finalStatusDate;
+          if (!dateStr) return false;
+          const dt = new Date(dateStr);
+          return dt.getFullYear() === d.getFullYear() && dt.getMonth() === d.getMonth();
+        }).length;
+        return { label, value, color: '#3b82f6' };
+      });
+      // Highlight latest month if it's the max
+      const max = Math.max(0, ...months.map(m => m.value));
+      return months.map((m, i) => ({ ...m, color: i === months.length - 1 && m.value === max ? '#10b981' : '#3b82f6' }));
+    })(),
     kpis: [
       {
         title: "Lead Response Time",
@@ -483,7 +522,7 @@ const PerformanceContent = () => {
       },
       {
         title: "Follow-up Rate",
-        value: "0%",
+        value: `${totalLeads > 0 ? Math.round(((statusCounts.connected || 0) / totalLeads) * 100) : 0}%`,
         target: "> 85%",
         status: "warning",
         icon: TrendingUp,
@@ -499,7 +538,7 @@ const PerformanceContent = () => {
       },
       {
         title: "Quotation Success",
-        value: "0%",
+        value: `${totalLeads > 0 ? Math.round((closedLeads / totalLeads) * 100) : 0}%`,
         target: "> 70%",
         status: "warning",
         icon: CheckCircle,
@@ -507,7 +546,7 @@ const PerformanceContent = () => {
       },
       {
         title: "Transfer Leads",
-        value: "0",
+        value: `${(statusCounts['next-meeting'] || 0)}`,
         target: "< 20",
         status: "success",
         icon: TrendingUp,
@@ -518,7 +557,53 @@ const PerformanceContent = () => {
 
   return (
     <div className="space-y-6 pb-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Performance Dashboard</h1>
+          <p className="text-sm text-gray-500">Track your targets and performance metrics</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <input type="text" placeholder="dd-mm-yyyy" className="px-3 py-2 border rounded-md text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </div>
+      </div>
+
+      {/* Target Cards (top row) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {Object.entries(performanceData.targets).map(([key, target]) => {
+          const progress = (target.current / target.target) * 100;
+          const remaining = target.target - target.current;
+          const remainingPct = Math.max(0, Math.ceil(100 - progress));
+          return (
+            <div key={key} className="relative bg-white border rounded-lg p-4 shadow-sm">
+              {remaining > 0 && (
+                <div className="absolute top-0 right-0 text-xs font-semibold px-2 py-1 rounded-bl-lg bg-red-100 text-red-700">{remaining.toLocaleString()} to go</div>
+              )}
+              <div className="text-sm font-medium text-gray-700 mb-2">{target.label}</div>
+              <div className="flex items-baseline gap-1 mb-2">
+                <span className="text-2xl font-bold text-gray-900">{key === 'conversionRate' ? `${target.current}` : `${target.current}`}</span>
+                <span className="text-sm text-gray-500">{key === 'conversionRate' ? '/ ' + target.target : '/ ' + target.target}</span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
+                <div className="h-full bg-red-500" style={{ width: `${Math.min(progress, 100)}%` }}></div>
+              </div>
+              <div className="mt-1 text-xs text-red-600 font-medium">{remainingPct}% remaining</div>
+              <div className="text-xs text-red-600">{key === 'revenue' ? `${(remaining).toLocaleString()} more needed to hit target` : `${remaining} more needed to hit target`}</div>
+            </div>
+          );
+        })}
+      </div>
+
       {/* KPI Cards */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <svg className="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+          <h2 className="text-lg font-semibold text-gray-900">Key Performance Indicators</h2>
+        </div>
+        <p className="text-sm mb-2 text-gray-500">Track important metrics that impact your success</p>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {performanceData.kpis.map((kpi, index) => (
           <div key={index} className={`bg-white rounded-lg shadow-sm border p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1 ${kpi.color}`}>
@@ -536,109 +621,82 @@ const PerformanceContent = () => {
         ))}
       </div>
 
-      {/* Performance Targets */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6">Performance Targets</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="transition-all duration-300 hover:scale-105 hover:shadow-md hover:-translate-y-1 p-4 rounded-lg bg-gray-50">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600">{performanceData.targets.monthlyLeads.label}</span>
-              <span className="text-sm text-gray-900">{performanceData.targets.monthlyLeads.current}/{performanceData.targets.monthlyLeads.target}</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min((performanceData.targets.monthlyLeads.current / performanceData.targets.monthlyLeads.target) * 100, 100)}%` }}
-              ></div>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {((performanceData.targets.monthlyLeads.current / performanceData.targets.monthlyLeads.target) * 100).toFixed(1)}%
-            </div>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Lead Status Distribution */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-4 h-4 inline-block rounded-full bg-purple-500"></span>
+            <h3 className="text-lg font-semibold text-gray-800">Lead Status Distribution</h3>
           </div>
-          
-          <div className="transition-all duration-300 hover:scale-105 hover:shadow-md hover:-translate-y-1 p-4 rounded-lg bg-gray-50">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600">{performanceData.targets.conversionRate.label}</span>
-              <span className="text-sm text-gray-900">{performanceData.targets.conversionRate.current}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-green-600 h-2 rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min((performanceData.targets.conversionRate.current / performanceData.targets.conversionRate.target) * 100, 100)}%` }}
-              ></div>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {((performanceData.targets.conversionRate.current / performanceData.targets.conversionRate.target) * 100).toFixed(1)}%
-            </div>
-          </div>
-          
-          <div className="transition-all duration-300 hover:scale-105 hover:shadow-md hover:-translate-y-1 p-4 rounded-lg bg-gray-50">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600">{performanceData.targets.revenue.label}</span>
-              <span className="text-sm text-gray-900">₹{performanceData.targets.revenue.current.toLocaleString()}</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-purple-600 h-2 rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min((performanceData.targets.revenue.current / performanceData.targets.revenue.target) * 100, 100)}%` }}
-              ></div>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {((performanceData.targets.revenue.current / performanceData.targets.revenue.target) * 100).toFixed(1)}%
-            </div>
-          </div>
-          
-          <div className="transition-all duration-300 hover:scale-105 hover:shadow-md hover:-translate-y-1 p-4 rounded-lg bg-gray-50">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600">{performanceData.targets.calls.label}</span>
-              <span className="text-sm text-gray-900">{performanceData.targets.calls.current}/{performanceData.targets.calls.target}</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-orange-600 h-2 rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min((performanceData.targets.calls.current / performanceData.targets.calls.target) * 100, 100)}%` }}
-              ></div>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {((performanceData.targets.calls.current / performanceData.targets.calls.target) * 100).toFixed(1)}%
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Lead Status Distribution */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6">Lead Status Distribution</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {performanceData.leadStatusData.map((status, index) => (
-            <div key={index} className="text-center transition-all duration-300 hover:scale-110 hover:shadow-md hover:-translate-y-1 p-4 rounded-lg bg-gray-50">
-              <div className="w-16 h-16 mx-auto mb-2 rounded-full flex items-center justify-center text-white font-bold text-lg transition-all duration-300 hover:scale-110" 
-                   style={{ backgroundColor: status.color }}>
-                {status.value}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+            {/* Center total as donut substitute */}
+            <div className="flex items-center justify-center">
+              <div className="relative w-48 h-48 rounded-full bg-gray-100 flex items-center justify-center shadow-inner">
+                <span className="text-3xl font-bold text-gray-800">{performanceData.leadStatusData.reduce((a,b)=>a + (b.value||0),0)}</span>
+                <span className="absolute bottom-4 text-xs text-gray-500">Total</span>
               </div>
-              <p className="text-sm font-medium text-gray-700">{status.label}</p>
             </div>
-          ))}
+            {/* Legend */}
+            <div className="grid grid-cols-1 gap-3">
+              {performanceData.leadStatusData.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></span>
+                  <span className="text-sm text-gray-700 flex-1">{item.label}:</span>
+                  <span className="text-sm font-medium text-gray-900">{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Monthly Performance */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-4 h-4 inline-block rounded-sm bg-green-500"></span>
+            <h3 className="text-lg font-semibold text-gray-800">Monthly Performance</h3>
+          </div>
+          <div className="flex items-end justify-between h-48 space-x-2">
+            {performanceData.monthlyPerformance.map((month, index) => (
+              <div key={index} className="flex-1 flex flex-col items-center">
+                <span className="text-xs text-gray-600 mb-1">{month.value}</span>
+                <div 
+                  className="w-full rounded-t"
+                  style={{ 
+                    height: `${Math.max((month.value / 110) * 100, 8)}%`,
+                    backgroundColor: month.color
+                  }}
+                  title={`${month.label}: ${month.value}`}
+                ></div>
+                <span className="text-xs text-gray-600 mt-2">{month.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 text-center">
+            <span className="text-sm text-gray-500">Performance Score (0-100)</span>
+          </div>
         </div>
       </div>
 
-      {/* Monthly Performance Chart */}
+      {/* Performance Summary */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6">Monthly Performance</h3>
-        <div className="flex items-end justify-between h-48 space-x-2">
-          {performanceData.monthlyPerformance.map((month, index) => (
-            <div key={index} className="flex-1 flex flex-col items-center transition-all duration-300 hover:scale-105 hover:shadow-md hover:-translate-y-1 p-2 rounded-lg bg-gray-50">
-              <div 
-                className="w-full rounded-t transition-all duration-500 hover:opacity-80 hover:scale-110"
-                style={{ 
-                  height: `${Math.max((month.value / 100) * 100, 10)}px`,
-                  backgroundColor: month.color
-                }}
-                title={`${month.label}: ${month.value}`}
-              ></div>
-              <span className="text-xs text-gray-600 mt-2">{month.label}</span>
-            </div>
-          ))}
+        <div className="flex items-center gap-2 mb-6">
+          <span className="w-4 h-4 inline-block rounded-full bg-yellow-500"></span>
+          <h3 className="text-lg font-semibold text-gray-800">Performance Summary</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-blue-600 mb-1">87%</div>
+            <div className="text-sm text-gray-600">Overall Target Achievement</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-orange-600 mb-1">2</div>
+            <div className="text-sm text-gray-600">Areas Need Improvement</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-green-600 mb-1">3</div>
+            <div className="text-sm text-gray-600">Area Exceeding Target</div>
+          </div>
         </div>
       </div>
     </div>
