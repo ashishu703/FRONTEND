@@ -81,7 +81,7 @@ const sections = [
   },
 ];
 
-const ToolboxInterface = () => {
+const ToolboxInterface = ({ isDarkMode = false }) => {
   const [activeSection, setActiveSection] = useState("products");
   const [selectedTableData, setSelectedTableData] = useState(null);
   const [isTableOpen, setIsTableOpen] = useState(false);
@@ -1619,7 +1619,9 @@ const ToolboxInterface = () => {
   // (component continues)
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className={`flex min-h-screen ${
+      isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
+    }`}>
       {/* Main Content */}
       <div className="flex-1 p-6 pr-80">
         <div className="max-w-6xl mx-auto">
@@ -1629,10 +1631,16 @@ const ToolboxInterface = () => {
               return (
                 <section key={section.id} id={section.id} className="scroll-mt-6">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 rounded-lg bg-blue-100">
-                      <IconComponent className="h-6 w-6 text-blue-600" />
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-blue-900' : 'bg-blue-100'
+                    }`}>
+                      <IconComponent className={`h-6 w-6 ${
+                        isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                      }`} />
                     </div>
-                    <h2 className="text-2xl font-semibold text-gray-900">{section.title}</h2>
+                    <h2 className={`text-2xl font-semibold ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>{section.title}</h2>
                   </div>
 
                   {section.id === "products" && (
@@ -1678,10 +1686,16 @@ const ToolboxInterface = () => {
                             });
                             setFilteredTools(filtered);
                           }}
-                          className="w-full px-4 py-2 pl-10 pr-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className={`w-full px-4 py-2 pl-10 pr-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                            isDarkMode 
+                              ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
+                              : 'bg-white border-gray-300 text-gray-900'
+                          }`}
                         />
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className={`h-5 w-5 ${
+                            isDarkMode ? 'text-gray-400' : 'text-gray-400'
+                          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
                         </div>
@@ -1697,15 +1711,21 @@ const ToolboxInterface = () => {
                           key={toolIndex}
                           className={`p-4 transition-all duration-300 ease-in-out cursor-pointer group min-h-[140px] rounded-xl shadow-sm border 
                             ${section.id === "technical-size-chart"
-                              ? "bg-gradient-to-b from-white to-blue-50/50 border-blue-100 hover:border-blue-300 hover:shadow-xl hover:-translate-y-1 hover:ring-2 hover:ring-blue-200/60"
-                              : "bg-white border-gray-200 hover:bg-gray-50 hover:shadow-lg hover:scale-105 hover:-translate-y-1 hover:border-blue-200"}
+                              ? isDarkMode 
+                                ? "bg-gradient-to-b from-gray-800 to-gray-700 border-gray-600 hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 hover:ring-2 hover:ring-blue-400/60"
+                                : "bg-gradient-to-b from-white to-blue-50/50 border-blue-100 hover:border-blue-300 hover:shadow-xl hover:-translate-y-1 hover:ring-2 hover:ring-blue-200/60"
+                              : isDarkMode 
+                                ? "bg-gray-800 border-gray-600 hover:bg-gray-700 hover:shadow-lg hover:scale-105 hover:-translate-y-1 hover:border-blue-400"
+                                : "bg-white border-gray-200 hover:bg-gray-50 hover:shadow-lg hover:scale-105 hover:-translate-y-1 hover:border-blue-200"}
                           `}
                           onClick={() => handleToolClick(tool)}
                         >
                           <div className="flex flex-col text-left space-y-3">
                             {section.id === "products" ? (
                               tool.imageUrl ? (
-                                <div className="relative w-full h-24 mb-2 rounded-lg overflow-hidden bg-gray-100">
+                                <div className={`relative w-full h-24 mb-2 rounded-lg overflow-hidden ${
+                                  isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
+                                }`}>
                                   <img 
                                     src={tool.imageUrl} 
                                     alt={tool.name}
@@ -1737,26 +1757,39 @@ const ToolboxInterface = () => {
                             ) : ToolIcon && (
                               <div className={`p-3 rounded-lg transition-all duration-300 ease-in-out group-hover:scale-110 
                                 ${section.id === "technical-size-chart" 
-                                  ? "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
-                                  : "bg-gray-100 group-hover:bg-blue-100"}
+                                  ? isDarkMode 
+                                    ? "bg-blue-900 text-blue-400 group-hover:bg-blue-800"
+                                    : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
+                                  : isDarkMode 
+                                    ? "bg-gray-700 group-hover:bg-blue-900"
+                                    : "bg-gray-100 group-hover:bg-blue-100"}
                              `}>
                                 <ToolIcon className={`h-6 w-6 transition-all duration-300 ease-in-out group-hover:rotate-3 
-                                  ${section.id === "technical-size-chart" ? "text-blue-600" : "text-gray-600 group-hover:text-blue-600"}
+                                  ${section.id === "technical-size-chart" 
+                                    ? isDarkMode ? "text-blue-400" : "text-blue-600"
+                                    : isDarkMode ? "text-gray-400 group-hover:text-blue-400" : "text-gray-600 group-hover:text-blue-600"}
                                 `} />
                               </div>
                             )}
                             <div className="flex-1">
-                              <h3 className={`font-medium text-gray-900 mb-1 group-hover:text-blue-600 transition-colors duration-300 ${
+                              <h3 className={`font-medium mb-1 transition-colors duration-300 ${
                                 section.id === "technical-size-chart" ? "text-sm leading-tight" : "text-sm"
+                              } ${
+                                isDarkMode 
+                                  ? 'text-white group-hover:text-blue-400' 
+                                  : 'text-gray-900 group-hover:text-blue-600'
                               }`}>
                                 {tool.name}
                               </h3>
-                              <p className={`text-xs leading-relaxed transition-colors duration-300 
-                                ${section.id === "technical-size-chart" ? "text-gray-600 group-hover:text-gray-700" : "text-gray-500 group-hover:text-gray-700"}
-                              `}>{tool.description}</p>
-                              <p className={`text-xs leading-relaxed transition-colors duration-300 
-                                ${section.id === "technical-size-chart" ? "text-gray-600 group-hover:text-gray-700" : "text-gray-500 group-hover:text-gray-700"}
-                              `}>{tool.description}</p>
+                              <p className={`text-xs leading-relaxed transition-colors duration-300 ${
+                                section.id === "technical-size-chart" 
+                                  ? isDarkMode 
+                                    ? "text-gray-400 group-hover:text-gray-300" 
+                                    : "text-gray-600 group-hover:text-gray-700"
+                                  : isDarkMode 
+                                    ? "text-gray-400 group-hover:text-gray-300" 
+                                    : "text-gray-500 group-hover:text-gray-700"
+                              }`}>{tool.description}</p>
                             </div>
                           </div>
                         </div>
@@ -1986,12 +2019,20 @@ const ToolboxInterface = () => {
       )}
 
       {/* Right Sidebar */}
-      <div className="fixed right-0 top-0 h-full w-80 bg-white border-l border-gray-200 shadow-lg overflow-y-auto">
+      <div className={`fixed right-0 top-0 h-full w-80 border-l shadow-lg overflow-y-auto ${
+        isDarkMode 
+          ? 'bg-gray-800 border-gray-700' 
+          : 'bg-white border-gray-200'
+      }`}>
         <div className="p-6">
           {/* Company Details Header */}
           <div className="mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Building className="h-5 w-5 text-blue-600" />
+            <h2 className={`text-xl font-bold mb-4 flex items-center gap-2 ${
+              isDarkMode ? 'text-white' : 'text-gray-900'
+            }`}>
+              <Building className={`h-5 w-5 ${
+                isDarkMode ? 'text-blue-400' : 'text-blue-600'
+              }`} />
               Company Details
             </h2>
           </div>
@@ -1999,7 +2040,11 @@ const ToolboxInterface = () => {
           {/* Business Card */}
           <div className="mb-4">
             <div 
-              className="p-4 rounded-xl border border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md"
+              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+                isDarkMode 
+                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
+                  : 'border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100'
+              }`}
               onClick={openBusinessCard}
             >
               <div className="flex items-center gap-3">
@@ -2007,31 +2052,57 @@ const ToolboxInterface = () => {
                   <User className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm">Business Card</h3>
-                  <p className="text-xs text-gray-600">Company contact information</p>
+                  <h3 className={`font-semibold text-sm ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>Business Card</h3>
+                  <p className={`text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>Company contact information</p>
                 </div>
-                <ChevronRight className={`h-4 w-4 text-gray-500 transition-transform duration-300 ${showBusinessCard ? 'rotate-90' : ''}`} />
+                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                } ${showBusinessCard ? 'rotate-90' : ''}`} />
               </div>
             </div>
             
             {showBusinessCard && (
-              <div className="mt-3 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+              <div className={`mt-3 p-4 rounded-xl border shadow-sm ${
+                isDarkMode 
+                  ? 'bg-gray-700 border-gray-600' 
+                  : 'bg-white border-gray-200'
+              }`}>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium">{selectedLocation}</span>
+                    <Building className={`h-4 w-4 ${
+                      isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                    }`} />
+                    <span className={`text-sm font-medium ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>{selectedLocation}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm">+91 9876543210</span>
+                    <Phone className={`h-4 w-4 ${
+                      isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                    }`} />
+                    <span className={`text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-900'
+                    }`}>+91 9876543210</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm">info@anodeelectric.com</span>
+                    <Mail className={`h-4 w-4 ${
+                      isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                    }`} />
+                    <span className={`text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-900'
+                    }`}>info@anodeelectric.com</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm">Industrial Area, Mumbai</span>
+                    <MapPin className={`h-4 w-4 ${
+                      isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                    }`} />
+                    <span className={`text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-900'
+                    }`}>Industrial Area, Mumbai</span>
                   </div>
                 </div>
               </div>
@@ -2041,7 +2112,11 @@ const ToolboxInterface = () => {
           {/* Brochure */}
           <div className="mb-4">
             <div 
-              className="p-4 rounded-xl border border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md"
+              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+                isDarkMode 
+                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
+                  : 'border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100'
+              }`}
               onClick={openBrochure}
             >
               <div className="flex items-center gap-3">
@@ -2049,8 +2124,12 @@ const ToolboxInterface = () => {
                   <FileText className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm">Brochure</h3>
-                  <p className="text-xs text-gray-600">Company brochure and catalog</p>
+                  <h3 className={`font-semibold text-sm ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>Brochure</h3>
+                  <p className={`text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>Company brochure and catalog</p>
                 </div>
               </div>
             </div>
@@ -2058,28 +2137,52 @@ const ToolboxInterface = () => {
 
           {/* GST Details */}
           <div className="mb-4">
-            <div className="p-4 rounded-xl border border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50 shadow-sm">
+            <div className={`p-4 rounded-xl border shadow-sm ${
+              isDarkMode 
+                ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600' 
+                : 'border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50'
+            }`}>
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-sm">
                   <CreditCard className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm">GST Details</h3>
-                  <p className="text-xs text-gray-600">Tax registration information</p>
+                  <h3 className={`font-semibold text-sm ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>GST Details</h3>
+                  <p className={`text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>Tax registration information</p>
                 </div>
               </div>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between items-center py-1 border-b border-gray-100">
-                  <span className="font-medium text-gray-600">GSTIN:</span>
-                  <span className="text-gray-900 font-mono text-xs">27ABCDE1234F1Z5</span>
+                <div className={`flex justify-between items-center py-1 border-b ${
+                  isDarkMode ? 'border-gray-600' : 'border-gray-100'
+                }`}>
+                  <span className={`font-medium ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>GSTIN:</span>
+                  <span className={`font-mono text-xs ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>27ABCDE1234F1Z5</span>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-gray-100">
-                  <span className="font-medium text-gray-600">PAN:</span>
-                  <span className="text-gray-900 font-mono text-xs">ABCDE1234F</span>
+                <div className={`flex justify-between items-center py-1 border-b ${
+                  isDarkMode ? 'border-gray-600' : 'border-gray-100'
+                }`}>
+                  <span className={`font-medium ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>PAN:</span>
+                  <span className={`font-mono text-xs ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>ABCDE1234F</span>
                 </div>
                 <div className="flex justify-between items-center py-1">
-                  <span className="font-medium text-gray-600">State:</span>
-                  <span className="text-gray-900">Maharashtra</span>
+                  <span className={`font-medium ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>State:</span>
+                  <span className={`${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>Maharashtra</span>
                 </div>
               </div>
             </div>
@@ -2088,7 +2191,11 @@ const ToolboxInterface = () => {
           {/* Calculators */}
           <div className="mb-4">
             <div 
-              className="p-4 rounded-xl border border-gray-200 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md"
+              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+                isDarkMode 
+                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
+                  : 'border-gray-200 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100'
+              }`}
               onClick={openCalculators}
             >
               <div className="flex items-center gap-3">
@@ -2096,10 +2203,16 @@ const ToolboxInterface = () => {
                   <Calculator className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm">Calculators</h3>
-                  <p className="text-xs text-gray-600">Mathematical and conversion tools</p>
+                  <h3 className={`font-semibold text-sm ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>Calculators</h3>
+                  <p className={`text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>Mathematical and conversion tools</p>
                 </div>
-                <ChevronRight className={`h-4 w-4 text-gray-500 transition-transform duration-300 ${showCalculators ? 'rotate-90' : ''}`} />
+                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                } ${showCalculators ? 'rotate-90' : ''}`} />
               </div>
             </div>
             
@@ -2114,16 +2227,28 @@ const ToolboxInterface = () => {
                 ].map((calculator, index) => (
                   <div 
                     key={index}
-                    className="p-3 rounded-lg border border-gray-200 bg-white hover:bg-orange-50 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md"
+                    className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
+                      isDarkMode 
+                        ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' 
+                        : 'border-gray-200 bg-white hover:bg-orange-50'
+                    }`}
                     onClick={() => handleToolClick(calculator)}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-orange-100">
-                        <calculator.icon className="h-4 w-4 text-orange-600" />
+                      <div className={`p-2 rounded-lg ${
+                        isDarkMode ? 'bg-gray-600' : 'bg-orange-100'
+                      }`}>
+                        <calculator.icon className={`h-4 w-4 ${
+                          isDarkMode ? 'text-orange-400' : 'text-orange-600'
+                        }`} />
                       </div>
                       <div className="flex-1">
-                        <span className="text-sm font-medium text-gray-900">{calculator.name}</span>
-                        <p className="text-xs text-gray-500 mt-1">{calculator.description}</p>
+                        <span className={`text-sm font-medium ${
+                          isDarkMode ? 'text-white' : 'text-gray-900'
+                        }`}>{calculator.name}</span>
+                        <p className={`text-xs mt-1 ${
+                          isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                        }`}>{calculator.description}</p>
                       </div>
                     </div>
                   </div>
@@ -2134,7 +2259,11 @@ const ToolboxInterface = () => {
           {/* Helping Calculators */}
           <div className="mb-4">
             <div 
-              className="p-4 rounded-xl border border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md"
+              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+                isDarkMode 
+                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
+                  : 'border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100'
+              }`}
               onClick={openHelpingCalculators}
             >
               <div className="flex items-center gap-3">
@@ -2142,10 +2271,16 @@ const ToolboxInterface = () => {
                   <FileText className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm">Helping Calculators</h3>
-                  <p className="text-xs text-gray-600">Advanced calculation tools</p>
+                  <h3 className={`font-semibold text-sm ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>Helping Calculators</h3>
+                  <p className={`text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>Advanced calculation tools</p>
                 </div>
-                <ChevronRight className={`h-4 w-4 text-gray-500 transition-transform duration-300 ${showHelpingCalculators ? 'rotate-90' : ''}`} />
+                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                } ${showHelpingCalculators ? 'rotate-90' : ''}`} />
               </div>
             </div>
             
@@ -2159,16 +2294,28 @@ const ToolboxInterface = () => {
                 ].map((calculator, index) => (
                   <div 
                     key={index}
-                    className="p-3 rounded-lg border border-gray-200 bg-white hover:bg-teal-50 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md"
+                    className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
+                      isDarkMode 
+                        ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' 
+                        : 'border-gray-200 bg-white hover:bg-teal-50'
+                    }`}
                     onClick={() => handleToolClick(calculator)}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-teal-100">
-                        <calculator.icon className="h-4 w-4 text-teal-600" />
+                      <div className={`p-2 rounded-lg ${
+                        isDarkMode ? 'bg-gray-600' : 'bg-teal-100'
+                      }`}>
+                        <calculator.icon className={`h-4 w-4 ${
+                          isDarkMode ? 'text-teal-400' : 'text-teal-600'
+                        }`} />
                       </div>
                       <div className="flex-1">
-                        <span className="text-sm font-medium text-gray-900">{calculator.name}</span>
-                        <p className="text-xs text-gray-500 mt-1">{calculator.description}</p>
+                        <span className={`text-sm font-medium ${
+                          isDarkMode ? 'text-white' : 'text-gray-900'
+                        }`}>{calculator.name}</span>
+                        <p className={`text-xs mt-1 ${
+                          isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                        }`}>{calculator.description}</p>
                       </div>
                     </div>
                   </div>
@@ -2180,7 +2327,11 @@ const ToolboxInterface = () => {
           {/* Company Emails */}
           <div className="mb-4">
             <div 
-              className="p-4 rounded-xl border border-gray-200 bg-gradient-to-r from-pink-50 to-rose-50 hover:from-pink-100 hover:to-rose-100 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md"
+              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+                isDarkMode 
+                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
+                  : 'border-gray-200 bg-gradient-to-r from-pink-50 to-rose-50 hover:from-pink-100 hover:to-rose-100'
+              }`}
               onClick={openCompanyEmails}
             >
               <div className="flex items-center gap-3">
@@ -2188,36 +2339,28 @@ const ToolboxInterface = () => {
                   <Mail className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm">Company Emails</h3>
-                  <p className="text-xs text-gray-600">All company email addresses</p>
+                  <h3 className={`font-semibold text-sm ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>Company Emails</h3>
+                  <p className={`text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>All company email addresses</p>
                 </div>
-                <ChevronRight className={`h-4 w-4 text-gray-500 transition-transform duration-300 ${showCompanyEmails ? 'rotate-90' : ''}`} />
+                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`} />
               </div>
             </div>
             
-            {showCompanyEmails && (
-              <div className="mt-3 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-                <div className="space-y-2">
-                  <div className="text-sm">
-                    <strong>General:</strong> info@anodeelectric.com
-                  </div>
-                  <div className="text-sm">
-                    <strong>Sales:</strong> sales@anodeelectric.com
-                  </div>
-                  <div className="text-sm">
-                    <strong>Support:</strong> support@anodeelectric.com
-                  </div>
-                  <div className="text-sm">
-                    <strong>Accounts:</strong> accounts@anodeelectric.com
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
           {/* Location Dropdown */}
           <div className="mb-4">
             <div 
-              className="p-4 rounded-xl border border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50 hover:from-slate-100 hover:to-gray-100 cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md"
+              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+                isDarkMode 
+                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
+                  : 'border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50 hover:from-slate-100 hover:to-gray-100'
+              }`}
               onClick={() => setShowLocations(!showLocations)}
             >
               <div className="flex items-center gap-3">
@@ -2225,10 +2368,16 @@ const ToolboxInterface = () => {
                   <MapPin className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm">Location</h3>
-                  <p className="text-xs text-gray-600">Select company location</p>
+                  <h3 className={`font-semibold text-sm ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>Location</h3>
+                  <p className={`text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>Select company location</p>
                 </div>
-                <ChevronRight className={`h-4 w-4 text-gray-500 transition-transform duration-300 ${showLocations ? 'rotate-90' : ''}`} />
+                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                } ${showLocations ? 'rotate-90' : ''}`} />
               </div>
             </div>
             
@@ -2237,31 +2386,51 @@ const ToolboxInterface = () => {
                 <div 
                   className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
                     selectedLocation === "Anode Electric Private Limited" 
-                      ? "bg-slate-50 border-slate-200 shadow-md" 
-                      : "bg-white border-gray-200 hover:bg-slate-50"
+                      ? isDarkMode 
+                        ? "bg-gray-600 border-gray-500 shadow-md" 
+                        : "bg-slate-50 border-slate-200 shadow-md"
+                      : isDarkMode 
+                        ? "bg-gray-700 border-gray-600 hover:bg-gray-600" 
+                        : "bg-white border-gray-200 hover:bg-slate-50"
                   }`}
                   onClick={() => setSelectedLocation("Anode Electric Private Limited")}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-slate-100">
-                      <Building className="h-4 w-4 text-slate-600" />
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-gray-600' : 'bg-slate-100'
+                    }`}>
+                      <Building className={`h-4 w-4 ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                      }`} />
                     </div>
-                    <span className="text-sm font-medium text-gray-900">Anode Electric Private Limited</span>
+                    <span className={`text-sm font-medium ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>Anode Electric Private Limited</span>
                   </div>
                 </div>
                 <div 
                   className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
                     selectedLocation === "Samriddhi Industries" 
-                      ? "bg-slate-50 border-slate-200 shadow-md" 
-                      : "bg-white border-gray-200 hover:bg-slate-50"
+                      ? isDarkMode 
+                        ? "bg-gray-600 border-gray-500 shadow-md" 
+                        : "bg-slate-50 border-slate-200 shadow-md"
+                      : isDarkMode 
+                        ? "bg-gray-700 border-gray-600 hover:bg-gray-600" 
+                        : "bg-white border-gray-200 hover:bg-slate-50"
                   }`}
                   onClick={() => setSelectedLocation("Samriddhi Industries")}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-slate-100">
-                      <Building className="h-4 w-4 text-slate-600" />
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-gray-600' : 'bg-slate-100'
+                    }`}>
+                      <Building className={`h-4 w-4 ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                      }`} />
                     </div>
-                    <span className="text-sm font-medium text-gray-900">Samriddhi Industries</span>
+                    <span className={`text-sm font-medium ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>Samriddhi Industries</span>
                   </div>
                 </div>
               </div>
@@ -3761,6 +3930,164 @@ const ToolboxInterface = () => {
                       </tr>
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Company Emails Modal */}
+      {isCompanyEmailsOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto ${
+            isDarkMode ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <div className={`flex items-center justify-between p-6 border-b ${
+              isDarkMode ? 'border-gray-700' : 'border-gray-200'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${
+                  isDarkMode ? 'bg-pink-900' : 'bg-pink-100'
+                }`}>
+                  <Mail className={`h-6 w-6 ${
+                    isDarkMode ? 'text-pink-400' : 'text-pink-600'
+                  }`} />
+                </div>
+                <div>
+                  <h2 className={`text-xl font-semibold ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>Company Emails</h2>
+                  <p className={`text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>All company email addresses</p>
+                </div>
+              </div>
+              <button 
+                onClick={closeCompanyEmails}
+                className={`${
+                  isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-blue-900' : 'bg-blue-100'
+                    }`}>
+                      <Mail className={`h-5 w-5 ${
+                        isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                      }`} />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>General Inquiries</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>For general information and inquiries</p>
+                    </div>
+                  </div>
+                  <div className={`text-lg font-mono ${
+                    isDarkMode ? 'text-blue-300' : 'text-blue-600'
+                  }`}>
+                    info@anodeelectric.com
+                  </div>
+                </div>
+
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-green-900' : 'bg-green-100'
+                    }`}>
+                      <Mail className={`h-5 w-5 ${
+                        isDarkMode ? 'text-green-400' : 'text-green-600'
+                      }`} />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Sales Department</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>For sales inquiries and quotations</p>
+                    </div>
+                  </div>
+                  <div className={`text-lg font-mono ${
+                    isDarkMode ? 'text-green-300' : 'text-green-600'
+                  }`}>
+                    sales@anodeelectric.com
+                  </div>
+                </div>
+
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-orange-900' : 'bg-orange-100'
+                    }`}>
+                      <Mail className={`h-5 w-5 ${
+                        isDarkMode ? 'text-orange-400' : 'text-orange-600'
+                      }`} />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Technical Support</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>For technical assistance and support</p>
+                    </div>
+                  </div>
+                  <div className={`text-lg font-mono ${
+                    isDarkMode ? 'text-orange-300' : 'text-orange-600'
+                  }`}>
+                    support@anodeelectric.com
+                  </div>
+                </div>
+
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-purple-900' : 'bg-purple-100'
+                    }`}>
+                      <Mail className={`h-5 w-5 ${
+                        isDarkMode ? 'text-purple-400' : 'text-purple-600'
+                      }`} />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Accounts Department</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>For billing and account related queries</p>
+                    </div>
+                  </div>
+                  <div className={`text-lg font-mono ${
+                    isDarkMode ? 'text-purple-300' : 'text-purple-600'
+                  }`}>
+                    accounts@anodeelectric.com
+                  </div>
                 </div>
               </div>
             </div>

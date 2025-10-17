@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone } from 'lucide-react';
+import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { useCompany } from './context/CompanyContext';
 
-const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onToggleMobileView, isMobileView = false }) => {
+const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onToggleMobileView, isMobileView = false, isDarkMode = false, onToggleDarkMode }) => {
   const { user, logout } = useAuth();
   const { selectedCompany, setSelectedCompany } = useCompany();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -431,7 +431,11 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
   const pageContent = getPageHeaderContent();
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+    <header className={`sticky top-0 z-50 border-b shadow-sm transition-colors ${
+      isDarkMode 
+        ? 'bg-gray-900 border-gray-700' 
+        : 'bg-white border-gray-200'
+    }`}>
       <div className="flex items-center justify-between px-6 py-4">
         {/* Left Section - Dynamic Page Header */}
         <div className="flex items-center space-x-4">
@@ -439,8 +443,8 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
             {pageContent.icon}
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">{pageContent.title}</h1>
-            <p className="text-sm text-gray-500">{pageContent.subtitle}</p>
+            <h1 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{pageContent.title}</h1>
+            <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>{pageContent.subtitle}</p>
           </div>
         </div>
 
@@ -474,27 +478,50 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
               <Smartphone className="w-5 h-5" />
             </button>
           )}
+          
+          {/* Dark Mode Toggle Button - Only for salesperson */}
+          {userType === "salesperson" && onToggleDarkMode && (
+            <button
+              onClick={onToggleDarkMode}
+              className={`p-2 rounded-lg transition-colors ${
+                isDarkMode 
+                  ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' 
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
+              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+          )}
           {/* Notification Bell */}
           <div className="relative" ref={notificationRef}>
             <button 
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className={`relative p-2 rounded-lg transition-colors ${
+                isDarkMode 
+                  ? 'hover:bg-gray-700' 
+                  : 'hover:bg-gray-100'
+              }`}
             >
-              <Bell className="w-5 h-5 text-gray-600" />
+              <Bell className={`w-5 h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
             </button>
 
             {/* Notification Panel */}
             {showNotifications && (
-              <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="p-4 border-b border-gray-200">
+              <div className={`absolute right-0 top-full mt-2 w-80 rounded-lg shadow-lg border z-50 ${
+                isDarkMode 
+                  ? 'bg-gray-800 border-gray-700' 
+                  : 'bg-white border-gray-200'
+              }`}>
+                <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+                    <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Notifications</h3>
                     <button 
                       onClick={() => setShowNotifications(false)}
-                      className="p-1 hover:bg-gray-100 rounded"
+                      className={`p-1 rounded ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
                     >
-                      <X className="w-4 h-4 text-gray-500" />
+                      <X className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                     </button>
                   </div>
                 </div>

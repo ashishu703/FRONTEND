@@ -10,16 +10,26 @@ function cx(...classes) {
   return classes.filter(Boolean).join(" ")
 }
 
-function Card({ className, children }) {
-  return <div className={cx("rounded-lg border bg-white transition-all duration-300 hover:shadow-lg hover:scale-105 hover:-translate-y-1", className)}>{children}</div>
+function Card({ className, children, isDarkMode = false }) {
+  return <div className={cx(
+    "rounded-lg border transition-all duration-300 hover:shadow-lg hover:scale-105 hover:-translate-y-1",
+    isDarkMode 
+      ? "bg-gray-800 border-gray-700" 
+      : "bg-white border-gray-200",
+    className
+  )}>{children}</div>
 }
 
 function CardHeader({ className, children }) {
   return <div className={cx("p-4", className)}>{children}</div>
 }
 
-function CardTitle({ className, children }) {
-  return <div className={cx("text-base font-semibold", className)}>{children}</div>
+function CardTitle({ className, children, isDarkMode = false }) {
+  return <div className={cx(
+    "text-base font-semibold",
+    isDarkMode ? "text-white" : "text-gray-900",
+    className
+  )}>{children}</div>
 }
 
 function CardContent({ className, children }) {
@@ -27,7 +37,7 @@ function CardContent({ className, children }) {
 }
 
 // Simple Chart Components (without external dependencies)
-function CustomPieChart({ data, size = 200 }) {
+function CustomPieChart({ data, size = 200, isDarkMode = false }) {
   const total = data.reduce((sum, item) => sum + item.value, 0)
   let cumulativePercentage = 0
   
@@ -36,8 +46,8 @@ function CustomPieChart({ data, size = 200 }) {
     return (
       <div className="flex items-center justify-center" style={{ width: size, height: size }}>
         <div className="text-center">
-          <div className="text-2xl font-bold text-gray-400">0</div>
-          <div className="text-sm text-gray-500">No Data</div>
+          <div className={`text-2xl font-bold ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>0</div>
+          <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No Data</div>
         </div>
       </div>
     )
@@ -96,7 +106,7 @@ function CustomPieChart({ data, size = 200 }) {
   )
 }
 
-function CustomBarChart({ data, height = 200 }) {
+function CustomBarChart({ data, height = 200, isDarkMode = false }) {
   const maxValue = Math.max(...data.map(item => item.value))
   
   return (
@@ -106,18 +116,26 @@ function CustomBarChart({ data, height = 200 }) {
           const barHeight = (item.value / maxValue) * (height - 40)
           return (
             <div key={index} className="flex flex-col items-center flex-1 group">
-              <div className="text-xs text-gray-500 mb-1 transition-all duration-300 group-hover:text-gray-700 group-hover:font-semibold">{item.value}</div>
+              <div className={`text-xs mb-1 transition-all duration-300 group-hover:font-semibold ${
+                isDarkMode 
+                  ? 'text-gray-400 group-hover:text-gray-200' 
+                  : 'text-gray-500 group-hover:text-gray-700'
+              }`}>{item.value}</div>
               <div
                 className="w-full rounded-t transition-all duration-500 hover:opacity-80 hover:shadow-lg hover:scale-110 cursor-pointer relative"
                 style={{
                   height: barHeight,
                   backgroundColor: item.color,
                   minHeight: '4px',
-                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+                  filter: isDarkMode ? 'drop-shadow(0 2px 4px rgba(255,255,255,0.1))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
                 }}
                 title={`${item.label}: ${item.value}`}
               />
-              <div className="text-xs text-gray-600 mt-2 text-center transition-all duration-300 group-hover:text-gray-800 group-hover:font-medium">{item.label}</div>
+              <div className={`text-xs mt-2 text-center transition-all duration-300 group-hover:font-medium ${
+                isDarkMode 
+                  ? 'text-gray-300 group-hover:text-white' 
+                  : 'text-gray-600 group-hover:text-gray-800'
+              }`}>{item.label}</div>
             </div>
           )
         })}
@@ -149,7 +167,7 @@ function ProgressBar({ value, max, label, color = "bg-blue-500" }) {
   )
 }
 
-export default function DashboardContent() {
+export default function DashboardContent({ isDarkMode = false }) {
   const [activeTab, setActiveTab] = useState('overview')
   const [dateFilter, setDateFilter] = useState('')
   const [leads, setLeads] = useState([])
@@ -496,7 +514,7 @@ export default function DashboardContent() {
   }
 
   return (
-    <main className="flex-1 overflow-auto p-6">
+    <main className={`flex-1 overflow-auto p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Tab Navigation */}
       <div className="flex gap-6 mb-6">
         <button 
@@ -504,7 +522,9 @@ export default function DashboardContent() {
           className={`gap-2 flex items-center pb-2 border-b-2 transition-all duration-300 hover:scale-105 ${
             activeTab === 'overview' 
               ? 'text-blue-600 border-blue-600' 
-              : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'
+              : isDarkMode 
+                ? 'text-gray-400 border-transparent hover:text-gray-200 hover:border-gray-500'
+                : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'
           }`}
         >
           <TrendingUp className="h-4 w-4 transition-all duration-300 hover:scale-110" />
@@ -515,7 +535,9 @@ export default function DashboardContent() {
           className={`gap-2 flex items-center pb-2 border-b-2 transition-all duration-300 hover:scale-105 ${
             activeTab === 'performance' 
               ? 'text-blue-600 border-blue-600' 
-              : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'
+              : isDarkMode 
+                ? 'text-gray-400 border-transparent hover:text-gray-200 hover:border-gray-500'
+                : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'
           }`}
         >
           <BarChart3 className="h-4 w-4 transition-all duration-300 hover:scale-110" />
@@ -529,23 +551,40 @@ export default function DashboardContent() {
       {/* Lead Status Summary - Moved to top */}
       <div className="space-y-4 mb-8">
         <div className="flex items-center gap-2">
-          <Clock className="h-5 w-5 text-gray-500" />
-          <h2 className="text-lg font-semibold">Lead Status Summary</h2>
+          <Clock className={`h-5 w-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+          <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Lead Status Summary</h2>
         </div>
-        <p className="text-sm text-gray-500 mb-4">Overview of your leads by status</p>
+        <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Overview of your leads by status</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {leadStatuses.map((status, index) => {
             const Icon = status.icon
             return (
-              <Card key={index} className={cx("border-2 group", status.color)}>
+              <Card key={index} className={cx(
+                "border-2 group",
+                isDarkMode 
+                  ? "bg-gray-800 border-gray-600 text-white" 
+                  : status.color
+              )} isDarkMode={isDarkMode}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium transition-all duration-300 group-hover:text-gray-800 group-hover:font-semibold">{status.title}</CardTitle>
-                  <Icon className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
+                  <CardTitle className={`text-sm font-medium transition-all duration-300 group-hover:font-semibold ${
+                    isDarkMode 
+                      ? 'text-white group-hover:text-gray-200' 
+                      : 'text-gray-800 group-hover:text-gray-800'
+                  }`} isDarkMode={isDarkMode}>{status.title}</CardTitle>
+                  <Icon className={`h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`} />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold mb-1 transition-all duration-300 group-hover:scale-110">{status.count}</div>
-                  <p className="text-xs text-gray-500 transition-all duration-300 group-hover:text-gray-700">{status.subtitle}</p>
+                  <div className={`text-2xl font-bold mb-1 transition-all duration-300 group-hover:scale-110 ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>{status.count}</div>
+                  <p className={`text-xs transition-all duration-300 ${
+                    isDarkMode 
+                      ? 'text-gray-300 group-hover:text-gray-100' 
+                      : 'text-gray-500 group-hover:text-gray-700'
+                  }`}>{status.subtitle}</p>
                 </CardContent>
               </Card>
             )
@@ -556,14 +595,19 @@ export default function DashboardContent() {
       {/* Target & Days Left */}
       <div className="space-y-4 mb-8">
         <div className="flex items-center gap-2">
-          <Target className="h-5 w-5 text-indigo-600" />
-          <h2 className="text-lg font-semibold">Target & Timeline</h2>
+          <Target className={`h-5 w-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+          <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Target & Timeline</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className={cx("border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50", "bg-indigo-50 text-indigo-600 border-indigo-200")}>
+          <Card className={cx(
+            "border-2 group shadow-lg hover:shadow-xl",
+            isDarkMode 
+              ? "bg-gradient-to-br from-gray-800 to-gray-700 border-gray-600 text-white" 
+              : "bg-gradient-to-br from-white to-gray-50 bg-indigo-50 text-indigo-600 border-indigo-200"
+          )} isDarkMode={isDarkMode}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 transition-all duration-300 group-hover:text-gray-800 group-hover:font-semibold">Monthly Target</CardTitle>
-              <div className="p-2 rounded-full bg-white shadow-md">
+              <CardTitle className={`text-sm font-medium transition-all duration-300 group-hover:font-semibold ${isDarkMode ? 'text-gray-300 group-hover:text-white' : 'text-gray-600 group-hover:text-gray-800'}`} isDarkMode={isDarkMode}>Monthly Target</CardTitle>
+              <div className={`p-2 rounded-full shadow-md ${isDarkMode ? 'bg-gray-700' : 'bg-white'}`}>
                 <Target className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
               </div>
             </CardHeader>
@@ -574,30 +618,60 @@ export default function DashboardContent() {
             </CardContent>
           </Card>
 
-          <Card className={cx("border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50", "bg-green-50 text-green-700 border-green-200")}>
+          <Card className={cx(
+            "border-2 group shadow-lg hover:shadow-xl",
+            isDarkMode 
+              ? "bg-gradient-to-br from-gray-800 to-gray-700 border-gray-600 text-white" 
+              : "bg-gradient-to-br from-white to-gray-50 bg-green-50 text-green-700 border-green-200"
+          )} isDarkMode={isDarkMode}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 transition-all duration-300 group-hover:text-gray-800 group-hover:font-semibold">Target Achieved</CardTitle>
-              <div className="p-2 rounded-full bg-white shadow-md">
+              <CardTitle className={`text-sm font-medium transition-all duration-300 group-hover:font-semibold ${
+                isDarkMode 
+                  ? 'text-gray-300 group-hover:text-white' 
+                  : 'text-gray-600 group-hover:text-gray-800'
+              }`} isDarkMode={isDarkMode}>Target Achieved</CardTitle>
+              <div className={`p-2 rounded-full shadow-md ${isDarkMode ? 'bg-gray-700' : 'bg-white'}`}>
                 <CheckCircle className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold transition-all duration-300 group-hover:scale-110">{performanceData?.targets?.monthlyLeads?.current || 0}</div>
-              <p className="text-sm text-gray-600 transition-all duration-300 group-hover:text-gray-800 mb-3">Leads achieved this month</p>
+              <div className={`text-3xl font-bold transition-all duration-300 group-hover:scale-110 ${
+                isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>{performanceData?.targets?.monthlyLeads?.current || 0}</div>
+              <p className={`text-sm mb-3 transition-all duration-300 ${
+                isDarkMode 
+                  ? 'text-gray-300 group-hover:text-gray-100' 
+                  : 'text-gray-600 group-hover:text-gray-800'
+              }`}>Leads achieved this month</p>
               <div className="w-full bg-gradient-to-r from-current to-transparent opacity-30 h-2 rounded-full transition-all duration-300 group-hover:opacity-50 group-hover:h-2.5"></div>
             </CardContent>
           </Card>
 
-          <Card className={cx("border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50", "bg-gray-50 text-gray-700 border-gray-200")}>
+          <Card className={cx(
+            "border-2 group shadow-lg hover:shadow-xl",
+            isDarkMode 
+              ? "bg-gradient-to-br from-gray-800 to-gray-700 border-gray-600 text-white" 
+              : "bg-gradient-to-br from-white to-gray-50 bg-gray-50 text-gray-700 border-gray-200"
+          )} isDarkMode={isDarkMode}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600 transition-all duration-300 group-hover:text-gray-800 group-hover:font-semibold">Days Left</CardTitle>
-              <div className="p-2 rounded-full bg-white shadow-md">
+              <CardTitle className={`text-sm font-medium transition-all duration-300 group-hover:font-semibold ${
+                isDarkMode 
+                  ? 'text-gray-300 group-hover:text-white' 
+                  : 'text-gray-600 group-hover:text-gray-800'
+              }`} isDarkMode={isDarkMode}>Days Left</CardTitle>
+              <div className={`p-2 rounded-full shadow-md ${isDarkMode ? 'bg-gray-700' : 'bg-white'}`}>
                 <Calendar className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold transition-all duration-300 group-hover:scale-110">{daysLeftInMonth}</div>
-              <p className="text-sm text-gray-600 transition-all duration-300 group-hover:text-gray-800 mb-3">Remaining days in current month</p>
+              <div className={`text-3xl font-bold transition-all duration-300 group-hover:scale-110 ${
+                isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>{daysLeftInMonth}</div>
+              <p className={`text-sm mb-3 transition-all duration-300 ${
+                isDarkMode 
+                  ? 'text-gray-300 group-hover:text-gray-100' 
+                  : 'text-gray-600 group-hover:text-gray-800'
+              }`}>Remaining days in current month</p>
               <div className="w-full bg-gradient-to-r from-current to-transparent opacity-30 h-2 rounded-full transition-all duration-300 group-hover:opacity-50 group-hover:h-2.5"></div>
             </CardContent>
           </Card>
@@ -607,27 +681,37 @@ export default function DashboardContent() {
       {/* Key Performance Metrics - Enhanced styling */}
       <div className="space-y-4 mb-8">
         <div className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-blue-600" />
-          <h2 className="text-lg font-semibold">Key Performance Metrics</h2>
+          <TrendingUp className={`h-5 w-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+          <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Key Performance Metrics</h2>
         </div>
-        <p className="text-sm text-gray-500 mb-4">Critical business indicators and trends</p>
+        <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Critical business indicators and trends</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {overviewMetrics.map((metric, index) => {
             const Icon = metric.icon
             return (
-              <Card key={index} className={cx("border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50", metric.color)}>
+              <Card key={index} className={cx(
+                "border-2 group shadow-lg hover:shadow-xl",
+                isDarkMode 
+                  ? "bg-gradient-to-br from-gray-800 to-gray-700 border-gray-600 text-white" 
+                  : "bg-gradient-to-br from-white to-gray-50",
+                !isDarkMode && metric.color
+              )} isDarkMode={isDarkMode}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600 transition-all duration-300 group-hover:text-gray-800 group-hover:font-semibold">{metric.title}</CardTitle>
-                  <div className="p-2 rounded-full bg-white shadow-md">
+                  <CardTitle className={`text-sm font-medium transition-all duration-300 group-hover:font-semibold ${isDarkMode ? 'text-white group-hover:text-gray-200' : 'text-gray-600 group-hover:text-gray-800'}`}>{metric.title}</CardTitle>
+                  <div className={`p-2 rounded-full shadow-md ${isDarkMode ? 'bg-gray-700' : 'bg-white'}`}>
                     <Icon className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between mb-1">
-                    <div className="text-3xl font-bold transition-all duration-300 group-hover:scale-110">{metric.value}</div>
+                    <div className={`text-3xl font-bold transition-all duration-300 group-hover:scale-110 ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>{metric.value}</div>
                     <div className={`flex items-center text-sm font-semibold px-2 py-1 rounded-full transition-all duration-300 group-hover:scale-105 ${
-                      metric.trendUp ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
+                      isDarkMode 
+                        ? (metric.trendUp ? 'text-green-300 bg-green-900' : 'text-red-300 bg-red-900')
+                        : (metric.trendUp ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100')
                     }`}>
                       {metric.trendUp ? (
                         <TrendingUp className="w-4 h-4 mr-1 transition-all duration-300 group-hover:scale-110" />
@@ -637,7 +721,11 @@ export default function DashboardContent() {
                       {metric.trend}
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600 transition-all duration-300 group-hover:text-gray-800 mb-3">{metric.subtitle}</p>
+                  <p className={`text-sm mb-3 transition-all duration-300 ${
+                    isDarkMode 
+                      ? 'text-gray-300 group-hover:text-gray-100' 
+                      : 'text-gray-600 group-hover:text-gray-800'
+                  }`}>{metric.subtitle}</p>
                   <div className="w-full bg-gradient-to-r from-current to-transparent opacity-30 h-2 rounded-full transition-all duration-300 group-hover:opacity-50 group-hover:h-2.5"></div>
                 </CardContent>
               </Card>
@@ -649,34 +737,46 @@ export default function DashboardContent() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Weekly Leads Bar Chart */}
-        <Card className="border-2 group">
+        <Card className="border-2 group" isDarkMode={isDarkMode}>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-blue-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
-              <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-blue-700">Weekly Leads Activity</CardTitle>
+              <BarChart3 className={`h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 ${
+                isDarkMode ? 'text-blue-400' : 'text-blue-600'
+              }`} />
+              <CardTitle className={`text-lg font-semibold transition-all duration-300 ${
+                isDarkMode 
+                  ? 'text-white group-hover:text-blue-300' 
+                  : 'text-gray-900 group-hover:text-blue-700'
+              }`} isDarkMode={isDarkMode}>Weekly Leads Activity</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             <div className="h-64">
-              <CustomBarChart data={overviewData.weeklyLeads} height={200} />
+              <CustomBarChart data={overviewData.weeklyLeads} height={200} isDarkMode={isDarkMode} />
             </div>
             <div className="mt-4 text-center">
-              <span className="text-sm text-gray-500">Leads Generated This Week</span>
+              <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Leads Generated This Week</span>
             </div>
           </CardContent>
         </Card>
 
         {/* Lead Source Pie Chart */}
-        <Card className="border-2 group">
+        <Card className="border-2 group" isDarkMode={isDarkMode}>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <PieChartIcon className="h-5 w-5 text-purple-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
-              <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-purple-700">Lead Sources</CardTitle>
+              <PieChartIcon className={`h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 ${
+                isDarkMode ? 'text-purple-400' : 'text-purple-600'
+              }`} />
+              <CardTitle className={`text-lg font-semibold transition-all duration-300 ${
+                isDarkMode 
+                  ? 'text-white group-hover:text-purple-300' 
+                  : 'text-gray-900 group-hover:text-purple-700'
+              }`} isDarkMode={isDarkMode}>Lead Sources</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-center mb-4">
-              <CustomPieChart data={overviewData.leadSourceData} size={180} />
+              <CustomPieChart data={overviewData.leadSourceData} size={180} isDarkMode={isDarkMode} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               {overviewData.leadSourceData.map((item, index) => (
@@ -685,7 +785,9 @@ export default function DashboardContent() {
                     className="w-3 h-3 rounded-full" 
                     style={{ backgroundColor: item.color }}
                   />
-                  <span className="text-sm text-gray-600">{item.label}: {item.value}</span>
+                  <span className={`text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>{item.label}: {item.value}</span>
                 </div>
               ))}
             </div>
@@ -694,11 +796,17 @@ export default function DashboardContent() {
       </div>
 
       {/* Monthly Revenue Chart */}
-      <Card className="border-2 mb-8 group">
+      <Card className="border-2 mb-8 group" isDarkMode={isDarkMode}>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-green-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
-            <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-green-700">Monthly Revenue Trend</CardTitle>
+            <TrendingUp className={`h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 ${
+              isDarkMode ? 'text-green-400' : 'text-green-600'
+            }`} />
+            <CardTitle className={`text-lg font-semibold transition-all duration-300 ${
+              isDarkMode 
+                ? 'text-white group-hover:text-green-300' 
+                : 'text-gray-900 group-hover:text-green-700'
+            }`} isDarkMode={isDarkMode}>Monthly Revenue Trend</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -707,10 +815,10 @@ export default function DashboardContent() {
               ...item,
               value: item.value / 1000, // Convert to thousands for better display
               label: item.label
-            }))} height={200} />
+            }))} height={200} isDarkMode={isDarkMode} />
           </div>
           <div className="mt-4 text-center">
-            <span className="text-sm text-gray-500">Revenue in Thousands (₹)</span>
+            <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Revenue in Thousands (₹)</span>
           </div>
         </CardContent>
       </Card>
@@ -723,31 +831,43 @@ export default function DashboardContent() {
           {/* Performance Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                isDarkMode ? 'bg-blue-600' : 'bg-blue-500'
+              }`}>
                 <Target className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Performance Dashboard</h1>
-                <p className="text-sm text-gray-600">Track your targets and performance metrics</p>
+                <h1 className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Performance Dashboard</h1>
+                <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Track your targets and performance metrics</p>
               </div>
             </div>
             
             {/* Date Filter */}
             <div className="flex items-center gap-2">
-              <Calendar className={`h-4 w-4 ${dateFilter ? 'text-blue-500' : 'text-gray-500'}`} />
+              <Calendar className={`h-4 w-4 ${
+                dateFilter 
+                  ? (isDarkMode ? 'text-blue-400' : 'text-blue-500')
+                  : (isDarkMode ? 'text-gray-400' : 'text-gray-500')
+              }`} />
               <input
                 type="date"
                 value={dateFilter}
                 onChange={(e) => handleDateFilterChange(e.target.value)}
                 className={`px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  dateFilter ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                  isDarkMode 
+                    ? `bg-gray-800 border-gray-600 text-white ${dateFilter ? 'border-blue-400 bg-blue-900' : ''}`
+                    : `bg-white ${dateFilter ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`
                 }`}
                 title="Filter performance by date"
               />
               {dateFilter && (
                 <button
                   onClick={() => handleDateFilterChange('')}
-                  className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                  className={`px-2 py-1 text-xs rounded ${
+                    isDarkMode 
+                      ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
                   title="Clear date filter"
                 >
                   Clear
@@ -758,10 +878,16 @@ export default function DashboardContent() {
 
           {/* Filter Status */}
           {dateFilter && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className={`mb-4 p-3 rounded-lg border ${
+              isDarkMode 
+                ? 'bg-blue-900 border-blue-700' 
+                : 'bg-blue-50 border-blue-200'
+            }`}>
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-blue-800">
+                <Calendar className={`h-4 w-4 ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`} />
+                <span className={`text-sm ${
+                  isDarkMode ? 'text-blue-200' : 'text-blue-800'
+                }`}>
                   Showing performance data for: <strong>{new Date(dateFilter).toLocaleDateString('en-US', { 
                     weekday: 'long', 
                     year: 'numeric', 
@@ -781,15 +907,29 @@ export default function DashboardContent() {
               const isBelowTarget = remaining > 0;
               
               return (
-                <Card key={key} className={`border-2 ${isBelowTarget ? 'border-red-200' : 'border-green-200'} group relative overflow-hidden`}>
+                <Card key={key} className={`border-2 group relative overflow-hidden ${
+                  isDarkMode 
+                    ? (isBelowTarget ? 'border-red-600' : 'border-green-600')
+                    : (isBelowTarget ? 'border-red-200' : 'border-green-200')
+                }`} isDarkMode={isDarkMode}>
                   {isBelowTarget && (
-                    <div className="absolute top-0 right-0 bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded-bl-lg">
+                    <div className={`absolute top-0 right-0 text-xs font-semibold px-2 py-1 rounded-bl-lg ${
+                      isDarkMode 
+                        ? 'bg-red-900 text-red-200' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
                       {remaining} to go
                     </div>
                   )}
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-700">{target.label}</CardTitle>
-                    <div className={`h-4 w-4 ${isBelowTarget ? 'text-red-500' : 'text-green-500'}`}>
+                    <CardTitle className={`text-sm font-medium ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`} isDarkMode={isDarkMode}>{target.label}</CardTitle>
+                    <div className={`h-4 w-4 ${
+                      isDarkMode 
+                        ? (isBelowTarget ? 'text-red-400' : 'text-green-400')
+                        : (isBelowTarget ? 'text-red-500' : 'text-green-500')
+                    }`}>
                       {isBelowTarget ? (
                         <TrendingDown className="h-4 w-4" />
                       ) : (
@@ -799,22 +939,32 @@ export default function DashboardContent() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold">{target.current}</span>
-                      <span className="text-sm text-gray-500">/ {target.target}</span>
+                      <span className={`text-2xl font-bold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>{target.current}</span>
+                      <span className={`text-sm ${
+                        isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                      }`}>/ {target.target}</span>
                       {isBelowTarget && (
-                        <span className="ml-auto text-sm font-semibold text-red-600">
+                        <span className={`ml-auto text-sm font-semibold ${
+                          isDarkMode ? 'text-red-400' : 'text-red-600'
+                        }`}>
                           {Math.ceil(100 - progress)}% remaining
                         </span>
                       )}
                     </div>
-                    <div className="mt-2 w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div className={`mt-2 w-full rounded-full h-3 overflow-hidden ${
+                      isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
+                    }`}>
                       <div 
                         className={`h-full rounded-full transition-all duration-500 ${isBelowTarget ? 'bg-red-500' : 'bg-green-500'}`} 
                         style={{ width: `${Math.min(100, progress)}%` }}
                       ></div>
                     </div>
                     {isBelowTarget && (
-                      <p className="mt-1 text-xs text-red-600 font-medium">
+                      <p className={`mt-1 text-xs font-medium ${
+                        isDarkMode ? 'text-red-400' : 'text-red-600'
+                      }`}>
                         {remaining} more needed to hit target
                       </p>
                     )}
@@ -827,33 +977,58 @@ export default function DashboardContent() {
           {/* KPI Cards */}
           <div className="space-y-4 mb-8">
             <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-gray-500" />
-              <h2 className="text-lg font-semibold">Key Performance Indicators</h2>
+              <Activity className={`h-5 w-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+              <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Key Performance Indicators</h2>
             </div>
-            <p className="text-sm text-gray-500 mb-4">Track important metrics that impact your success</p>
+            <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Track important metrics that impact your success</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {performanceData.kpis.map((kpi, index) => {
                 const Icon = kpi.icon
                 return (
-                  <Card key={index} className={`border-2 group ${kpi.color}`}>
+                  <Card key={index} className={cx(
+                    "border-2 group",
+                    isDarkMode 
+                      ? "bg-gray-800 border-gray-600 text-white" 
+                      : kpi.color
+                  )} isDarkMode={isDarkMode}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium transition-all duration-300 group-hover:text-gray-800 group-hover:font-semibold">{kpi.title}</CardTitle>
-                      <Icon className="h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
+                      <CardTitle className={`text-sm font-medium transition-all duration-300 group-hover:font-semibold ${
+                        isDarkMode 
+                          ? 'text-gray-300 group-hover:text-white' 
+                          : 'text-gray-800 group-hover:text-gray-800'
+                      }`} isDarkMode={isDarkMode}>{kpi.title}</CardTitle>
+                      <Icon className={`h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 ${
+                        isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                      }`} />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold mb-1 transition-all duration-300 group-hover:scale-110">{kpi.value}</div>
-                      <p className="text-xs text-gray-500 mb-2 transition-all duration-300 group-hover:text-gray-700">Target: {kpi.target}</p>
+                      <div className={`text-2xl font-bold mb-1 transition-all duration-300 group-hover:scale-110 ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>{kpi.value}</div>
+                      <p className={`text-xs mb-2 transition-all duration-300 ${
+                        isDarkMode 
+                          ? 'text-gray-400 group-hover:text-gray-200' 
+                          : 'text-gray-500 group-hover:text-gray-700'
+                      }`}>Target: {kpi.target}</p>
                       <div className="flex items-center gap-1">
                         {kpi.status === 'warning' ? (
                           <>
-                            <TrendingDown className="h-3 w-3 text-orange-500 transition-all duration-300 group-hover:scale-110" />
-                            <span className="text-xs text-orange-600 transition-all duration-300 group-hover:font-medium">Below Target</span>
+                            <TrendingDown className={`h-3 w-3 transition-all duration-300 group-hover:scale-110 ${
+                              isDarkMode ? 'text-orange-400' : 'text-orange-500'
+                            }`} />
+                            <span className={`text-xs transition-all duration-300 group-hover:font-medium ${
+                              isDarkMode ? 'text-orange-300' : 'text-orange-600'
+                            }`}>Below Target</span>
                           </>
                         ) : (
                           <>
-                            <TrendingUp className="h-3 w-3 text-green-500 transition-all duration-300 group-hover:scale-110" />
-                            <span className="text-xs text-green-600 transition-all duration-300 group-hover:font-medium">Above Target</span>
+                            <TrendingUp className={`h-3 w-3 transition-all duration-300 group-hover:scale-110 ${
+                              isDarkMode ? 'text-green-400' : 'text-green-500'
+                            }`} />
+                            <span className={`text-xs transition-all duration-300 group-hover:font-medium ${
+                              isDarkMode ? 'text-green-300' : 'text-green-600'
+                            }`}>Above Target</span>
                           </>
                         )}
                       </div>
@@ -867,16 +1042,22 @@ export default function DashboardContent() {
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Lead Status Pie Chart */}
-            <Card className="border-2 group">
+            <Card className="border-2 group" isDarkMode={isDarkMode}>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <PieChartIcon className="h-5 w-5 text-purple-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
-                  <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-purple-700">Lead Status Distribution</CardTitle>
+                  <PieChartIcon className={`h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 ${
+                    isDarkMode ? 'text-purple-400' : 'text-purple-600'
+                  }`} />
+                  <CardTitle className={`text-lg font-semibold transition-all duration-300 ${
+                    isDarkMode 
+                      ? 'text-white group-hover:text-purple-300' 
+                      : 'text-gray-900 group-hover:text-purple-700'
+                  }`} isDarkMode={isDarkMode}>Lead Status Distribution</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-center mb-4">
-                  <CustomPieChart data={performanceData.leadStatusData} size={180} />
+                  <CustomPieChart data={performanceData.leadStatusData} size={180} isDarkMode={isDarkMode} />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {performanceData.leadStatusData.map((item, index) => (
@@ -885,7 +1066,9 @@ export default function DashboardContent() {
                         className="w-3 h-3 rounded-full" 
                         style={{ backgroundColor: item.color }}
                       />
-                      <span className="text-sm text-gray-600">{item.label}: {item.value}</span>
+                      <span className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>{item.label}: {item.value}</span>
                     </div>
                   ))}
                 </div>
@@ -893,19 +1076,25 @@ export default function DashboardContent() {
             </Card>
 
             {/* Monthly Performance Bar Chart */}
-            <Card className="border-2 group">
+            <Card className="border-2 group" isDarkMode={isDarkMode}>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-green-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
-                  <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-green-700">Monthly Performance</CardTitle>
+                  <BarChart3 className={`h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 ${
+                    isDarkMode ? 'text-green-400' : 'text-green-600'
+                  }`} />
+                  <CardTitle className={`text-lg font-semibold transition-all duration-300 ${
+                    isDarkMode 
+                      ? 'text-white group-hover:text-green-300' 
+                      : 'text-gray-900 group-hover:text-green-700'
+                  }`} isDarkMode={isDarkMode}>Monthly Performance</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="h-64">
-                  <CustomBarChart data={performanceData.monthlyPerformance} height={200} />
+                  <CustomBarChart data={performanceData.monthlyPerformance} height={200} isDarkMode={isDarkMode} />
                 </div>
                 <div className="mt-4 text-center">
-                  <span className="text-sm text-gray-500">Performance Score (0-100)</span>
+                  <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Performance Score (0-100)</span>
                 </div>
               </CardContent>
             </Card>
@@ -913,26 +1102,52 @@ export default function DashboardContent() {
 
 
           {/* Performance Summary */}
-          <Card className="border-2 border-gray-200 group">
+          <Card className={`border-2 group ${
+            isDarkMode ? 'border-gray-600' : 'border-gray-200'
+          }`} isDarkMode={isDarkMode}>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Award className="h-5 w-5 text-yellow-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
-                <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-yellow-700">Performance Summary</CardTitle>
+                <Award className={`h-5 w-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 ${
+                  isDarkMode ? 'text-yellow-400' : 'text-yellow-600'
+                }`} />
+                <CardTitle className={`text-lg font-semibold transition-all duration-300 ${
+                  isDarkMode 
+                    ? 'text-white group-hover:text-yellow-300' 
+                    : 'text-gray-900 group-hover:text-yellow-700'
+                }`} isDarkMode={isDarkMode}>Performance Summary</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="text-center group/summary transition-all duration-300 hover:scale-105">
-                  <div className="text-3xl font-bold text-blue-600 mb-2 transition-all duration-300 group-hover/summary:scale-110">87%</div>
-                  <div className="text-sm text-gray-600 transition-all duration-300 group-hover/summary:text-gray-800 group-hover/summary:font-medium">Overall Target Achievement</div>
+                  <div className={`text-3xl font-bold mb-2 transition-all duration-300 group-hover/summary:scale-110 ${
+                    isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                  }`}>87%</div>
+                  <div className={`text-sm transition-all duration-300 group-hover/summary:font-medium ${
+                    isDarkMode 
+                      ? 'text-gray-300 group-hover/summary:text-white' 
+                      : 'text-gray-600 group-hover/summary:text-gray-800'
+                  }`}>Overall Target Achievement</div>
                 </div>
                 <div className="text-center group/summary transition-all duration-300 hover:scale-105">
-                  <div className="text-3xl font-bold text-orange-600 mb-2 transition-all duration-300 group-hover/summary:scale-110">2</div>
-                  <div className="text-sm text-gray-600 transition-all duration-300 group-hover/summary:text-gray-800 group-hover/summary:font-medium">Areas Need Improvement</div>
+                  <div className={`text-3xl font-bold mb-2 transition-all duration-300 group-hover/summary:scale-110 ${
+                    isDarkMode ? 'text-orange-400' : 'text-orange-600'
+                  }`}>2</div>
+                  <div className={`text-sm transition-all duration-300 group-hover/summary:font-medium ${
+                    isDarkMode 
+                      ? 'text-gray-300 group-hover/summary:text-white' 
+                      : 'text-gray-600 group-hover/summary:text-gray-800'
+                  }`}>Areas Need Improvement</div>
                 </div>
                 <div className="text-center group/summary transition-all duration-300 hover:scale-105">
-                  <div className="text-3xl font-bold text-green-600 mb-2 transition-all duration-300 group-hover/summary:scale-110">3</div>
-                  <div className="text-sm text-gray-600 transition-all duration-300 group-hover/summary:text-gray-800 group-hover/summary:font-medium">Area Exceeding Target</div>
+                  <div className={`text-3xl font-bold mb-2 transition-all duration-300 group-hover/summary:scale-110 ${
+                    isDarkMode ? 'text-green-400' : 'text-green-600'
+                  }`}>3</div>
+                  <div className={`text-sm transition-all duration-300 group-hover/summary:font-medium ${
+                    isDarkMode 
+                      ? 'text-gray-300 group-hover/summary:text-white' 
+                      : 'text-gray-600 group-hover/summary:text-gray-800'
+                  }`}>Area Exceeding Target</div>
                 </div>
               </div>
             </CardContent>
