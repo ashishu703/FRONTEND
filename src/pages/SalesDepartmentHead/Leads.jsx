@@ -27,6 +27,9 @@ const LeadsSimplified = () => {
   const [previewLead, setPreviewLead] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assigningLead, setAssigningLead] = useState(null);
+  const [assignForm, setAssignForm] = useState({ salesperson: '', telecaller: '' });
   const [editFormData, setEditFormData] = useState({
     customer: '',
     email: '',
@@ -295,6 +298,35 @@ const LeadsSimplified = () => {
     };
     fetchUsers();
   }, [showEditModal]);
+
+  // Load department usernames when assign modal opens
+  useEffect(() => {
+    if (!showAssignModal) return;
+    const fetchUsers = async () => {
+      try {
+        setLoadingUsers(true);
+        setUsersError('');
+        const res = await departmentUserService.listUsers({ page: 1, limit: 100 });
+        const payload = res.data || res;
+        const names = (payload.users || []).map(u => u.username).filter(Boolean);
+        setUsernames(names);
+      } catch (err) {
+        setUsersError(err?.message || 'Failed to load users');
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+    fetchUsers();
+  }, [showAssignModal]);
+
+  const openAssignModal = (lead) => {
+    setAssigningLead(lead);
+    setAssignForm({
+      salesperson: lead.assignedSalesperson || '',
+      telecaller: lead.assignedTelecaller || ''
+    });
+    setShowAssignModal(true);
+  };
 
   // Filter leads based on search
   const filteredLeads = leadsData.filter(lead => {
@@ -714,6 +746,13 @@ const LeadsSimplified = () => {
                         title="View Lead"
                       >
                         <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => openAssignModal(lead)}
+                        className="text-indigo-600 hover:text-indigo-900"
+                        title="Assign Lead"
+                      >
+                        Assign
                       </button>
                     </div>
                   </td>
@@ -1310,6 +1349,75 @@ const LeadsSimplified = () => {
                   Update
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Modal */}
+      {showAssignModal && assigningLead && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Assign Lead - {assigningLead.customer}</h2>
+              <button onClick={() => setShowAssignModal(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Salesperson (username)</label>
+                <select
+                  value={assignForm.salesperson}
+                  onChange={(e) => setAssignForm({ ...assignForm, salesperson: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="">{loadingUsers ? 'Loading...' : 'Unassigned'}</option>
+                  {usersError && <option value="" disabled>{usersError}</option>}
+                  {usernames.map((name) => (
+                    <option key={`sp-${name}`} value={name}>{name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telecaller (optional)</label>
+                <select
+                  value={assignForm.telecaller}
+                  onChange={(e) => setAssignForm({ ...assignForm, telecaller: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="">{loadingUsers ? 'Loading...' : 'Unassigned'}</option>
+                  {usersError && <option value="" disabled>{usersError}</option>}
+                  {usernames.map((name) => (
+                    <option key={`tc-${name}`} value={name}>{name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+              <button onClick={() => setShowAssignModal(false)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+              <button
+                onClick={async () => {
+                  try {
+                    const payload = {
+                      assignedSalesperson: assignForm.salesperson || null,
+                      assignedTelecaller: assignForm.telecaller || null,
+                    };
+                    await departmentHeadService.updateLead(assigningLead.id, payload);
+                    setLeadsData(prev => prev.map(l =>
+                      l.id === assigningLead.id
+                        ? { ...l, assignedSalesperson: payload.assignedSalesperson || '', assignedTelecaller: payload.assignedTelecaller || '' }
+                        : l
+                    ));
+                    toastManager.success('Lead assigned successfully');
+                    setShowAssignModal(false);
+                    setAssigningLead(null);
+                  } catch (err) {
+                    apiErrorHandler.handleError(err, 'assign lead');
+                  }
+                }}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                Assign
+              </button>
             </div>
           </div>
         </div>
