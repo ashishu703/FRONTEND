@@ -25,7 +25,7 @@ import apiClient from '../../../utils/apiClient';
 import { API_ENDPOINTS } from '../../../api/admin_api/api';
 import { mapSalesStatusToBucket } from './statusMapping';
 
-const ClosedFollowUps = () => {
+const ClosedFollowUps = ({ isDarkMode = false }) => {
   const [followUps, setFollowUps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -173,19 +173,29 @@ const ClosedFollowUps = () => {
       <div className="flex items-center space-x-4">
         <div className="flex-1 max-w-md">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${
+              isDarkMode ? 'text-gray-400' : 'text-gray-400'
+            }`} />
             <input
               type="text"
               placeholder="Search items..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                isDarkMode 
+                  ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
             />
           </div>
         </div>
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          className={`flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors ${
+            isDarkMode 
+              ? 'border-gray-600 bg-gray-800 text-white hover:bg-gray-700' 
+              : 'border-gray-300 bg-white text-gray-900 hover:bg-gray-50'
+          }`}
         >
           <Filter className="h-4 w-4" />
           <span>Filters</span>
@@ -193,7 +203,11 @@ const ClosedFollowUps = () => {
         <button
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          className={`flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors disabled:opacity-50 ${
+            isDarkMode 
+              ? 'border-gray-600 bg-gray-800 text-white hover:bg-gray-700' 
+              : 'border-gray-300 bg-white text-gray-900 hover:bg-gray-50'
+          }`}
         >
           <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           <span>Refresh</span>
@@ -201,15 +215,29 @@ const ClosedFollowUps = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className={`rounded-lg shadow-sm border overflow-hidden ${
+        isDarkMode 
+          ? 'bg-gray-800 border-gray-700' 
+          : 'bg-white border-gray-200'
+      }`}>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="text-left py-4 px-4 font-medium text-gray-600 text-sm">#</th>
-                <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+              <tr className={`border-b ${
+                isDarkMode 
+                  ? 'border-gray-700 bg-gray-700' 
+                  : 'border-gray-100 bg-gray-50/50'
+              }`}>
+                <th className={`text-left py-4 px-4 font-medium text-sm ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>#</th>
+                <th className={`text-left py-2 px-4 font-medium text-sm ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-indigo-500" />
+                    <User className={`h-4 w-4 ${
+                      isDarkMode ? 'text-indigo-400' : 'text-indigo-500'
+                    }`} />
                     Name & Phone
                   </div>
                   {showFilters && (
@@ -217,14 +245,22 @@ const ClosedFollowUps = () => {
                       type="text"
                       value={filters.customer}
                       onChange={(e) => handleFilterChange('customer', e.target.value)}
-                      className="mt-1 w-full text-xs p-1 border rounded"
+                      className={`mt-1 w-full text-xs p-1 border rounded ${
+                        isDarkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
                       placeholder="Filter customer..."
                     />
                   )}
                 </th>
-                <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                <th className={`text-left py-2 px-4 font-medium text-sm ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                   <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-indigo-500" />
+                    <Building className={`h-4 w-4 ${
+                      isDarkMode ? 'text-indigo-400' : 'text-indigo-500'
+                    }`} />
                     Business
                   </div>
                   {showFilters && (
@@ -232,26 +268,42 @@ const ClosedFollowUps = () => {
                       type="text"
                       value={filters.business}
                       onChange={(e) => handleFilterChange('business', e.target.value)}
-                      className="mt-1 w-full text-xs p-1 border rounded"
+                      className={`mt-1 w-full text-xs p-1 border rounded ${
+                        isDarkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
                       placeholder="Filter business..."
                     />
                   )}
                 </th>
-                <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                <th className={`text-left py-2 px-4 font-medium text-sm ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-indigo-500" />
+                    <MapPin className={`h-4 w-4 ${
+                      isDarkMode ? 'text-indigo-400' : 'text-indigo-500'
+                    }`} />
                     Address
                   </div>
                 </th>
-                <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                <th className={`text-left py-2 px-4 font-medium text-sm ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                   <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-indigo-500" />
+                    <Package className={`h-4 w-4 ${
+                      isDarkMode ? 'text-indigo-400' : 'text-indigo-500'
+                    }`} />
                     Product Name
                   </div>
                 </th>
-                <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                <th className={`text-left py-2 px-4 font-medium text-sm ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-indigo-500" />
+                    <MapPin className={`h-4 w-4 ${
+                      isDarkMode ? 'text-indigo-400' : 'text-indigo-500'
+                    }`} />
                     State
                   </div>
                   {showFilters && (
@@ -259,14 +311,22 @@ const ClosedFollowUps = () => {
                       type="text"
                       value={filters.state}
                       onChange={(e) => handleFilterChange('state', e.target.value)}
-                      className="mt-1 w-full text-xs p-1 border rounded"
+                      className={`mt-1 w-full text-xs p-1 border rounded ${
+                        isDarkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
                       placeholder="Filter state..."
                     />
                   )}
                 </th>
-                <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                <th className={`text-left py-2 px-4 font-medium text-sm ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-indigo-500" />
+                    <User className={`h-4 w-4 ${
+                      isDarkMode ? 'text-indigo-400' : 'text-indigo-500'
+                    }`} />
                     Customer Type
                   </div>
                   {showFilters && (
@@ -274,20 +334,32 @@ const ClosedFollowUps = () => {
                       type="text"
                       value={filters.customerType}
                       onChange={(e) => handleFilterChange('customerType', e.target.value)}
-                      className="mt-1 w-full text-xs p-1 border rounded"
+                      className={`mt-1 w-full text-xs p-1 border rounded ${
+                        isDarkMode 
+                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                          : 'bg-white border-gray-300 text-gray-900'
+                      }`}
                       placeholder="Filter customer type..."
                     />
                   )}
                 </th>
-                <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                <th className={`text-left py-2 px-4 font-medium text-sm ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-indigo-500" />
+                    <Clock className={`h-4 w-4 ${
+                      isDarkMode ? 'text-indigo-400' : 'text-indigo-500'
+                    }`} />
                     Status
                   </div>
                 </th>
-                <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                <th className={`text-left py-2 px-4 font-medium text-sm ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                   <div className="flex items-center gap-2">
-                    <Pencil className="h-4 w-4 text-indigo-500" />
+                    <Pencil className={`h-4 w-4 ${
+                      isDarkMode ? 'text-indigo-400' : 'text-indigo-500'
+                    }`} />
                     Action
                   </div>
                 </th>
@@ -296,7 +368,9 @@ const ClosedFollowUps = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan="8" className={`px-4 py-8 text-center ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
                     <div className="flex items-center justify-center space-x-2">
                       <RefreshCw className="h-4 w-4 animate-spin" />
                       <span>Loading closed leads...</span>
@@ -305,26 +379,42 @@ const ClosedFollowUps = () => {
                 </tr>
               ) : paginatedLeads.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan="8" className={`px-4 py-8 text-center ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
                     No closed leads found. Try adjusting your search or filters.
                   </td>
                 </tr>
               ) : (
                 paginatedLeads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-gray-50">
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                  <tr key={lead.id} className={`${
+                    isDarkMode 
+                      ? 'hover:bg-gray-700 border-b border-gray-700' 
+                      : 'hover:bg-gray-50'
+                  }`}>
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="font-medium">{lead.id}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div>
                         <div className="font-medium">{lead.name}</div>
-                        <div className="text-gray-600">{lead.phone}</div>
+                        <div className={`${
+                          isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                        }`}>{lead.phone}</div>
                         {lead.whatsapp && (
                           <a 
                             href={`https://wa.me/91${lead.whatsapp}`} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="text-green-600 hover:text-green-800 text-xs flex items-center gap-1"
+                            className={`text-xs flex items-center gap-1 ${
+                              isDarkMode 
+                                ? 'text-green-400 hover:text-green-300' 
+                                : 'text-green-600 hover:text-green-800'
+                            }`}
                           >
                             <MessageCircle className="h-3 w-3" />
                             WhatsApp
@@ -333,7 +423,11 @@ const ClosedFollowUps = () => {
                         {lead.email && lead.email !== 'N/A' && (
                           <a 
                             href={`mailto:${lead.email}`}
-                            className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
+                            className={`text-xs flex items-center gap-1 ${
+                              isDarkMode 
+                                ? 'text-blue-400 hover:text-blue-300' 
+                                : 'text-blue-600 hover:text-blue-800'
+                            }`}
                           >
                             <Mail className="h-3 w-3" />
                             Email
@@ -341,46 +435,86 @@ const ClosedFollowUps = () => {
                         )}
                       </div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="font-medium">{lead.business}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="font-medium">{lead.address}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="font-medium">{lead.productName}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="font-medium">{lead.state}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="font-medium">{lead.customerType}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="flex flex-col space-y-1">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 w-fit">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium w-fit ${
+                          isDarkMode 
+                            ? 'bg-red-900 text-red-300' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
                           {lead.finalStatus === 'not_interested' ? 'Not Interested' : lead.finalStatus}
                         </span>
                         {lead.finalStatusRemark && (
-                          <div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
+                          <div className={`text-xs px-2 py-1 rounded ${
+                            isDarkMode 
+                              ? 'text-gray-300 bg-gray-700' 
+                              : 'text-gray-600 bg-gray-50'
+                          }`}>
                             {lead.finalStatusRemark}
                           </div>
                         )}
-                        <span className="text-xs text-gray-500">{lead.connectedStatusDate}</span>
+                        <span className={`text-xs ${
+                          isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                        }`}>{lead.connectedStatusDate}</span>
                       </div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="flex items-center space-x-2">
-                        <button className="text-blue-600 hover:text-blue-900" title="Edit">
+                        <button className={`${
+                          isDarkMode 
+                            ? 'text-blue-400 hover:text-blue-300' 
+                            : 'text-blue-600 hover:text-blue-900'
+                        }`} title="Edit">
                           <Pencil className="h-4 w-4" />
                         </button>
-                        <button className="text-green-600 hover:text-green-900" title="View">
+                        <button className={`${
+                          isDarkMode 
+                            ? 'text-green-400 hover:text-green-300' 
+                            : 'text-green-600 hover:text-green-900'
+                        }`} title="View">
                           <Eye className="h-4 w-4" />
                         </button>
-                        <button className="text-purple-600 hover:text-purple-900" title="Payment">
+                        <button className={`${
+                          isDarkMode 
+                            ? 'text-purple-400 hover:text-purple-300' 
+                            : 'text-purple-600 hover:text-purple-900'
+                        }`} title="Payment">
                           <Wallet className="h-4 w-4" />
                         </button>
-                        <button className="text-orange-600 hover:text-orange-900" title="Document">
+                        <button className={`${
+                          isDarkMode 
+                            ? 'text-orange-400 hover:text-orange-300' 
+                            : 'text-orange-600 hover:text-orange-900'
+                        }`} title="Document">
                           <FileText className="h-4 w-4" />
                         </button>
                       </div>

@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, FileText, Calendar, User, Package, DollarSign, Plus, Minus, Eye, Edit, Building2 } from "lucide-react"
+import { X, FileText, Calendar, User, Package, DollarSign, Plus, Minus, Eye, Edit, Building2, FileCheck } from "lucide-react"
 import QuotationPreview from "../../components/QuotationPreview"
+import { CorporateStandardInvoice } from './salespersonpi'
 
 function Card({ className, children }) {
   return <div className={`rounded-lg border bg-white shadow-sm ${className || ''}`}>{children}</div>
@@ -245,6 +246,8 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
 
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState({});
+  const [showPIPreview, setShowPIPreview] = useState(false);
+  const [piPreviewData, setPiPreviewData] = useState({});
 
   // Update preview data when form data changes
   useEffect(() => {
@@ -253,6 +256,76 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
 
   const togglePreview = () => {
     setShowPreview(!showPreview);
+  };
+
+  // Check if all required fields are filled
+  const isFormValid = () => {
+    const { billTo, items } = quotationData;
+    
+    // Check bill-to information
+    if (!billTo.business || !billTo.phone || !billTo.address || !billTo.state) {
+      return false;
+    }
+    
+    // Check items
+    if (items.length === 0) return false;
+    
+    return items.every(item => 
+      item.productName && 
+      item.quantity > 0 && 
+      item.buyerRate > 0
+    );
+  };
+
+  const handlePIClick = () => {
+    if (isFormValid()) {
+      // Convert quotation data to PI format
+      const piData = {
+        invoiceNumber: `PI-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+        invoiceDate: quotationData.quotationDate,
+        dueDate: quotationData.validUpto,
+        poNumber: `PO-${Math.floor(1000 + Math.random() * 9000)}`,
+        billTo: {
+          business: quotationData.billTo.business,
+          address: quotationData.billTo.address,
+          phone: quotationData.billTo.phone,
+          gstNo: quotationData.billTo.gstNo || '',
+          state: quotationData.billTo.state
+        },
+        shipTo: {
+          business: quotationData.billTo.business,
+          address: quotationData.billTo.address,
+          phone: quotationData.billTo.phone,
+          gstNo: quotationData.billTo.gstNo || ''
+        },
+        items: quotationData.items.map(item => ({
+          productName: item.productName,
+          description: item.productName,
+          quantity: item.quantity,
+          unit: item.unit,
+          rate: item.buyerRate,
+          amount: item.amount,
+          hsn: '85446090' // Default HSN code
+        })),
+        subtotal: quotationData.subtotal,
+        discountRate: quotationData.discountRate,
+        discountAmount: quotationData.discountAmount,
+        taxableAmount: quotationData.subtotal - quotationData.discountAmount,
+        taxRate: 18,
+        taxAmount: quotationData.taxAmount,
+        total: quotationData.total,
+        deliveryTerms: 'FOR upto Destination',
+        paymentTerms: 'ADVANCE',
+        otherReferences: 'DIRECT SALE',
+        dispatchedThrough: 'BY TRANSPORT',
+        destination: 'Destination Transport'
+      };
+      
+      setPiPreviewData(piData);
+      setShowPIPreview(true);
+    } else {
+      alert('Please fill all required fields before generating PI');
+    }
   };
 
   if (showPreview) {
@@ -282,6 +355,73 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
             >
               Save Quotation
             </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (showPIPreview) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="w-full max-w-6xl max-h-[90vh] overflow-y-auto relative">
+          {/* Close button */}
+          <button
+            onClick={() => setShowPIPreview(false)}
+            className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+            title="Close PI Preview"
+          >
+            <X className="h-5 w-5 text-gray-600" />
+          </button>
+          
+          <div className="bg-white rounded-lg shadow-xl">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Proforma Invoice Preview</h2>
+              <CorporateStandardInvoice 
+                selectedBranch={quotationData.selectedBranch}
+                companyBranches={companyBranches}
+                quotations={[piPreviewData]}
+              />
+            </div>
+            <div className="flex justify-end gap-3 p-6 border-t">
+              <Button 
+                type="button" 
+                onClick={() => setShowPIPreview(false)}
+                className="bg-gray-600 hover:bg-gray-700"
+              >
+                Close
+              </Button>
+              <Button 
+                type="button" 
+                onClick={() => {
+                  try {
+                    const event = new CustomEvent('pi-saved', {
+                      detail: {
+                        customerId: customer?.id,
+                        quotationNumber: previewData?.quotationNumber,
+                        selectedBranch: quotationData.selectedBranch,
+                        piData: piPreviewData
+                      }
+                    })
+                    window.dispatchEvent(event)
+                    setShowPIPreview(false)
+                    alert('PI saved successfully!')
+                  } catch (e) {
+                    console.error('Failed to save PI', e)
+                  }
+                }}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                Save PI
+              </Button>
+              <Button 
+                type="button" 
+                onClick={() => window.print()}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Print PI
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -616,6 +756,19 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
                   onClick={onClose}
                 >
                   Cancel
+                </Button>
+                <Button 
+                  type="button" 
+                  className={`flex items-center gap-2 ${
+                    isFormValid() 
+                      ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                  onClick={handlePIClick}
+                  disabled={!isFormValid()}
+                >
+                  <FileCheck className="w-4 h-4" />
+                  PI
                 </Button>
                 <Button 
                   type="button" 

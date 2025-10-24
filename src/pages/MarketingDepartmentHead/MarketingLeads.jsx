@@ -614,7 +614,7 @@ const MarketingLeads = () => {
               onClick={() => setShowAddCustomer(true)}
             >
               <Plus className="w-4 h-4" />
-              <span>Add Customer</span>
+              <span>Add leads</span>
             </button>
             <button
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
@@ -886,7 +886,7 @@ const MarketingLeads = () => {
         </div>
       </div>
 
-      {/* Add Customer Modal */}
+      {/* Add leads Modal */}
       {showAddCustomer && (
         <AddCustomerForm 
           onClose={() => setShowAddCustomer(false)} 
@@ -1621,7 +1621,7 @@ const MarketingLeads = () => {
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h4 className="text-lg font-semibold text-gray-900 mb-2">CSV Import Instructions</h4>
                   <p className="text-sm text-gray-600 mb-3">
-                    Upload a CSV file with the same fields as the Add Customer form. Download the template below for the correct format.
+                    Upload a CSV file with the same fields as the Add leads form. Download the template below for the correct format.
                   </p>
                   <button
                     onClick={downloadCsvTemplate}

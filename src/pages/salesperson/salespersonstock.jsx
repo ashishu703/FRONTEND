@@ -4,7 +4,7 @@ import React, { useState } from "react"
 import { Search, Package, Filter, Download, Plus, X, Save } from "lucide-react"
 import html2pdf from 'html2pdf.js'
 
-export default function StockManagement() {
+export default function StockManagement({ isDarkMode = false }) {
   // Sample stock data
   const [stockItems, setStockItems] = useState([
     {
@@ -271,7 +271,7 @@ export default function StockManagement() {
   }
 
   return (
-    <div className="p-6">
+    <div className={`p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
 
       {/* Top Row - Search, Filters and Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -280,12 +280,20 @@ export default function StockManagement() {
           <div className="flex">
             <input
               type="text"
-              className="flex-1 px-4 py-2 border border-blue-500 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              className={`flex-1 px-4 py-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
+                isDarkMode 
+                  ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
+                  : 'bg-white border-blue-500 text-gray-900'
+              }`}
               placeholder="Search items..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <button className="px-4 py-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button className={`px-4 py-2 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              isDarkMode 
+                ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                : 'bg-blue-500 hover:bg-blue-600 text-white'
+            }`}>
               <Search className="h-4 w-4" />
             </button>
           </div>
@@ -296,7 +304,11 @@ export default function StockManagement() {
           {/* Category Filter */}
           <div className="relative">
             <select
-              className="appearance-none bg-white border border-gray-300 text-gray-700 py-2 pl-3 pr-8 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm w-full"
+              className={`appearance-none py-2 pl-3 pr-8 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm w-full ${
+                isDarkMode 
+                  ? 'bg-gray-800 border-gray-600 text-white' 
+                  : 'bg-white border-gray-300 text-gray-700'
+              }`}
               value={filters.category}
               onChange={(e) => setFilters({...filters, category: e.target.value})}
             >
@@ -305,7 +317,9 @@ export default function StockManagement() {
                 <option key={category} value={category}>{category}</option>
               ))}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+            <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 ${
+              isDarkMode ? 'text-gray-400' : 'text-gray-700'
+            }`}>
               <Filter className="h-4 w-4" />
             </div>
           </div>
@@ -313,7 +327,11 @@ export default function StockManagement() {
           {/* Location Filter */}
           <div className="relative">
             <select
-              className="appearance-none bg-white border border-gray-300 text-gray-700 py-2 pl-3 pr-8 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm w-full"
+              className={`appearance-none py-2 pl-3 pr-8 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm w-full ${
+                isDarkMode 
+                  ? 'bg-gray-800 border-gray-600 text-white' 
+                  : 'bg-white border-gray-300 text-gray-700'
+              }`}
               value={filters.location}
               onChange={(e) => setFilters({...filters, location: e.target.value})}
             >
@@ -322,7 +340,9 @@ export default function StockManagement() {
                 <option key={location} value={location}>{location}</option>
               ))}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+            <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 ${
+              isDarkMode ? 'text-gray-400' : 'text-gray-700'
+            }`}>
               <Filter className="h-4 w-4" />
             </div>
           </div>
@@ -330,7 +350,11 @@ export default function StockManagement() {
           {/* Export Button */}
           <button
             onClick={handleExport}
-            className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto"
+            className={`inline-flex items-center justify-center px-3 py-2 border shadow-sm text-sm leading-4 font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto ${
+              isDarkMode 
+                ? 'border-gray-600 text-gray-300 bg-gray-800 hover:bg-gray-700' 
+                : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+            }`}
           >
             <Download className="h-4 w-4 mr-2" />
             Export
@@ -340,54 +364,92 @@ export default function StockManagement() {
       </div>
 
       {/* Table */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div className={`shadow overflow-hidden sm:rounded-lg ${
+        isDarkMode ? 'bg-gray-800' : 'bg-white'
+      }`}>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                }`}>
                   Item Code
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                }`}>
                   Name
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                }`}>
                   Category
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                }`}>
                   Quantity
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                }`}>
                   Unit
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                }`}>
                   Rate (₹)
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                }`}>
                   Location
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                }`}>
                   Last Updated
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className={`divide-y divide-gray-200 ${
+              isDarkMode ? 'bg-gray-800' : 'bg-white'
+            }`}>
               {paginatedItems.length > 0 ? (
                 paginatedItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.itemCode}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.category}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.quantity.toLocaleString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.unit}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">₹{item.rate.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.location}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.lastUpdated}</td>
+                  <tr key={item.id} className={isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                      isDarkMode ? 'text-gray-100' : 'text-gray-900'
+                    }`}>{item.itemCode}</td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                      isDarkMode ? 'text-gray-100' : 'text-gray-900'
+                    }`}>{item.name}</td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                    }`}>{item.category}</td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                    }`}>{item.quantity.toLocaleString()}</td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                    }`}>{item.unit}</td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                      isDarkMode ? 'text-gray-100' : 'text-gray-900'
+                    }`}>₹{item.rate.toFixed(2)}</td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                    }`}>{item.location}</td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                    }`}>{item.lastUpdated}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan="8" className={`px-6 py-4 text-center text-sm ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
                     No items found matching your criteria
                   </td>
                 </tr>
@@ -398,23 +460,37 @@ export default function StockManagement() {
         
         {/* Pagination Controls */}
         {filteredItems.length > 0 && (
-          <div className="mt-6 flex items-center justify-between bg-white rounded-lg border border-gray-200 p-4">
+          <div className={`mt-6 flex items-center justify-between rounded-lg border p-4 ${
+            isDarkMode 
+              ? 'bg-gray-800 border-gray-600' 
+              : 'bg-white border-gray-200'
+          }`}>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-700">Show</span>
+                <span className={`text-sm ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>Show</span>
                 <select
                   value={itemsPerPage}
                   onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                  className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    isDarkMode 
+                      ? 'bg-gray-700 border-gray-600 text-white' 
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
                 >
                   <option value={5}>5</option>
                   <option value={10}>10</option>
                   <option value={20}>20</option>
                   <option value={50}>50</option>
                 </select>
-                <span className="text-sm text-gray-700">entries</span>
+                <span className={`text-sm ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>entries</span>
               </div>
-              <div className="text-sm text-gray-700">
+              <div className={`text-sm ${
+                isDarkMode ? 'text-gray-300' : 'text-gray-700'
+              }`}>
                 Showing {startIndex + 1} to {Math.min(endIndex, filteredItems.length)} of {filteredItems.length} entries
               </div>
             </div>
@@ -424,7 +500,11 @@ export default function StockManagement() {
               <button
                 onClick={goToFirstPage}
                 disabled={currentPage === 1}
-                className="px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`px-2 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isDarkMode 
+                    ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
               >
                 First
               </button>
@@ -433,7 +513,11 @@ export default function StockManagement() {
               <button
                 onClick={goToPreviousPage}
                 disabled={currentPage === 1}
-                className="px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`px-2 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isDarkMode 
+                    ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
               >
                 Previous
               </button>
@@ -458,7 +542,9 @@ export default function StockManagement() {
                         className={`px-3 py-1 text-sm border rounded ${
                           i === currentPage
                             ? 'bg-blue-600 text-white border-blue-600'
-                            : 'border-gray-300 hover:bg-gray-50'
+                            : isDarkMode 
+                              ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                              : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                         }`}
                       >
                         {i}

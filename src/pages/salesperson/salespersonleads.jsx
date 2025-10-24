@@ -69,7 +69,7 @@ function CardContent({ className, children }) {
   return <div className={cx("p-0", className)}>{children}</div>
 }
 
-export default function CustomerListContent() {
+export default function CustomerListContent({ isDarkMode = false }) {
   const { customers, setCustomers, updateCustomer, addCustomer, deleteCustomer } = useSharedData()
   
   // Demo user data
@@ -217,6 +217,19 @@ export default function CustomerListContent() {
   
   // Quotations data - empty array ready for real data
   const [quotations, setQuotations] = React.useState([])
+  const [piStore, setPiStore] = React.useState({})
+  const [savedPiPreview, setSavedPiPreview] = React.useState(null) // { data, selectedBranch }
+
+  React.useEffect(() => {
+    function handlePiSaved(e) {
+      const { quotationNumber, piData, selectedBranch: piBranch } = e.detail || {}
+      if (!quotationNumber || !piData) return
+      setPiStore(prev => ({ ...prev, [quotationNumber]: { data: piData, selectedBranch: piBranch } }))
+      setLastQuotationData(prev => prev || { quotationNumber })
+    }
+    window.addEventListener('pi-saved', handlePiSaved)
+    return () => window.removeEventListener('pi-saved', handlePiSaved)
+  }, [])
   const [showPdfViewer, setShowPdfViewer] = React.useState(false)
   const [currentPdfUrl, setCurrentPdfUrl] = React.useState('')
   // Available options for dropdowns
@@ -378,6 +391,20 @@ export default function CustomerListContent() {
     setQuotationData(newQuotationData)
     setLastQuotationData(newQuotationData) // Store the last created quotation
     
+    // Add the new quotation to the quotations array
+    const newQuotation = {
+      id: newQuotationData.quotationNumber || `ANQ${Date.now()}`,
+      quotationNumber: newQuotationData.quotationNumber,
+      quotationDate: newQuotationData.quotationDate,
+      customerId: selectedCustomerForQuotation.id,
+      customerName: selectedCustomerForQuotation.name,
+      total: newQuotationData.total,
+      status: 'draft',
+      ...newQuotationData
+    }
+    
+    setQuotations(prevQuotations => [newQuotation, ...prevQuotations])
+    
     // Update customer's quotation count and latest quotation flag
     setCustomers(prevCustomers => 
       prevCustomers.map(customer => 
@@ -401,59 +428,59 @@ export default function CustomerListContent() {
     setSelectedCustomerForPI(null)
   }
 
+  // Send a specific quotation for verification (per-quotation status)
+  const handleSendQuotation = (quotation) => {
+    setQuotations(prev => prev.map(q => {
+      const isSame = (q.quotationNumber && quotation.quotationNumber && q.quotationNumber === quotation.quotationNumber)
+        || (q.id && quotation.id && q.id === quotation.id)
+      return isSame ? { ...q, status: 'pending', verificationSentAt: new Date().toISOString() } : q
+    }))
+    alert('Verification request sent for the selected quotation!')
+  }
+
+  // Delete a specific quotation from the list
+  const handleDeleteQuotation = (quotation) => {
+    if (!confirm('Are you sure you want to delete this quotation?')) return
+    setQuotations(prev => prev.filter(q => {
+      const isSame = (q.quotationNumber && quotation.quotationNumber && q.quotationNumber === quotation.quotationNumber)
+        || (q.id && quotation.id && q.id === quotation.id)
+      return !isSame
+    }))
+  }
+
 
   const handleViewQuotation = (quotation) => {
-    // Create sample quotation data for demo purposes
-    const sampleQuotationData = {
-      quotationNumber: quotation.id || `ANO/25-26/${Math.floor(Math.random() * 9999)}`,
-      quotationDate: new Date().toISOString().split('T')[0],
-      validUpto: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      voucherNumber: `VOUCH-${Math.floor(Math.random() * 9999)}`,
-      customer: viewingCustomer,
-      items: [
-        {
-          description: viewingCustomer.productName || "XLPE Cable 1.5mm",
-          quantity: 100,
-          unitPrice: 150.00,
-          total: 15000.00
-        }
-      ],
-      subtotal: 15000.00,
-      tax: 2700.00,
-      total: 17700.00,
-      terms: "Payment terms: 30 days from invoice date"
-    };
-    
-    setQuotationPopupData({
-      customer: viewingCustomer,
-      quotation: sampleQuotationData
-    });
-    setShowQuotationPopup(true);
-  };
+    // Use the actual quotation object as saved from the form
+    const normalized = {
+      ...quotation,
+      customer: {
+        name: quotation.billTo?.business || viewingCustomer?.name,
+        business: quotation.billTo?.business,
+        address: quotation.billTo?.address,
+        phone: quotation.billTo?.phone,
+        gstNo: quotation.billTo?.gstNo,
+        state: quotation.billTo?.state
+      },
+      items: (quotation.items || []).map(i => ({
+        description: i.productName || i.description,
+        quantity: i.quantity,
+        unit: i.unit,
+        unitPrice: i.buyerRate ?? i.unitPrice ?? i.rate,
+        total: i.amount ?? i.total
+      })),
+      subtotal: quotation.subtotal,
+      tax: quotation.taxAmount ?? quotation.tax,
+      total: quotation.total
+    }
+    setQuotationPopupData(normalized)
+    setShowQuotationPopup(true)
+  }
 
   const handleViewLatestQuotation = (customer) => {
-    // Create sample quotation data for demo purposes
-    const sampleQuotationData = {
-      quotationNumber: `ANO/25-26/${Math.floor(Math.random() * 9999)}`,
-      quotationDate: new Date().toISOString().split('T')[0],
-      validUpto: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      voucherNumber: `VOUCH-${Math.floor(Math.random() * 9999)}`,
-      customer: customer,
-      items: [
-        {
-          description: customer.productName || "XLPE Cable 1.5mm",
-          quantity: 100,
-          unitPrice: 150.00,
-          total: 15000.00
-        }
-      ],
-      subtotal: 15000.00,
-      tax: 2700.00,
-      total: 17700.00
-    }
-    
-    setQuotationPopupData(sampleQuotationData)
-    setShowQuotationPopup(true)
+    // Find latest quotation created for this customer (most recent at index 0)
+    const latest = quotations.find(q => q.customerId === customer.id) || quotations[0]
+    if (!latest) return
+    handleViewQuotation(latest)
   }
 
   const handleWalletClick = async (customer) => {
@@ -1294,7 +1321,7 @@ export default function CustomerListContent() {
   const goToNextPage = () => setCurrentPage(prev => Math.min(totalPages, prev + 1));
 
   return (
-    <main className="flex-1 overflow-auto p-6">
+    <main className={`flex-1 overflow-auto p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <div className="mb-6">
 
         <div className="flex items-center justify-between gap-4">
@@ -1360,11 +1387,17 @@ export default function CustomerListContent() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/50">
-                  <th className="text-left py-4 px-4 font-medium text-gray-600 text-sm">#</th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                <tr className={`border-b ${
+                  isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-100 bg-gray-50/50'
+                }`}>
+                  <th className={`text-left py-4 px-4 font-medium text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>#</th>
+                  <th className={`text-left py-2 px-4 font-medium text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-indigo-500" />
+                      <User className={`h-4 w-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
                       Name & Phone
                     </div>
                     {showFilters && (
@@ -1372,14 +1405,20 @@ export default function CustomerListContent() {
                         type="text"
                         value={filters.customer}
                         onChange={(e) => handleFilterChange('customer', e.target.value)}
-                        className="mt-1 w-full text-xs p-1 border rounded"
+                        className={`mt-1 w-full text-xs p-1 border rounded ${
+                          isDarkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                         placeholder="Filter customer..."
                       />
                     )}
                   </th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                  <th className={`text-left py-2 px-4 font-medium text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-indigo-500" />
+                      <Building2 className={`h-4 w-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
                       Business
                     </div>
                     {showFilters && (
@@ -1387,14 +1426,20 @@ export default function CustomerListContent() {
                         type="text"
                         value={filters.business}
                         onChange={(e) => handleFilterChange('business', e.target.value)}
-                        className="mt-1 w-full text-xs p-1 border rounded"
+                        className={`mt-1 w-full text-xs p-1 border rounded ${
+                          isDarkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                         placeholder="Filter business..."
                       />
                     )}
                   </th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                  <th className={`text-left py-2 px-4 font-medium text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-blue-500" />
+                      <MapPin className={`h-4 w-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
                       Address
                     </div>
                     {showFilters && (
@@ -1402,14 +1447,20 @@ export default function CustomerListContent() {
                         type="text"
                         value={filters.address}
                         onChange={(e) => handleFilterChange('address', e.target.value)}
-                        className="mt-1 w-full text-xs p-1 border rounded"
+                        className={`mt-1 w-full text-xs p-1 border rounded ${
+                          isDarkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                         placeholder="Filter address..."
                       />
                     )}
                   </th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                  <th className={`text-left py-2 px-4 font-medium text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-purple-500" />
+                      <FileText className={`h-4 w-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
                       GST No.
                     </div>
                     {showFilters && (
@@ -1417,14 +1468,20 @@ export default function CustomerListContent() {
                         type="text"
                         value={filters.gstNo}
                         onChange={(e) => handleFilterChange('gstNo', e.target.value)}
-                        className="mt-1 w-full text-xs p-1 border rounded"
+                        className={`mt-1 w-full text-xs p-1 border rounded ${
+                          isDarkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                         placeholder="Filter GST..."
                       />
                     )}
                   </th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm w-48">
+                  <th className={`text-left py-2 px-4 font-medium text-sm w-48 ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-violet-500" />
+                      <Package className={`h-4 w-4 ${isDarkMode ? 'text-violet-400' : 'text-violet-500'}`} />
                       Product Name
                     </div>
                     {showFilters && (
@@ -1432,22 +1489,32 @@ export default function CustomerListContent() {
                         type="text"
                         value={filters.productName}
                         onChange={(e) => handleFilterChange('productName', e.target.value)}
-                        className="mt-1 w-full text-xs p-1 border rounded"
+                        className={`mt-1 w-full text-xs p-1 border rounded ${
+                          isDarkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                         placeholder="Filter product name..."
                       />
                     )}
                   </th>
                   
-                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                  <th className={`text-left py-2 px-4 font-medium text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <Map className="h-4 w-4 text-indigo-500" />
+                      <Map className={`h-4 w-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
                       State
                     </div>
                     {showFilters && (
                       <select
                         value={filters.state}
                         onChange={(e) => handleFilterChange('state', e.target.value)}
-                        className="mt-1 w-full text-xs p-1 border rounded bg-white"
+                        className={`mt-1 w-full text-xs p-1 border rounded ${
+                          isDarkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white' 
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                       >
                         <option value="">All States</option>
                         {states.map(state => (
@@ -1456,16 +1523,22 @@ export default function CustomerListContent() {
                       </select>
                     )}
                   </th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                  <th className={`text-left py-2 px-4 font-medium text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <Globe className="h-4 w-4 text-orange-500" />
+                      <Globe className={`h-4 w-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-500'}`} />
                       Lead Source
                     </div>
                     {showFilters && (
                       <select
                         value={filters.enquiryBy}
                         onChange={(e) => handleFilterChange('enquiryBy', e.target.value)}
-                        className="mt-1 w-full text-xs p-1 border rounded bg-white"
+                        className={`mt-1 w-full text-xs p-1 border rounded ${
+                          isDarkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white' 
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                       >
                         <option value="">All Sources</option>
                         {leadSources.map(source => (
@@ -1474,16 +1547,22 @@ export default function CustomerListContent() {
                       </select>
                     )}
                   </th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                  <th className={`text-left py-2 px-4 font-medium text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-purple-500" />
+                      <User className={`h-4 w-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
                       Customer Type
                     </div>
                     {showFilters && (
                       <select
                         value={filters.customerType}
                         onChange={(e) => handleFilterChange('customerType', e.target.value)}
-                        className="mt-1 w-full text-xs p-1 border rounded bg-white"
+                        className={`mt-1 w-full text-xs p-1 border rounded ${
+                          isDarkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white' 
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                       >
                         <option value="">All Types</option>
                         {customerTypes.map(type => (
@@ -1492,9 +1571,11 @@ export default function CustomerListContent() {
                       </select>
                     )}
                   </th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm w-32">
+                  <th className={`text-left py-2 px-4 font-medium text-sm w-32 ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-indigo-500" />
+                      <FileText className={`h-4 w-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
                       Date
                     </div>
                     {showFilters && (
@@ -1502,20 +1583,30 @@ export default function CustomerListContent() {
                         type="date"
                         value={filters.date}
                         onChange={(e) => handleFilterChange('date', e.target.value)}
-                        className="mt-1 w-full text-xs p-1 border rounded bg-white"
+                        className={`mt-1 w-full text-xs p-1 border rounded ${
+                          isDarkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white' 
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                       />
                     )}
                   </th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                  <th className={`text-left py-2 px-4 font-medium text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <BadgeCheck className="h-4 w-4 text-emerald-600" />
+                      <BadgeCheck className={`h-4 w-4 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
                       Sales Status
                     </div>
                     {showFilters && (
                       <select
                         value={filters.salesStatus}
                         onChange={(e) => handleFilterChange('salesStatus', e.target.value)}
-                        className="mt-1 w-full text-xs p-1 border rounded bg-white"
+                        className={`mt-1 w-full text-xs p-1 border rounded ${
+                          isDarkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white' 
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
                       >
                         <option value="">All Statuses</option>
                         <option value="Connected">Connected</option>
@@ -1525,15 +1616,19 @@ export default function CustomerListContent() {
                       </select>
                     )}
                   </th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                  <th className={`text-left py-2 px-4 font-medium text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <ArrowRightLeft className="h-4 w-4 text-indigo-500" />
+                      <ArrowRightLeft className={`h-4 w-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
                       Transferred To
                     </div>
                   </th>
-                  <th className="text-left py-2 px-4 font-medium text-gray-600 text-sm">
+                  <th className={`text-left py-2 px-4 font-medium text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
                     <div className="flex items-center gap-2">
-                      <Pencil className="h-4 w-4 text-gray-500" />
+                      <Pencil className={`h-4 w-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                       Action
                     </div>
                   </th>
@@ -1542,16 +1637,22 @@ export default function CustomerListContent() {
               <tbody>
                 {paginatedCustomers.length === 0 ? (
                   <tr>
-                    <td colSpan="14" className="py-12 text-center text-gray-500">
+                    <td colSpan="14" className={`py-12 text-center ${
+                      isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
                       <div className="flex flex-col items-center gap-2">
-                        <Search className="h-8 w-8 text-gray-300" />
+                        <Search className={`h-8 w-8 ${isDarkMode ? 'text-gray-500' : 'text-gray-300'}`} />
                         <p className="text-sm">
                           {searchQuery ? `No customers found for "${searchQuery}"` : 'No customers available'}
                         </p>
                         {searchQuery && (
                           <button 
                             onClick={() => setSearchQuery('')}
-                            className="text-blue-600 hover:text-blue-700 text-sm underline"
+                            className={`text-sm underline ${
+                              isDarkMode 
+                                ? 'text-blue-400 hover:text-blue-300' 
+                                : 'text-blue-600 hover:text-blue-700'
+                            }`}
                           >
                             Clear search
                           </button>
@@ -1561,24 +1662,42 @@ export default function CustomerListContent() {
                   </tr>
                 ) : (
                   paginatedCustomers.map((customer) => (
-                  <tr key={customer.id} className="border-b border-gray-50 odd:bg-white even:bg-gray-50/40 hover:bg-white transition-colors">
-                    <td className="py-4 px-4 text-sm font-medium text-gray-900">{customer.id}</td>
+                  <tr key={customer.id} className={`border-b transition-colors ${
+                    isDarkMode 
+                      ? 'border-gray-700 odd:bg-gray-800 even:bg-gray-800/50 hover:bg-gray-700' 
+                      : 'border-gray-50 odd:bg-white even:bg-gray-50/40 hover:bg-white'
+                  }`}>
+                    <td className={`py-4 px-4 text-sm font-medium ${
+                      isDarkMode ? 'text-gray-100' : 'text-gray-900'
+                    }`}>{customer.id}</td>
                     <td className="py-4 px-4">
                       <div>
-                        <div className="font-medium text-gray-900 text-sm">{customer.name}</div>
-                        <div className="text-xs text-gray-500">{customer.phone}</div>
+                        <div className={`font-medium text-sm ${
+                          isDarkMode ? 'text-gray-100' : 'text-gray-900'
+                        }`}>{customer.name}</div>
+                        <div className={`text-xs ${
+                          isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                        }`}>{customer.phone}</div>
                         {customer.whatsapp && (
-                          <div className="text-xs text-green-600 mt-1">
+                          <div className={`text-xs mt-1 ${
+                            isDarkMode ? 'text-green-400' : 'text-green-600'
+                          }`}>
                             <a href={`https://wa.me/${customer.whatsapp.replace(/[^\d]/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1">
                               <MessageCircle className="h-3 w-3" /> WhatsApp
                             </a>
                           </div>
                         )}
                         {customer.email && customer.email !== "N/A" && (
-                          <div className="text-xs text-cyan-600 mt-1">
+                          <div className={`text-xs mt-1 ${
+                            isDarkMode ? 'text-cyan-400' : 'text-cyan-600'
+                          }`}>
                             <button 
                               onClick={() => window.open(`mailto:${customer.email}?subject=Follow up from ANOCAB&body=Dear ${customer.name},%0D%0A%0D%0AThank you for your interest in our products.%0D%0A%0D%0ABest regards,%0D%0AANOCAB Team`, '_blank')}
-                              className="inline-flex items-center gap-1 hover:text-cyan-700 transition-colors"
+                              className={`inline-flex items-center gap-1 transition-colors ${
+                                isDarkMode 
+                                  ? 'hover:text-cyan-300' 
+                                  : 'hover:text-cyan-700'
+                              }`}
                               title="Send Email"
                             >
                               <Mail className="h-3 w-3" /> {customer.email}
@@ -1587,47 +1706,93 @@ export default function CustomerListContent() {
                         )}
                       </div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="font-medium">{customer.business}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="font-medium">{customer.address}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="font-medium">{customer.gstNo}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="font-medium">{customer.productName}</div>
                     </td>
                     
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="font-medium">{customer.state}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="font-medium">{customer.enquiryBy}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="font-medium">{customer.customerType || 'N/A'}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700 w-32">
+                    <td className={`py-4 px-4 text-sm w-32 ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="font-medium whitespace-nowrap">{customer.date}</div>
                     </td>
-                    <td className="py-4 px-4 text-sm text-gray-700">
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
                       <div className="flex flex-col">
                         <span className={
                           customer.salesStatus === 'connected'
-                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-green-50 text-green-700 border-green-200'
+                            ? `inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border ${
+                                isDarkMode 
+                                  ? 'bg-green-900 text-green-300 border-green-700' 
+                                  : 'bg-green-50 text-green-700 border-green-200'
+                              }`
                             : customer.salesStatus === 'not_connected'
-                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-red-50 text-red-700 border-red-200'
+                            ? `inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border ${
+                                isDarkMode 
+                                  ? 'bg-red-900 text-red-300 border-red-700' 
+                                  : 'bg-red-50 text-red-700 border-red-200'
+                              }`
                             : customer.salesStatus === 'next_meeting'
-                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200'
+                            ? `inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border ${
+                                isDarkMode 
+                                  ? 'bg-blue-900 text-blue-300 border-blue-700' 
+                                  : 'bg-blue-50 text-blue-700 border-blue-200'
+                              }`
                             : customer.salesStatus === 'closed'
-                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-gray-50 text-gray-700 border-gray-200'
+                            ? `inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border ${
+                                isDarkMode 
+                                  ? 'bg-gray-700 text-gray-300 border-gray-600' 
+                                  : 'bg-gray-50 text-gray-700 border-gray-200'
+                              }`
                             : customer.salesStatus === 'order_confirmed'
-                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-green-50 text-green-700 border-green-200'
+                            ? `inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border ${
+                                isDarkMode 
+                                  ? 'bg-green-900 text-green-300 border-green-700' 
+                                  : 'bg-green-50 text-green-700 border-green-200'
+                              }`
                             : customer.salesStatus === 'other'
-                            ? 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-purple-50 text-purple-700 border-purple-200'
-                            : 'inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border bg-yellow-50 text-yellow-700 border-yellow-200'
+                            ? `inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border ${
+                                isDarkMode 
+                                  ? 'bg-purple-900 text-purple-300 border-purple-700' 
+                                  : 'bg-purple-50 text-purple-700 border-purple-200'
+                              }`
+                            : `inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border ${
+                                isDarkMode 
+                                  ? 'bg-yellow-900 text-yellow-300 border-yellow-700' 
+                                  : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                              }`
                         }>
                           {customer.salesStatus === 'connected' ? 'Connected' :
                            customer.salesStatus === 'not_connected' ? 'Not Connected' :
@@ -1640,10 +1805,14 @@ export default function CustomerListContent() {
                            customer.salesStatus || 'Pending'}
                         </span>
                         {customer.salesStatusRemark && (
-                          <span className="text-xs text-gray-500 mt-1">{customer.salesStatusRemark}</span>
+                          <span className={`text-xs mt-1 ${
+                            isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                          }`}>{customer.salesStatusRemark}</span>
                         )}
                         {customer.salesStatusDate && (
-                          <span className="text-xs text-gray-400">{customer.salesStatusDate}</span>
+                          <span className={`text-xs ${
+                            isDarkMode ? 'text-gray-500' : 'text-gray-400'
+                          }`}>{customer.salesStatusDate}</span>
                         )}
                       </div>
                     </td>
@@ -1651,14 +1820,20 @@ export default function CustomerListContent() {
                           <div className="flex flex-col">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           customer.transferredTo 
-                            ? 'bg-indigo-100 text-indigo-800' 
-                            : 'bg-gray-100 text-gray-600'
+                            ? (isDarkMode 
+                                ? 'bg-indigo-900 text-indigo-300' 
+                                : 'bg-indigo-100 text-indigo-800')
+                            : (isDarkMode 
+                                ? 'bg-gray-700 text-gray-400' 
+                                : 'bg-gray-100 text-gray-600')
                         }`}>
                               <ArrowRightLeft className="h-3 w-3 mr-1" />
                           {customer.transferredTo || 'Not Transferred'}
                             </span>
                         {customer.transferredLeads > 0 && (
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className={`text-xs mt-1 ${
+                            isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                          }`}>
                             <div>From: {customer.transferredFrom}</div>
                             <div>To: {customer.transferredTo}</div>
                           </div>
@@ -1667,37 +1842,67 @@ export default function CustomerListContent() {
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex flex-col gap-2">
-                        <button onClick={() => handleEdit(customer)} className="p-1.5 rounded-md hover:bg-gray-100 relative group" title="Edit Customer">
-                          <Pencil className="h-4 w-4 text-gray-600" />
-                          <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                        <button onClick={() => handleEdit(customer)} className={`p-1.5 rounded-md relative group ${
+                          isDarkMode 
+                            ? 'hover:bg-gray-700' 
+                            : 'hover:bg-gray-100'
+                        }`} title="Edit Customer">
+                          <Pencil className={`h-4 w-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+                          <span className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none ${
+                            isDarkMode ? 'bg-gray-600' : 'bg-gray-800'
+                          }`}>
                             Edit Customer
                           </span>
                         </button>
-                        <button onClick={() => handleView(customer)} className="p-1.5 rounded-md hover:bg-gray-100 relative group" title="View Details">
-                          <Eye className="h-4 w-4 text-gray-600" />
-                          <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                        <button onClick={() => handleView(customer)} className={`p-1.5 rounded-md relative group ${
+                          isDarkMode 
+                            ? 'hover:bg-gray-700' 
+                            : 'hover:bg-gray-100'
+                        }`} title="View Details">
+                          <Eye className={`h-4 w-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+                          <span className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none ${
+                            isDarkMode ? 'bg-gray-600' : 'bg-gray-800'
+                          }`}>
                             View Details
                           </span>
                         </button>
                         <button 
                           onClick={() => handleWalletClick(customer)}
-                          className="p-1.5 rounded-md hover:bg-green-50 text-green-600 relative group" 
+                          className={`p-1.5 rounded-md relative group ${
+                            isDarkMode 
+                              ? 'hover:bg-green-900 text-green-400' 
+                              : 'hover:bg-green-50 text-green-600'
+                          }`} 
                           title="View Payment Receipt"
                         >
                           <Wallet className="h-4 w-4" />
-                          <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                          <span className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none ${
+                            isDarkMode ? 'bg-gray-600' : 'bg-gray-800'
+                          }`}>
                             Payment
                           </span>
                         </button>
-                        <button onClick={() => handleQuotation(customer)} className="p-1.5 rounded-md hover:bg-purple-50 text-purple-600 relative group" title="Quotation">
+                        <button onClick={() => handleQuotation(customer)} className={`p-1.5 rounded-md relative group ${
+                          isDarkMode 
+                            ? 'hover:bg-purple-900 text-purple-400' 
+                            : 'hover:bg-purple-50 text-purple-600'
+                        }`} title="Quotation">
                           <FileText className="h-4 w-4" />
-                          <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                          <span className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none ${
+                            isDarkMode ? 'bg-gray-600' : 'bg-gray-800'
+                          }`}>
                             Quotation
                           </span>
                         </button>
-                        <button onClick={() => setShowFollowUpPicker(customer.id)} className="p-1.5 rounded-md hover:bg-yellow-50 text-yellow-600 relative group" title="Set Follow-up">
+                        <button onClick={() => setShowFollowUpPicker(customer.id)} className={`p-1.5 rounded-md relative group ${
+                          isDarkMode 
+                            ? 'hover:bg-yellow-900 text-yellow-400' 
+                            : 'hover:bg-yellow-50 text-yellow-600'
+                        }`} title="Set Follow-up">
                           <ClockIcon className="h-4 w-4" />
-                          <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                          <span className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none ${
+                            isDarkMode ? 'bg-gray-600' : 'bg-gray-800'
+                          }`}>
                             Set Follow-up
                           </span>
                         </button>
@@ -1858,10 +2063,6 @@ export default function CustomerListContent() {
                   <FileText className="h-4 w-4" />
                   Quotation & Payment
                 </button>
-                <button className={cx("px-3 py-2 text-sm flex items-center gap-1", modalTab === 'payment_timeline' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-900')} onClick={() => setModalTab('payment_timeline')}>
-                  <Clock className="h-4 w-4" />
-                  Performa Invoice
-                </button>
               </div>
             </div>
             <div className="px-6 py-4 max-h-[70vh] overflow-auto">
@@ -1875,303 +2076,82 @@ export default function CustomerListContent() {
                   <div className="flex justify-between"><span className="text-gray-500">Email</span><span className="font-medium text-gray-900">{viewingCustomer.email}</span></div>
                 </div>
               )}
-              {modalTab === 'payment_timeline' && (
-                <div className="space-y-4 text-sm">
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Performa Invoice Details</h3>
-                    <div className="rounded-md border border-gray-200 divide-y">
-                      <div className="p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          <div>
-                            <span className="text-gray-700">Latest PI:</span>
-                            <p className="text-sm font-medium text-gray-900">PI-475373</p>
-                            <p className="text-xs text-gray-500">2025-09-22</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => handleViewLatestQuotation(viewingCustomer)}
-                            className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700"
-                          >
-                            <Eye className="h-3.5 w-3.5" /> View
-                          </button>
-                          <button 
-                            onClick={() => handleSendVerification(viewingCustomer)}
-                            className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
-                              viewingCustomer.piStatus === 'approved' 
-                                ? 'bg-green-600 text-white hover:bg-green-700' 
-                                : viewingCustomer.piStatus === 'rejected'
-                                ? 'bg-red-600 text-white hover:bg-red-700'
-                                : viewingCustomer.piStatus === 'pending'
-                                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                            }`}
-                          >
-                            {viewingCustomer.piStatus === 'approved' 
-                              ? <Check className="h-3 w-3" />
-                              : viewingCustomer.piStatus === 'rejected'
-                              ? <X className="h-3 w-3" />
-                              : viewingCustomer.piStatus === 'pending'
-                              ? <Clock className="h-3 w-3" />
-                              : <Send className="h-3 w-3" />
-                            }
-                            {viewingCustomer.piStatus === 'approved' 
-                              ? 'Verified' 
-                              : viewingCustomer.piStatus === 'rejected'
-                              ? 'Rejected'
-                              : viewingCustomer.piStatus === 'pending'
-                              ? 'Pending'
-                              : 'Send'
-                            }
-                          </button>
-                        </div>
-                      </div>
-                      <div className="p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          <div>
-                            <span className="text-gray-700">PI #2:</span>
-                            <p className="text-sm font-medium text-gray-900">PI-266545</p>
-                            <p className="text-xs text-gray-500">2025-09-22</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => handleViewQuotation({id: 'PI-266545'})}
-                            className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700"
-                          >
-                            <Eye className="h-3.5 w-3.5" /> View
-                          </button>
-                          <button 
-                            onClick={() => handleSendVerification(viewingCustomer)}
-                            className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
-                              viewingCustomer.piStatus === 'approved' 
-                                ? 'bg-green-600 text-white hover:bg-green-700' 
-                                : viewingCustomer.piStatus === 'rejected'
-                                ? 'bg-red-600 text-white hover:bg-red-700'
-                                : viewingCustomer.piStatus === 'pending'
-                                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                            }`}
-                          >
-                            {viewingCustomer.piStatus === 'approved' 
-                              ? <Check className="h-3 w-3" />
-                              : viewingCustomer.piStatus === 'rejected'
-                              ? <X className="h-3 w-3" />
-                              : viewingCustomer.piStatus === 'pending'
-                              ? <Clock className="h-3 w-3" />
-                              : <Send className="h-3 w-3" />
-                            }
-                            {viewingCustomer.piStatus === 'approved' 
-                              ? 'Verified' 
-                              : viewingCustomer.piStatus === 'rejected'
-                              ? 'Rejected'
-                              : viewingCustomer.piStatus === 'pending'
-                              ? 'Pending'
-                              : 'Send'
-                            }
-                          </button>
-                        </div>
-                      </div>
-                      <div className="p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          <div>
-                            <span className="text-gray-700">PI #1:</span>
-                            <p className="text-sm font-medium text-gray-900">PI-231567</p>
-                            <p className="text-xs text-gray-500">2025-09-22</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => handleViewQuotation({id: 'PI-231567'})}
-                            className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700"
-                          >
-                            <Eye className="h-3.5 w-3.5" /> View
-                          </button>
-                          <button 
-                            onClick={() => handleSendVerification(viewingCustomer)}
-                            className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
-                              viewingCustomer.piStatus === 'approved' 
-                                ? 'bg-green-600 text-white hover:bg-green-700' 
-                                : viewingCustomer.piStatus === 'rejected'
-                                ? 'bg-red-600 text-white hover:bg-red-700'
-                                : viewingCustomer.piStatus === 'pending'
-                                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                            }`}
-                          >
-                            {viewingCustomer.piStatus === 'approved' 
-                              ? <Check className="h-3 w-3" />
-                              : viewingCustomer.piStatus === 'rejected'
-                              ? <X className="h-3 w-3" />
-                              : viewingCustomer.piStatus === 'pending'
-                              ? <Clock className="h-3 w-3" />
-                              : <Send className="h-3 w-3" />
-                            }
-                            {viewingCustomer.piStatus === 'approved' 
-                              ? 'Verified' 
-                              : viewingCustomer.piStatus === 'rejected'
-                              ? 'Rejected'
-                              : viewingCustomer.piStatus === 'pending'
-                              ? 'Pending'
-                              : 'Send'
-                            }
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
               {modalTab === 'quotation_status' && (
                 <div className="space-y-4 text-sm">
                   <div>
                     <h3 className="text-sm font-semibold text-gray-900 mb-2">Quotation Details</h3>
-                    <div className="rounded-md border border-gray-200 divide-y">
-                      <div className="p-3 flex items-center justify-between">
+                    {(() => {
+                      const customerQuotations = quotations.filter(q => q.customerId === viewingCustomer.id)
+                      if (customerQuotations.length === 0) {
+                        return (
+                          <div className="text-center py-8 text-gray-500">
+                            <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                            <p className="text-sm">No quotations created yet</p>
+                            <p className="text-xs text-gray-400 mt-1">Create a quotation to see it here</p>
+                          </div>
+                        )
+                      }
+                      return (
+                        <div className="rounded-md border border-gray-200 divide-y">
+                        {customerQuotations.map((quotation, index) => (
+                          <div key={quotation.id || index} className="p-3 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <FileText className="h-4 w-4 text-gray-500" />
                           <div>
-                            <span className="text-gray-700">Latest Quotation:</span>
-                            <p className="text-sm font-medium text-gray-900">ANQ475373</p>
-                            <p className="text-xs text-gray-500">2025-09-22</p>
+                                <span className="text-gray-700">
+                                  {index === 0 ? 'Latest Quotation:' : `Quotation #${customerQuotations.length - index}:`}
+                                </span>
+                                <p className="text-sm font-medium text-gray-900">{quotation.quotationNumber || `ANQ${quotation.id || index + 1}`}</p>
+                                <p className="text-xs text-gray-500">{quotation.quotationDate || new Date().toLocaleDateString()}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <button 
-                            onClick={() => handleViewLatestQuotation(viewingCustomer)}
+                                onClick={() => handleViewQuotation(quotation)}
                             className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700"
                           >
                             <Eye className="h-3.5 w-3.5" /> View
                           </button>
+                              {piStore[quotation.quotationNumber] && (
                           <button 
-                            onClick={() => handleSendVerification(viewingCustomer)}
+                                  onClick={() => {
+                                    const saved = piStore[quotation.quotationNumber]
+                                    setSavedPiPreview(saved)
+                                    setShowPIPreview(true)
+                                  }}
+                                  className="p-1 rounded-full bg-purple-600 text-white hover:bg-purple-700"
+                                  title="View PI"
+                                >
+                                  <FileText className="h-3 w-3" />
+                          </button>
+                              )}
+                          <button 
+                                onClick={() => handleSendQuotation(quotation)}
                             className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
-                              viewingCustomer.quotationStatus === 'approved' 
-                                ? 'bg-green-600 text-white hover:bg-green-700' 
-                                : viewingCustomer.quotationStatus === 'rejected'
-                                ? 'bg-red-600 text-white hover:bg-red-700'
-                                : viewingCustomer.quotationStatus === 'pending'
+                                  quotation.status === 'pending'
                                 ? 'bg-yellow-600 text-white hover:bg-yellow-700'
                                 : 'bg-blue-600 text-white hover:bg-blue-700'
                             }`}
                           >
-                            {viewingCustomer.quotationStatus === 'approved' 
-                              ? <Check className="h-3 w-3" />
-                              : viewingCustomer.quotationStatus === 'rejected'
-                              ? <X className="h-3 w-3" />
-                              : viewingCustomer.quotationStatus === 'pending'
+                                {quotation.status === 'pending' 
                               ? <Clock className="h-3 w-3" />
                               : <Send className="h-3 w-3" />
                             }
-                            {viewingCustomer.quotationStatus === 'approved' 
-                              ? 'Verified' 
-                              : viewingCustomer.quotationStatus === 'rejected'
-                              ? 'Rejected'
-                              : viewingCustomer.quotationStatus === 'pending'
-                              ? 'Pending'
-                              : 'Send'
-                            }
+                                {quotation.status === 'pending' ? 'Pending' : 'Send'}
+                          </button>
+                          <button 
+                                onClick={() => handleDeleteQuotation(quotation)}
+                                className="p-1 rounded-full bg-red-600 text-white hover:bg-red-700"
+                                title="Delete quotation"
+                              >
+                                <Trash2 className="h-3 w-3" />
                           </button>
                         </div>
                       </div>
-                      <div className="p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          <div>
-                            <span className="text-gray-700">Quotation #2:</span>
-                            <p className="text-sm font-medium text-gray-900">ANQ266545</p>
-                            <p className="text-xs text-gray-500">2025-09-22</p>
+                        ))}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => handleViewQuotation({id: 'ANQ266545'})}
-                            className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700"
-                          >
-                            <Eye className="h-3.5 w-3.5" /> View
-                          </button>
-                          <button 
-                            onClick={() => handleSendVerification(viewingCustomer)}
-                            className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
-                              viewingCustomer.quotationStatus === 'approved' 
-                                ? 'bg-green-600 text-white hover:bg-green-700' 
-                                : viewingCustomer.quotationStatus === 'rejected'
-                                ? 'bg-red-600 text-white hover:bg-red-700'
-                                : viewingCustomer.quotationStatus === 'pending'
-                                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                            }`}
-                          >
-                            {viewingCustomer.quotationStatus === 'approved' 
-                              ? <Check className="h-3 w-3" />
-                              : viewingCustomer.quotationStatus === 'rejected'
-                              ? <X className="h-3 w-3" />
-                              : viewingCustomer.quotationStatus === 'pending'
-                              ? <Clock className="h-3 w-3" />
-                              : <Send className="h-3 w-3" />
-                            }
-                            {viewingCustomer.quotationStatus === 'approved' 
-                              ? 'Verified' 
-                              : viewingCustomer.quotationStatus === 'rejected'
-                              ? 'Rejected'
-                              : viewingCustomer.quotationStatus === 'pending'
-                              ? 'Pending'
-                              : 'Send'
-                            }
-                          </button>
-                        </div>
-                      </div>
-                      <div className="p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          <div>
-                            <span className="text-gray-700">Quotation #1:</span>
-                            <p className="text-sm font-medium text-gray-900">ANQ231567</p>
-                            <p className="text-xs text-gray-500">2025-09-22</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => handleViewQuotation({id: 'ANQ231567'})}
-                            className="text-blue-600 underline inline-flex items-center gap-1 hover:text-blue-700"
-                          >
-                            <Eye className="h-3.5 w-3.5" /> View
-                          </button>
-                          <button 
-                            onClick={() => handleSendVerification(viewingCustomer)}
-                            className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
-                              viewingCustomer.quotationStatus === 'approved' 
-                                ? 'bg-green-600 text-white hover:bg-green-700' 
-                                : viewingCustomer.quotationStatus === 'rejected'
-                                ? 'bg-red-600 text-white hover:bg-red-700'
-                                : viewingCustomer.quotationStatus === 'pending'
-                                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                            }`}
-                          >
-                            {viewingCustomer.quotationStatus === 'approved' 
-                              ? <Check className="h-3 w-3" />
-                              : viewingCustomer.quotationStatus === 'rejected'
-                              ? <X className="h-3 w-3" />
-                              : viewingCustomer.quotationStatus === 'pending'
-                              ? <Clock className="h-3 w-3" />
-                              : <Send className="h-3 w-3" />
-                            }
-                            {viewingCustomer.quotationStatus === 'approved' 
-                              ? 'Verified' 
-                              : viewingCustomer.quotationStatus === 'rejected'
-                              ? 'Rejected'
-                              : viewingCustomer.quotationStatus === 'pending'
-                              ? 'Pending'
-                              : 'Send'
-                            }
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                      )
+                    })()}
                   </div>
                   
                   
@@ -2335,9 +2315,12 @@ export default function CustomerListContent() {
                 <div className="bg-white max-w-full" style={{width: '100%', maxWidth: '8.5in'}}>
                   <div id="pi-preview-content">
                     <CorporateStandardInvoice 
-                      selectedBranch={selectedBranch} 
+                      selectedBranch={(savedPiPreview && savedPiPreview.selectedBranch) || selectedBranch} 
                       companyBranches={companyBranches}
                       quotations={[(() => {
+                        if (savedPiPreview && savedPiPreview.data) {
+                          return savedPiPreview.data
+                        }
                         const items = piFormData.items.map(item => ({
                           productName: item.description || item.subDescription || 'Product',
                           description: item.description || item.subDescription || 'Product',
@@ -3225,7 +3208,7 @@ export default function CustomerListContent() {
                   subtotal: quotationPopupData.subtotal,
                   taxAmount: quotationPopupData.tax,
                   total: quotationPopupData.total,
-                  selectedBranch
+                  selectedBranch: quotationPopupData.selectedBranch || selectedBranch
                 }}
                 companyBranches={companyBranches}
                 user={user}

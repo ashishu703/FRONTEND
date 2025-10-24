@@ -29,6 +29,7 @@ export default function SalespersonLayout({ onLogout }) {
   const [currentPage, setCurrentPage] = useState('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isMobileView, setIsMobileView] = useState(false)
+  const [isDarkMode, setIsDarkMode] = useState(false)
   
   // Set default follow-up page if a follow-up page is loaded directly
   useEffect(() => {
@@ -46,6 +47,10 @@ export default function SalespersonLayout({ onLogout }) {
     window.history.pushState({}, '', `/${page}`);
   };
 
+  const handleToggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
   // If mobile view is active, render mobile layout
   if (isMobileView) {
     return <MobileLayout onLogout={onLogout} onToggleDesktopView={() => setIsMobileView(false)} />
@@ -53,13 +58,16 @@ export default function SalespersonLayout({ onLogout }) {
 
   return (
     <SharedDataProvider>
-      <div className="min-h-screen bg-gray-50 relative">
+      <div className={`min-h-screen relative transition-colors ${
+        isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
+      }`}>
         <Sidebar 
           currentPage={currentPage} 
           onNavigate={handleNavigation} 
           onLogout={onLogout} 
           sidebarOpen={sidebarOpen} 
-          setSidebarOpen={setSidebarOpen} 
+          setSidebarOpen={setSidebarOpen}
+          isDarkMode={isDarkMode}
         />
         <div className={sidebarOpen ? "flex-1 ml-64 transition-all duration-300" : "flex-1 ml-16 transition-all duration-300"}>
           <FixedHeader 
@@ -67,19 +75,23 @@ export default function SalespersonLayout({ onLogout }) {
             currentPage={currentPage} 
             onToggleMobileView={() => setIsMobileView(!isMobileView)}
             isMobileView={isMobileView}
+            isDarkMode={isDarkMode}
+            onToggleDarkMode={handleToggleDarkMode}
           />
-          <div className="flex-1">
-            {currentPage === 'dashboard' && <DashboardContent />}
-            {currentPage === 'customers' && <CustomerListContent />}
-            {currentPage === 'stock' && <StockManagement />}
-            {currentPage === 'products' && <ProductsPage />}
-            {currentPage === 'toolbox' && <ToolboxInterface />}
+          <div className={`flex-1 transition-colors ${
+            isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
+          }`}>
+            {currentPage === 'dashboard' && <DashboardContent isDarkMode={isDarkMode} />}
+            {currentPage === 'customers' && <CustomerListContent isDarkMode={isDarkMode} />}
+            {currentPage === 'stock' && <StockManagement isDarkMode={isDarkMode} />}
+            {currentPage === 'products' && <ProductsPage isDarkMode={isDarkMode} />}
+            {currentPage === 'toolbox' && <ToolboxInterface isDarkMode={isDarkMode} />}
             
             {/* Render the appropriate follow-up component */}
             {Object.entries(followUpPages).map(([key, Component]) => (
               currentPage === key && (
                 <FollowUpDataProvider key={key}>
-                  <Component />
+                  <Component isDarkMode={isDarkMode} />
                 </FollowUpDataProvider>
               )
             ))}
