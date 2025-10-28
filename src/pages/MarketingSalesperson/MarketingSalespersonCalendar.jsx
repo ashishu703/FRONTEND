@@ -21,6 +21,8 @@ const MarketingSalespersonCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('week'); // 'month' or 'week'
+  const [showLeadPanel, setShowLeadPanel] = useState(false);
+  const [selectedLeadDetails, setSelectedLeadDetails] = useState(null);
 
   // Get current month and year
   const currentMonth = currentDate.getMonth();
@@ -45,15 +47,36 @@ const MarketingSalespersonCalendar = () => {
     calendarDays.push(date);
   }
 
+  // Sample demo leads if none available
+  const demoLeads = React.useMemo(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - day);
+    const d = (offset) => {
+      const x = new Date(start);
+      x.setDate(start.getDate() + offset);
+      return x.toISOString().split('T')[0];
+    };
+    return [
+      { id: 101, name: 'Akash Verma', phone: '9876500012', email: 'akash@example.com', address: 'Andheri, Mumbai', state: 'Maharashtra', productType: 'Cable', visitingStatus: 'Scheduled', finalStatus: 'Pending', assignedDate: d(0) },
+      { id: 102, name: 'Priya Singh', phone: '9876500013', email: 'priya@example.com', address: 'Borivali, Mumbai', state: 'Maharashtra', productType: 'Wire', visitingStatus: 'Visited', finalStatus: 'Interested', assignedDate: d(1) },
+      { id: 103, name: 'Rohit Sharma', phone: '9876500014', email: 'rohit@example.com', address: 'Thane, Mumbai', state: 'Maharashtra', productType: 'Conductor', visitingStatus: 'Not Visited', finalStatus: 'Pending', assignedDate: d(2) },
+      { id: 104, name: 'Neha Gupta', phone: '9876500015', email: 'neha@example.com', address: 'Vashi, Navi Mumbai', state: 'Maharashtra', productType: 'Cable', visitingStatus: 'Scheduled', finalStatus: 'Pending', assignedDate: d(3) },
+      { id: 105, name: 'Manish Jain', phone: '9876500016', email: 'manish@example.com', address: 'Powai, Mumbai', state: 'Maharashtra', productType: 'Wire', visitingStatus: 'Visited', finalStatus: 'Interested', assignedDate: d(4) }
+    ];
+  }, []);
+
+  const effectiveLeads = Array.isArray(leads) && leads.length > 0 ? leads : demoLeads;
+
   // Filter leads by date
   const getLeadsForDate = (date) => {
-    if (!leads || !(date instanceof Date)) return [];
+    if (!effectiveLeads || !(date instanceof Date)) return [];
     const dateTime = date.getTime();
     if (Number.isNaN(dateTime)) return [];
 
     const dateStr = date.toISOString().split('T')[0];
 
-    return leads.filter((lead) => {
+    return effectiveLeads.filter((lead) => {
       // Prefer head assigned or planned follow-up date for day grouping
       const rawDate = lead?.assignedDate || lead?.followUpDate || lead?.date || lead?.createdAt;
       if (!rawDate) return false;
@@ -175,6 +198,74 @@ const MarketingSalespersonCalendar = () => {
             </div>
           </div>
 
+      {/* Lead details slide-over */}
+      {showLeadPanel && selectedLeadDetails && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="flex-1 bg-black bg-opacity-30" onClick={() => setShowLeadPanel(false)}></div>
+          <aside className="w-full max-w-md bg-white h-full shadow-xl overflow-y-auto">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Lead Details</h3>
+              <button onClick={() => setShowLeadPanel(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div className="p-6 space-y-4 text-sm">
+              <div>
+                <div className="text-xs text-gray-500">Name</div>
+                <div className="text-gray-900 font-medium">{selectedLeadDetails.name}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500">Phone</div>
+                <div className="text-gray-900">{selectedLeadDetails.phone}</div>
+              </div>
+              {selectedLeadDetails.email && (
+                <div>
+                  <div className="text-xs text-gray-500">Email</div>
+                  <div className="text-gray-900">{selectedLeadDetails.email}</div>
+                </div>
+              )}
+              <div>
+                <div className="text-xs text-gray-500">Address</div>
+                <div className="text-gray-900">{selectedLeadDetails.address || '-'}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs text-gray-500">Visiting Status</div>
+                  <div className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-medium ${getVisitingStatusColor(selectedLeadDetails.visitingStatus)}`}>
+                    {selectedLeadDetails.visitingStatus}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Final Status</div>
+                  <div className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedLeadDetails.finalStatus)}`}>
+                    {selectedLeadDetails.finalStatus}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500">Product Type</div>
+                <div className="text-gray-900">{selectedLeadDetails.productType || '-'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500">Assigned Date</div>
+                <div className="text-gray-900">{(selectedLeadDetails.assignedDate || selectedLeadDetails.followUpDate || selectedLeadDetails.date || '').toString()}</div>
+              </div>
+              <div className="pt-2 flex gap-2">
+                {selectedLeadDetails.visitingStatus !== 'Visited' && (
+                  <button
+                    onClick={() => {
+                      updateCustomer(selectedLeadDetails.id, { visitingStatus: 'Visited', visitingStatusUpdated: new Date().toISOString() });
+                      setSelectedLeadDetails({ ...selectedLeadDetails, visitingStatus: 'Visited' });
+                    }}
+                    className="px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700"
+                  >
+                    Mark Visit Done
+                  </button>
+                )}
+                <button onClick={() => setShowLeadPanel(false)} className="px-3 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200">Close</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
           {/* Calendar Navigation */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -308,7 +399,11 @@ const MarketingSalespersonCalendar = () => {
                             <div className="text-xs text-gray-400 text-center py-6">No leads</div>
                           ) : (
                             dayLeads.map((lead) => (
-                              <div key={lead.id} className="bg-white border rounded-md p-2 shadow-sm">
+                              <div 
+                                key={lead.id} 
+                                className="bg-white border rounded-md p-2 shadow-sm hover:border-blue-300"
+                                onClick={() => { setSelectedLeadDetails(lead); setShowLeadPanel(true); }}
+                              >
                                 <div className="text-xs font-medium text-gray-900 truncate">{lead.name}</div>
                                 <div className="text-[11px] text-gray-600 truncate">{lead.phone}</div>
                                 <div className="flex items-center justify-between mt-1">

@@ -330,6 +330,12 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
           title: "Customer Visits",
           subtitle: "Plan and track customer visits"
         };
+      case 'calendar':
+        return {
+          icon: <Calendar className="w-6 h-6 text-white" />,
+          title: "Lead Calendar",
+          subtitle: "View your assigned leads day-wise"
+        };
       case 'expenses':
         return {
           icon: <DollarSign className="w-6 h-6 text-white" />,
