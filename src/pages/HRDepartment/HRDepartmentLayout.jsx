@@ -12,9 +12,11 @@ const HRDepartmentLayout = ({ onLogout, activeView, setActiveView }) => {
         activeView={activeView} 
         setActiveView={setActiveView}
       />
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <FixedHeader userType="hrdepartmenthead" currentPage={activeView} />
-        <HRDepartmentDashboard activeView={activeView} setActiveView={setActiveView} />
+        <div className="flex-1 overflow-y-auto">
+          <HRDepartmentDashboard activeView={activeView} setActiveView={setActiveView} />
+        </div>
       </div>
     </div>
   );

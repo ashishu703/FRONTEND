@@ -26,7 +26,7 @@ const MainDashboard = ({ activeView, setActiveView }) => {
       case 'dashboard':
         return <SuperAdminSalesDashboard setActiveView={setActiveView} />;
       case 'leads':
-        return <MarketingLeads />;
+        return <AllLeads />;
       case 'marketing-leads':
         console.log('MainDashboard: Rendering MarketingLeads component');
         return <MarketingLeads />;

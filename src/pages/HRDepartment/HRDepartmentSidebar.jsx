@@ -7,14 +7,10 @@ import {
   DollarSign, 
   TrendingUp, 
   BarChart3, 
-  Settings,
   CheckCircle,
-  Folder,
   BookOpen,
-  User,
   Building2,
-  UserPlus,
-  FileText
+  UserPlus
 } from 'lucide-react';
 
 const HRDepartmentSidebar = ({ activeView, setActiveView }) => {
@@ -29,9 +25,7 @@ const HRDepartmentSidebar = ({ activeView, setActiveView }) => {
     { id: 'training', label: 'Training', icon: BookOpen },
     { id: 'approval', label: 'Approval', icon: CheckCircle },
     { id: 'department-management', label: 'Department', icon: Building2 },
-    { id: 'add-employee', label: 'Add Employee', icon: UserPlus },
-    { id: 'settings', label: 'Settings', icon: Settings },
-    { id: 'profile', label: 'Profile', icon: User }
+    { id: 'add-employee', label: 'Add Employee', icon: UserPlus }
   ];
 
   return (
@@ -62,21 +56,6 @@ const HRDepartmentSidebar = ({ activeView, setActiveView }) => {
           );
         })}
       </nav>
-      
-      <div className="p-4 border-t border-gray-200">
-        <button
-          onClick={() => {
-            // Handle logout
-            if (window.confirm('Are you sure you want to logout?')) {
-              window.location.href = '/';
-            }
-          }}
-          className="w-full flex items-center px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-        >
-          <Settings className="w-5 h-5 mr-3" />
-          <span className="font-medium">Logout</span>
-        </button>
-      </div>
     </div>
   );
 };
