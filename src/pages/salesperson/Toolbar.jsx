@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, Plus, Download, ChevronDown, X, Save, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
-export default function ProductToolbar({ onSearch, onAddProduct, onExport, onFilterChange, products = [] }) {
+export default function Toolbar({ onSearch, onAddProduct, onExport, onFilterChange, products = [] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     category: '',
