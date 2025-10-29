@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Download, User, DollarSign, Clock, Calendar, Link, Copy, Eye, MoreHorizontal, CreditCard, AlertCircle, CheckCircle, XCircle, ChevronDown, Edit, Plus } from 'lucide-react';
+import { Search, Filter, Download, User, DollarSign, Clock, Calendar, Link, Copy, Eye, MoreHorizontal, CreditCard, AlertCircle, CheckCircle, XCircle, ChevronDown, Edit, Plus, Package } from 'lucide-react';
+import paymentService from '../../api/admin_api/paymentService';
 
 const PaymentsDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,106 +25,105 @@ const PaymentsDashboard = () => {
     paymentLink: ''
   });
   
-  const [payments, setPayments] = useState([
-    {
-      id: 1,
-      customerId: 'CUST-0001',
-      customer: {
-        name: 'na',
-        email: 'bharatfincappvtltd@gmail.com',
-        phone: '8451868999'
-      },
-      amount: 12000,
-      totalAmount: 15000,
-      dueAmount: 3000,
-      status: 'Pending',
-      created: '10 Sept 2025, 11:33 am',
-      paymentLink: 'https://rzp.io/rzp/...'
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 50,
+    total: 0,
+    pages: 0
+  });
+
+  const mapDbPaymentToRow = (p) => ({
+    id: p.id,
+    leadId: p.lead_id,
+    productName: p.product_name || 'N/A',
+    customer: {
+      name: p.customer_name || p.lead_customer_name || 'N/A',
+      email: p.lead_email || 'N/A',
+      phone: p.lead_phone || 'N/A'
     },
-    {
-      id: 2,
-      customerId: 'CUST-0002',
-      customer: {
-        name: 'na',
-        email: 'projapatienterprisesag@gmail.com',
-        phone: '8871863773'
-      },
-      amount: 12000,
-      totalAmount: 18000,
-      dueAmount: 6000,
-      status: 'Expired',
-      created: '09 Sept 2025, 05:00 pm',
-      paymentLink: 'https://rzp.io/rzp/...'
-    },
-    {
-      id: 3,
-      customerId: 'CUST-0003',
-      customer: {
-        name: 'na',
-        email: 'projapatienterprisesag@gmail.com',
-        phone: '8871863773'
-      },
-      amount: 12000,
-      totalAmount: 20000,
-      dueAmount: 8000,
-      status: 'Expired',
-      created: '09 Sept 2025, 03:31 pm',
-      paymentLink: 'https://rzp.io/rzp/...'
-    },
-    {
-      id: 4,
-      customerId: 'CUST-0004',
-      customer: {
-        name: 'na',
-        email: 'shadakshari.chikmath@gmail.com',
-        phone: '9741456971'
-      },
-      amount: 12000,
-      totalAmount: 16000,
-      dueAmount: 4000,
-      status: 'Expired',
-      created: '09 Sept 2025, 10:39 am',
-      paymentLink: 'https://rzp.io/rzp/...'
-    },
-    {
-      id: 5,
-      customerId: 'CUST-0005',
-      customer: {
-        name: 'na',
-        email: 'vikramvermakrd@gmail.com',
-        phone: '7014131224'
-      },
-      amount: 9000,
-      totalAmount: 12000,
-      dueAmount: 3000,
-      status: 'Expired',
-      created: '08 Sept 2025, 05:10 pm',
-      paymentLink: 'https://rzp.io/rzp/...'
+    // installment_amount is amount paid in this record
+    amount: Number(p.installment_amount || 0),
+    totalAmount: Number(p.total_quotation_amount || 0),
+    dueAmount: Number(p.remaining_amount || 0),
+    status: (p.payment_status || '').toLowerCase() === 'completed' ? 'Paid'
+      : (p.payment_status || '').toLowerCase() === 'pending' ? 'Pending'
+      : (p.payment_status || '').toLowerCase() === 'failed' ? 'Failed'
+      : (p.payment_status || '').toLowerCase() === 'refunded' ? 'Refunded'
+      : (p.payment_status || '').toLowerCase() === 'cancelled' ? 'Cancelled'
+      : 'Pending',
+    created: p.payment_date ? new Date(p.payment_date).toLocaleString() : '' ,
+    paymentLink: p.payment_receipt_url || ''
+  });
+
+  const fetchAllPayments = async (page = 1, search = '', status = 'All Status') => {
+    try {
+      setLoading(true);
+      const res = await paymentService.getAllPayments({
+        page,
+        limit: 50,
+        search: search.trim(),
+        status
+      });
+      
+      if (res?.data) {
+        const rows = Array.isArray(res.data) ? res.data.map(mapDbPaymentToRow) : [];
+        setPayments(rows);
+        setPagination(res.pagination || { page: 1, limit: 50, total: 0, pages: 0 });
+      } else {
+        setPayments([]);
+        setPagination({ page: 1, limit: 50, total: 0, pages: 0 });
+      }
+    } catch (e) {
+      console.error('Failed to load payments', e);
+      setPayments([]);
+      setPagination({ page: 1, limit: 50, total: 0, pages: 0 });
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  const fetchPaymentsByLead = async (leadId) => {
+    if (!leadId) return;
+    try {
+      setLoading(true);
+      const res = await paymentService.getPaymentsByCustomer(leadId);
+      const rows = Array.isArray(res?.data) ? res.data.map(mapDbPaymentToRow) : Array.isArray(res?.data?.data) ? res.data.data.map(mapDbPaymentToRow) : [];
+      setPayments(rows);
+    } catch (e) {
+      console.error('Failed to load payments for lead', leadId, e);
+      setPayments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load all payments on component mount
+  useEffect(() => {
+    fetchAllPayments();
+  }, []);
 
   // Calculate stats
   const stats = {
     allPayments: payments.length,
-    totalValue: payments.reduce((sum, payment) => sum + payment.amount, 0),
+    totalValue: payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0),
     created: payments.filter(p => p.status === 'Created').length,
     pending: payments.filter(p => p.status === 'Pending').length,
     paid: payments.filter(p => p.status === 'Paid').length,
     expired: payments.filter(p => p.status === 'Expired').length
   };
 
-  const filteredPayments = payments.filter(payment => {
-    const matchesSearch = 
-      payment.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.customer.phone.includes(searchTerm) ||
-      payment.customerId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.amount.toString().includes(searchTerm);
-    
-    const matchesStatus = statusFilter === 'All Status' || payment.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  // Handle search and filter changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchAllPayments(1, searchTerm, statusFilter);
+    }, 500); // Debounce search
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, statusFilter]);
+
+  const filteredPayments = payments; // No client-side filtering needed since we're using server-side filtering
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -131,6 +131,12 @@ const PaymentsDashboard = () => {
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'Paid':
         return 'bg-green-100 text-green-800 border-green-200';
+      case 'Failed':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'Refunded':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'Cancelled':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
       case 'Expired':
         return 'bg-red-100 text-red-800 border-red-200';
       case 'Created':
@@ -146,6 +152,12 @@ const PaymentsDashboard = () => {
         return <Clock className="w-4 h-4" />;
       case 'Paid':
         return <CheckCircle className="w-4 h-4" />;
+      case 'Failed':
+        return <XCircle className="w-4 h-4" />;
+      case 'Refunded':
+        return <AlertCircle className="w-4 h-4" />;
+      case 'Cancelled':
+        return <AlertCircle className="w-4 h-4" />;
       case 'Expired':
         return <XCircle className="w-4 h-4" />;
       case 'Created':
@@ -531,7 +543,7 @@ const PaymentsDashboard = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search by customer ID, name, email..."
+              placeholder="Search by Lead ID, customer, product..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-colors text-gray-700"
@@ -619,13 +631,19 @@ const PaymentsDashboard = () => {
                   <th className="px-6 py-4 text-left">
                     <div className="flex items-center space-x-2">
                       <User className="w-4 h-4 text-blue-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Customer ID</span>
+                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Lead ID</span>
                     </div>
                   </th>
                   <th className="px-6 py-4 text-left">
                     <div className="flex items-center space-x-2">
                       <User className="w-4 h-4 text-blue-600" />
                       <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Customer</span>
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-left">
+                    <div className="flex items-center space-x-2">
+                      <Package className="w-4 h-4 text-gray-600" />
+                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Product</span>
                     </div>
                   </th>
                   <th className="px-6 py-4 text-left">
@@ -670,11 +688,15 @@ const PaymentsDashboard = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredPayments.map((payment, index) => (
+                {loading ? (
+                  <tr>
+                    <td colSpan="10" className="px-6 py-8 text-center text-gray-500">Loading payments...</td>
+                  </tr>
+                ) : filteredPayments.map((payment, index) => (
                   <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <span className="text-xs text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
-                        {payment.customerId}
+                        {payment.leadId}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -691,13 +713,16 @@ const PaymentsDashboard = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
+                      <span className="text-xs text-gray-900">{payment.productName}</span>
+                    </td>
+                    <td className="px-6 py-4">
                       <span className="text-green-600 font-semibold text-sm bg-green-50 px-2 py-1 rounded">
                         {formatCurrency(payment.amount)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className="text-green-600 font-semibold text-sm bg-green-50 px-2 py-1 rounded">
-                        {formatCurrency(payment.amount)} / {formatCurrency(payment.totalAmount)}
+                        {formatCurrency(Number(payment.totalAmount) - Number(payment.dueAmount))} / {formatCurrency(payment.totalAmount)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -767,14 +792,24 @@ const PaymentsDashboard = () => {
         {/* Table Footer */}
         <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
           <div className="text-sm text-gray-500">
-            Showing {filteredPayments.length} of {payments.length} payments
+            Showing {filteredPayments.length} of {pagination.total} payments
           </div>
           <div className="flex items-center gap-2">
-            <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50" disabled>
+            <button 
+              onClick={() => fetchAllPayments(pagination.page - 1, searchTerm, statusFilter)}
+              disabled={pagination.page <= 1}
+              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
+            >
               Previous
             </button>
-            <span className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded">1</span>
-            <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50" disabled>
+            <span className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded">
+              {pagination.page} of {pagination.pages}
+            </span>
+            <button 
+              onClick={() => fetchAllPayments(pagination.page + 1, searchTerm, statusFilter)}
+              disabled={pagination.page >= pagination.pages}
+              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
+            >
               Next
             </button>
           </div>

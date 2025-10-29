@@ -1,7 +1,8 @@
 "use client"
 
-import { LayoutDashboard, Users, LogOut, Menu, X, Package, Box, Wrench } from "lucide-react"
-import FollowUpDropdown from './FollowUp/FollowUpDropdown'
+import { LayoutDashboard, Users, LogOut, Menu, X, Package, Box, Wrench, BarChart3, CreditCard, Bell } from "lucide-react"
+import LeadStatusDropdown from './LeadStatusDropdown'
+import PaymentTrackingDropdown from './PaymentTrackingDropdown'
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")
@@ -58,6 +59,7 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen
         {/* Navigation */}
         <nav className="flex-1 p-2">
           <ul className="space-y-1">
+            {/* Notifications item removed as requested */}
             <li>
               <button
                 className={cx(
@@ -88,34 +90,18 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen
                 </span>
               </button>
             </li>
-            <li>
-              <button
-                className={cx(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors",
-                  currentPage === "stock" ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50 text-gray-700",
-                )}
-                onClick={() => onNavigate("stock")}
-              >
-                <span className="flex items-center space-x-3">
-                  <Package className={cx("h-5 w-5", currentPage === "stock" ? "text-blue-600" : "text-gray-500")} />
-                  {sidebarOpen && <span className="text-sm font-medium">Available Stock</span>}
-                </span>
-              </button>
-            </li>
-            <li>
-              <button
-                className={cx(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors",
-                  currentPage === "products" ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50 text-gray-700",
-                )}
-                onClick={() => onNavigate("products")}
-              >
-                <span className="flex items-center space-x-3">
-                  <Box className={cx("h-5 w-5", currentPage === "products" ? "text-blue-600" : "text-gray-500")} />
-                  {sidebarOpen && <span className="text-sm font-medium">Toolbar</span>}
-                </span>
-              </button>
-            </li>
+            <LeadStatusDropdown 
+              currentPage={currentPage} 
+              onNavigate={onNavigate} 
+              sidebarOpen={sidebarOpen} 
+              isDarkMode={isDarkMode}
+            />
+            <PaymentTrackingDropdown 
+              currentPage={currentPage} 
+              onNavigate={onNavigate} 
+              sidebarOpen={sidebarOpen} 
+              isDarkMode={isDarkMode}
+            />
             <li>
               <button
                 className={cx(
@@ -130,11 +116,20 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen
                 </span>
               </button>
             </li>
-            <FollowUpDropdown 
-              currentPage={currentPage} 
-              onNavigate={onNavigate} 
-              sidebarOpen={sidebarOpen} 
-            />
+            <li>
+              <button
+                className={cx(
+                  "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors",
+                  currentPage === "stock" ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50 text-gray-700",
+                )}
+                onClick={() => onNavigate("stock")}
+              >
+                <span className="flex items-center space-x-3">
+                  <Package className={cx("h-5 w-5", currentPage === "stock" ? "text-blue-600" : "text-gray-500")} />
+                  {sidebarOpen && <span className="text-sm font-medium">Available Stock</span>}
+                </span>
+              </button>
+            </li>
           </ul>
         </nav>
 

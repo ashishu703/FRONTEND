@@ -66,12 +66,19 @@ class ApiClient {
    */
   async request(url, options = {}) {
     try {
+      // Validate URL parameter
+      if (!url || typeof url !== 'string') {
+        throw new Error('Invalid URL provided to API request');
+      }
+
       const config = {
         headers: this.getHeaders(),
         ...options,
       };
 
-      const response = await fetch(url, config);
+      // Use relative URLs for proxy, or full URLs if baseURL is set
+      const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
+      const response = await fetch(fullUrl, config);
       return await this.handleResponse(response);
     } catch (error) {
       console.error('API Request Error:', error);
@@ -106,10 +113,23 @@ class ApiClient {
     });
   }
 
+  /**
+   * DELETE request
+   */
+  async delete(url) {
+    return this.request(url, { method: 'DELETE' });
+  }
+
   async putFormData(url, formData) {
     try {
+      // Validate URL parameter
+      if (!url || typeof url !== 'string') {
+        throw new Error('Invalid URL provided to putFormData request');
+      }
+
       const token = sessionStorage.getItem('authToken') || this.getAuthToken();
-      const response = await fetch(url, {
+      const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
+      const response = await fetch(fullUrl, {
         method: 'PUT',
         headers: {
           ...(token && { Authorization: `Bearer ${token}` }),

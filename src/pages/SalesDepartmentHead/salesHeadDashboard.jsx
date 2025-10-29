@@ -1,6 +1,9 @@
-import React, { useState, useMemo } from 'react';
-import { Calendar, Users, MessageSquare, Clock, CheckCircle, XCircle, TrendingDown, Filter, BarChart3, PieChart, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Calendar, Users, MessageSquare, Clock, CheckCircle, XCircle, TrendingDown, BarChart3, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PieChart as RechartsPieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import paymentService from '../../api/admin_api/paymentService';
+import departmentHeadService from '../../api/admin_api/departmentHeadService';
+import departmentUserService from '../../api/admin_api/departmentUserService';
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")
@@ -211,270 +214,198 @@ const DateRangePicker = ({ value, onChange, placeholder }) => {
 const SalesDashboard = () => {
   const [selectedSalesperson, setSelectedSalesperson] = useState('All Salespersons');
   const [dateRange, setDateRange] = useState('');
-  const [showCharts, setShowCharts] = useState(false);
-  const [filteredData, setFilteredData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [leads, setLeads] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [salespersons, setSalespersons] = useState(['All Salespersons']);
 
-  const sampleData = {
-    'All Salespersons': {
-      totalLeads: 127,
-      pendingLeads: 23,
-      followUpLeads: 31,
-      meetingScheduled: 18,
-      completedLeads: 30,
-      notConnected: 12,
-      overallRevenue: 2400000,
-      totalRevenue: 120000,
-      currentMonthEarnings: 460064,
-      monthGrowth: 15.3,
-      conversionRate: 23.6,
-      meetingConversion: 87.5,
-      pendingRate: 18.1
-    },
-    'Rajesh Kumar': {
-      totalLeads: 18,
-      pendingLeads: 3,
-      followUpLeads: 5,
-      meetingScheduled: 2,
-      completedLeads: 7,
-      notConnected: 1,
-      overallRevenue: 320000,
-      totalRevenue: 18000,
-      currentMonthEarnings: 65000,
-      monthGrowth: 8.5,
-      conversionRate: 38.9,
-      meetingConversion: 85.0,
-      pendingRate: 16.7
-    },
-    'Priya Sharma': {
-      totalLeads: 22,
-      pendingLeads: 4,
-      followUpLeads: 6,
-      meetingScheduled: 3,
-      completedLeads: 8,
-      notConnected: 1,
-      overallRevenue: 410000,
-      totalRevenue: 22000,
-      currentMonthEarnings: 78000,
-      monthGrowth: 12.3,
-      conversionRate: 36.4,
-      meetingConversion: 88.0,
-      pendingRate: 18.2
-    },
-    'Amit Patel': {
-      totalLeads: 15,
-      pendingLeads: 2,
-      followUpLeads: 4,
-      meetingScheduled: 2,
-      completedLeads: 6,
-      notConnected: 1,
-      overallRevenue: 280000,
-      totalRevenue: 15000,
-      currentMonthEarnings: 52000,
-      monthGrowth: 15.7,
-      conversionRate: 40.0,
-      meetingConversion: 90.0,
-      pendingRate: 13.3
-    },
-    'Sneha Gupta': {
-      totalLeads: 20,
-      pendingLeads: 3,
-      followUpLeads: 5,
-      meetingScheduled: 3,
-      completedLeads: 8,
-      notConnected: 1,
-      overallRevenue: 380000,
-      totalRevenue: 20000,
-      currentMonthEarnings: 72000,
-      monthGrowth: 9.8,
-      conversionRate: 40.0,
-      meetingConversion: 87.5,
-      pendingRate: 15.0
-    },
-    'Vikram Singh': {
-      totalLeads: 16,
-      pendingLeads: 2,
-      followUpLeads: 4,
-      meetingScheduled: 2,
-      completedLeads: 7,
-      notConnected: 1,
-      overallRevenue: 290000,
-      totalRevenue: 16000,
-      currentMonthEarnings: 55000,
-      monthGrowth: 18.2,
-      conversionRate: 43.8,
-      meetingConversion: 92.0,
-      pendingRate: 12.5
-    },
-    'Anita Joshi': {
-      totalLeads: 19,
-      pendingLeads: 3,
-      followUpLeads: 5,
-      meetingScheduled: 2,
-      completedLeads: 8,
-      notConnected: 1,
-      overallRevenue: 350000,
-      totalRevenue: 19000,
-      currentMonthEarnings: 68000,
-      monthGrowth: 11.4,
-      conversionRate: 42.1,
-      meetingConversion: 89.0,
-      pendingRate: 15.8
-    },
-    'Rohit Verma': {
-      totalLeads: 14,
-      pendingLeads: 2,
-      followUpLeads: 3,
-      meetingScheduled: 2,
-      completedLeads: 6,
-      notConnected: 1,
-      overallRevenue: 260000,
-      totalRevenue: 14000,
-      currentMonthEarnings: 48000,
-      monthGrowth: 7.9,
-      conversionRate: 42.9,
-      meetingConversion: 86.0,
-      pendingRate: 14.3
-    },
-    'Kavita Reddy': {
-      totalLeads: 17,
-      pendingLeads: 2,
-      followUpLeads: 4,
-      meetingScheduled: 2,
-      completedLeads: 8,
-      notConnected: 1,
-      overallRevenue: 310000,
-      totalRevenue: 17000,
-      currentMonthEarnings: 59000,
-      monthGrowth: 13.6,
-      conversionRate: 47.1,
-      meetingConversion: 91.0,
-      pendingRate: 11.8
-    },
-    'Suresh Mehta': {
-      totalLeads: 13,
-      pendingLeads: 2,
-      followUpLeads: 3,
-      meetingScheduled: 1,
-      completedLeads: 6,
-      notConnected: 1,
-      overallRevenue: 240000,
-      totalRevenue: 13000,
-      currentMonthEarnings: 45000,
-      monthGrowth: 6.2,
-      conversionRate: 46.2,
-      meetingConversion: 88.0,
-      pendingRate: 15.4
-    },
-    'Deepika Agarwal': {
-      totalLeads: 21,
-      pendingLeads: 3,
-      followUpLeads: 5,
-      meetingScheduled: 3,
-      completedLeads: 9,
-      notConnected: 1,
-      overallRevenue: 390000,
-      totalRevenue: 21000,
-      currentMonthEarnings: 74000,
-      monthGrowth: 14.1,
-      conversionRate: 42.9,
-      meetingConversion: 87.0,
-      pendingRate: 14.3
+  // Real computed data state
+  const [currentData, setCurrentData] = useState({
+    totalLeads: 0,
+    pendingLeads: 0,
+    followUpLeads: 0,
+    meetingScheduled: 0,
+    completedLeads: 0,
+    notConnected: 0,
+    overallRevenue: 0,
+    totalRevenue: 0,
+    currentMonthEarnings: 0,
+    monthGrowth: 0,
+    conversionRate: 0,
+    meetingConversion: 0,
+    pendingRate: 0,
+    statusCounts: { pending: 0, completed: 0, failed: 0, refunded: 0, cancelled: 0 },
+    revenueByMonth: {}
+  });
+
+  // Utilities
+  const parseRange = (rangeStr) => {
+    if (!rangeStr) return { start: null, end: null };
+    const parts = rangeStr.split(' - ');
+    if (parts.length !== 2) return { start: null, end: null };
+    return { start: new Date(parts[0]), end: new Date(parts[1]) };
+  };
+
+  const inRange = (d, start, end) => {
+    if (!d) return false;
+    if (!start || !end) return true;
+    const ts = new Date(d).getTime();
+    return ts >= start.getTime() && ts <= end.getTime();
+  };
+
+  // Fetch real data
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const { start, end } = parseRange(dateRange);
+
+      // Payments: server-side date filtering
+      const pRes = await paymentService.getAllPayments({
+        page: 1,
+        limit: 1000,
+        startDate: start ? start.toISOString() : undefined,
+        endDate: end ? end.toISOString() : undefined,
+      });
+      const pRows = Array.isArray(pRes?.data) ? pRes.data : [];
+      setPayments(pRows);
+
+      // Leads: fetch and client-side filter (API has no date filter)
+      const lRes = await departmentHeadService.getAllLeads({ page: 1, limit: 1000 });
+      const lRows = Array.isArray(lRes?.data) ? lRes.data : (Array.isArray(lRes?.data?.leads) ? lRes.data.leads : []);
+      const filteredLeads = lRows.filter((ld) => {
+        const d = ld.created_at || ld.createdAt || ld.date || ld.updated_at || ld.updatedAt;
+        return inRange(d, start, end);
+      });
+      setLeads(filteredLeads);
+    } catch (e) {
+      console.error('Failed to load dashboard data', e);
+      setLeads([]);
+      setPayments([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const [currentData, setCurrentData] = useState(sampleData['All Salespersons']);
+  useEffect(() => {
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateRange]);
 
-  const salespersons = [
-    'All Salespersons',
-    'Rajesh Kumar',
-    'Priya Sharma', 
-    'Amit Patel',
-    'Sneha Gupta',
-    'Vikram Singh',
-    'Anita Joshi',
-    'Rohit Verma',
-    'Kavita Reddy',
-    'Suresh Mehta',
-    'Deepika Agarwal'
-  ];
+  // Load department users for dropdown
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const res = await departmentUserService.listUsers?.();
+        const rows = Array.isArray(res?.data) ? res.data : (Array.isArray(res?.users) ? res.users : []);
+        const names = rows
+          .map(u => u.name || u.fullName || `${u.first_name || ''} ${u.last_name || ''}`.trim())
+          .filter(Boolean);
+        setSalespersons(['All Salespersons', ...Array.from(new Set(names))]);
+      } catch (e) {
+        // silently ignore
+        setSalespersons(['All Salespersons']);
+      }
+    };
+    loadUsers();
+  }, []);
 
-  // Date range filtering function
-  const applyDateRangeFilter = (data, dateRange) => {
-    if (!dateRange || dateRange === '') {
-      return data;
-    }
+  // Build metrics from real data
+  const computeMetricsFromData = (leadRows, paymentRows) => {
+    const totalLeads = leadRows.length;
+    const get = (obj, key, fallback = '') => (obj && obj[key] !== undefined ? obj[key] : fallback);
 
-    // Parse date range (assuming format "MM/DD/YYYY - MM/DD/YYYY")
-    const [startDateStr, endDateStr] = dateRange.split(' - ');
-    if (!startDateStr || !endDateStr) {
-      return data;
-    }
+    const pendingLeads = leadRows.filter(ld => {
+      const connected = (get(ld, 'connected_status') || get(ld, 'connectedStatus') || '').toLowerCase();
+      const finalStatus = (get(ld, 'final_status') || get(ld, 'finalStatus') || '').toLowerCase();
+      const salesStatus = (get(ld, 'sales_status') || get(ld, 'salesStatus') || '').toLowerCase();
+      return connected === 'pending' || finalStatus === 'open' || salesStatus === 'pending';
+    }).length;
 
-    const startDate = new Date(startDateStr);
-    const endDate = new Date(endDateStr);
-    
-    // Calculate date range multiplier (simulate different performance based on date range)
-    const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-    const rangeMultiplier = Math.min(daysDiff / 30, 1); // Normalize to monthly data
-    
-    // Apply date range filtering to data
-    const filteredData = { ...data };
-    
-    // Adjust metrics based on date range
-    Object.keys(filteredData).forEach(key => {
-      if (typeof filteredData[key] === 'object' && filteredData[key] !== null) {
-        filteredData[key] = {
-          ...filteredData[key],
-          totalLeads: Math.round(filteredData[key].totalLeads * rangeMultiplier),
-          pendingLeads: Math.round(filteredData[key].pendingLeads * rangeMultiplier),
-          followUpLeads: Math.round(filteredData[key].followUpLeads * rangeMultiplier),
-          meetingScheduled: Math.round(filteredData[key].meetingScheduled * rangeMultiplier),
-          completedLeads: Math.round(filteredData[key].completedLeads * rangeMultiplier),
-          notConnected: Math.round(filteredData[key].notConnected * rangeMultiplier),
-          overallRevenue: Math.round(filteredData[key].overallRevenue * rangeMultiplier),
-          totalRevenue: Math.round(filteredData[key].totalRevenue * rangeMultiplier),
-          currentMonthEarnings: Math.round(filteredData[key].currentMonthEarnings * rangeMultiplier),
-          monthGrowth: filteredData[key].monthGrowth * rangeMultiplier,
-          conversionRate: filteredData[key].conversionRate, // Keep conversion rate as is
-          meetingConversion: filteredData[key].meetingConversion, // Keep meeting conversion as is
-          pendingRate: filteredData[key].pendingRate // Keep pending rate as is
-        };
+    const followUpLeads = leadRows.filter(ld => {
+      const tele = (get(ld, 'telecaller_status') || get(ld, 'telecallerStatus') || get(ld, 'connected_status') || '').toLowerCase();
+      return tele.includes('follow') || tele === 'connected';
+    }).length;
+
+    const meetingScheduled = leadRows.filter(ld => {
+      const finalStatus = (get(ld, 'final_status') || get(ld, 'finalStatus') || '').toLowerCase();
+      const nextMeeting = get(ld, 'next_meeting_date') || get(ld, 'nextMeetingDate');
+      return finalStatus === 'next_meeting' || !!nextMeeting;
+    }).length;
+
+    const completedLeads = leadRows.filter(ld => {
+      const finalStatus = (get(ld, 'final_status') || get(ld, 'finalStatus') || '').toLowerCase();
+      const salesStatus = (get(ld, 'sales_status') || get(ld, 'salesStatus') || '').toLowerCase();
+      return finalStatus === 'closed' || salesStatus === 'completed' || salesStatus === 'done' || finalStatus === 'order_confirmed';
+    }).length;
+
+    const notConnected = leadRows.filter(ld => {
+      const connected = (get(ld, 'connected_status') || get(ld, 'connectedStatus') || '').toLowerCase();
+      return connected === 'not_connected';
+    }).length;
+
+    // Revenue metrics from payments
+    let overallRevenue = 0;
+    let totalPaid = 0;
+    let remaining = 0;
+    const statusCounts = { pending: 0, completed: 0, failed: 0, refunded: 0, cancelled: 0 };
+    const revenueByMonth = {};
+    paymentRows.forEach(p => {
+      const paid = Number(p.installment_amount || p.amount || 0);
+      const quotationTotal = Number(p.total_quotation_amount || 0);
+      const remainingAmt = Number(p.remaining_amount || 0);
+      totalPaid += isNaN(paid) ? 0 : paid;
+      overallRevenue += isNaN(quotationTotal) ? 0 : quotationTotal;
+      remaining += isNaN(remainingAmt) ? 0 : remainingAmt;
+      const st = String(p.payment_status || '').toLowerCase();
+      if (statusCounts[st] !== undefined) statusCounts[st] += 1;
+      const pd = p.payment_date ? new Date(p.payment_date) : null;
+      if (pd) {
+        const key = pd.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+        revenueByMonth[key] = (revenueByMonth[key] || 0) + paid;
       }
     });
-    
-    return filteredData;
-  };
 
-  // Update data when date range changes
-  React.useEffect(() => {
-    const filtered = applyDateRangeFilter(sampleData, dateRange);
-    setFilteredData(filtered);
-    
-    // Update current data based on selected salesperson
-    const newCurrentData = filtered[selectedSalesperson] || filtered['All Salespersons'];
-    setCurrentData(newCurrentData);
-  }, [dateRange, selectedSalesperson]);
+    const conversionRate = totalLeads ? Math.round((completedLeads / totalLeads) * 1000) / 10 : 0;
+
+    return {
+      totalLeads,
+      pendingLeads,
+      followUpLeads,
+      meetingScheduled,
+      completedLeads,
+      notConnected,
+      overallRevenue: overallRevenue || totalPaid, // fallback to paid if total not available
+      totalRevenue: totalPaid,
+      currentMonthEarnings: totalPaid,
+      monthGrowth: 0,
+      conversionRate,
+      meetingConversion: meetingScheduled ? Math.round((completedLeads / meetingScheduled) * 1000) / 10 : 0,
+      pendingRate: totalLeads ? Math.round((pendingLeads / totalLeads) * 1000) / 10 : 0,
+      statusCounts,
+      revenueByMonth,
+    };
+  };
+  // Update metrics when data or filters change - ONLY REAL DATA
+  useEffect(() => {
+    // If a salesperson is selected, filter leads accordingly
+    const filteredLeads = selectedSalesperson === 'All Salespersons' ? leads : leads.filter((ld) => {
+      const name = (ld.assigned_salesperson_name || ld.assignedSalesperson || ld.salesperson_name || '').toString().trim();
+      return name === selectedSalesperson;
+    });
+    const computed = computeMetricsFromData(filteredLeads, payments);
+    setCurrentData(computed);
+  }, [dateRange, leads, payments, selectedSalesperson]);
 
   const handleSalespersonChange = (salesperson) => {
     setSelectedSalesperson(salesperson);
-    const dataToUse = filteredData || sampleData;
-    setCurrentData(dataToUse[salesperson] || dataToUse['All Salespersons']);
   };
 
   const handleRefresh = () => {
-    // Force a re-render by updating the data
-    const currentSalesperson = selectedSalesperson;
-    const dataToUse = filteredData || sampleData;
-    const newData = dataToUse[currentSalesperson] || dataToUse['All Salespersons'];
-    
-    // Update the data to trigger a re-render
-    setCurrentData({ ...newData });
-    
-    // You can add additional refresh logic here if needed
-    // For example, refetch data from API, reload from server, etc.
+    fetchData();
   };
 
-  // Function to render content based on selected salesperson
+  // Salespersons list - simplified for now
+  // salespersons are loaded from server; initial value is set in state above
   const renderSalespersonContent = () => {
     // Only show individual salesperson content when a specific salesperson is selected
     if (selectedSalesperson === 'All Salespersons') {
@@ -528,45 +459,6 @@ const SalesDashboard = () => {
     );
   };
 
-  // Chart data
-  const pieChartData = useMemo(() => [
-    { name: 'Completed', value: currentData.completedLeads, color: '#10B981' },
-    { name: 'Pending', value: currentData.pendingLeads, color: '#F59E0B' },
-    { name: 'Follow-up', value: currentData.followUpLeads, color: '#F97316' },
-    { name: 'Meeting', value: currentData.meetingScheduled, color: '#EF4444' },
-    { name: 'Not Connected', value: currentData.notConnected, color: '#DC2626' }
-  ], [currentData]);
-
-  const barChartData = useMemo(() => [
-    { name: 'Total', value: currentData.totalLeads, color: '#8B5CF6' },
-    { name: 'Pending', value: currentData.pendingLeads, color: '#3B82F6' },
-    { name: 'Follow-up', value: currentData.followUpLeads, color: '#F59E0B' },
-    { name: 'Meeting', value: currentData.meetingScheduled, color: '#EF4444' },
-    { name: 'Completed', value: currentData.completedLeads, color: '#10B981' },
-    { name: 'Not Connected', value: currentData.notConnected, color: '#DC2626' }
-  ], [currentData]);
-
-  const revenueChartData = useMemo(() => [
-    { month: 'Jan', revenue: Math.round(currentData.overallRevenue * 0.1) },
-    { month: 'Feb', revenue: Math.round(currentData.overallRevenue * 0.15) },
-    { month: 'Mar', revenue: Math.round(currentData.overallRevenue * 0.2) },
-    { month: 'Apr', revenue: Math.round(currentData.overallRevenue * 0.25) },
-    { month: 'May', revenue: Math.round(currentData.overallRevenue * 0.3) },
-    { month: 'Jun', revenue: Math.round(currentData.overallRevenue * 0.4) },
-    { month: 'Jul', revenue: Math.round(currentData.overallRevenue * 0.5) },
-    { month: 'Aug', revenue: Math.round(currentData.overallRevenue * 0.6) },
-    { month: 'Sep', revenue: Math.round(currentData.overallRevenue * 0.7) },
-    { month: 'Oct', revenue: Math.round(currentData.overallRevenue * 0.8) },
-    { month: 'Nov', revenue: Math.round(currentData.overallRevenue * 0.9) },
-    { month: 'Dec', revenue: currentData.overallRevenue }
-  ], [currentData]);
-
-  const conversionChartData = useMemo(() => [
-    { type: 'Overall', rate: currentData.conversionRate },
-    { type: 'Meeting', rate: currentData.meetingConversion },
-    { type: 'Pending', rate: currentData.pendingRate },
-    { type: 'Follow-up', rate: currentData.followUpLeads > 0 ? Math.round((currentData.completedLeads / currentData.followUpLeads) * 100) : 0 }
-  ], [currentData]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -589,6 +481,49 @@ const SalesDashboard = () => {
       </CardContent>
     </Card>
   );
+
+  // Charts: build datasets from currentData
+  const pieChartData = useMemo(() => [
+    { name: 'Completed', value: currentData.completedLeads, color: '#10B981' },
+    { name: 'Pending', value: currentData.pendingLeads, color: '#F59E0B' },
+    { name: 'Follow-up', value: currentData.followUpLeads, color: '#F97316' },
+    { name: 'Meeting', value: currentData.meetingScheduled, color: '#3B82F6' },
+    { name: 'Not Connected', value: currentData.notConnected, color: '#DC2626' }
+  ].filter(d => d.value > 0), [currentData]);
+
+  const barChartData = useMemo(() => [
+    { name: 'Total', value: currentData.totalLeads },
+    { name: 'Pending', value: currentData.pendingLeads },
+    { name: 'Follow-up', value: currentData.followUpLeads },
+    { name: 'Meeting', value: currentData.meetingScheduled },
+    { name: 'Completed', value: currentData.completedLeads },
+    { name: 'Not Connected', value: currentData.notConnected }
+  ], [currentData]);
+
+  const revenueChartData = useMemo(() => {
+    const map = currentData.revenueByMonth || {};
+    const entries = Object.entries(map);
+    if (entries.length > 0) return entries.map(([month, revenue]) => ({ month, revenue }));
+    return [];
+  }, [currentData]);
+
+  const conversionChartData = useMemo(() => [
+    { type: 'Overall', rate: currentData.conversionRate },
+    { type: 'Meeting', rate: currentData.meetingConversion },
+    { type: 'Pending', rate: currentData.pendingRate },
+    { type: 'Follow-up', rate: currentData.followUpLeads > 0 ? Math.round((currentData.completedLeads / currentData.followUpLeads) * 100) : 0 }
+  ], [currentData]);
+
+  const paymentStatusPieData = useMemo(() => {
+    const c = currentData.statusCounts || {};
+    return [
+      { name: 'Completed', value: c.completed || 0, color: '#10B981' },
+      { name: 'Pending', value: c.pending || 0, color: '#F59E0B' },
+      { name: 'Failed', value: c.failed || 0, color: '#EF4444' },
+      { name: 'Refunded', value: c.refunded || 0, color: '#6B7280' },
+      { name: 'Cancelled', value: c.cancelled || 0, color: '#DC2626' }
+    ].filter(d => d.value > 0);
+  }, [currentData]);
 
   const MetricCard = ({ icon: Icon, title, value, subtitle, trend, trendColor }) => (
     <Card className={cx("border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50", trendColor ? `text-${trendColor}-600 border-${trendColor}-200` : 'text-gray-600 border-gray-200')}>
@@ -618,6 +553,15 @@ const SalesDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {loading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 flex items-center gap-3">
+            <RefreshCw className="w-5 h-5 animate-spin text-blue-600" />
+            <span className="text-gray-700">Loading dashboard data...</span>
+          </div>
+        </div>
+      )}
+      
       {/* Date Range Status Indicator */}
       {dateRange && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -657,13 +601,6 @@ const SalesDashboard = () => {
             </select>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowCharts(!showCharts)}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              {showCharts ? <PieChart className="w-4 h-4 transition-transform duration-300 hover:scale-110" /> : <BarChart3 className="w-4 h-4 transition-transform duration-300 hover:scale-110" />}
-              {showCharts ? 'Stats' : 'Charts'}
-            </button>
             <button 
               onClick={handleRefresh}
               className="flex items-center gap-2 px-4 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 hover:scale-105 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md"
@@ -671,32 +608,17 @@ const SalesDashboard = () => {
             >
               <RefreshCw className="w-4 h-4 hover:rotate-180 transition-transform duration-300" />
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Additional Filters */}
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-6 border border-gray-200">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <Filter className="w-5 h-5 text-gray-600" />
-              Additional Filters
-            </h3>
-          </div>
-        
-        <div className="grid grid-cols-1 gap-4">
-          {/* Date Range Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+            {/* Compact date range filter (single control) */}
             <DateRangePicker
               value={dateRange}
               onChange={setDateRange}
               placeholder="Select date range"
+              className="w-48"
             />
           </div>
         </div>
-
       </div>
+
 
       {/* Performance Summary */}
       {selectedSalesperson === 'All Salespersons' ? (
@@ -810,14 +732,8 @@ const SalesDashboard = () => {
       {/* Salesperson Specific Content */}
       {renderSalespersonContent()}
 
-      {/* Default Content - Only show when All Salespersons is selected */}
-      {selectedSalesperson === 'All Salespersons' && (
-        <>
-      {showCharts ? (
-        /* Charts View */
-        <div className="space-y-6">
-          {/* Lead Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+      {/* Lead Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
             <StatCard 
               icon={Users} 
               title="Total Leads" 
@@ -862,267 +778,194 @@ const SalesDashboard = () => {
             />
           </div>
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Pie Chart */}
-            <Card className="border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <PieChart className="h-5 w-5 text-purple-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
-                  <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-purple-700">Lead Distribution</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
+      {/* Revenue Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <Card className="border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50 transition-all duration-300 hover:scale-105 hover:-translate-y-1">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <TrendingDown className="w-5 h-5 text-green-600" />
+              Overall Revenue
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600 mb-2">
+              ₹{currentData.overallRevenue.toLocaleString()}
+            </div>
+            <p className="text-sm text-gray-600">
+              Total Revenue (All Time)
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50 transition-all duration-300 hover:scale-105 hover:-translate-y-1">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-blue-600" />
+              Total Revenue
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600 mb-2">
+              ₹{currentData.totalRevenue.toLocaleString()}
+            </div>
+            <p className="text-sm text-gray-600">
+              Filtered Revenue
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50 transition-all duration-300 hover:scale-105 hover:-translate-y-1">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-purple-600" />
+              Current Month
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600 mb-2">
+              ₹{currentData.currentMonthEarnings.toLocaleString()}
+            </div>
+            <p className="text-sm text-gray-600">
+              September Revenue
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts */}
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Lead Distribution */}
+          <Card className="border-2 group shadow-lg bg-gradient-to-br from-white to-gray-50">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-purple-600" />
+                <CardTitle className="text-lg font-semibold">Lead Distribution</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <RechartsPieChart>
-                  <Pie
-                    data={pieChartData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    dataKey="value"
-                    label={(entry) => `${entry.name}: ${entry.value}`}
-                  >
-                    {pieChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
+                  <Pie data={pieChartData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={(e)=>`${e.name}: ${e.value}` }>
+                    {pieChartData.map((d, i) => (<Cell key={`ld-${i}`} fill={d.color || '#6366F1'} />))}
                   </Pie>
                   <Tooltip />
                   <Legend />
                 </RechartsPieChart>
               </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            </CardContent>
+          </Card>
 
-            {/* Bar Chart */}
-            <Card className="border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-blue-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
-                  <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-blue-700">Lead Statistics</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
+          {/* Lead Statistics */}
+          <Card className="border-2 group shadow-lg bg-gradient-to-br from-white to-gray-50">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-blue-600" />
+                <CardTitle className="text-lg font-semibold">Lead Statistics</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={barChartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
                   <Tooltip />
-                  <Bar dataKey="value" fill="#8B5CF6" />
+                  <Bar dataKey="value" fill="#3B82F6" />
                 </BarChart>
               </ResponsiveContainer>
-              </CardContent>
-            </Card>
-            </div>
-
-          {/* Additional Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Revenue Trend Chart */}
-            <Card className="border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="h-5 w-5 text-green-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
-                  <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-green-700">Revenue Trend</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={revenueChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [`₹${value.toLocaleString()}`, 'Revenue']} />
-                    <Bar dataKey="revenue" fill="#10B981" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Conversion Rate Chart */}
-            <Card className="border-2 group shadow-lg hover:shadow-xl bg-gradient-to-br from-white to-gray-50">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-orange-600 transition-all duration-300 group-hover:scale-110 group-hover:rotate-12" />
-                  <CardTitle className="text-lg font-semibold transition-all duration-300 group-hover:text-orange-700">Conversion Rates</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={conversionChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="type" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [`${value}%`, 'Rate']} />
-                    <Bar dataKey="rate" fill="#F59E0B" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
+            </CardContent>
+          </Card>
         </div>
-      ) : (
-        /* Original Dashboard View */
-        <>
-          {/* Lead Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
-            <StatCard 
-              icon={Users} 
-              title="Total Leads" 
-              value={currentData.totalLeads} 
-              subtitle="All leads in the system"
-              color="bg-purple-50 text-purple-600 border-purple-200"
-            />
-            <StatCard 
-              icon={Clock} 
-              title="Pending Leads" 
-              value={currentData.pendingLeads} 
-              subtitle="Leads awaiting action"
-              color="bg-blue-50 text-blue-600 border-blue-200"
-            />
-            <StatCard 
-              icon={MessageSquare} 
-              title="Follow-up Leads" 
-              value={currentData.followUpLeads} 
-              subtitle="Leads in follow-up stage"
-              color="bg-orange-50 text-orange-600 border-orange-200"
-            />
-            <StatCard 
-              icon={Calendar} 
-              title="Meeting Scheduled" 
-              value={currentData.meetingScheduled} 
-              subtitle="Meeting scheduled leads"
-              color="bg-red-50 text-red-600 border-red-200"
-            />
-            <StatCard 
-              icon={CheckCircle} 
-              title="Completed Leads" 
-              value={currentData.completedLeads} 
-              subtitle="Converted leads"
-              color="bg-green-50 text-green-600 border-green-200"
-            />
-            <StatCard 
-              icon={XCircle} 
-              title="Not Connected" 
-              value={currentData.notConnected} 
-              subtitle="Unreached leads"
-              color="bg-red-50 text-red-600 border-red-200"
-            />
-          </div>
 
-          {/* Revenue Overview */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <Filter className="w-5 h-5 text-purple-600" />
-              <h2 className="text-xl font-semibold text-purple-600">Revenue Overview</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Overall Revenue */}
-              <div className="bg-blue-50 rounded-lg border border-blue-200 p-6 shadow-sm hover:shadow-lg hover:scale-105 hover:border-blue-300 hover:bg-blue-100 transition-all duration-300 ease-in-out cursor-pointer group">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="text-blue-600 group-hover:scale-110 transition-transform duration-300">₹</div>
-                  <h3 className="text-sm font-medium text-gray-900 group-hover:text-gray-700 transition-colors duration-300">Overall Revenue</h3>
-                </div>
-                <div className="mb-2">
-                  <span className="text-2xl font-bold text-blue-600 group-hover:scale-105 transition-transform duration-300">
-                    {formatCurrency(currentData.overallRevenue)}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 group-hover:text-gray-600 transition-colors duration-300">Total Revenue (All Time)</p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Revenue Trend */}
+          <Card className="border-2 group shadow-lg bg-gradient-to-br from-white to-gray-50">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <TrendingDown className="h-5 w-5 text-green-600" />
+                <CardTitle className="text-lg font-semibold">Revenue Trend</CardTitle>
               </div>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={revenueChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(v)=>[`₹${Number(v||0).toLocaleString()}`, 'Revenue']} />
+                  <Bar dataKey="revenue" fill="#10B981" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-              {/* Total Revenue */}
-              <div className="bg-gray-100 rounded-lg border border-gray-200 p-6 shadow-sm hover:shadow-lg hover:scale-105 hover:border-gray-300 hover:bg-gray-200 transition-all duration-300 ease-in-out cursor-pointer group">
-                <div className="flex items-center gap-3 mb-4">
-                  <Calendar className="w-5 h-5 text-gray-600 group-hover:scale-110 group-hover:text-gray-700 transition-all duration-300" />
-                  <h3 className="text-sm font-medium text-gray-900 group-hover:text-gray-700 transition-colors duration-300">Total Revenue</h3>
-                </div>
-                <div className="mb-2">
-                  <span className="text-2xl font-bold text-gray-900 group-hover:scale-105 transition-transform duration-300">
-                    {formatCurrency(currentData.totalRevenue)}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 group-hover:text-gray-600 transition-colors duration-300">Filtered Revenue</p>
+          {/* Conversion Rates */}
+          <Card className="border-2 group shadow-lg bg-gradient-to-br from-white to-gray-50">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-orange-600" />
+                <CardTitle className="text-lg font-semibold">Conversion Rates</CardTitle>
               </div>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={conversionChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="type" />
+                  <YAxis />
+                  <Tooltip formatter={(v)=>[`${v}%`, 'Rate']} />
+                  <Bar dataKey="rate" fill="#F59E0B" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
 
-              {/* Current Month */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm hover:shadow-lg hover:scale-105 hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 ease-in-out cursor-pointer group">
-                <div className="flex items-center gap-3 mb-4">
-                  <Calendar className="w-5 h-5 text-gray-600 group-hover:scale-110 group-hover:text-gray-700 transition-all duration-300" />
-                  <h3 className="text-sm font-medium text-gray-900 group-hover:text-gray-700 transition-colors duration-300">Current month earnings</h3>
-                </div>
-                <div className="mb-2">
-                  <span className="text-2xl font-bold text-gray-900 group-hover:scale-105 transition-transform duration-300">
-                    {formatCurrency(currentData.currentMonthEarnings)}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 group-hover:text-gray-600 transition-colors duration-300">September Revenue</p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Payment Status */}
+          <Card className="border-2 group shadow-lg bg-gradient-to-br from-white to-gray-50">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-blue-600" />
+                <CardTitle className="text-lg font-semibold">Payment Status</CardTitle>
               </div>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPieChart>
+                  <Pie data={paymentStatusPieData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={(e)=>`${e.name}: ${e.value}` }>
+                    {paymentStatusPieData.map((d, i) => (<Cell key={`ps-${i}`} fill={d.color} />))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-              {/* Month Growth */}
-              <div className="bg-red-50 rounded-lg border border-red-200 p-6 shadow-sm hover:shadow-lg hover:scale-105 hover:border-red-300 hover:bg-red-100 transition-all duration-300 ease-in-out cursor-pointer group">
-                <div className="flex items-center gap-3 mb-4">
-                  <TrendingDown className="w-5 h-5 text-green-600 group-hover:scale-110 group-hover:text-green-700 transition-all duration-300" />
-                  <h3 className="text-sm font-medium text-gray-900 group-hover:text-gray-700 transition-colors duration-300">Month-over-Month Growth</h3>
-                </div>
-                <div className="mb-2">
-                  <span className="text-2xl font-bold text-red-600 group-hover:scale-105 transition-transform duration-300">
-                    {currentData.monthGrowth}%
-                  </span>
-                  <TrendingDown className="w-4 h-4 inline ml-2 text-red-600 group-hover:scale-110 transition-transform duration-300" />
-                </div>
-                <p className="text-xs text-gray-500 group-hover:text-gray-600 transition-colors duration-300">Revenue decreased compared to August</p>
+          {/* Follow-up Status */}
+          <Card className="border-2 group shadow-lg bg-gradient-to-br from-white to-gray-50">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-purple-600" />
+                <CardTitle className="text-lg font-semibold">Follow-up Status</CardTitle>
               </div>
-            </div>
-          </div>
-
-          {/* Conversion Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <MetricCard
-              icon={Users}
-              title="Conversion Rate"
-              value={`${currentData.conversionRate}%`}
-              subtitle={`${Math.round(currentData.totalLeads * currentData.conversionRate / 100)} of ${currentData.totalLeads} leads converted`}
-              trendColor="text-green-600"
-            />
-            
-            <MetricCard
-              icon={Calendar}
-              title="Meeting Scheduled Conversion"
-              value={`${currentData.meetingConversion}%`}
-              subtitle={`${Math.round(currentData.meetingScheduled * currentData.meetingConversion / 100)} of ${currentData.meetingScheduled} leads scheduled`}
-              trendColor="text-purple-600"
-            />
-            
-            <MetricCard
-              icon={Clock}
-              title="Pending Rate"
-              value={`${currentData.pendingRate}%`}
-              subtitle={`${Math.round(currentData.totalLeads * currentData.pendingRate / 100)} of ${currentData.totalLeads} leads pending`}
-              trendColor="text-orange-600"
-            />
-          </div>
-
-          {/* Performance Insights */}
-          <div className="mt-6 space-y-3 text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-              <span>Higher conversion rates indicate better sales performance</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-              <span>Higher meeting scheduled rates indicate better lead engagement</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-              <span>Lower pending rates indicate more efficient processing</span>
-            </div>
-          </div>
-        </>
-      )}
-        </>
-      )}
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPieChart>
+                  <Pie data={pieChartData.filter(d=>d.name==='Follow-up'|| d.name==='Meeting' || d.name==='Pending' || d.name==='Completed')} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={(e)=>`${e.name}: ${e.value}` }>
+                    {pieChartData.filter(d=>d.name==='Follow-up'|| d.name==='Meeting' || d.name==='Pending' || d.name==='Completed').map((d, i) => (<Cell key={`fu-${i}`} fill={d.color} />))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 };

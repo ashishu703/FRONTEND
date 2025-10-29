@@ -4,7 +4,6 @@ import { TrendingUp, CheckCircle, Clock, CreditCard, UserPlus, CalendarCheck, Ar
 import { useState, useEffect } from "react"
 import apiClient from '../../utils/apiClient'
 import { API_ENDPOINTS } from '../../api/admin_api/api'
-import { mapSalesStatusToBucket } from './FollowUp/statusMapping'
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")
@@ -203,6 +202,24 @@ export default function DashboardContent({ isDarkMode = false }) {
 
     loadLeads()
   }, [])
+
+  // Simple status mapping function
+  const mapSalesStatusToBucket = (status) => {
+    switch (status) {
+      case 'converted':
+      case 'win lead':
+        return 'converted'
+      case 'pending':
+        return 'not-connected'
+      case 'running':
+      case 'interested':
+        return 'connected'
+      case 'lost/closed':
+        return 'closed'
+      default:
+        return 'not-connected'
+    }
+  }
 
   // Calculate real data from leads
   const calculateLeadStatusData = () => {

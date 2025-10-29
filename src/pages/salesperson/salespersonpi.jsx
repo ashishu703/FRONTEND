@@ -46,7 +46,7 @@ function numberToWords(num) {
   return result.trim()
 }
 
-export function CorporateStandardInvoice({ selectedBranch = 'SAMRIDDHI_CABLE', companyBranches, quotations = [] }) {
+export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBranches, quotations = [] }) {
     // Default company branches if not provided
     const defaultBranches = {
         ANODE: {
@@ -54,32 +54,35 @@ export function CorporateStandardInvoice({ selectedBranch = 'SAMRIDDHI_CABLE', c
             gstNumber: '(23AANCA7455R1ZX)',
             description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
             address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
-            tel: '+91-761-492-0000',
-            web: 'www.anodeelectric.com',
-            email: 'info@anodeelectric.com'
+            tel: '6262002116, 6262002113',
+            web: 'www.anocab.com',
+            email: 'info@anocab.com',
+            logo: 'Anocab - A Positive Connection.....'
         },
         SAMRIDDHI_CABLE: {
             name: 'SAMRIDDHI CABLE INDUSTRIES PRIVATE LIMITED',
             gstNumber: '(23ABPCS7684F1ZT)',
             description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
             address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
-            tel: '+91-761-492-0000',
+            tel: '6262002116, 6262002113',
             web: 'www.samriddhicable.com',
-            email: 'info@samriddhicable.com'
+            email: 'info@samriddhicable.com',
+            logo: 'Samriddhi Cable - Quality & Excellence.....'
         },
         SAMRIDDHI_INDUSTRIES: {
             name: 'SAMRIDDHI INDUSTRIES',
             gstNumber: '(23ABWFS1117M1ZT)',
             description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
             address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
-            tel: '+91-761-492-0000',
+            tel: '6262002116, 6262002113',
             web: 'www.samriddhiindustries.com',
-            email: 'info@samriddhiindustries.com'
+            email: 'info@samriddhiindustries.com',
+            logo: 'Samriddhi Industries - Innovation & Trust.....'
         }
     }
     
     const branches = companyBranches || defaultBranches
-    const currentBranch = branches[selectedBranch] || branches.SAMRIDDHI_CABLE
+    const currentBranch = branches[selectedBranch] || branches.ANODE
 
     // New: Allow selecting a Quotation to prefill PI lines
     const [selectedQuotationNumber, setSelectedQuotationNumber] = useState(quotations?.[0]?.quotationNumber || '')
@@ -95,11 +98,7 @@ export function CorporateStandardInvoice({ selectedBranch = 'SAMRIDDHI_CABLE', c
       : (subtotal * discountRate) / 100
     const taxableAmount = Math.max(0, subtotal - discountAmount)
     const taxRate = selectedQuotation?.taxRate ?? 18
-    const cgstRate = 9
-    const sgstRate = 9
-    const cgstAmount = (taxableAmount * cgstRate) / 100
-    const sgstAmount = (taxableAmount * sgstRate) / 100
-    const taxAmount = selectedQuotation?.taxAmount ?? (cgstAmount + sgstAmount)
+    const taxAmount = selectedQuotation?.taxAmount ?? (taxableAmount * taxRate / 100)
     const total = selectedQuotation?.total ?? (taxableAmount + taxAmount)
 
     const handlePrint = async () => {
@@ -139,74 +138,15 @@ export function CorporateStandardInvoice({ selectedBranch = 'SAMRIDDHI_CABLE', c
         printWindow.document.write(`
           <html>
             <head>
-              <title>Performa Invoice - ${selectedQuotation?.quotationNumber || 'PI-25-26-458'}</title>
+              <title>Proforma Invoice - ${selectedQuotation?.quotationNumber || 'PI-25-26-458'}</title>
+              <script src="https://cdn.tailwindcss.com"></script>
               <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                @page { size: A4; margin: 12mm; }
-                html, body { width: 210mm; background: #ffffff; }
-                body {
-                  margin: 0;
-                  padding: 0;
-                  font-family: Arial, Helvetica, sans-serif;
-                  font-size: 12px;
-                  line-height: 1.4;
-                  color: #000;
-                }
-                .container { width: calc(210mm - 24mm); margin: 0 auto; }
-                .border-2 { border: 2px solid #000; }
-                .border { border: 1px solid #000; }
-                .border-black { border-color: #000; }
-                .border-gray-300 { border-color: #d1d5db; }
-                .mb-4 { margin-bottom: 1rem; }
-                .mb-2 { margin-bottom: 0.5rem; }
-                .mb-8 { margin-bottom: 2rem; }
-                .p-2 { padding: 0.5rem; }
-                .p-3 { padding: 0.75rem; }
-                .p-6 { padding: 1.5rem; }
-                .pt-1 { padding-top: 0.25rem; }
-                .text-xl { font-size: 18px; }
-                .text-xs { font-size: 10px; }
-                .text-sm { font-size: 12px; }
-                .font-bold { font-weight: bold; }
-                .font-semibold { font-weight: 600; }
-                .text-center { text-align: center; }
-                .text-right { text-align: right; }
-                .text-left { text-align: left; }
-                .flex { display: flex; }
-                .justify-between { justify-content: space-between; }
-                .items-center { align-items: center; }
-                .grid { display: grid; }
-                .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-                .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-                .grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-                .gap-2 { gap: 0.5rem; }
-                .gap-4 { gap: 1rem; }
-                .bg-gray-50 { background-color: #f9fafb; }
-                .bg-gray-100 { background-color: #f3f4f6; }
-                .space-y-1 > * + * { margin-top: 0.25rem; }
-                .space-y-2 > * + * { margin-top: 0.5rem; }
-                .w-full { width: 100%; }
-                .h-12 { height: 3rem; }
-                .w-auto { width: auto; }
-                .w-24 { width: 6rem; }
-                .rounded { border-radius: 0.25rem; }
-                .flex-col { flex-direction: column; }
-                .bg-blue-600 { background-color: #2563eb; }
-                .text-white { color: white; }
-                table { border-collapse: collapse; width: 100%; table-layout: fixed; }
-                th, td { border: 1px solid #d1d5db; padding: 8px; }
-                th { background-color: #f3f4f6; font-weight: bold; text-align: left; }
-                .border-t { border-top: 1px solid #000; }
-                .no-print { display: none !important; }
-                img { max-width: 100%; height: auto; }
                 @media print {
-                  body { margin: 0; padding: 0; }
                   .no-print { display: none !important; }
-                  * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
                 }
               </style>
             </head>
-            <body>
+            <body class="bg-gray-100">
               <div class="container">${clonedContent.innerHTML}</div>
             </body>
           </html>
@@ -219,87 +159,16 @@ export function CorporateStandardInvoice({ selectedBranch = 'SAMRIDDHI_CABLE', c
     }
     
     return (
-      <div id="pi-content" className="mx-auto bg-white border border-gray-300" style={{fontSize: '12px', lineHeight: '1.2', width: '8.5in', minHeight: '11in', margin: '0 auto', padding: '0.5in', maxWidth: '100%'}}>
-        <style jsx>{`
-          @media screen and (max-width: 1200px) {
-            #pi-content {
-              width: 100% !important;
-              max-width: 8.5in !important;
-              transform: scale(0.8) !important;
-              transform-origin: top left !important;
-            }
-          }
-          @media screen and (max-width: 1000px) {
-            #pi-content {
-              width: 100% !important;
-              max-width: 8.5in !important;
-              transform: scale(0.7) !important;
-              transform-origin: top left !important;
-            }
-          }
-          @media print {
-            #pi-content {
-              font-size: 10px !important;
-              line-height: 1.1 !important;
-              padding: 0.4in !important;
-              margin: 0 !important;
-              width: 8.5in !important;
-              min-height: 11in !important;
-            }
-            #pi-content .p-3, #pi-content .p-4, #pi-content .p-6 {
-              padding: 0.05in !important;
-            }
-            #pi-content .mb-3, #pi-content .mb-4, #pi-content .mb-6, #pi-content .mb-8 {
-              margin-bottom: 0.05in !important;
-            }
-            #pi-content .mt-4, #pi-content .mt-8 {
-              margin-top: 0.05in !important;
-            }
-            #pi-content .pt-4, #pi-content .pt-6 {
-              padding-top: 0.05in !important;
-            }
-            #pi-content .gap-4, #pi-content .gap-6, #pi-content .gap-8 {
-              gap: 0.05in !important;
-            }
-            #pi-content h1, #pi-content h2, #pi-content h3, #pi-content h4 {
-              margin: 0.05in 0 !important;
-            }
-            #pi-content .text-2xl {
-              font-size: 14px !important;
-            }
-            #pi-content .text-lg {
-              font-size: 12px !important;
-            }
-            #pi-content .text-sm {
-              font-size: 9px !important;
-            }
-            #pi-content .text-xs {
-              font-size: 8px !important;
-            }
-            #pi-content table {
-              font-size: 9px !important;
-            }
-            #pi-content .w-80 {
-              width: 200px !important;
-            }
-            #pi-content .mb-16 {
-              margin-bottom: 0.2in !important;
-            }
-            #pi-content .mt-16 {
-              margin-top: 0.2in !important;
-            }
-          }
-        `}</style>
-        <div className="p-3 mb-3 border-b-2 border-gray-400">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-2xl font-bold text-black">PROFORMA INVOICE</h1>
-              <p className="text-sm text-gray-600">Printed on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="border border-gray-400 p-3">
-                <p className="text-xs text-gray-600">Voucher No.</p>
-                <p className="text-xl font-bold">PI-{new Date().getFullYear()}-{String(new Date().getMonth() + 1).padStart(2, '0')}-{String(Math.floor(Math.random() * 1000)).padStart(3, '0')}</p>
+      <div className="max-w-4xl mx-auto bg-white font-sans text-sm" id="pi-content">
+        <div className="p-6">
+          <div className="border-2 border-black mb-4">
+            <div className="p-2 flex justify-between items-center">
+              <div>
+                <h1 className="text-xl font-bold">{currentBranch.name}</h1>
+                {currentBranch.gstNumber && (
+                  <p className="text-xs font-semibold text-gray-700">{currentBranch.gstNumber}</p>
+                )}
+                <p className="text-xs">{currentBranch.description}</p>
               </div>
               <div className="text-right">
                 <img
@@ -309,220 +178,244 @@ export function CorporateStandardInvoice({ selectedBranch = 'SAMRIDDHI_CABLE', c
                 />
               </div>
             </div>
+
+            <div className="p-3 bg-gray-50">
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <p>
+                    <strong>{currentBranch.address}</strong>
+                  </p>
+                </div>
+                <div className="text-right">
+                  {currentBranch.tel && <p>Tel: {currentBranch.tel}</p>}
+                  {currentBranch.web && <p>Web: {currentBranch.web}</p>}
+                  {currentBranch.email && <p>Email: {currentBranch.email}</p>}
+                </div>
+              </div>
+            </div>
           </div>
-          {/* Quotation selector removed */}
-        </div>
-  
-        <div className="mb-4">
-          <div className="p-3 border-l-4 border-gray-400">
-            <h2 className="text-lg font-bold text-black mb-2">{currentBranch.name}</h2>
-            <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-700">
+
+          <div className="border border-black mb-4">
+            <div className="bg-gray-100 p-2 text-center font-bold">
+              <h2>Proforma Invoice Details</h2>
+            </div>
+            <div className="grid grid-cols-4 gap-2 p-2 text-xs border-b">
               <div>
-                <p>OPPOSITE DADDA NAGAR, WARD NO 73</p>
-                <p>KATANGI ROAD, KARMETA, Jabalpur</p>
-                <p>Madhya Pradesh - 482002, India</p>
-              </div>
-              <div>
-                <p>
-                  <span className="font-bold">GSTIN/UIN:</span> {currentBranch.gstNumber}
-                </p>
-                <p>
-                  <span className="font-bold">State Name:</span> Madhya Pradesh, Code: 23
-                </p>
-                <p>
-                  <span className="font-bold">Contact:</span> {currentBranch.tel}
-                </p>
-                <p>
-                  <span className="font-bold">E-Mail:</span> {currentBranch.email}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-  
-        <div className="grid md:grid-cols-2 gap-4 mb-4">
-          <div className="border border-gray-300">
-            <div className="bg-gray-100 p-3 border-b border-gray-300">
-              <h3 className="font-bold text-black">Consignee (Ship to)</h3>
-            </div>
-            <div className="p-4 text-sm">
-              <p className="font-bold text-black mb-2">{billTo.business || '—'}</p>
-              <p className="text-gray-700">{billTo.address || '—'}</p>
-              <p className="text-gray-700">{billTo.state || ''}</p>
-              <div className="mt-3 pt-3 border-t border-gray-200 text-xs">
-                <p>
-                  <span className="font-bold">GSTIN/UIN:</span> {billTo.gstNo || ''}
-                </p>
-                <p>
-                  <span className="font-bold">Phone:</span> {billTo.phone || ''}
-                </p>
-              </div>
-            </div>
-          </div>
-  
-          <div className="border border-gray-300">
-            <div className="bg-gray-100 p-3 border-b border-gray-300">
-              <h3 className="font-bold text-black">Buyer (Bill to)</h3>
-            </div>
-            <div className="p-4 text-sm">
-              <p className="font-bold text-black mb-2">{billTo.business || '—'}</p>
-              <p className="text-gray-700">{billTo.address || '—'}</p>
-              <p className="text-gray-700">{billTo.state || ''}</p>
-              <div className="mt-3 pt-3 border-t border-gray-200 text-xs">
-                <p>
-                  <span className="font-bold">GSTIN/UIN:</span> {billTo.gstNo || ''}
-                </p>
-                <p>
-                  <span className="font-bold">Phone:</span> {billTo.phone || ''}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-  
-        <div className="bg-gray-50 p-3 mb-4 border border-gray-300">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <p className="font-bold text-black">Voucher No.</p>
-              <p className="text-gray-700">PI-{new Date().getFullYear()}-{String(new Date().getMonth() + 1).padStart(2, '0')}-{String(Math.floor(Math.random() * 1000)).padStart(3, '0')}</p>
-            </div>
-            <div>
-              <p className="font-bold text-black">Dated</p>
-              <p className="text-gray-700">{new Date().toLocaleDateString('en-GB')}</p>
-            </div>
-            <div>
-              <p className="font-bold text-black">Payment Terms</p>
-              <p className="text-gray-700">ADVANCE</p>
-            </div>
-            <div>
-              <p className="font-bold text-black">Buyer's Ref.</p>
-              <p className="text-gray-700">BR-{new Date().getFullYear()}-{String(Math.floor(Math.random() * 10000)).padStart(4, '0')}</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mt-4">
-            <div>
-              <p className="font-bold text-black">Other References</p>
-              <p className="text-gray-700">DIRECT SALE</p>
-            </div>
-            <div>
-              <p className="font-bold text-black">Dispatched Through</p>
-              <p className="text-gray-700">BY TRANSPORT</p>
-            </div>
-            <div>
-              <p className="font-bold text-black">Destination</p>
-              <p className="text-gray-700">Chandrapur Transport</p>
-            </div>
-          </div>
-          <div className="mt-4">
-            <p className="font-bold text-black">Delivery Terms</p>
-            <p className="text-gray-700">Delivery :- FOR upto Chandrapur Transport</p>
-          </div>
-        </div>
-  
-        <div className="border border-gray-300 mb-4 overflow-hidden">
-          <div className="bg-gray-100 p-3">
-            <div className="grid grid-cols-8 gap-2 text-sm font-bold text-black">
-              <div>Sl No.</div>
-              <div className="col-span-2">Description of Goods</div>
-              <div>HSN/SAC</div>
-              <div>Quantity</div>
-              <div>Rate</div>
-              <div>per</div>
-              <div className="text-right">Amount</div>
-            </div>
-          </div>
-          <div className="p-4 bg-white">
-            {items.length > 0 ? items.map((it, idx) => (
-              <div key={idx} className="grid grid-cols-8 gap-2 text-sm">
-                <div className="font-bold">{idx + 1}</div>
-                <div className="col-span-2">
-                  <p className="font-bold text-black">{it.productName || it.description || 'Item'}</p>
-                </div>
-                <div className="text-gray-700">{it.hsn || '76141000'}</div>
-                <div className="text-gray-700">{it.quantity} {it.unit}</div>
-                <div className="text-gray-700">{Number(it.buyerRate || 0).toFixed(2)}</div>
-                <div className="text-gray-700">{it.unit || ''}</div>
-                <div className="text-right font-bold">{Number(it.amount || 0).toFixed(2)}</div>
-              </div>
-            )) : (
-              <div className="text-sm text-gray-600">No items found for selected quotation.</div>
-            )}
-          </div>
-        </div>
-  
-        <div className="flex justify-end mb-4">
-          <div className="w-80 border border-gray-300">
-            <div className="p-4 bg-white">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-700">Subtotal</span>
-                  <span className="font-bold">{Number(subtotal).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-700">Less: Discount ({discountRate}%)</span>
-                  <span className="font-bold">{Number(discountAmount).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-700">Taxable Amount</span>
-                  <span className="font-bold">{Number(taxableAmount).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-700">Add: CGST (9%)</span>
-                  <span className="font-bold">{Number(cgstAmount).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-700">Add: SGST (9%)</span>
-                  <span className="font-bold">{Number(sgstAmount).toFixed(2)}</span>
-                </div>
-                <div className="border-t border-gray-300 pt-2 mt-2">
-                  <div className="flex justify-between font-bold text-lg text-black">
-                    <span>Total Amount</span>
-                    <span>₹ {Number(total).toFixed(2)}</span>
-                  </div>
-                  <div className="text-center mt-2">
-                    <span className="text-xs">(Rupees {numberToWords(Math.floor(total || 0))} Only)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-  
-        <div className="bg-gray-50 p-3 border border-gray-300 mb-4">
-          <p className="text-sm font-bold text-black mb-1">Amount Chargeable (in words)</p>
-          <p className="font-bold text-black">INR {numberToWords(Math.floor(total || 0))} Only</p>
-          <p className="text-xs text-gray-600 mt-2">E. & O.E</p>
-        </div>
-  
-        <div className="grid md:grid-cols-2 gap-4 pt-4 border-t border-gray-300">
-          <div className="bg-gray-50 p-4 border border-gray-300">
-            <h4 className="font-bold text-black mb-2">Company's Bank Details</h4>
-            <div className="grid grid-cols-2 gap-4 text-sm text-gray-700">
-              <div>
-                <p><span className="font-bold">A/c Holder's Name:</span></p>
-                <p>{currentBranch.name}</p>
-                <p><span className="font-bold">Bank Name:</span> ICICI BANK</p>
-                <p><span className="font-bold">A/c No.:</span> 777705336601</p>
+                <strong>PI Date</strong>
               </div>
               <div>
-                <p><span className="font-bold">Branch:</span> NIWARGANJ</p>
-                <p><span className="font-bold">IFSC Code:</span> ICIC0007345</p>
-                <p><span className="font-bold">Bank Code:</span> 36601</p>
+                <strong>PI Number</strong>
+              </div>
+              <div>
+                <strong>Valid Upto</strong>
+              </div>
+              <div>
+                <strong>Voucher Number</strong>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-2 p-2 text-xs">
+              <div>{new Date().toLocaleDateString()}</div>
+              <div>PI-{new Date().getFullYear()}-{String(new Date().getMonth() + 1).padStart(2, '0')}-{String(Math.floor(Math.random() * 1000)).padStart(3, '0')}</div>
+              <div>{new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
+              <div>VOUCH-{String(Math.floor(Math.random() * 10000)).padStart(4, '0')}</div>
+            </div>
+          </div>
+
+          <div className="border border-black mb-4">
+            <div className="grid grid-cols-2 gap-4 p-3 text-xs">
+              <div>
+                <h3 className="font-bold mb-2">BILL TO:</h3>
+                <p>
+                  <strong>{billTo.business || 'Customer'}</strong>
+                </p>
+                {billTo.address && <p>{billTo.address}</p>}
+                {billTo.phone && (
+                  <p>
+                    <strong>PHONE:</strong> {billTo.phone}
+                  </p>
+                )}
+                {billTo.gstNo && (
+                  <p>
+                    <strong>GSTIN:</strong> {billTo.gstNo}
+                  </p>
+                )}
+                {billTo.state && (
+                  <p>
+                    <strong>State:</strong> {billTo.state}
+                  </p>
+                )}
+              </div>
+              <div>
+                <p>
+                  <strong>L.R. No:</strong> -
+                </p>
+                <p>
+                  <strong>Transport:</strong> STAR TRANSPORTS
+                </p>
+                <p>
+                  <strong>Transport ID:</strong> 562345
+                </p>
+                <p>
+                  <strong>Vehicle Number:</strong> GJ01HJ2520
+                </p>
               </div>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-600 mb-16">for {currentBranch.name}</p>
-            <div className="border-t-2 border-gray-400 w-48 ml-auto pt-2">
-              <p className="text-sm font-bold text-black">Authorised Signatory</p>
+
+          <div className="border border-black mb-4">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border border-gray-300 p-1 text-center w-10">Sr.</th>
+                  <th className="border border-gray-300 p-2 text-left">Name of Product / Service</th>
+                  <th className="border border-gray-300 p-1 text-center w-16">HSN / SAC</th>
+                  <th className="border border-gray-300 p-1 text-center w-12">Qty</th>
+                  <th className="border border-gray-300 p-1 text-center w-12">Unit</th>
+                  <th className="border border-gray-300 p-1 text-right w-20">Buyer Rate</th>
+                  <th className="border border-gray-300 p-1 text-right w-20">Taxable Value</th>
+                  <th className="border border-gray-300 p-0.5 text-center w-8 text-[10px] whitespace-nowrap">GST%</th>
+                  <th className="border border-gray-300 p-1 text-right w-24">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.isArray(items) && items.length > 0 ? (
+                  items.map((item, index) => (
+                    <tr key={index}>
+                      <td className="border border-gray-300 p-1 text-center">{index + 1}</td>
+                      <td className="border border-gray-300 p-2">{item.productName || item.description}</td>
+                      <td className="border border-gray-300 p-1 text-center">{item.hsn || '85446090'}</td>
+                      <td className="border border-gray-300 p-1 text-center">{item.quantity}</td>
+                      <td className="border border-gray-300 p-1 text-center">{item.unit || 'Nos'}</td>
+                      <td className="border border-gray-300 p-1 text-right">{parseFloat(item.buyerRate || item.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="border border-gray-300 p-1 text-right">{parseFloat(item.amount || item.taxable || item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="border border-gray-300 p-0 text-center text-xs">{item.gstRate ? `${item.gstRate}%` : '18%'}</td>
+                      <td className="border border-gray-300 p-1 text-right">{parseFloat((item.amount ?? item.total ?? 0) * (item.gstMultiplier ?? 1.18)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td className="border border-gray-300 p-1 text-center">1</td>
+                    <td className="border border-gray-300 p-2">cable</td>
+                    <td className="border border-gray-300 p-1 text-center">85446090</td>
+                    <td className="border border-gray-300 p-1 text-center">1</td>
+                    <td className="border border-gray-300 p-1 text-center">Nos</td>
+                    <td className="border border-gray-300 p-1 text-right">100.00</td>
+                    <td className="border border-gray-300 p-1 text-right">100.00</td>
+                    <td className="border border-gray-300 p-0 text-center text-xs">18%</td>
+                    <td className="border border-gray-300 p-1 text-right">118.00</td>
+                  </tr>
+                )}
+
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i} className="h-8">
+                    <td className="border border-gray-300 p-2"></td>
+                    <td className="border border-gray-300 p-2"></td>
+                    <td className="border border-gray-300 p-2"></td>
+                    <td className="border border-gray-300 p-2"></td>
+                    <td className="border border-gray-300 p-2"></td>
+                    <td className="border border-gray-300 p-2"></td>
+                    <td className="border border-gray-300 p-2"></td>
+                    <td className="border border-gray-300 p-2"></td>
+                    <td className="border border-gray-300 p-2"></td>
+                  </tr>
+                ))}
+
+                <tr className="bg-gray-100 font-bold">
+                  <td className="border border-gray-300 p-2 text-left">Total</td>
+                  <td className="border border-gray-300 p-2"></td>
+                  <td className="border border-gray-300 p-2"></td>
+                  <td className="border border-gray-300 p-2"></td>
+                  <td className="border border-gray-300 p-2"></td>
+                  <td className="border border-gray-300 p-2"></td>
+                  <td className="border border-gray-300 p-2">{subtotal?.toFixed ? subtotal.toFixed(2) : (subtotal || '').toString()}</td>
+                  <td className="border border-gray-300 p-2">{taxAmount?.toFixed ? taxAmount.toFixed(2) : (taxAmount || '').toString()}</td>
+                  <td className="border border-gray-300 p-2">{total?.toFixed ? total.toFixed(2) : (total || '').toString()}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="border border-black p-3">
+              <h3 className="font-bold text-xs mb-2">Bank Details</h3>
+              <div className="text-xs space-y-1">
+                <p>
+                  <strong>Bank Name:</strong> ICICI Bank
+                </p>
+                <p>
+                  <strong>Branch Name:</strong> WRIGHT TOWN JABALPUR
+                </p>
+                <p>
+                  <strong>Bank Account Number:</strong> 657605601783
+                </p>
+                <p>
+                  <strong>Bank Branch IFSC:</strong> ICIC0006576
+                </p>
+              </div>
+            </div>
+            <div className="border border-black p-3">
+              <div className="text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>{subtotal?.toFixed ? subtotal.toFixed(2) : (subtotal || '0.00')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Less: Discount ({discountRate || 0}%)</span>
+                  <span>{discountAmount?.toFixed ? discountAmount.toFixed(2) : (discountAmount || '0.00')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Taxable Amount</span>
+                  <span>{(typeof subtotal === 'number' ? (subtotal - (discountAmount || 0)).toFixed(2) : (taxableAmount || '')).toString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Add: Total GST ({taxRate || 18}%)</span>
+                  <span>{taxAmount?.toFixed ? taxAmount.toFixed(2) : (taxAmount || '0.00')}</span>
+                </div>
+                <div className="flex justify-between font-bold border-t pt-1">
+                  <span>Total Amount After Tax</span>
+                  <span>₹ {total?.toFixed ? total.toFixed(2) : (total || '0.00')}</span>
+                </div>
+              </div>
             </div>
           </div>
+
+          <div className="border border-black mb-4">
+            <div className="bg-gray-100 p-2 font-bold text-xs">
+              <h3>Terms and Conditions</h3>
+            </div>
+            <div className="p-3 text-xs space-y-2">
+              <div>
+                <h4 className="font-bold">PRICING & VALIDITY</h4>
+                <p>• Prices are valid for 3 days only from the date of the final quotation/PI unless otherwise specified terms.</p>
+                <p>• The order will be considered confirmed only upon receipt of the advance payment.</p>
+              </div>
+              <div>
+                <h4 className="font-bold">PAYMENT TERMS</h4>
+                <p>• 30% advance payment upon order confirmation</p>
+                <p>• Remaining Balance at time of final dispatch / against LC / Bank Guarantee (if applicable).</p>
+                <p>• Liquidated Damages @ 0.5% to 1% per WEEK will be charged on delayed payments beyond the agreed terms.</p>
+              </div>
+              <div>
+                <h4 className="font-bold">DELIVERY & DISPATCH</h4>
+                <p>• Standard delivery period as per the telecommunication with customer.</p>
+                <p>• Any delays due to unforeseen circumstances (force majeure, strikes, and transportation issues) will be communicated.</p>
+              </div>
+              <div>
+                <h4 className="font-bold">QUALITY & WARRANTY</h4>
+                <p>• Cables will be supplied as per IS and other applicable BIS standards/or as per the agreed specifications mentioned/special demand by the customer.</p>
+                <p>• Any manufacturing defects should be reported immediately, within 3 working days of receipt.</p>
+                <p>• Warranty: 12 months from the date of dispatch for manufacturing defects only in ISI mark products.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-right text-xs">
+            <p className="mb-4">For <strong>{currentBranch.name}</strong></p>
+            <p className="mb-8">This is computer generated invoice no signature required.</p>
+            <p className="font-bold">Authorized Signatory</p>
+            <p className="mt-2 text-sm font-semibold text-gray-800">Salesperson</p>
+          </div>
         </div>
-  
-        <div className="text-center mt-4 pt-2 border-t border-gray-300">
-          <p className="text-xs text-gray-500 bg-gray-50 inline-block px-4 py-1">This is a Computer Generated Document</p>
-        </div>
-        
       </div>
     )
   }
