@@ -58,12 +58,6 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
       ]
     },
     {
-      id: 'customer-list',
-      label: 'Customer List',
-      icon: <Users className="w-5 h-5" />,
-      hasDropdown: false
-    },
-    {
       id: 'department',
       label: 'Department',
       icon: <Building2 className="w-5 h-5" />,

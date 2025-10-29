@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun, BarChart3, Clock } from 'lucide-react';
+import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun, BarChart3, Clock, User } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { useCompany } from './context/CompanyContext';
 
-const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onToggleMobileView, isMobileView = false, isDarkMode = false, onToggleDarkMode }) => {
+const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onToggleMobileView, isMobileView = false, isDarkMode = false, onToggleDarkMode, onProfileClick }) => {
   const { user, logout } = useAuth();
   const { selectedCompany, setSelectedCompany } = useCompany();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -98,6 +98,12 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
           icon: <TrendingUp className="w-6 h-6 text-white" />,
           title: "Sales Overview",
           subtitle: "Monitor sales performance and metrics"
+        };
+      case 'profile':
+        return {
+          icon: <Users className="w-6 h-6 text-white" />,
+          title: "Profile & Attendance",
+          subtitle: "Manage your profile information and track attendance"
         };
       case 'stock':
         return {
@@ -236,6 +242,12 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
           icon: <MapPin className="w-6 h-6 text-white" />,
           title: "Customer Visits",
           subtitle: "Plan and track customer visits"
+        };
+      case 'calendar':
+        return {
+          icon: <Calendar className="w-6 h-6 text-white" />,
+          title: "Lead Calendar",
+          subtitle: "View your assigned leads day-wise"
         };
       case 'expenses':
         return {
@@ -406,6 +418,21 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
               {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
           )}
+          {/* Profile Icon - Only for marketing salesperson */}
+          {userType === "marketing-salesperson" && onProfileClick && (
+            <button
+              onClick={onProfileClick}
+              className={`p-2 rounded-lg transition-colors ${
+                currentPage === 'profile' 
+                  ? (isDarkMode ? 'bg-blue-700 text-blue-200' : 'bg-blue-100 text-blue-700')
+                  : (isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100')
+              }`}
+              title="Profile & Attendance"
+            >
+              <User className={`w-5 h-5 ${currentPage === 'profile' ? (isDarkMode ? 'text-blue-200' : 'text-blue-700') : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} />
+            </button>
+          )}
+          
           {/* Notification Bell */}
           <div className="relative" ref={notificationRef}>
             <button 
