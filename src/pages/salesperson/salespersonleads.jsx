@@ -47,6 +47,8 @@ function numberToWords(num) {
 }
 import apiClient from '../../utils/apiClient'
 import { API_ENDPOINTS } from '../../api/admin_api/api'
+import quotationService from '../../api/admin_api/quotationService'
+import paymentService from '../../api/admin_api/paymentService'
 import { Search, RefreshCw, User, Mail, Building2, Pencil, Eye, Plus, Download, Filter, Wallet, MessageCircle, Package, MapPin, Map, BadgeCheck, XCircle, FileText, Globe, X, Clock, Check, Clock as ClockIcon, ArrowRightLeft, Upload, Send, Trash2 } from "lucide-react"
 import html2pdf from 'html2pdf.js'
 import Quotation from './salespersonquotation.jsx'
@@ -116,11 +118,108 @@ export default function CustomerListContent({ isDarkMode = false }) {
   const [lastQuotationData, setLastQuotationData] = React.useState(null)
   const [isRefreshing, setIsRefreshing] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState('')
+
+  // Fetch quotations for the currently viewed customer (DB-backed) on open/refresh
+  React.useEffect(() => {
+    let ignore = false
+    async function loadCustomerQuotations() {
+      try {
+        if (!viewingCustomer || !viewingCustomer.id) return
+        console.log('Loading quotations for customer:', viewingCustomer.id);
+        const res = await quotationService.getQuotationsByCustomer(viewingCustomer.id)
+        console.log('Quotations API response:', res);
+        
+        if (!ignore && res && res.success) {
+          const normalized = (res.data || []).map(q => ({
+            id: q.id,
+            quotationNumber: q.quotation_number,
+            customerId: q.customer_id,
+            quotationDate: q.quotation_date,
+            total: q.total_amount,
+            status: q.status,
+            createdAt: q.created_at,
+            items: q.items || []
+          }))
+          console.log('Normalized quotations with statuses:', normalized);
+          setQuotations(normalized)
+        }
+      } catch (e) {
+        console.error('Failed to load customer quotations:', e)
+      }
+    }
+    loadCustomerQuotations()
+    return () => { ignore = true }
+  }, [viewingCustomer?.id, isRefreshing])
+
+  // Auto-refresh quotations every 10 seconds to get status updates from department head
+  React.useEffect(() => {
+    if (!viewingCustomer || !viewingCustomer.id) return
+    
+    const interval = setInterval(async () => {
+      try {
+        console.log('Auto-refreshing quotations for status updates...');
+        const res = await quotationService.getQuotationsByCustomer(viewingCustomer.id)
+        if (res && res.success) {
+          const normalized = (res.data || []).map(q => ({
+            id: q.id,
+            quotationNumber: q.quotation_number,
+            customerId: q.customer_id,
+            quotationDate: q.quotation_date,
+            total: q.total_amount,
+            status: q.status,
+            createdAt: q.created_at,
+            items: q.items || []
+          }))
+          
+          setQuotations(prev => {
+            // Check if any status has changed
+            const hasChanges = normalized.some(newQ => {
+              const oldQ = prev.find(p => p.id === newQ.id)
+              return !oldQ || oldQ.status !== newQ.status
+            })
+            
+            if (hasChanges) {
+              console.log('Status changes detected:', normalized);
+              
+              // Show notification for status changes
+              normalized.forEach(newQ => {
+                const oldQ = prev.find(p => p.id === newQ.id)
+                if (oldQ && oldQ.status !== newQ.status) {
+                  if (newQ.status === 'approved') {
+                    alert(`✅ Quotation ${newQ.quotationNumber} has been APPROVED by Department Head!`)
+                  } else if (newQ.status === 'rejected') {
+                    alert(`❌ Quotation ${newQ.quotationNumber} has been REJECTED by Department Head!`)
+                  }
+                }
+              })
+              
+              return normalized
+            }
+            return prev
+          })
+        }
+      } catch (e) {
+        console.error('Auto-refresh failed:', e)
+      }
+    }, 10000) // 10 seconds
+    
+    return () => clearInterval(interval)
+  }, [viewingCustomer?.id])
   const [editingCustomer, setEditingCustomer] = React.useState(null)
   const [showFilters, setShowFilters] = React.useState(false)
   // Payment related state
   const [showPaymentDetails, setShowPaymentDetails] = React.useState(false)
+  const [showAddPaymentModal, setShowAddPaymentModal] = React.useState(false)
   const [selectedCustomer, setSelectedCustomer] = React.useState(null)
+  const [addPaymentForm, setAddPaymentForm] = React.useState({
+    quotationId: '',
+    piId: '',
+    amount: '',
+    paymentMethod: 'Cash',
+    paymentDate: new Date().toISOString().split('T')[0],
+    reference: '',
+    remarks: ''
+  })
   const [paymentHistory, setPaymentHistory] = React.useState([
     {
       id: 1,
@@ -335,6 +434,13 @@ export default function CustomerListContent({ isDarkMode = false }) {
           transferredLeads: 0,
           transferredTo: r.transferred_to || null,
           callDurationSeconds: r.call_duration_seconds || null,
+          // Docs and payment info from DB (backend fields)
+          quotationUrl: r.quotation_url || null,
+          proformaInvoiceUrl: r.proforma_invoice_url || null,
+          paymentReceiptUrl: r.payment_receipt_url || null,
+          quotationCount: typeof r.quotation_count === 'number' ? r.quotation_count : (parseInt(r.quotation_count) || 0),
+          paymentStatusDb: r.payment_status || null,
+          paymentModeDb: r.payment_mode || null,
         }));
         setCustomers(mapped);
       } catch (err) {
@@ -366,6 +472,73 @@ export default function CustomerListContent({ isDarkMode = false }) {
     }
   }
 
+  // Save quotation to database
+  const handleSaveQuotation = async (quotationData) => {
+    try {
+      const quotationPayload = {
+        customerId: viewingCustomer.id,
+        customerName: viewingCustomer.name,
+        customerBusiness: viewingCustomer.business,
+        customerPhone: viewingCustomer.phone,
+        customerEmail: viewingCustomer.email,
+        customerAddress: viewingCustomer.address,
+        customerGstNo: viewingCustomer.gstNo,
+        customerState: viewingCustomer.state,
+        quotationDate: quotationData.quotationDate,
+        validUntil: quotationData.validUntil,
+        branch: quotationData.selectedBranch || 'ANODE',
+        subtotal: quotationData.subtotal,
+        taxRate: quotationData.taxRate || 18.00,
+        taxAmount: quotationData.taxAmount,
+        discountRate: quotationData.discountRate || 0,
+        discountAmount: quotationData.discountAmount || 0,
+        totalAmount: quotationData.total,
+        items: quotationData.items.map(item => ({
+          productName: item.productName || item.description || 'Product',
+          description: item.description || item.productName || 'Product',
+          hsnCode: item.hsn || '85446090',
+          quantity: item.quantity,
+          unit: item.unit || 'Nos',
+          unitPrice: item.buyerRate || item.unitPrice,
+          gstRate: item.gstRate || 18.00,
+          taxableAmount: item.amount,
+          gstAmount: (item.amount * (item.gstRate || 18.00) / 100),
+          totalAmount: item.amount * (1 + (item.gstRate || 18.00) / 100)
+        }))
+      };
+
+      console.log('Sending quotation payload:', quotationPayload);
+      console.log('Viewing customer data:', viewingCustomer);
+      const response = await quotationService.createQuotation(quotationPayload);
+      console.log('Quotation response:', response);
+      
+      if (response.success) {
+        // Add to local quotations state
+        const newQuotation = {
+          id: response.data.id,
+          quotationNumber: response.data.quotation_number,
+          customerId: viewingCustomer.id,
+          quotationDate: response.data.quotation_date,
+          total: response.data.total_amount,
+          status: response.data.status,
+          createdAt: response.data.created_at,
+          items: response.data.items || []
+        };
+        
+        setQuotations(prev => [newQuotation, ...prev]);
+        
+        // Show success message
+        alert('Quotation created and saved to database successfully!');
+        
+        // Close the quotation modal
+        setShowCreateQuotation(false);
+      }
+    } catch (error) {
+      console.error('Error saving quotation:', error);
+      alert('Failed to save quotation to database. Please try again.');
+    }
+  }
+
   const handleSendVerification = (customer) => {
     // Update customer's quotation status to pending
     const updatedCustomer = {
@@ -387,40 +560,6 @@ export default function CustomerListContent({ isDarkMode = false }) {
   }
 
 
-  const handleSaveQuotation = (newQuotationData) => {
-    setQuotationData(newQuotationData)
-    setLastQuotationData(newQuotationData) // Store the last created quotation
-    
-    // Add the new quotation to the quotations array
-    const newQuotation = {
-      id: newQuotationData.quotationNumber || `ANQ${Date.now()}`,
-      quotationNumber: newQuotationData.quotationNumber,
-      quotationDate: newQuotationData.quotationDate,
-      customerId: selectedCustomerForQuotation.id,
-      customerName: selectedCustomerForQuotation.name,
-      total: newQuotationData.total,
-      status: 'draft',
-      ...newQuotationData
-    }
-    
-    setQuotations(prevQuotations => [newQuotation, ...prevQuotations])
-    
-    // Update customer's quotation count and latest quotation flag
-    setCustomers(prevCustomers => 
-      prevCustomers.map(customer => 
-        customer.id === selectedCustomerForQuotation.id 
-          ? { 
-              ...customer, 
-              quotationsSent: (customer.quotationsSent || 0) + 1,
-              latestQuotationUrl: "latest" // Mark that this customer has a latest quotation
-            }
-          : customer
-      )
-    )
-    
-    setShowCreateQuotation(false)
-    setSelectedCustomerForQuotation(null)
-  }
 
   const handleSavePI = (newPiData) => {
     setPiData(newPiData)
@@ -428,52 +567,191 @@ export default function CustomerListContent({ isDarkMode = false }) {
     setSelectedCustomerForPI(null)
   }
 
-  // Send a specific quotation for verification (per-quotation status)
-  const handleSendQuotation = (quotation) => {
-    setQuotations(prev => prev.map(q => {
-      const isSame = (q.quotationNumber && quotation.quotationNumber && q.quotationNumber === quotation.quotationNumber)
-        || (q.id && quotation.id && q.id === quotation.id)
-      return isSame ? { ...q, status: 'pending', verificationSentAt: new Date().toISOString() } : q
-    }))
-    alert('Verification request sent for the selected quotation!')
-  }
-
-  // Delete a specific quotation from the list
-  const handleDeleteQuotation = (quotation) => {
-    if (!confirm('Are you sure you want to delete this quotation?')) return
-    setQuotations(prev => prev.filter(q => {
-      const isSame = (q.quotationNumber && quotation.quotationNumber && q.quotationNumber === quotation.quotationNumber)
-        || (q.id && quotation.id && q.id === quotation.id)
-      return !isSame
-    }))
-  }
-
-
-  const handleViewQuotation = (quotation) => {
-    // Use the actual quotation object as saved from the form
-    const normalized = {
-      ...quotation,
-      customer: {
-        name: quotation.billTo?.business || viewingCustomer?.name,
-        business: quotation.billTo?.business,
-        address: quotation.billTo?.address,
-        phone: quotation.billTo?.phone,
-        gstNo: quotation.billTo?.gstNo,
-        state: quotation.billTo?.state
-      },
-      items: (quotation.items || []).map(i => ({
-        description: i.productName || i.description,
-        quantity: i.quantity,
-        unit: i.unit,
-        unitPrice: i.buyerRate ?? i.unitPrice ?? i.rate,
-        total: i.amount ?? i.total
-      })),
-      subtotal: quotation.subtotal,
-      tax: quotation.taxAmount ?? quotation.tax,
-      total: quotation.total
+  // Auto-fill PI form with approved quotation data
+  React.useEffect(() => {
+    if (showCreatePI && selectedCustomerForPI?.approvedQuotation) {
+      const approvedQuotation = selectedCustomerForPI.approvedQuotation;
+      
+      // Auto-fill PI form with quotation data
+      setPiFormData({
+        items: approvedQuotation.items?.map(item => ({
+          id: item.id || Math.random(),
+          description: item.productName || item.description || 'Product',
+          subDescription: item.description || '',
+          hsn: item.hsnCode || item.hsn || '85446090',
+          dueOn: new Date().toISOString().split('T')[0],
+          quantity: item.quantity || 1,
+          unit: item.unit || 'Nos',
+          rate: item.unitPrice || item.buyerRate || 0,
+          amount: item.totalAmount || item.amount || 0
+        })) || [{
+          id: 1,
+          description: '',
+          subDescription: '',
+          hsn: '76141000',
+          dueOn: new Date().toISOString().split('T')[0],
+          quantity: 1,
+          unit: 'MTR',
+          rate: 0,
+          amount: 0
+        }],
+        discountRate: 0,
+        customer: {
+          business: selectedCustomerForPI.business || '',
+          address: selectedCustomerForPI.address || '',
+          phone: selectedCustomerForPI.phone || '',
+          gstNo: selectedCustomerForPI.gstNo || '',
+          state: selectedCustomerForPI.state || ''
+        }
+      });
+      
+      console.log('Auto-filled PI form with approved quotation:', approvedQuotation);
     }
-    setQuotationPopupData(normalized)
-    setShowQuotationPopup(true)
+  }, [showCreatePI, selectedCustomerForPI]);
+
+  // Send a specific quotation for verification (persists to backend)
+  const handleSendQuotation = async (quotation) => {
+    try {
+      if (!quotation.id) {
+        alert('Please save the quotation first before sending for verification.')
+        return
+      }
+      
+      console.log('Sending quotation for verification:', quotation);
+      const res = await quotationService.submitForVerification(quotation.id)
+      console.log('Submit verification response:', res);
+      
+      if (res && res.success) {
+        const newStatus = res.data?.status || 'pending';
+        console.log('Updating quotation status to:', newStatus);
+        
+        setQuotations(prev => prev.map(q => (q.id === quotation.id ? {
+          ...q,
+          status: newStatus,
+          verificationSentAt: new Date().toISOString()
+        } : q)))
+        
+        alert('Sent to Department Head for verification.')
+      } else {
+        console.error('Submit verification failed:', res);
+        alert('Failed to submit for verification. Please try again.')
+      }
+    } catch (e) {
+      console.error('Error submitting quotation for verification:', e)
+      alert('Failed to submit for verification. Please try again.')
+    }
+  }
+
+  // Delete a specific quotation from the list and database
+  const handleDeleteQuotation = async (quotation) => {
+    if (!confirm('Are you sure you want to delete this quotation?')) return
+    
+    try {
+      console.log('Attempting to delete quotation:', quotation);
+      // If quotation has an ID, delete from database
+      if (quotation.id) {
+        console.log('Calling delete API for quotation ID:', quotation.id);
+        const response = await quotationService.deleteQuotation(quotation.id);
+        console.log('Delete API response:', response);
+        if (!response.success) {
+          alert('Failed to delete quotation from database. Please try again.');
+          return;
+        }
+      }
+      
+      // Remove from local state
+      setQuotations(prev => prev.filter(q => {
+        const isSame = (q.quotationNumber && quotation.quotationNumber && q.quotationNumber === quotation.quotationNumber)
+          || (q.id && quotation.id && q.id === quotation.id)
+        return !isSame
+      }))
+      
+      alert('Quotation deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting quotation:', error);
+      alert('Failed to delete quotation. Please try again.');
+    }
+  }
+
+
+  const handleViewQuotation = async (quotation) => {
+    try {
+      // If quotation has an ID, fetch from database
+      if (quotation.id) {
+        const response = await quotationService.getQuotation(quotation.id);
+        if (response.success) {
+          const dbQuotation = response.data;
+          const normalized = {
+            id: dbQuotation.id,
+            quotationNumber: dbQuotation.quotation_number,
+            quotationDate: dbQuotation.quotation_date,
+            validUpto: dbQuotation.valid_until,
+            voucherNumber: `VOUCH-${Math.floor(1000 + Math.random() * 9000)}`,
+            customer: {
+              name: dbQuotation.customer_name,
+              business: dbQuotation.customer_business,
+              address: dbQuotation.customer_address,
+              phone: dbQuotation.customer_phone,
+              gstNo: dbQuotation.customer_gst_no,
+              state: dbQuotation.customer_state
+            },
+            items: (dbQuotation.items || []).map(i => ({
+              productName: i.product_name,
+              description: i.description,
+              quantity: i.quantity,
+              unit: i.unit,
+              buyerRate: i.unit_price,
+              unitPrice: i.unit_price,
+              amount: i.taxable_amount,
+              total: i.total_amount,
+              hsn: i.hsn_code,
+              gstRate: i.gst_rate
+            })),
+            subtotal: parseFloat(dbQuotation.subtotal),
+            taxAmount: parseFloat(dbQuotation.tax_amount),
+            total: parseFloat(dbQuotation.total_amount),
+            status: dbQuotation.status
+          };
+          console.log('Normalized quotation data:', normalized);
+          setQuotationPopupData(normalized);
+          setShowQuotationPopup(true);
+          return;
+        }
+      }
+      
+      // Fallback to local quotation data
+      const normalized = {
+        ...quotation,
+        customer: {
+          name: quotation.billTo?.business || viewingCustomer?.name,
+          business: quotation.billTo?.business,
+          address: quotation.billTo?.address,
+          phone: quotation.billTo?.phone,
+          gstNo: quotation.billTo?.gstNo,
+          state: quotation.billTo?.state
+        },
+        items: (quotation.items || []).map(i => ({
+          productName: i.productName || i.description,
+          description: i.productName || i.description,
+          quantity: i.quantity,
+          unit: i.unit,
+          buyerRate: i.buyerRate ?? i.unitPrice ?? i.rate,
+          unitPrice: i.buyerRate ?? i.unitPrice ?? i.rate,
+          amount: i.amount ?? i.total,
+          total: i.amount ?? i.total,
+          hsn: i.hsnCode || i.hsn,
+          gstRate: i.gstRate
+        })),
+        subtotal: quotation.subtotal,
+        taxAmount: quotation.taxAmount ?? quotation.tax,
+        total: quotation.total
+      };
+      setQuotationPopupData(normalized);
+      setShowQuotationPopup(true);
+    } catch (error) {
+      console.error('Error loading quotation:', error);
+      alert('Failed to load quotation details. Please try again.');
+    }
   }
 
   const handleViewLatestQuotation = (customer) => {
@@ -485,44 +763,57 @@ export default function CustomerListContent({ isDarkMode = false }) {
 
   const handleWalletClick = async (customer) => {
     console.log('Opening payment modal for customer:', customer)
-    // Use the demo payment history data
-    setPaymentHistory([
-      {
+    
+    try {
+      // Fetch real payment data from database
+      const response = await paymentService.getPaymentsByCustomer(customer.id);
+      if (response.success && response.data.length > 0) {
+        const dbPayments = response.data.map(payment => ({
+          id: payment.id,
+          amount: payment.amount,
+          date: payment.payment_date,
+          status: payment.status,
+          paymentMethod: payment.payment_method,
+          remarks: payment.remarks,
+          reference: payment.reference_number,
+          dueDate: payment.payment_date,
+          paidDate: payment.status === 'completed' ? payment.payment_date : null,
+          receiptUrl: payment.receipt_url
+        }));
+        setPaymentHistory(dbPayments);
+        
+        // Calculate total amount from payments
+        const totalPaid = dbPayments
+          .filter(p => p.status === 'completed')
+          .reduce((sum, p) => sum + p.amount, 0);
+        setTotalAmount(totalPaid);
+      } else {
+        // Fallback to DB-backed URLs if no payments found
+        const inferredPayments = []
+        if (customer.paymentReceiptUrl) {
+          inferredPayments.push({
         id: 1,
-        amount: 50000,
-        date: '2024-01-15',
-        status: 'paid',
-        paymentMethod: 'Cash',
-        remarks: 'Initial advance payment',
-        reference: 'CASH001',
-        dueDate: '2024-01-15',
-        paidDate: '2024-01-15'
-      },
-      {
-        id: 2,
-        amount: 25000,
-        date: '2024-01-20',
-        status: 'paid',
-        paymentMethod: 'UPI',
-        remarks: 'Second installment',
-        reference: 'UPI123456',
-        dueDate: '2024-01-20',
-        paidDate: '2024-01-20'
-      },
-      {
-        id: 3,
-        amount: 15000,
-        date: '2024-01-25',
-        status: 'pending',
-        paymentMethod: 'Bank Transfer',
-        remarks: 'Final payment pending',
-        reference: 'BANK789',
-        dueDate: '2024-01-25',
-        paidDate: null
+            amount: 0,
+            date: new Date().toISOString().split('T')[0],
+            status: (customer.paymentStatusDb || 'pending').toLowerCase(),
+            paymentMethod: customer.paymentModeDb || 'Other',
+            remarks: 'Payment receipt uploaded',
+            reference: 'DOC',
+            dueDate: new Date().toISOString().split('T')[0],
+            paidDate: (customer.paymentStatusDb === 'COMPLETED') ? new Date().toISOString().split('T')[0] : null,
+            receiptUrl: customer.paymentReceiptUrl,
+          })
+        }
+        setPaymentHistory(inferredPayments);
+        setTotalAmount(0);
       }
-    ])
-    console.log('Payment history set with demo data')
-    setTotalAmount(90000)
+    } catch (error) {
+      console.error('Error fetching payment data:', error);
+      // Fallback to empty payment history
+      setPaymentHistory([]);
+      setTotalAmount(0);
+    }
+    
     setSelectedCustomer({
       id: customer.id,
       name: customer.name,
@@ -2078,8 +2369,22 @@ export default function CustomerListContent({ isDarkMode = false }) {
               )}
               {modalTab === 'quotation_status' && (
                 <div className="space-y-4 text-sm">
+                  {/* Quotation Details - TOP */}
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Quotation Details</h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-semibold text-gray-900">Quotation Details</h3>
+                      <button
+                        onClick={() => {
+                          setIsRefreshing(true);
+                          setTimeout(() => setIsRefreshing(false), 1000);
+                        }}
+                        className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-1"
+                        title="Refresh quotation status"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        Refresh
+                      </button>
+                    </div>
                     {(() => {
                       const customerQuotations = quotations.filter(q => q.customerId === viewingCustomer.id)
                       if (customerQuotations.length === 0) {
@@ -2102,7 +2407,20 @@ export default function CustomerListContent({ isDarkMode = false }) {
                                   {index === 0 ? 'Latest Quotation:' : `Quotation #${customerQuotations.length - index}:`}
                                 </span>
                                 <p className="text-sm font-medium text-gray-900">{quotation.quotationNumber || `ANQ${quotation.id || index + 1}`}</p>
-                                <p className="text-xs text-gray-500">{quotation.quotationDate || new Date().toLocaleDateString()}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-xs text-gray-500">{quotation.quotationDate || new Date().toLocaleDateString()}</p>
+                                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                    quotation.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                    quotation.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                    quotation.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {quotation.status === 'approved' ? '✅ Approved' :
+                                     quotation.status === 'rejected' ? '❌ Rejected' :
+                                     quotation.status === 'pending' ? '⏳ Pending' :
+                                     quotation.status || 'Draft'}
+                                  </span>
+                                </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -2125,32 +2443,189 @@ export default function CustomerListContent({ isDarkMode = false }) {
                                   <FileText className="h-3 w-3" />
                           </button>
                               )}
-                          <button 
+                          
+                          {/* Show Create PI button for approved quotations, otherwise show status button */}
+                          {quotation.status === 'approved' ? (
+                            <button 
+                              onClick={() => {
+                                // Set the approved quotation for PI creation
+                                setSelectedCustomerForPI({
+                                  ...viewingCustomer,
+                                  approvedQuotation: quotation
+                                });
+                                setShowCreatePI(true);
+                              }}
+                              className="text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 bg-green-600 text-white hover:bg-green-700"
+                              title="Create PI for approved quotation"
+                            >
+                              <FileText className="h-3 w-3" />
+                              Create PI
+                            </button>
+                          ) : (
+                            <button 
                                 onClick={() => handleSendQuotation(quotation)}
-                            className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
+                                className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
                                   quotation.status === 'pending'
                                 ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                                : quotation.status === 'rejected'
+                                ? 'bg-red-600 text-white cursor-not-allowed'
                                 : 'bg-blue-600 text-white hover:bg-blue-700'
                             }`}
-                          >
+                                disabled={quotation.status === 'rejected'}
+                            >
                                 {quotation.status === 'pending' 
                               ? <Clock className="h-3 w-3" />
+                              : quotation.status === 'rejected'
+                              ? <XCircle className="h-3 w-3" />
                               : <Send className="h-3 w-3" />
                             }
-                                {quotation.status === 'pending' ? 'Pending' : 'Send'}
-                          </button>
-                          <button 
+                                {quotation.status === 'pending' ? 'Pending' : 
+                                 quotation.status === 'rejected' ? 'Rejected' : 'Send'}
+                            </button>
+                          )}
+                          
+                          {/* Only show delete button for non-approved quotations */}
+                          {quotation.status !== 'approved' && (
+                            <button 
                                 onClick={() => handleDeleteQuotation(quotation)}
                                 className="p-1 rounded-full bg-red-600 text-white hover:bg-red-700"
                                 title="Delete quotation"
                               >
                                 <Trash2 className="h-3 w-3" />
-                          </button>
+                            </button>
+                          )}
                         </div>
                       </div>
                         ))}
                           </div>
                       )
+                    })()}
+                  </div>
+
+                  {/* Payment Summary Section */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Payment Summary</h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-gray-900">
+                          ₹{(() => {
+                            const customerQuotations = quotations.filter(q => q.customerId === viewingCustomer.id);
+                            const latestQuotation = customerQuotations[0];
+                            if (latestQuotation && piStore[latestQuotation.quotationNumber]) {
+                              return piStore[latestQuotation.quotationNumber].totalAmount?.toLocaleString('en-IN') || '0';
+                            }
+                            return '0';
+                          })()}
+                        </div>
+                        <div className="text-xs text-gray-600">Total Amount</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-green-600">
+                          ₹{(() => {
+                            const customerPayments = paymentHistory.filter(p => p.customerId === viewingCustomer.id);
+                            const totalPaid = customerPayments.reduce((sum, payment) => sum + payment.amount, 0);
+                            return totalPaid.toLocaleString('en-IN');
+                          })()}
+                        </div>
+                        <div className="text-xs text-gray-600">Advance Paid</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-orange-600">
+                          ₹{(() => {
+                            const customerQuotations = quotations.filter(q => q.customerId === viewingCustomer.id);
+                            const latestQuotation = customerQuotations[0];
+                            const totalAmount = latestQuotation && piStore[latestQuotation.quotationNumber] 
+                              ? piStore[latestQuotation.quotationNumber].totalAmount || 0 
+                              : 0;
+                            const customerPayments = paymentHistory.filter(p => p.customerId === viewingCustomer.id);
+                            const totalPaid = customerPayments.reduce((sum, payment) => sum + payment.amount, 0);
+                            return (totalAmount - totalPaid).toLocaleString('en-IN');
+                          })()}
+                        </div>
+                        <div className="text-xs text-gray-600">Remaining</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Add Payment Button */}
+                  <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Quick Payment</h3>
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-gray-600">
+                        Auto-fill payment form with quotation and PI details
+                      </div>
+                      <button
+                        onClick={() => {
+                          const customerQuotations = quotations.filter(q => q.customerId === viewingCustomer.id);
+                          const latestQuotation = customerQuotations[0];
+                          
+                          if (!latestQuotation) {
+                            alert('No quotation found for this customer');
+                            return;
+                          }
+
+                          const quotationId = latestQuotation.quotationNumber || `ANQ${latestQuotation.id}`;
+                          const piId = latestQuotation && piStore[latestQuotation.quotationNumber] 
+                            ? (piStore[latestQuotation.quotationNumber].piNumber || `PI-${latestQuotation.quotationNumber}`)
+                            : '';
+                          const totalAmount = latestQuotation && piStore[latestQuotation.quotationNumber] 
+                            ? piStore[latestQuotation.quotationNumber].totalAmount || 0 
+                            : 0;
+
+                          // Auto-fill the payment form
+                          setAddPaymentForm({
+                            quotationId: quotationId,
+                            piId: piId,
+                            amount: totalAmount.toString(),
+                            paymentMethod: 'Cash',
+                            paymentDate: new Date().toISOString().split('T')[0],
+                            reference: `REF-${Date.now()}`,
+                            remarks: `Payment for ${quotationId}`
+                          });
+
+                          // Open the payment modal
+                          setShowAddPaymentModal(true);
+                        }}
+                        className="px-4 py-2 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 flex items-center gap-2"
+                      >
+                        <Wallet className="h-3 w-3" />
+                        Quick Add Payment
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Payment History */}
+                  <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Payment History</h3>
+                    {(() => {
+                      const customerPayments = paymentHistory.filter(p => p.customerId === viewingCustomer.id);
+                      if (customerPayments.length === 0) {
+                        return (
+                          <div className="text-center py-4 text-gray-500">
+                            <Wallet className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                            <p className="text-xs">No payments recorded yet</p>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="space-y-2">
+                          {customerPayments.slice(0, 3).map((payment, index) => (
+                            <div key={payment.id || index} className="flex items-center justify-between bg-white rounded p-2 border border-yellow-200">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${payment.status === 'paid' ? 'bg-green-500' : 'bg-orange-500'}`}></div>
+                                <span className="text-xs font-medium">₹{payment.amount.toLocaleString('en-IN')}</span>
+                                <span className="text-xs text-gray-500">({payment.paymentMethod})</span>
+                              </div>
+                              <div className="text-xs text-gray-500">{payment.date}</div>
+                            </div>
+                          ))}
+                          {customerPayments.length > 3 && (
+                            <div className="text-xs text-center text-gray-500">
+                              +{customerPayments.length - 3} more payments
+                            </div>
+                          )}
+                        </div>
+                      );
                     })()}
                   </div>
                   
@@ -3081,8 +3556,258 @@ export default function CustomerListContent({ isDarkMode = false }) {
                   type="button"
                   className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded shadow-sm hover:bg-blue-700"
                 onClick={() => {
-                  alert('Add new payment functionality would open here');
+                  setShowAddPaymentModal(true);
                 }}
+                >
+                Add Payment
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Payment Modal */}
+      {showAddPaymentModal && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-blue-200">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-gray-900">Add Payment</h3>
+                <button 
+                  onClick={() => {
+                    setShowAddPaymentModal(false);
+                    setAddPaymentForm({
+                      quotationId: '',
+                      piId: '',
+                      amount: '',
+                      paymentMethod: 'Cash',
+                      paymentDate: new Date().toISOString().split('T')[0],
+                      reference: '',
+                      remarks: ''
+                    });
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Form Content */}
+            <div className="p-6 flex-1 overflow-y-auto">
+              <div className="space-y-6">
+                {/* Customer Info */}
+                {selectedCustomer && (
+                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                    <h4 className="font-semibold text-gray-900 mb-2">Customer Information</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Name:</span>
+                        <span className="ml-2 font-medium">{selectedCustomer.name}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Phone:</span>
+                        <span className="ml-2 font-medium">{selectedCustomer.phone}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Payment Form */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Left Column */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Quotation ID <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={addPaymentForm.quotationId}
+                        onChange={(e) => setAddPaymentForm({...addPaymentForm, quotationId: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter quotation ID"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        PI ID <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={addPaymentForm.piId}
+                        onChange={(e) => setAddPaymentForm({...addPaymentForm, piId: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter PI ID"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Amount <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={addPaymentForm.amount}
+                        onChange={(e) => setAddPaymentForm({...addPaymentForm, amount: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter amount"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Payment Method <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={addPaymentForm.paymentMethod}
+                        onChange={(e) => setAddPaymentForm({...addPaymentForm, paymentMethod: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="Cash">Cash</option>
+                        <option value="Card">Card</option>
+                        <option value="UPI">UPI</option>
+                        <option value="Bank">Bank Transfer</option>
+                        <option value="Cheque">Cheque</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Right Column */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Payment Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={addPaymentForm.paymentDate}
+                        onChange={(e) => setAddPaymentForm({...addPaymentForm, paymentDate: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Reference Number
+                      </label>
+                      <input
+                        type="text"
+                        value={addPaymentForm.reference}
+                        onChange={(e) => setAddPaymentForm({...addPaymentForm, reference: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter reference number"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Remarks
+                      </label>
+                      <textarea
+                        value={addPaymentForm.remarks}
+                        onChange={(e) => setAddPaymentForm({...addPaymentForm, remarks: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        rows={3}
+                        placeholder="Enter any additional remarks"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Summary */}
+                {addPaymentForm.amount && (
+                  <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                    <h4 className="font-semibold text-gray-900 mb-2">Payment Summary</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Amount:</span>
+                        <span className="ml-2 font-bold text-green-600">₹{parseInt(addPaymentForm.amount || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Method:</span>
+                        <span className="ml-2 font-medium">{addPaymentForm.paymentMethod}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Date:</span>
+                        <span className="ml-2 font-medium">{addPaymentForm.paymentDate}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Reference:</span>
+                        <span className="ml-2 font-medium">{addPaymentForm.reference || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddPaymentModal(false);
+                  setAddPaymentForm({
+                    quotationId: '',
+                    piId: '',
+                    amount: '',
+                    paymentMethod: 'Cash',
+                    paymentDate: new Date().toISOString().split('T')[0],
+                    reference: '',
+                    remarks: ''
+                  });
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Handle payment submission
+                  if (!addPaymentForm.quotationId || !addPaymentForm.piId || !addPaymentForm.amount) {
+                    alert('Please fill in all required fields');
+                    return;
+                  }
+                  
+                  // Add to payment history
+                  const newPayment = {
+                    id: paymentHistory.length + 1,
+                    amount: parseInt(addPaymentForm.amount),
+                    date: addPaymentForm.paymentDate,
+                    paymentMethod: addPaymentForm.paymentMethod,
+                    status: 'paid',
+                    reference: addPaymentForm.reference || `REF-${Date.now()}`,
+                    remarks: addPaymentForm.remarks,
+                    dueDate: addPaymentForm.paymentDate,
+                    paidDate: addPaymentForm.paymentDate
+                  };
+                  
+                  setPaymentHistory([...paymentHistory, newPayment]);
+                  
+                  // Reset form and close modal
+                  setAddPaymentForm({
+                    quotationId: '',
+                    piId: '',
+                    amount: '',
+                    paymentMethod: 'Cash',
+                    paymentDate: new Date().toISOString().split('T')[0],
+                    reference: '',
+                    remarks: ''
+                  });
+                  setShowAddPaymentModal(false);
+                  
+                  alert('Payment added successfully!');
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg shadow-sm hover:bg-blue-700"
                 >
                 Add Payment
                 </button>
@@ -3199,11 +3924,16 @@ export default function CustomerListContent({ isDarkMode = false }) {
                     state: quotationPopupData.customer.state
                   },
                   items: quotationPopupData.items?.map(i => ({
-                    productName: i.description,
+                    productName: i.productName || i.description,
+                    description: i.description || i.productName,
                     quantity: i.quantity,
                     unit: i.unit || 'Nos',
-                    buyerRate: i.unitPrice,
-                    amount: i.total
+                    buyerRate: i.buyerRate || i.unitPrice,
+                    unitPrice: i.unitPrice || i.buyerRate,
+                    amount: i.amount || i.taxableAmount,
+                    total: i.total || i.totalAmount,
+                    hsn: i.hsn,
+                    gstRate: i.gstRate
                   })),
                   subtotal: quotationPopupData.subtotal,
                   taxAmount: quotationPopupData.tax,

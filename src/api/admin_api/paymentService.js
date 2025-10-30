@@ -1,0 +1,165 @@
+import apiClient from '../../utils/apiClient';
+
+class PaymentService {
+  // Create payment
+  async createPayment(paymentData) {
+    try {
+      const response = await apiClient.post('/api/payments', paymentData);
+      return response;
+    } catch (error) {
+      console.error('Error creating payment:', error);
+      throw error;
+    }
+  }
+
+  // Get all payments with pagination and filtering
+  async getAllPayments(params = {}) {
+    try {
+      const query = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          query.append(key, value);
+        }
+      });
+      const response = await apiClient.get(`/api/payments?${query.toString()}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching all payments:', error);
+      throw error;
+    }
+  }
+
+  // Get payment by ID
+  async getPayment(id) {
+    try {
+      const response = await apiClient.get(`/api/payments/${id}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching payment:', error);
+      throw error;
+    }
+  }
+
+  // Get payments by PI
+  async getPaymentsByPI(piId) {
+    try {
+      const response = await apiClient.get(`/api/payments/pi/${piId}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching PI payments:', error);
+      throw error;
+    }
+  }
+
+  // Get payments by quotation
+  async getPaymentsByQuotation(quotationId) {
+    try {
+      const response = await apiClient.get(`/api/payments/quotation/${quotationId}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching quotation payments:', error);
+      throw error;
+    }
+  }
+
+  // Get payments by customer
+  async getPaymentsByCustomer(customerId) {
+    try {
+      const response = await apiClient.get(`/api/payments/customer/${customerId}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching customer payments:', error);
+      throw error;
+    }
+  }
+
+  // Update payment status
+  async updatePaymentStatus(id, status, gatewayResponse = null) {
+    try {
+      const response = await apiClient.put(`/api/payments/${id}/status`, { status, gatewayResponse });
+      return response;
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      throw error;
+    }
+  }
+
+  // Get payment summary by customer
+  async getPaymentSummary(customerId) {
+    try {
+      const response = await apiClient.get(`/api/payments/summary/customer/${customerId}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching payment summary:', error);
+      throw error;
+    }
+  }
+
+  // Get payment summary by quotation
+  async getPaymentSummaryByQuotation(quotationId) {
+    try {
+      const response = await apiClient.get(`/api/payments/summary/quotation/${quotationId}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching quotation payment summary:', error);
+      throw error;
+    }
+  }
+
+  // Get customer credit balance
+  async getCustomerCredit(customerId) {
+    try {
+      const response = await apiClient.get(`/api/payments/credit/${customerId}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching customer credit:', error);
+      throw error;
+    }
+  }
+
+  // Refund
+  async refund(body) {
+    try {
+      const response = await apiClient.post(`/api/payments/refund`, body);
+      return response;
+    } catch (error) {
+      console.error('Error creating refund:', error);
+      throw error;
+    }
+  }
+
+  // Transfer credit
+  async transferCredit(body) {
+    try {
+      const response = await apiClient.post(`/api/payments/transfer`, body);
+      return response;
+    } catch (error) {
+      console.error('Error transferring credit:', error);
+      throw error;
+    }
+  }
+
+  // Update payment
+  async updatePayment(id, updateData) {
+    try {
+      const response = await apiClient.put(`/api/payments/${id}`, updateData);
+      return response;
+    } catch (error) {
+      console.error('Error updating payment:', error);
+      throw error;
+    }
+  }
+
+  // Delete payment
+  async deletePayment(id) {
+    try {
+      const response = await apiClient.delete(`/api/payments/${id}`);
+      return response;
+    } catch (error) {
+      console.error('Error deleting payment:', error);
+      throw error;
+    }
+  }
+}
+
+export default new PaymentService();
