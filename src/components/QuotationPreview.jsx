@@ -1,6 +1,7 @@
 import React from 'react'
 
 export default function QuotationPreview({ data, companyBranches, user }) {
+  console.log('QuotationPreview received data:', data);
   const selectedBranch = companyBranches[data?.selectedBranch] || companyBranches.ANODE
 
   return (

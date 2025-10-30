@@ -4,21 +4,22 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, Plus, Download, ChevronDown, X, Save, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
-export default function Toolbar({ onSearch, onAddProduct, onExport, onFilterChange, products = [] }) {
+export default function ProductToolbar({ onSearch, onAddProduct, onExport, onFilterChange, onRefresh, products = [], loading = false }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
-    category: '',
-    status: ''
+    paymentType: '', // 'advance', 'due', or ''
+    quotationId: ''
   });
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({
-    name: '',
-    category: '',
-    price: '',
-    stock: '',
-    status: 'in-stock',
-    description: ''
+    leadId: '',
+    customerName: '',
+    productName: '',
+    address: '',
+    quotationId: '',
+    paymentStatus: 'pending',
+    workOrderId: ''
   });
 
   const handleSearch = (e) => {
@@ -36,12 +37,13 @@ export default function Toolbar({ onSearch, onAddProduct, onExport, onFilterChan
   const handleAddProduct = () => {
     setEditingItem(null);
     setFormData({
-      name: '',
-      category: '',
-      price: '',
-      stock: '',
-      status: 'in-stock',
-      description: ''
+      leadId: '',
+      customerName: '',
+      productName: '',
+      address: '',
+      quotationId: '',
+      paymentStatus: 'pending',
+      workOrderId: ''
     });
     setShowAddItemModal(true);
   };
@@ -55,31 +57,30 @@ export default function Toolbar({ onSearch, onAddProduct, onExport, onFilterChan
   };
 
   const handleSave = () => {
-    if (!formData.name.trim()) {
-      alert('Please enter a product name');
+    if (!formData.customerName.trim()) {
+      alert('Please enter a customer name');
       return;
     }
 
-    const productData = {
+    const paymentData = {
       ...formData,
       id: editingItem ? editingItem.id : Date.now(),
-      code: `PRD-${String(Date.now()).slice(-6)}`,
-      unit: 'Piece',
-      price: parseFloat(formData.price) || 0,
-      stock: parseInt(formData.stock) || 0,
-      lastUpdated: new Date().toISOString().split('T')[0]
+      leadId: formData.leadId || `LD-${String(Date.now()).slice(-6)}`,
+      quotationId: formData.quotationId || `QT-${String(Date.now()).slice(-6)}`,
+      workOrderId: formData.workOrderId || `WO-${String(Date.now()).slice(-6)}`
     };
 
-    onAddProduct(productData, editingItem);
+    onAddProduct(paymentData, editingItem);
     setShowAddItemModal(false);
     setEditingItem(null);
     setFormData({
-      name: '',
-      category: '',
-      price: '',
-      stock: '',
-      status: 'in-stock',
-      description: ''
+      leadId: '',
+      customerName: '',
+      productName: '',
+      address: '',
+      quotationId: '',
+      paymentStatus: 'pending',
+      workOrderId: ''
     });
   };
 
@@ -97,60 +98,79 @@ export default function Toolbar({ onSearch, onAddProduct, onExport, onFilterChan
         background: white;
       `;
 
-      const filteredProducts = products.filter(product => {
+      const filteredProducts = products.filter(item => {
         const matchesSearch = !searchQuery || 
-          product.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.description?.toLowerCase().includes(searchQuery.toLowerCase());
+          item.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.productName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.leadId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.quotationId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.workOrderId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          // Search in customer contact information
+          (item.leadData?.phone && item.leadData.phone.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (item.leadData?.email && item.leadData.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (item.leadData?.whatsapp && item.leadData.whatsapp.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          // Special handling for quotation ID search (QT prefix)
+          (searchQuery.toLowerCase().startsWith('qt') && item.quotationId?.toLowerCase().includes(searchQuery.toLowerCase()));
         
-        const matchesCategory = !filters.category || product.category === filters.category;
-        const matchesStatus = !filters.status || product.status === filters.status;
+        const matchesPaymentStatus = !filters.paymentStatus || item.paymentStatus === filters.paymentStatus;
+        const matchesQuotationId = !filters.quotationId || 
+          item.quotationId?.toLowerCase().includes(filters.quotationId.toLowerCase()) ||
+          item.quotationData?.quotation_number?.toLowerCase().includes(filters.quotationId.toLowerCase());
         
-        return matchesSearch && matchesCategory && matchesStatus;
+        return matchesSearch && matchesPaymentStatus && matchesQuotationId;
       });
 
       tempDiv.innerHTML = `
         <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px;">
-          <h1 style="margin: 0; font-size: 24px; color: #1f2937;">ANOCAB PRODUCTS REPORT</h1>
+          <h1 style="margin: 0; font-size: 24px; color: #1f2937;">ANOCAB PAYMENT TRACKING REPORT</h1>
           <p style="margin: 5px 0 0 0; color: #6b7280;">Generated on: ${new Date().toLocaleDateString()}</p>
         </div>
         <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
           <thead>
             <tr style="background-color: #f3f4f6;">
               <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">#</th>
+              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Lead ID</th>
+              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Customer Name</th>
               <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Product Name</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Category</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Price</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Stock</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Status</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Description</th>
+              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Address</th>
+              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Quotation ID</th>
+              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Payment Status</th>
+              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Work Order ID</th>
             </tr>
           </thead>
           <tbody>
-            ${filteredProducts.map((product, index) => `
+            ${filteredProducts.map((item, index) => `
               <tr>
                 <td style="border: 1px solid #d1d5db; padding: 8px;">${index + 1}</td>
-                <td style="border: 1px solid #d1d5db; padding: 8px; font-weight: bold;">${product.name || 'N/A'}</td>
-                <td style="border: 1px solid #d1d5db; padding: 8px;">${product.category || 'N/A'}</td>
-                <td style="border: 1px solid #d1d5db; padding: 8px;">₹${product.price || '0'}</td>
-                <td style="border: 1px solid #d1d5db; padding: 8px;">${product.stock || '0'}</td>
+                <td style="border: 1px solid #d1d5db; padding: 8px; font-weight: bold;">${item.leadId || 'N/A'}</td>
+                <td style="border: 1px solid #d1d5db; padding: 8px;">
+                  <div style="font-weight: bold;">${item.customerName || 'N/A'}</div>
+                  <div style="color: #6b7280; font-size: 11px;">${item.leadData?.phone || 'N/A'}</div>
+                  ${item.leadData?.email && item.leadData.email !== 'N/A' ? `<div style="color: #0891b2; font-size: 11px;">Email: ${item.leadData.email}</div>` : ''}
+                  ${item.leadData?.whatsapp ? `<div style="color: #059669; font-size: 11px;">WhatsApp: ${item.leadData.whatsapp}</div>` : ''}
+                </td>
+                <td style="border: 1px solid #d1d5db; padding: 8px;">${item.productName || 'N/A'}</td>
+                <td style="border: 1px solid #d1d5db; padding: 8px;">${item.address || 'N/A'}</td>
+                <td style="border: 1px solid #d1d5db; padding: 8px;">${item.quotationId || 'N/A'}</td>
                 <td style="border: 1px solid #d1d5db; padding: 8px;">
                   <span style="
                     padding: 2px 6px;
                     border-radius: 4px;
                     font-size: 10px;
                     font-weight: bold;
-                    ${product.status === 'in-stock' ? 'background-color: #dcfce7; color: #166534;' :
-                      product.status === 'low-stock' ? 'background-color: #fef3c7; color: #92400e;' :
+                    ${item.paymentStatus === 'paid' ? 'background-color: #dcfce7; color: #166534;' :
+                      item.paymentStatus === 'pending' ? 'background-color: #fef3c7; color: #92400e;' :
+                      item.paymentStatus === 'partial' ? 'background-color: #dbeafe; color: #1e40af;' :
                       'background-color: #fee2e2; color: #991b1b;'}
                   ">
-                    ${product.status === 'in-stock' ? 'In Stock' :
-                      product.status === 'low-stock' ? 'Low Stock' :
-                      'Out of Stock'}
+                    ${item.paymentStatus === 'paid' ? 'Paid' :
+                      item.paymentStatus === 'pending' ? 'Pending' :
+                      item.paymentStatus === 'partial' ? 'Partial' :
+                      'Overdue'}
                   </span>
                 </td>
-                <td style="border: 1px solid #d1d5db; padding: 8px;">${product.description || product.code || 'N/A'}</td>
+                <td style="border: 1px solid #d1d5db; padding: 8px;">${item.workOrderId || 'N/A'}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -164,7 +184,7 @@ export default function Toolbar({ onSearch, onAddProduct, onExport, onFilterChan
       document.body.appendChild(tempDiv);
       const opt = {
         margin: 0.5,
-        filename: `anocab-products-report-${new Date().toISOString().split('T')[0]}.pdf`,
+        filename: `anocab-payment-tracking-report-${new Date().toISOString().split('T')[0]}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 1, useCORS: true, logging: false },
         jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
@@ -187,7 +207,7 @@ export default function Toolbar({ onSearch, onAddProduct, onExport, onFilterChan
             <input
               type="text"
               className="flex-1 px-4 py-2 border border-blue-500 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              placeholder="Search products..."
+              placeholder="Search by customer, quotation ID (QT), lead ID..."
               value={searchQuery}
               onChange={handleSearch}
             />
@@ -199,29 +219,28 @@ export default function Toolbar({ onSearch, onAddProduct, onExport, onFilterChan
 
         {/* Right side - Filters and Actions */}
         <div className="flex items-center gap-3">
-          {/* Category Filter */}
-          <select
-            value={filters.category}
-            onChange={(e) => handleFilterChange('category', e.target.value)}
-            className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">All Categories</option>
-            <option value="cable">Cable</option>
-            <option value="conductor">Conductor</option>
-            <option value="switch">Switch</option>
-            <option value="accessory">Accessory</option>
-          </select>
+          {/* Quotation ID Filter */}
+          <input
+            type="text"
+            placeholder="Filter by Quotation ID (QT...)"
+            value={filters.quotationId}
+            onChange={(e) => handleFilterChange('quotationId', e.target.value)}
+            className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-48"
+          />
 
-          {/* Status Filter */}
+          {/* Payment Type Filter */}
           <select
-            value={filters.status}
-            onChange={(e) => handleFilterChange('status', e.target.value)}
+            value={filters.paymentType}
+            onChange={(e) => handleFilterChange('paymentType', e.target.value)}
             className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="">All Status</option>
-            <option value="in-stock">In Stock</option>
-            <option value="low-stock">Low Stock</option>
-            <option value="out-of-stock">Out of Stock</option>
+            <option value="">All Payments</option>
+            <option value="advance">Advance Payment</option>
+            <option value="due">Due Payment</option>
+            <option value="paid">Paid</option>
+            <option value="pending">Pending</option>
+            <option value="partial">Partial</option>
+            <option value="overdue">Overdue</option>
           </select>
 
           <button
@@ -241,7 +260,7 @@ export default function Toolbar({ onSearch, onAddProduct, onExport, onFilterChan
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
-                {editingItem ? 'Edit Product' : 'Add New Product'}
+                {editingItem ? 'Edit Payment Tracking' : 'Add New Payment Tracking'}
               </h3>
               <button
                 onClick={() => setShowAddItemModal(false)}
@@ -254,98 +273,106 @@ export default function Toolbar({ onSearch, onAddProduct, onExport, onFilterChan
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Product Name *
+                  Lead ID
                 </label>
                 <input
                   type="text"
-                  name="name"
-                  value={formData.name}
+                  name="leadId"
+                  value={formData.leadId}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter product name"
+                  placeholder="Enter lead ID"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Customer Name *
+                </label>
+                <input
+                  type="text"
+                  name="customerName"
+                  value={formData.customerName}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter customer name"
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
+                  Product Name
                 </label>
-                <select
-                  name="category"
-                  value={formData.category}
+                <input
+                  type="text"
+                  name="productName"
+                  value={formData.productName}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select Category</option>
-                  <option value="cable">Cable</option>
-                  <option value="conductor">Conductor</option>
-                  <option value="switch">Switch</option>
-                  <option value="accessory">Accessory</option>
-                </select>
+                  placeholder="Enter product name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Address
+                </label>
+                <textarea
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter address"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Price (₹)
+                    Quotation ID
                   </label>
                   <input
-                    type="number"
-                    name="price"
-                    value={formData.price}
+                    type="text"
+                    name="quotationId"
+                    value={formData.quotationId}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
+                    placeholder="Enter quotation ID"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Stock
+                    Work Order ID
                   </label>
                   <input
-                    type="number"
-                    name="stock"
-                    value={formData.stock}
+                    type="text"
+                    name="workOrderId"
+                    value={formData.workOrderId}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="0"
-                    min="0"
+                    placeholder="Enter work order ID"
                   />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
+                  Payment Status
                 </label>
                 <select
-                  name="status"
-                  value={formData.status}
+                  name="paymentStatus"
+                  value={formData.paymentStatus}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="in-stock">In Stock</option>
-                  <option value="low-stock">Low Stock</option>
-                  <option value="out-of-stock">Out of Stock</option>
+                  <option value="pending">Pending</option>
+                  <option value="paid">Paid</option>
+                  <option value="partial">Partial</option>
+                  <option value="overdue">Overdue</option>
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter product description"
-                />
               </div>
             </div>
 
@@ -360,7 +387,7 @@ export default function Toolbar({ onSearch, onAddProduct, onExport, onFilterChan
                 onClick={handleSave}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {editingItem ? 'Update' : 'Add'} Product
+                {editingItem ? 'Update' : 'Add'} Payment Tracking
               </button>
             </div>
           </div>
