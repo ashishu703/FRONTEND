@@ -13,7 +13,11 @@ import SalespersonLayout from './pages/salesperson/salespersonlayout.jsx'
 import MarketingSalespersonLayout from './pages/MarketingSalesperson/MarketingSalespersonLayout.jsx'
 import TeleSalesLayout from './pages/TeleSales/TeleSalesLayout.jsx'
 import OfficeSalesPersonLayout from './pages/OfficeSalesPerson/OfficeSalesPersonLayout.jsx'
+import ProductionDepartmentHeadLayout from './pages/ProductionDepartmentHead/ProductionDepartmentHeadLayout.jsx'
+import ProductionDepartmentHeadDashboard from './pages/ProductionDepartmentHead/ProductionDepartmentHeadDashboard.jsx'
+import ProductionStaffLayout from './pages/production/productionlayout.jsx'
 import { getUserTypeForRole } from './constants/auth'
+import RoleGuard from './components/RoleGuard'
 
 function AppContent() {
   const { isAuthenticated, user, logout } = useAuth()
@@ -61,6 +65,16 @@ function AppContent() {
           <SalespersonLayout onLogout={handleLogout} />
         ) : userType === 'marketing-salesperson' ? (
           <MarketingSalespersonLayout />
+        ) : userType === 'productiondepartmenthead' ? (
+          <RoleGuard allow={['department_head']} allowDepartmentTypes={['production','Production Department']} fallback={<LoginPage />}>
+            <ProductionDepartmentHeadLayout onLogout={handleLogout} activeView={activeView} setActiveView={setActiveView}>
+              <ProductionDepartmentHeadDashboard activeView={activeView} setActiveView={setActiveView} />
+            </ProductionDepartmentHeadLayout>
+          </RoleGuard>
+        ) : userType === 'production-staff' ? (
+          <RoleGuard allow={['department_user']} allowDepartmentTypes={['production','Production Department']} fallback={<LoginPage />}>
+            <ProductionStaffLayout onLogout={handleLogout} />
+          </RoleGuard>
         ) : userType === 'tele-sales' ? (
           <TeleSalesLayout />
         ) : userType === 'office-sales-person' ? (
