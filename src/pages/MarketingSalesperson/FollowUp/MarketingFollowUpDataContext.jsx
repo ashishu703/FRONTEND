@@ -19,8 +19,10 @@ export const MarketingFollowUpDataProvider = ({ children }) => {
           return getCustomersByStatus('connected');
         case 'not-connected':
           return getCustomersByStatus('not-connected');
-        case 'next-meeting':
-          return getCustomersByStatus('next-meeting');
+        case 'todays-meeting':
+          return getCustomersByStatus('todays-meeting');
+        case 'converted':
+          return getCustomersByStatus('converted');
         case 'closed':
           return getCustomersByStatus('closed');
         default:

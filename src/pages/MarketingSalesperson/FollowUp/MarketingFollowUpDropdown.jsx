@@ -7,7 +7,8 @@ const MarketingFollowUpDropdown = ({ currentPage, onNavigate, sidebarOpen }) => 
   const statuses = [
     { id: 'connected', label: 'Connected', color: 'text-green-500' },
     { id: 'not-connected', label: 'Not Connected', color: 'text-red-500' },
-    { id: 'next-meeting', label: 'Next Meeting', color: 'text-blue-500' },
+    { id: 'todays-meeting', label: 'Todays Meeting', color: 'text-blue-500' },
+    { id: 'converted', label: 'Converted', color: 'text-purple-500' },
     { id: 'closed', label: 'Closed', color: 'text-gray-500' },
   ];
 

@@ -73,6 +73,7 @@ const Visits = () => {
     const [filterStatus, setFilterStatus] = useState('all');
     const [showAddVisitModal, setShowAddVisitModal] = useState(false);
     const [showEditVisitModal, setShowEditVisitModal] = useState(false);
+    const [showViewModal, setShowViewModal] = useState(false);
     const [selectedLead, setSelectedLead] = useState(null);
     const [visitForm, setVisitForm] = useState({
       leadId: '',
@@ -235,10 +236,21 @@ const Visits = () => {
   };
 
   const handleViewPhotos = (visit) => {
-    setSelectedLead(visit);
+    // Find the latest customer data from shared context to ensure we have visitPhotos
+    const latestCustomer = customers.find(c => c.id === visit.id);
+    const visitToShow = latestCustomer || visit;
+    setSelectedLead(visitToShow);
     // Trigger photo gallery modal
-    const event = new CustomEvent('openGallery', { detail: visit });
+    const event = new CustomEvent('openGallery', { detail: visitToShow });
     window.dispatchEvent(event);
+  };
+
+  const handleViewVisit = (visit) => {
+    // Find the latest customer data from shared context
+    const latestCustomer = customers.find(c => c.id === visit.id);
+    const visitToShow = latestCustomer || visit;
+    setSelectedLead(visitToShow);
+    setShowViewModal(true);
   };
 
 
@@ -388,31 +400,31 @@ const Visits = () => {
                       <div className="flex items-center space-x-2">
                         <button 
                           onClick={() => handleLivePhoto(visit)}
-                          className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                          className="w-9 h-9 rounded-full border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 shadow-sm transition-all flex items-center justify-center"
                           title="Live Photo"
                         >
                           <Camera className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => handleViewPhotos(visit)}
-                          className="p-2 text-gray-400 hover:text-green-600 transition-colors"
-                          title="View Photos"
+                          onClick={() => handleViewVisit(visit)}
+                          className="w-9 h-9 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:border-indigo-300 shadow-sm transition-all flex items-center justify-center"
+                          title="View Details"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button 
+                          onClick={() => handleViewPhotos(visit)}
+                          className="w-9 h-9 rounded-full border border-green-200 bg-green-50 text-green-600 hover:bg-green-100 hover:border-green-300 shadow-sm transition-all flex items-center justify-center"
+                          title="View Photos"
+                        >
+                          <Camera className="w-4 h-4" />
+                        </button>
+                        <button 
                           onClick={() => console.log('Location Capture clicked for', visit.name)}
-                          className="p-2 text-gray-400 hover:text-purple-600 transition-colors"
+                          className="w-9 h-9 rounded-full border border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 hover:border-purple-300 shadow-sm transition-all flex items-center justify-center"
                           title="Location Capture"
                         >
                           <Navigation className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => console.log('Video clicked for', visit.name)}
-                          className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                          title="Record Video"
-                        >
-                          <Video className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -715,6 +727,161 @@ const Visits = () => {
               </div>
             </form>
             </div>
+        </div>
+      )}
+
+      {/* View Visit Details Modal */}
+      {showViewModal && selectedLead && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-semibold text-gray-900">Visit Details - {selectedLead.name}</h2>
+              <button 
+                onClick={() => {
+                  setShowViewModal(false);
+                  setSelectedLead(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Lead Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Lead Information</h3>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Lead ID</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedLead.leadId || `LD-2025-${selectedLead.id.toString().padStart(3, '0')}`}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Name</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedLead.name}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Phone</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedLead.phone}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Email</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedLead.email || 'N/A'}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Address</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedLead.address}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">GST No.</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedLead.gstNo || 'N/A'}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Product Type</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedLead.productType || 'N/A'}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">State</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedLead.state || 'N/A'}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Lead Source</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedLead.leadSource || 'N/A'}</p>
+                  </div>
+                </div>
+                
+                {/* Visit & Status Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Visit & Status Information</h3>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Visiting Status</label>
+                    <p className="text-sm text-gray-900 mt-1">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        selectedLead.visitingStatus === 'completed' ? 'bg-green-100 text-green-800' :
+                        selectedLead.visitingStatus === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                        selectedLead.visitingStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        selectedLead.visitingStatus === 'cancelled' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {selectedLead.visitingStatus || 'N/A'}
+                      </span>
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Visit Date</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedLead.visitDate || 'N/A'}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Visit Time</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedLead.visitTime || 'N/A'}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Purpose</label>
+                    <p className="text-sm text-gray-900 mt-1">{selectedLead.purpose || 'N/A'}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Lead Status</label>
+                    <p className="text-sm text-gray-900 mt-1">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        selectedLead.finalStatus === 'Connected' ? 'bg-green-100 text-green-800' :
+                        selectedLead.finalStatus === 'Not Connected' ? 'bg-red-100 text-red-800' :
+                        selectedLead.finalStatus === 'Todays Meeting' ? 'bg-blue-100 text-blue-800' :
+                        selectedLead.finalStatus === 'Converted' ? 'bg-purple-100 text-purple-800' :
+                        selectedLead.finalStatus === 'Closed' ? 'bg-gray-100 text-gray-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {selectedLead.finalStatus || selectedLead.connectedStatus || 'Pending'}
+                      </span>
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Remark</label>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-md border border-gray-200">
+                      <p className="text-sm text-gray-900 whitespace-pre-wrap">
+                        {selectedLead.finalStatusRemark || selectedLead.connectedStatusRemark || selectedLead.notes || 'No remark available'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Notes</label>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-md border border-gray-200">
+                      <p className="text-sm text-gray-900 whitespace-pre-wrap">
+                        {selectedLead.notes || 'No notes available'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 p-6 border-t">
+              <button
+                onClick={() => {
+                  setShowViewModal(false);
+                  setSelectedLead(null);
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

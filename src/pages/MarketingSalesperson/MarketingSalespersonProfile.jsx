@@ -43,8 +43,19 @@ const MarketingSalespersonProfile = () => {
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
+  const [selectedDateDetails, setSelectedDateDetails] = useState(null);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
   const videoRef = React.useRef(null);
   const canvasRef = React.useRef(null);
+
+  // Format a Date to local YYYY-MM-DD (avoids UTC shift from toISOString)
+  const getLocalDateStr = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
 
   const capturePhoto = async () => {
     setIsCapturingPhoto(true);
@@ -207,9 +218,15 @@ const MarketingSalespersonProfile = () => {
         const date = new Date(targetYear, actualMonth, day);
         const dayOfWeek = date.getDay();
         const today = new Date();
+        const todayStrLocal = getLocalDateStr(today);
+        const dateStrLocal = getLocalDateStr(date);
         
         // Skip weekends and future dates for sample data
         if (dayOfWeek !== 0 && dayOfWeek !== 6 && date <= today) {
+          // Do not generate an auto attendance record for TODAY
+          if (dateStrLocal === todayStrLocal) {
+            continue;
+          }
           const isPresent = Math.random() > 0.15; // 85% attendance rate
           const punchInTime = isPresent ? `09:${String(Math.floor(Math.random() * 30)).padStart(2, '0')}` : null;
           const punchOutTime = isPresent ? `18:${String(Math.floor(Math.random() * 30)).padStart(2, '0')}` : null;
@@ -261,7 +278,7 @@ const MarketingSalespersonProfile = () => {
           }
           
           sampleData.push({
-            date: date.toISOString().split('T')[0],
+            date: getLocalDateStr(date),
             punchIn: punchInTime,
             punchOut: punchOutTime,
             status: isPresent ? 'present' : 'absent',
@@ -278,7 +295,7 @@ const MarketingSalespersonProfile = () => {
     setAttendanceData(sampleData);
     
     // Check if user has punched in today
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = getLocalDateStr(today);
     const todayAttendance = sampleData.find(att => att.date === todayStr);
     setCurrentAttendance(todayAttendance);
 
@@ -290,70 +307,55 @@ const MarketingSalespersonProfile = () => {
 
   const handlePunchIn = async () => {
     setIsGettingLocation(true);
-    
     try {
-      // Check if geolocation is supported
-      if (!navigator.geolocation) {
-        throw new Error('Geolocation is not supported by this browser.');
-      }
-
-      // Capture live photo (non-blocking if denied)
       const punchInPhoto = await capturePhoto();
 
-      // Get current location
-      const location = await getCurrentLocation();
-      
+      let location = null;
+      try {
+        if (navigator.geolocation) {
+          location = await getCurrentLocation();
+        }
+      } catch (e) {
+        // proceed without location
+      }
+
       const now = new Date();
       const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
-      const dateStr = now.toISOString().split('T')[0];
-      
+      const dateStr = currentAttendance?.date || getLocalDateStr(now);
+
+      const locationArray = location ? [location] : [];
+
       const newAttendance = {
         date: dateStr,
         punchIn: timeStr,
         punchOut: null,
         status: 'present',
         workingHours: 0,
-        notes: '',
-        punchInLocation: location,
+        notes: location ? '' : 'Punched in without location',
+        punchInLocation: location || null,
         punchOutLocation: null,
-        locationHistory: [location],
+        locationHistory: locationArray,
         punchInPhoto: punchInPhoto || null,
         punchOutPhoto: null
       };
-      
+
       setCurrentAttendance(newAttendance);
-      setCurrentLocation(location);
-      setLocationHistory([location]);
-      
-      // Update attendance data
+      setCurrentLocation(location || null);
+      setLocationHistory(locationArray);
+
       const updatedData = attendanceData.filter(att => att.date !== dateStr);
       updatedData.push(newAttendance);
       setAttendanceData(updatedData);
-      
-      // Start location tracking
-      startLocationTracking();
-      
-      // Show success message with location
-      alert(`✅ Punch In Successful!\n\nTime: ${timeStr}\nLocation: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}\nAccuracy: ±${Math.round(location.accuracy)}m${(newAttendance.punchInPhoto ? '\nPhoto captured 📸' : '')}\n\nLocation tracking started!`);
-      
-    } catch (error) {
-      console.error('Punch In Error:', error);
-      
-      let errorMessage = 'Unable to punch in. ';
-      
-      if (error.code === 1) {
-        errorMessage += 'Location access denied. Please allow location access and try again.';
-      } else if (error.code === 2) {
-        errorMessage += 'Location unavailable. Please check your internet connection and try again.';
-      } else if (error.code === 3) {
-        errorMessage += 'Location request timed out. Please try again.';
-      } else if (error.message.includes('not supported')) {
-        errorMessage += 'Your browser does not support location services.';
-      } else {
-        errorMessage += `Error: ${error.message}`;
+
+      if (location) {
+        startLocationTracking();
       }
-      
-      alert(`❌ Punch In Failed\n\n${errorMessage}\n\nPlease ensure:\n• You're using HTTPS or localhost\n• Location services are enabled\n• Browser location permission is granted`);
+
+      if (location) {
+        alert(`✅ Punch In Successful!\n\nTime: ${timeStr}\nLocation: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}\nAccuracy: ±${Math.round(location.accuracy)}m${(newAttendance.punchInPhoto ? '\nPhoto captured 📸' : '')}\n\nLocation tracking started!`);
+      } else {
+        alert(`✅ Punch In Successful!\n\nTime: ${timeStr}\nNote: Location not available${(newAttendance.punchInPhoto ? '\nPhoto captured 📸' : '')}`);
+      }
     } finally {
       setIsGettingLocation(false);
     }
@@ -364,71 +366,55 @@ const MarketingSalespersonProfile = () => {
       alert('❌ Please punch in first!');
       return;
     }
-    
-    setIsGettingLocation(true);
-    
-    try {
-      // Check if geolocation is supported
-      if (!navigator.geolocation) {
-        throw new Error('Geolocation is not supported by this browser.');
-      }
 
-      // Capture live photo (non-blocking if denied)
+    setIsGettingLocation(true);
+    try {
       const punchOutPhoto = await capturePhoto();
 
-      // Get current location
-      const location = await getCurrentLocation();
-      
+      let location = null;
+      try {
+        if (navigator.geolocation) {
+          location = await getCurrentLocation();
+        }
+      } catch (e) {
+        // proceed without location
+      }
+
       const now = new Date();
       const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
-      const dateStr = now.toISOString().split('T')[0];
-      
-      // Calculate working hours
+      const dateStr = currentAttendance?.date || getLocalDateStr(now);
+
       const punchInTime = new Date(`${dateStr}T${currentAttendance.punchIn}:00`);
       const punchOutTime = new Date(`${dateStr}T${timeStr}:00`);
       const workingHours = Math.round((punchOutTime - punchInTime) / (1000 * 60 * 60) * 10) / 10;
-      
+
       const updatedAttendance = {
         ...currentAttendance,
         punchOut: timeStr,
         workingHours: workingHours,
-        punchOutLocation: location,
-        locationHistory: [...locationHistory, location],
+        punchOutLocation: location || null,
+        locationHistory: [
+          ...((currentAttendance.locationHistory) || []),
+          ...locationHistory,
+          ...(location ? [location] : [])
+        ],
         punchOutPhoto: punchOutPhoto || currentAttendance.punchOutPhoto || null
       };
-      
+
       setCurrentAttendance(updatedAttendance);
-      
-      // Update attendance data
+
       const updatedData = attendanceData.map(att => 
         att.date === dateStr ? updatedAttendance : att
       );
       setAttendanceData(updatedData);
-      
-      // Stop location tracking
+
       stopLocationTracking();
-      
-      // Show success message with location
-      alert(`✅ Punch Out Successful!\n\nTime: ${timeStr}\nLocation: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}\nAccuracy: ±${Math.round(location.accuracy)}m\nWorking Hours: ${workingHours} hours${(updatedAttendance.punchOutPhoto ? '\nPhoto captured 📸' : '')}\n\nLocation tracking stopped!`);
-      
-    } catch (error) {
-      console.error('Punch Out Error:', error);
-      
-      let errorMessage = 'Unable to punch out. ';
-      
-      if (error.code === 1) {
-        errorMessage += 'Location access denied. Please allow location access and try again.';
-      } else if (error.code === 2) {
-        errorMessage += 'Location unavailable. Please check your internet connection and try again.';
-      } else if (error.code === 3) {
-        errorMessage += 'Location request timed out. Please try again.';
-      } else if (error.message.includes('not supported')) {
-        errorMessage += 'Your browser does not support location services.';
+
+      if (location) {
+        alert(`✅ Punch Out Successful!\n\nTime: ${timeStr}\nLocation: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}\nAccuracy: ±${Math.round(location.accuracy)}m\nWorking Hours: ${workingHours} hours${(updatedAttendance.punchOutPhoto ? '\nPhoto captured 📸' : '')}\n\nLocation tracking stopped!`);
       } else {
-        errorMessage += `Error: ${error.message}`;
+        alert(`✅ Punch Out Successful!\n\nTime: ${timeStr}\nWorking Hours: ${workingHours} hours\nNote: Location not available${(updatedAttendance.punchOutPhoto ? '\nPhoto captured 📸' : '')}`);
       }
-      
-      alert(`❌ Punch Out Failed\n\n${errorMessage}\n\nPlease ensure:\n• You're using HTTPS or localhost\n• Location services are enabled\n• Browser location permission is granted`);
     } finally {
       setIsGettingLocation(false);
     }
@@ -452,6 +438,12 @@ const MarketingSalespersonProfile = () => {
   };
 
   const stats = getAttendanceStats();
+
+  const closeSidebar = () => {
+    setShowSidebar(false);
+    setSelectedDateDetails(null);
+    setSelectedCalendarDate(null);
+  };
 
   const renderProfileTab = () => (
     <div className="space-y-6">
@@ -780,7 +772,7 @@ const MarketingSalespersonProfile = () => {
                   // Fallback punch in without location
                   const now = new Date();
                   const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
-                  const dateStr = now.toISOString().split('T')[0];
+                  const dateStr = currentAttendance?.date || getLocalDateStr(now);
                   
                   const newAttendance = {
                     date: dateStr,
@@ -845,7 +837,7 @@ const MarketingSalespersonProfile = () => {
                   // Fallback punch out without location
                   const now = new Date();
                   const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
-                  const dateStr = now.toISOString().split('T')[0];
+                  const dateStr = getLocalDateStr(now);
                   
                   // Calculate working hours
                   const punchInTime = new Date(`${dateStr}T${currentAttendance.punchIn}:00`);
@@ -1016,7 +1008,7 @@ const MarketingSalespersonProfile = () => {
     };
 
     const getAttendanceForDate = (date) => {
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = getLocalDateStr(date);
       return attendanceData.find(att => att.date === dateStr);
     };
 
@@ -1100,8 +1092,8 @@ const MarketingSalespersonProfile = () => {
               
               // More precise date comparison for today - handle timezone issues
               const today = new Date();
-              const todayStr = today.toISOString().split('T')[0];
-              const dateStr = date.toISOString().split('T')[0];
+              const todayStr = getLocalDateStr(today);
+              const dateStr = getLocalDateStr(date);
               const isToday = dateStr === todayStr;
               
               // Additional check: compare year, month, and day separately
@@ -1116,6 +1108,7 @@ const MarketingSalespersonProfile = () => {
               const isWeekend = date.getDay() === 0 || date.getDay() === 6;
               const isFuture = date > today;
               const isTodayAndNotPunchedOut = isTodayStrict && (!attendance || !attendance.punchOut);
+              const isSelected = selectedCalendarDate === dateStr;
               
               return (
                 <div
@@ -1124,27 +1117,30 @@ const MarketingSalespersonProfile = () => {
                     isCurrentMonth ? 'bg-white' : 'bg-gray-50'
                   } ${isTodayAndNotPunchedOut ? 'ring-2 ring-blue-500 bg-blue-50' : ''} ${
                     isWeekend ? 'bg-gray-100' : ''
-                  } ${isFuture ? 'bg-gray-50 opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'}`}
+                  } ${isSelected ? 'ring-2 ring-purple-500 bg-purple-50' : ''} ${
+                    isFuture ? 'bg-gray-50 opacity-60 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'
+                  }`}
                   onClick={() => {
                     if (isFuture) {
                       return; // Block access to future dates
                     }
                     
                     if (attendance) {
-                      // Show detailed attendance info
-                      const details = `
-                        Date: ${date.toLocaleDateString()}
-                        Status: ${attendance.status}
-                        Punch In: ${attendance.punchIn || 'N/A'}
-                        Punch Out: ${attendance.punchOut || 'N/A'}
-                        Working Hours: ${attendance.workingHours || 0}h
-                        ${attendance.punchInLocation ? `Punch In Location: ${attendance.punchInLocation.latitude.toFixed(4)}, ${attendance.punchInLocation.longitude.toFixed(4)}` : ''}
-                        ${attendance.punchOutLocation ? `Punch Out Location: ${attendance.punchOutLocation.latitude.toFixed(4)}, ${attendance.punchOutLocation.longitude.toFixed(4)}` : ''}
-                        ${attendance.notes ? `Notes: ${attendance.notes}` : ''}
-                      `;
-                      alert(details);
+                      // Show detailed attendance info in sidebar
+                      setSelectedDateDetails({
+                        date: date,
+                        attendance: attendance
+                      });
+                      setSelectedCalendarDate(dateStr);
+                      setShowSidebar(true);
                     } else {
-                      alert(`No attendance data for ${date.toLocaleDateString()}`);
+                      // Show no data message in sidebar
+                      setSelectedDateDetails({
+                        date: date,
+                        attendance: null
+                      });
+                      setSelectedCalendarDate(dateStr);
+                      setShowSidebar(true);
                     }
                   }}
                 >
@@ -1362,6 +1358,217 @@ const MarketingSalespersonProfile = () => {
           </div>
         )}
       </div>
+
+      {/* Attendance Details Sidebar */}
+      {showSidebar && selectedDateDetails && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
+            onClick={closeSidebar}
+          />
+          
+          {/* Sidebar */}
+          <div className="absolute right-0 top-0 h-full w-full max-w-md sm:max-w-md bg-white shadow-xl transform transition-transform duration-300 ease-in-out">
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Attendance Details</h3>
+                  <p className="text-sm text-gray-600">
+                    {selectedDateDetails.date.toLocaleDateString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </p>
+                </div>
+                <button
+                  onClick={closeSidebar}
+                  className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {selectedDateDetails.attendance ? (
+                  <div className="space-y-6">
+                    {/* Status Card */}
+                    <div className={`p-4 rounded-lg border-2 ${
+                      selectedDateDetails.attendance.status === 'present' 
+                        ? 'bg-green-50 border-green-200' 
+                        : 'bg-red-50 border-red-200'
+                    }`}>
+                      <div className="flex items-center space-x-3">
+                        {selectedDateDetails.attendance.status === 'present' ? (
+                          <CheckCircle className="w-8 h-8 text-green-600" />
+                        ) : (
+                          <AlertCircle className="w-8 h-8 text-red-600" />
+                        )}
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900 capitalize">
+                            {selectedDateDetails.attendance.status}
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            {selectedDateDetails.attendance.status === 'present' ? 'Employee was present' : 'Employee was absent'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Punch In/Out Times */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <LogIn className="w-5 h-5 text-blue-600" />
+                          <h5 className="font-medium text-gray-900">Punch In</h5>
+                        </div>
+                        <p className="text-2xl font-bold text-blue-600">
+                          {selectedDateDetails.attendance.punchIn || '--:--'}
+                        </p>
+                        {selectedDateDetails.attendance.punchInLocation && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            📍 {selectedDateDetails.attendance.punchInLocation.latitude.toFixed(4)}, {selectedDateDetails.attendance.punchInLocation.longitude.toFixed(4)}
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="bg-red-50 p-4 rounded-lg">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <LogOut className="w-5 h-5 text-red-600" />
+                          <h5 className="font-medium text-gray-900">Punch Out</h5>
+                        </div>
+                        <p className="text-2xl font-bold text-red-600">
+                          {selectedDateDetails.attendance.punchOut || '--:--'}
+                        </p>
+                        {selectedDateDetails.attendance.punchOutLocation && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            📍 {selectedDateDetails.attendance.punchOutLocation.latitude.toFixed(4)}, {selectedDateDetails.attendance.punchOutLocation.longitude.toFixed(4)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Working Hours */}
+                    {selectedDateDetails.attendance.workingHours > 0 && (
+                      <div className="bg-purple-50 p-4 rounded-lg">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <Clock className="w-5 h-5 text-purple-600" />
+                          <h5 className="font-medium text-gray-900">Working Hours</h5>
+                        </div>
+                        <p className="text-2xl font-bold text-purple-600">
+                          {selectedDateDetails.attendance.workingHours} hours
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Photos */}
+                    {(selectedDateDetails.attendance.punchInPhoto || selectedDateDetails.attendance.punchOutPhoto) && (
+                      <div>
+                        <h5 className="font-medium text-gray-900 mb-3 flex items-center">
+                          <Camera className="w-5 h-5 mr-2" />
+                          Attendance Photos
+                        </h5>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {selectedDateDetails.attendance.punchInPhoto && (
+                            <div>
+                              <p className="text-xs text-gray-600 mb-1">Punch In</p>
+                              <img 
+                                src={selectedDateDetails.attendance.punchInPhoto} 
+                                alt="Punch In" 
+                                className="w-full h-24 object-cover rounded-lg border"
+                              />
+                            </div>
+                          )}
+                          {selectedDateDetails.attendance.punchOutPhoto && (
+                            <div>
+                              <p className="text-xs text-gray-600 mb-1">Punch Out</p>
+                              <img 
+                                src={selectedDateDetails.attendance.punchOutPhoto} 
+                                alt="Punch Out" 
+                                className="w-full h-24 object-cover rounded-lg border"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Location History */}
+                    {selectedDateDetails.attendance.locationHistory && selectedDateDetails.attendance.locationHistory.length > 0 && (
+                      <div>
+                        <h5 className="font-medium text-gray-900 mb-3 flex items-center">
+                          <MapPin className="w-5 h-5 mr-2" />
+                          Location History ({selectedDateDetails.attendance.locationHistory.length} locations)
+                        </h5>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {selectedDateDetails.attendance.locationHistory.map((location, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <span className="text-xs font-bold text-blue-600">{index + 1}</span>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {new Date(location.timestamp).toLocaleTimeString()}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    📍 {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  const url = `https://www.google.com/maps?q=${location.latitude},${location.longitude}`;
+                                  window.open(url, '_blank');
+                                }}
+                                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                              >
+                                View
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {selectedDateDetails.attendance.notes && (
+                      <div>
+                        <h5 className="font-medium text-gray-900 mb-2">Notes</h5>
+                        <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                          {selectedDateDetails.attendance.notes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">No Attendance Data</h4>
+                    <p className="text-gray-600">
+                      No attendance record found for this date.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-gray-200 bg-gray-50">
+                <button
+                  onClick={closeSidebar}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
   };
