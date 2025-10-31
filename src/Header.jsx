@@ -465,19 +465,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
             </div>
           )}
           {/* Mobile Toggle Button - Only for salesperson */}
-          {userType === "salesperson" && onToggleMobileView && (
-            <button
-              onClick={onToggleMobileView}
-              className={`p-2 rounded-lg transition-colors ${
-                isMobileView 
-                  ? 'bg-blue-100 text-blue-600' 
-                  : 'hover:bg-gray-100 text-gray-600'
-              }`}
-              title={isMobileView ? 'Switch to Desktop View' : 'Switch to Mobile View'}
-            >
-              <Smartphone className="w-5 h-5" />
-            </button>
-          )}
+          {/* Mobile toggle removed; mobile layout auto-detected via viewport */}
           
           {/* Dark Mode Toggle Button - Only for salesperson */}
           {userType === "salesperson" && onToggleDarkMode && (

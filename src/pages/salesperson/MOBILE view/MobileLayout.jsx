@@ -78,17 +78,6 @@ const MobileLayout = ({ onLogout, onToggleDesktopView }) => {
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            {/* Desktop Toggle Button */}
-            {onToggleDesktopView && (
-              <button
-                onClick={onToggleDesktopView}
-                className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
-                title="Switch to Desktop View"
-              >
-                <Monitor className="h-5 w-5" />
-              </button>
-            )}
-            
             <button className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
               <Bell className="h-5 w-5 text-gray-700" />
             </button>

@@ -40,6 +40,14 @@ export default function SalespersonLayout({ onLogout }) {
       setCurrentPage('followup-connected');
     }
   }, []);
+
+  // Auto-detect mobile view based on viewport width (no manual toggle)
+  useEffect(() => {
+    const updateIsMobile = () => setIsMobileView(window.innerWidth <= 768);
+    updateIsMobile();
+    window.addEventListener('resize', updateIsMobile);
+    return () => window.removeEventListener('resize', updateIsMobile);
+  }, []);
   
   const handleNavigation = (page) => {
     setCurrentPage(page);
@@ -73,7 +81,6 @@ export default function SalespersonLayout({ onLogout }) {
           <FixedHeader 
             userType="salesperson" 
             currentPage={currentPage} 
-            onToggleMobileView={() => setIsMobileView(!isMobileView)}
             isMobileView={isMobileView}
             isDarkMode={isDarkMode}
             onToggleDarkMode={handleToggleDarkMode}
