@@ -27,7 +27,8 @@ import {
   Clock,
   Download,
   DollarSign,
-  Wallet
+  Wallet,
+  Phone
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import MarketingQuotationForm from './MarketingCreateQuotationForm';
@@ -41,6 +42,7 @@ const EditLeadModal = ({ lead, onSave, onClose }) => {
   const [formData, setFormData] = useState({
     name: lead.name,
     phone: lead.phone,
+    email: lead.email || '',
     address: lead.address,
     area: lead.area || '',
     division: lead.division || '',
@@ -103,6 +105,17 @@ const EditLeadModal = ({ lead, onSave, onClose }) => {
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter email address"
               />
             </div>
             <div className="md:col-span-2">
@@ -375,6 +388,7 @@ const AddCustomerModal = ({ onSave, onClose }) => {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    email: '',
     address: '',
     area: '',
     division: '',
@@ -436,6 +450,17 @@ const AddCustomerModal = ({ onSave, onClose }) => {
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter email address"
               />
             </div>
             <div className="md:col-span-2">
@@ -916,6 +941,8 @@ const MarketingSalespersonLeads = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showQuotationModal, setShowQuotationModal] = useState(false);
   const [showPIModal, setShowPIModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusForm, setStatusForm] = useState({ finalStatus: 'Interested', remark: '' });
   const [selectedLead, setSelectedLead] = useState(null);
   const [activeTab, setActiveTab] = useState('Details');
   const [showPIPreview, setShowPIPreview] = useState(false);
@@ -1083,6 +1110,7 @@ const MarketingSalespersonLeads = () => {
       leadId: 'LD-2025-001',
       name: 'Rajesh Kumar',
       phone: '+91 98765 43210',
+      email: 'rajesh.kumar@email.com',
       address: '123 MG Road, Indore, MP',
       area: 'Indore',
       division: 'Dewas',
@@ -1107,6 +1135,7 @@ const MarketingSalespersonLeads = () => {
       leadId: 'LD-2025-002',
       name: 'Priya Sharma',
       phone: '+91 87654 32109',
+      email: 'priya.sharma@business.com',
       address: '456 Business Park, Bhopal, MP',
       area: 'Bhopal',
       division: 'Raisen',
@@ -1131,6 +1160,7 @@ const MarketingSalespersonLeads = () => {
       leadId: 'LD-2025-003',
       name: 'Amit Patel',
       phone: '+91 76543 21098',
+      email: 'amit.patel@industrial.com',
       address: '789 Industrial Area, Jabalpur, MP',
       area: 'Jabalpur',
       division: 'Narsinghpur',
@@ -1154,6 +1184,7 @@ const MarketingSalespersonLeads = () => {
       leadId: 'LD-2025-004',
       name: 'Sneha Gupta',
       phone: '+91 65432 10987',
+      email: 'sneha.gupta@techhub.com',
       address: '321 Tech Hub, Gwalior, MP',
       area: 'Gwalior',
       division: 'Morena',
@@ -1178,6 +1209,7 @@ const MarketingSalespersonLeads = () => {
       leadId: 'LD-2025-005',
       name: 'Vikram Singh',
       phone: '+91 54321 09876',
+      email: 'vikram.singh@corporate.com',
       address: '654 Corporate Plaza, Ujjain, MP',
       area: 'Ujjain',
       division: 'Ratlam',
@@ -1270,6 +1302,21 @@ const MarketingSalespersonLeads = () => {
       case 'Cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const handleSaveLeadStatus = () => {
+    if (!selectedLead) return;
+    setLeads(leads.map(l => l.id === selectedLead.id 
+      ? { 
+          ...l, 
+          finalStatus: statusForm.finalStatus,
+          finalStatusRemark: statusForm.remark,
+          finalStatusUpdated: new Date().toISOString()
+        } 
+      : l
+    ));
+    setShowStatusModal(false);
+    setSelectedLead(null);
   };
 
   const handleViewLead = (lead) => {
@@ -1790,20 +1837,20 @@ const MarketingSalespersonLeads = () => {
                overscrollBehaviorX: 'none',
                touchAction: 'pan-x'
              }}>
-          <table className="min-w-full divide-y divide-gray-200" style={{minWidth: '1700px'}}
+          <table className="min-w-full divide-y divide-gray-200" style={{minWidth: '1000px'}}
                  onMouseDown={(e) => e.stopPropagation()}
                  onClick={(e) => e.stopPropagation()}>
             <thead className="bg-gray-50">
-              {/* Filter Row */}
+              {/* Filter Row - Simplified */}
               {showFilters && (
                 <tr className="bg-blue-50">
                   <th className="px-6 py-2">
-                    {/* # Column - No filter */}
+                    {/* Lead ID - No filter */}
                   </th>
                   <th className="px-6 py-2">
                     <input
                       type="text"
-                      placeholder="Filter customer"
+                      placeholder="Search name/phone"
                       value={filters.name || ''}
                       onChange={(e) => setFilters({...filters, name: e.target.value})}
                       className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1812,7 +1859,7 @@ const MarketingSalespersonLeads = () => {
                   <th className="px-6 py-2">
                     <input
                       type="text"
-                      placeholder="Filter address"
+                      placeholder="Search address"
                       value={filters.address || ''}
                       onChange={(e) => setFilters({...filters, address: e.target.value})}
                       className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1833,144 +1880,22 @@ const MarketingSalespersonLeads = () => {
                   </th>
                   <th className="px-6 py-2">
                     <select
-                      value={filters.division}
-                      onChange={(e) => setFilters({...filters, division: e.target.value})}
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="">All Divisions</option>
-                      <option value="Bhopal">Bhopal</option>
-                      <option value="Raisen">Raisen</option>
-                      <option value="Rajgarh">Rajgarh</option>
-                      <option value="Sehore">Sehore</option>
-                      <option value="Vidisha">Vidisha</option>
-                      <option value="Bhind">Bhind</option>
-                      <option value="Morena">Morena</option>
-                      <option value="Sheopur">Sheopur</option>
-                      <option value="Ashoknagar">Ashoknagar</option>
-                      <option value="Datia">Datia</option>
-                      <option value="Guna">Guna</option>
-                      <option value="Gwalior">Gwalior</option>
-                      <option value="Shivpuri">Shivpuri</option>
-                      <option value="Alirajpur">Alirajpur</option>
-                      <option value="Barwani">Barwani</option>
-                      <option value="Burhanpur">Burhanpur</option>
-                      <option value="Dhar">Dhar</option>
-                      <option value="Indore">Indore</option>
-                      <option value="Jhabua">Jhabua</option>
-                      <option value="Khandwa">Khandwa</option>
-                      <option value="Khargone">Khargone</option>
-                      <option value="Balaghat">Balaghat</option>
-                      <option value="Chhindwara">Chhindwara</option>
-                      <option value="Dindori">Dindori</option>
-                      <option value="Jabalpur">Jabalpur</option>
-                      <option value="Katni">Katni</option>
-                      <option value="Mandla">Mandla</option>
-                      <option value="Narsinghpur">Narsinghpur</option>
-                      <option value="Seoni">Seoni</option>
-                      <option value="Betul">Betul</option>
-                      <option value="Harda">Harda</option>
-                      <option value="Hoshangabad">Hoshangabad</option>
-                      <option value="Maihar">Maihar</option>
-                      <option value="Rewa">Rewa</option>
-                      <option value="Satna">Satna</option>
-                      <option value="Sidhi">Sidhi</option>
-                      <option value="Singrauli">Singrauli</option>
-                      <option value="Chhatarpur">Chhatarpur</option>
-                      <option value="Damoh">Damoh</option>
-                      <option value="Niwari">Niwari</option>
-                      <option value="Panna">Panna</option>
-                      <option value="Sagar">Sagar</option>
-                      <option value="Tikamgarh">Tikamgarh</option>
-                      <option value="Anuppur">Anuppur</option>
-                      <option value="Shahdol">Shahdol</option>
-                      <option value="Umaria">Umaria</option>
-                      <option value="Agar Malwa">Agar Malwa</option>
-                      <option value="Dewas">Dewas</option>
-                      <option value="Mandsaur">Mandsaur</option>
-                      <option value="Neemuch">Neemuch</option>
-                      <option value="Ratlam">Ratlam</option>
-                      <option value="Shajapur">Shajapur</option>
-                      <option value="Ujjain">Ujjain</option>
-                    </select>
-                  </th>
-                  <th className="px-6 py-2">
-                    <input
-                      type="text"
-                      placeholder="Filter GST"
-                      value={filters.gstNo || ''}
-                      onChange={(e) => setFilters({...filters, gstNo: e.target.value})}
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </th>
-                  <th className="px-6 py-2">
-                    <select
                       value={filters.productType}
                       onChange={(e) => setFilters({...filters, productType: e.target.value})}
                       className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
-                      <option value="">All Type</option>
-                      <option value="Industrial Cable">Industrial Cable</option>
-                      <option value="Domestic Cable">Domestic Cable</option>
-                      <option value="Power Cable">Power Cable</option>
-                      <option value="Networking Cable">Networking Cable</option>
+                      <option value="">All Products</option>
+                      <option value="LED Street Light">LED Street Light</option>
+                      <option value="Industrial Motor">Industrial Motor</option>
+                      <option value="Power Distribution Panel">Power Distribution Panel</option>
+                      <option value="Solar Panel">Solar Panel</option>
+                      <option value="Transformer">Transformer</option>
+                      <option value="Cable">Cable</option>
+                      <option value="Switchgear">Switchgear</option>
+                      <option value="Control Panel">Control Panel</option>
+                      <option value="UPS">UPS</option>
+                      <option value="Inverter">Inverter</option>
                     </select>
-                  </th>
-                  <th className="px-6 py-2">
-                    <select
-                      value={filters.state}
-                      onChange={(e) => setFilters({...filters, state: e.target.value})}
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="">All St</option>
-                      <option value="Madhya Pradesh">Madhya Pradesh</option>
-                      <option value="Maharashtra">Maharashtra</option>
-                      <option value="Gujarat">Gujarat</option>
-                      <option value="Rajasthan">Rajasthan</option>
-                    </select>
-                  </th>
-                  <th className="px-6 py-2">
-                    <select
-                      value={filters.leadSource}
-                      onChange={(e) => setFilters({...filters, leadSource: e.target.value})}
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="">All Sou</option>
-                      <option value="office">office</option>
-                      <option value="indiamart">indiamart</option>
-                      <option value="facebook">facebook</option>
-                      <option value="whatsapp">whatsapp</option>
-                      <option value="market">market</option>
-                    </select>
-                  </th>
-                  <th className="px-6 py-2">
-                    <select
-                      value={filters.customerType}
-                      onChange={(e) => setFilters({...filters, customerType: e.target.value})}
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="">All Types</option>
-                      <option value="B2B">B2B</option>
-                      <option value="B2C">B2C</option>
-                      <option value="Electrical Shop">Electrical Shop</option>
-                      <option value="Camera Installer">Camera Installer</option>
-                      <option value="Internet Provider">Internet Provider</option>
-                      <option value="Automobile Shops">Automobile Shops</option>
-                      <option value="Solar Panel Installer">Solar Panel Installer</option>
-                      <option value="Local Rea Disk Provider">Local Rea Disk Provider</option>
-                      <option value="Transformer Winding Service">Transformer Winding Service</option>
-                      <option value="Motor Winding Shop">Motor Winding Shop</option>
-                      <option value="Harware shop">Harware shop</option>
-                      <option value="Tent house">Tent house</option>
-                      <option value="Contractor">Contractor</option>
-                    </select>
-                  </th>
-                  <th className="px-6 py-2">
-                    <input
-                      type="date"
-                      value={filters.date || ''}
-                      onChange={(e) => setFilters({...filters, date: e.target.value})}
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
                   </th>
                   <th className="px-6 py-2">
                     <select
@@ -1985,7 +1910,20 @@ const MarketingSalespersonLeads = () => {
                     </select>
                   </th>
                   <th className="px-6 py-2">
-                    {/* Transferred Leads - No filter */}
+                    <select
+                      value={filters.leadSource}
+                      onChange={(e) => setFilters({...filters, leadSource: e.target.value})}
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">All Sources</option>
+                      <option value="office">Office</option>
+                      <option value="indiamart">IndiaMART</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="market">Market</option>
+                      <option value="referral">Referral</option>
+                      <option value="website">Website</option>
+                    </select>
                   </th>
                   <th className="px-6 py-2">
                     {/* Action - No filter */}
@@ -1993,7 +1931,7 @@ const MarketingSalespersonLeads = () => {
                 </tr>
               )}
               
-              {/* Header Row */}
+              {/* Header Row - Simplified */}
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '100px', minWidth: '100px'}}>
                   <div className="flex items-center space-x-2">
@@ -2019,18 +1957,6 @@ const MarketingSalespersonLeads = () => {
                     <span>AREA</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '140px', minWidth: '140px'}}>
-                  <div className="flex items-center space-x-2">
-                    <Globe className="w-4 h-4 text-green-600" />
-                    <span>DIVISION</span>
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '150px', minWidth: '150px'}}>
-                  <div className="flex items-center space-x-2">
-                    <FileText className="w-4 h-4 text-purple-600" />
-                    <span>GST NO.</span>
-                  </div>
-                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '150px', minWidth: '150px'}}>
                   <div className="flex items-center space-x-2">
                     <Package className="w-4 h-4 text-purple-600" />
@@ -2039,38 +1965,14 @@ const MarketingSalespersonLeads = () => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '120px', minWidth: '120px'}}>
                   <div className="flex items-center space-x-2">
-                    <Map className="w-4 h-4 text-blue-600" />
-                    <span>STATE</span>
+                    <div className="w-4 h-4 rounded-full bg-blue-500"></div>
+                    <span>VISITING STATUS</span>
                   </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '120px', minWidth: '120px'}}>
                   <div className="flex items-center space-x-2">
                     <Globe className="w-4 h-4 text-orange-600" />
                     <span>LEAD SOURCE</span>
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '120px', minWidth: '120px'}}>
-                  <div className="flex items-center space-x-2">
-                    <User className="w-4 h-4 text-blue-600" />
-                    <span>CUSTOMER TYPE</span>
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '100px', minWidth: '100px'}}>
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="w-4 h-4 text-green-600" />
-                    <span>DATE</span>
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '120px', minWidth: '120px'}}>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 rounded-full bg-blue-500"></div>
-                    <span>VISITING STATUS</span>
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '150px', minWidth: '150px'}}>
-                  <div className="flex items-center space-x-2">
-                    <ArrowUpDown className="w-4 h-4 text-purple-600" />
-                    <span>TRANSFERRED LEADS</span>
                   </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '120px', minWidth: '120px'}}>
@@ -2124,25 +2026,7 @@ const MarketingSalespersonLeads = () => {
                       {lead.area || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {lead.division || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {lead.gstNo}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {lead.productType}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {lead.state}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {lead.leadSource}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {lead.customerType}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {lead.date}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex flex-col items-center space-y-1">
@@ -2156,23 +2040,15 @@ const MarketingSalespersonLeads = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-1 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                      {lead.transferredTo ? (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                          {lead.transferredTo}
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
-                          Not Transferred
-                        </span>
-                      )}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {lead.leadSource}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex space-x-2">
                         <button 
                           onClick={() => handleViewLead(lead)}
                           className="w-8 h-8 rounded-full border-2 border-blue-500 bg-white hover:bg-blue-50 transition-colors flex items-center justify-center"
-                          title="View Details"
+                          title="View All Details"
                         >
                           <Eye className="w-4 h-4 text-blue-500" />
                         </button>
@@ -2186,12 +2062,13 @@ const MarketingSalespersonLeads = () => {
                         <button 
                           onClick={() => {
                             setSelectedLead(lead);
-                            setShowQuotationModal(true);
+                            setStatusForm({ finalStatus: lead.finalStatus || 'Interested', remark: '' });
+                            setShowStatusModal(true);
                           }}
                           className="w-8 h-8 rounded-full border-2 border-green-500 bg-white hover:bg-green-50 transition-colors flex items-center justify-center"
-                          title="Create Quotation"
+                          title="Set Lead Status"
                         >
-                          <DollarSign className="w-4 h-4 text-green-500" />
+                          <Tag className="w-4 h-4 text-green-500" />
                         </button>
                         <button 
                           onClick={() => handleWalletClick(lead)}
@@ -2290,7 +2167,25 @@ const MarketingSalespersonLeads = () => {
                     </span>
                     </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Phone</span>
+                    <span className="text-gray-500 flex items-center">
+                      <Phone className="w-4 h-4 mr-1" />
+                      Phone
+                    </span>
+                    <span 
+                      className="font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
+                      onClick={() => {
+                        window.open(`tel:${selectedLead.phone}`, '_blank');
+                      }}
+                      title="Click to call"
+                    >
+                      {selectedLead.phone}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 flex items-center">
+                      <Mail className="w-4 h-4 mr-1" />
+                      Email
+                    </span>
                     <span 
                       className="font-medium text-gray-900 cursor-pointer hover:text-blue-600 transition-colors"
                       onClick={() => {
@@ -2298,9 +2193,9 @@ const MarketingSalespersonLeads = () => {
                       }}
                       title="Click to open Email"
                     >
-                      {selectedLead.phone}
+                      {selectedLead.email || '-'}
                     </span>
-                    </div>
+                  </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Address</span>
                     <span className="font-medium text-gray-900 text-right max-w-[60%]">{selectedLead.address}</span>
@@ -2799,6 +2694,47 @@ const MarketingSalespersonLeads = () => {
             setSelectedLead(null);
           }}
         />
+      )}
+
+      {/* Set Lead Status Modal */}
+      {showStatusModal && selectedLead && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Set Lead Status</h3>
+              <button onClick={() => { setShowStatusModal(false); setSelectedLead(null); }} className="text-gray-500 hover:text-gray-700" aria-label="Close status modal">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Final Status</label>
+                <select 
+                  className="w-full border rounded-md px-3 py-2"
+                  value={statusForm.finalStatus}
+                  onChange={(e) => setStatusForm({ ...statusForm, finalStatus: e.target.value })}
+                >
+                  <option value="Interested">Interested</option>
+                  <option value="Not Interested">Not Interested</option>
+                  <option value="Pending">Pending</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Remark</label>
+                <textarea 
+                  className="w-full border rounded-md px-3 py-2"
+                  rows="3"
+                  value={statusForm.remark}
+                  onChange={(e) => setStatusForm({ ...statusForm, remark: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="p-4 border-t flex justify-end gap-2">
+              <button onClick={() => { setShowStatusModal(false); setSelectedLead(null); }} className="px-3 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200">Cancel</button>
+              <button onClick={handleSaveLeadStatus} className="px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700">Save</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Quotation Popup Modal */}

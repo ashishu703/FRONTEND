@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun } from 'lucide-react';
+import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun, BarChart3, Clock, User } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { useCompany } from './context/CompanyContext';
 
-const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onToggleMobileView, isMobileView = false, isDarkMode = false, onToggleDarkMode }) => {
+const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onToggleMobileView, isMobileView = false, isDarkMode = false, onToggleDarkMode, onProfileClick }) => {
   const { user, logout } = useAuth();
   const { selectedCompany, setSelectedCompany } = useCompany();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -11,165 +11,48 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
   const notificationRef = useRef(null);
   const notificationHistoryRef = useRef(null);
 
-  // Sample notification data
-  const notifications = [
-    {
-      id: 1,
-      title: "New Lead Assigned",
-      message: "You have been assigned a new lead from Mumbai region",
-      time: "2 minutes ago",
-      type: "lead",
-      unread: true
-    },
-    {
-      id: 2,
-      title: "Follow-up Reminder",
-      message: "Follow up with John Doe scheduled for today at 3:00 PM",
-      time: "1 hour ago",
-      type: "reminder",
-      unread: true
-    },
-    {
-      id: 3,
-      title: "Quotation Approved",
-      message: "Your quotation #QT-2024-001 has been approved by the client",
-      time: "3 hours ago",
-      type: "success",
-      unread: false
-    },
-    {
-      id: 4,
-      title: "Monthly Target Update",
-      message: "You have achieved 75% of your monthly target",
-      time: "1 day ago",
-      type: "info",
-      unread: false
-    }
-  ];
+  const [notifications, setNotifications] = useState([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [notificationsError, setNotificationsError] = useState(null);
 
-  // Comprehensive notification history data
-  const notificationHistory = [
-    {
-      id: 1,
-      title: "New Lead Assigned",
-      message: "You have been assigned a new lead from Mumbai region",
-      time: "2 minutes ago",
-      type: "lead",
-      unread: true
-    },
-    {
-      id: 2,
-      title: "Follow-up Reminder",
-      message: "Follow up with John Doe scheduled for today at 3:00 PM",
-      time: "1 hour ago",
-      type: "reminder",
-      unread: true
-    },
-    {
-      id: 3,
-      title: "Quotation Approved",
-      message: "Your quotation #QT-2024-001 has been approved by the client",
-      time: "3 hours ago",
-      type: "success",
-      unread: false
-    },
-    {
-      id: 4,
-      title: "Monthly Target Update",
-      message: "You have achieved 75% of your monthly target",
-      time: "1 day ago",
-      type: "info",
-      unread: false
-    },
-    {
-      id: 5,
-      title: "Payment Received",
-      message: "Payment of ₹45,000 received from ABC Corporation",
-      time: "2 days ago",
-      type: "success",
-      unread: false
-    },
-    {
-      id: 6,
-      title: "Meeting Scheduled",
-      message: "Meeting with XYZ Ltd scheduled for tomorrow at 2:00 PM",
-      time: "3 days ago",
-      type: "reminder",
-      unread: false
-    },
-    {
-      id: 7,
-      title: "Lead Converted",
-      message: "Lead from Tech Solutions has been successfully converted",
-      time: "4 days ago",
-      type: "success",
-      unread: false
-    },
-    {
-      id: 8,
-      title: "Quotation Sent",
-      message: "Quotation #QT-2024-002 sent to Global Industries",
-      time: "5 days ago",
-      type: "info",
-      unread: false
-    },
-    {
-      id: 9,
-      title: "Follow-up Completed",
-      message: "Follow-up with Sarah Wilson completed successfully",
-      time: "1 week ago",
-      type: "success",
-      unread: false
-    },
-    {
-      id: 10,
-      title: "New Product Launch",
-      message: "New product catalog has been added to your dashboard",
-      time: "1 week ago",
-      type: "info",
-      unread: false
-    },
-    {
-      id: 11,
-      title: "Target Achievement",
-      message: "Congratulations! You have achieved 90% of your monthly target",
-      time: "2 weeks ago",
-      type: "success",
-      unread: false
-    },
-    {
-      id: 12,
-      title: "Training Reminder",
-      message: "Sales training session scheduled for next Monday",
-      time: "2 weeks ago",
-      type: "reminder",
-      unread: false
-    },
-    {
-      id: 13,
-      title: "Lead Assignment",
-      message: "5 new leads assigned to your territory",
-      time: "3 weeks ago",
-      type: "lead",
-      unread: false
-    },
-    {
-      id: 14,
-      title: "Performance Review",
-      message: "Your monthly performance review is now available",
-      time: "1 month ago",
-      type: "info",
-      unread: false
-    },
-    {
-      id: 15,
-      title: "System Update",
-      message: "CRM system has been updated with new features",
-      time: "1 month ago",
-      type: "info",
-      unread: false
-    }
-  ];
+  const [notificationHistory, setNotificationHistory] = useState([]);
+
+  // Fetch notifications periodically
+  useEffect(() => {
+    let isMounted = true;
+    let intervalId = null;
+
+    const fetchNotifications = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        // Skip polling when not authenticated to avoid 401 spam in dev
+        return;
+      }
+      try {
+        setLoadingNotifications(true);
+        setNotificationsError(null);
+        const res = await fetch('/api/notifications', { headers: { 'Authorization': `Bearer ${token}` } });
+        const json = await res.json();
+        if (!json?.success) throw new Error(json?.message || 'Failed');
+        if (!isMounted) return;
+        setNotifications(json.data.slice(0, 6));
+        setNotificationHistory(json.data);
+      } catch (e) {
+        if (!isMounted) return;
+        setNotificationsError(e.message);
+      } finally {
+        if (isMounted) setLoadingNotifications(false);
+      }
+    };
+
+    fetchNotifications();
+    intervalId = setInterval(fetchNotifications, 30000); // 30s polling
+
+    return () => {
+      isMounted = false;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, []);
 
 
   // Close popups when clicking outside
@@ -216,6 +99,12 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
           title: "Sales Overview",
           subtitle: "Monitor sales performance and metrics"
         };
+      case 'profile':
+        return {
+          icon: <Users className="w-6 h-6 text-white" />,
+          title: "Profile & Attendance",
+          subtitle: "Manage your profile information and track attendance"
+        };
       case 'stock':
         return {
           icon: <Users className="w-6 h-6 text-white" />,
@@ -225,9 +114,39 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
       case 'products':
         return {
           icon: <Users className="w-6 h-6 text-white" />,
-          title: "Toolbar",
-          subtitle: "Browse and manage product catalog"
+          title: "Payment Tracking",
+          subtitle: "Browse and manage all payment tracking"
         };
+      case 'due-payment':
+        return {
+          icon: <Clock className="w-6 h-6 text-white" />,
+          title: "Due Payment",
+          subtitle: "Track and manage due payments"
+        };
+      case 'advance-payment':
+        return {
+          icon: <DollarSign className="w-6 h-6 text-white" />,
+          title: "Advance Payment",
+          subtitle: "Track and manage advance payments"
+        };
+        case 'lead-status':
+          return {
+            icon: <BarChart3 className="w-6 h-6 text-white" />,
+            title: "Lead Status",
+            subtitle: "Manage and track lead status updates"
+          };
+        case 'scheduled-call':
+          return {
+            icon: <Calendar className="w-6 h-6 text-white" />,
+            title: "Scheduled Calls",
+            subtitle: "Manage and track scheduled call appointments"
+          };
+        case 'last-call':
+          return {
+            icon: <Clock className="w-6 h-6 text-white" />,
+            title: "Last Call Activity",
+            subtitle: "Track recent call activities and follow-ups"
+          };
       
       // Follow-up pages with specific titles
       case 'followup-connected':
@@ -323,6 +242,12 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
           icon: <MapPin className="w-6 h-6 text-white" />,
           title: "Customer Visits",
           subtitle: "Plan and track customer visits"
+        };
+      case 'calendar':
+        return {
+          icon: <Calendar className="w-6 h-6 text-white" />,
+          title: "Lead Calendar",
+          subtitle: "View your assigned leads day-wise"
         };
       case 'expenses':
         return {
@@ -481,6 +406,21 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
               {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
           )}
+          {/* Profile Icon - Only for marketing salesperson */}
+          {userType === "marketing-salesperson" && onProfileClick && (
+            <button
+              onClick={onProfileClick}
+              className={`p-2 rounded-lg transition-colors ${
+                currentPage === 'profile' 
+                  ? (isDarkMode ? 'bg-blue-700 text-blue-200' : 'bg-blue-100 text-blue-700')
+                  : (isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100')
+              }`}
+              title="Profile & Attendance"
+            >
+              <User className={`w-5 h-5 ${currentPage === 'profile' ? (isDarkMode ? 'text-blue-200' : 'text-blue-700') : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} />
+            </button>
+          )}
+          
           {/* Notification Bell */}
           <div className="relative" ref={notificationRef}>
             <button 
@@ -492,7 +432,11 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
               }`}
             >
               <Bell className={`w-5 h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
+              {notifications?.length > 0 && (
+                <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-600 text-white text-[10px] leading-[18px] rounded-full text-center">
+                  {Math.min(99, notifications.length)}
+                </div>
+              )}
             </button>
 
             {/* Notification Panel */}

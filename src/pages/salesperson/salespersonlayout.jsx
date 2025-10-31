@@ -4,42 +4,23 @@ import DashboardContent from './salespersondashboard.jsx'
 import CustomerListContent from './salespersonleads.jsx'
 import StockManagement from './salespersonstock.jsx'
 import ProductsPage from './salespersonproducts.jsx'
+import LeadStatusPage from './LeadStatus.jsx'
+import ScheduledCallPage from './ScheduledCall.jsx'
+import LastCallPage from './LastCall.jsx'
+import DuePaymentPage from './DuePayment.jsx'
+import AdvancePaymentPage from './AdvancePayment.jsx'
 import ToolboxInterface from './ToolboxInterface.jsx'
+import NotificationsPage from './Notifications.jsx'
 import MobileLayout from './MOBILE view/MobileLayout.jsx'
 import FixedHeader from '../../Header.jsx'
 
-// Follow Up Components
-import ConnectedFollowUps from './FollowUp/ConnectedFollowUps';
-import NotConnectedFollowUps from './FollowUp/NotConnectedFollowUps';
-import NextMeetingFollowUps from './FollowUp/NextMeetingFollowUps';
-import ConvertedFollowUps from './FollowUp/ConvertedFollowUps';
-import ClosedFollowUps from './FollowUp/ClosedFollowUps';
 import { SharedDataProvider } from './SharedDataContext';
-import { FollowUpDataProvider } from './FollowUp/FollowUpDataContext';
-
-const followUpPages = {
-  'followup-connected': ConnectedFollowUps,
-  'followup-not-connected': NotConnectedFollowUps,
-  'followup-next-meeting': NextMeetingFollowUps,
-  'followup-converted': ConvertedFollowUps,
-  'followup-closed': ClosedFollowUps,
-};
 
 export default function SalespersonLayout({ onLogout }) {
   const [currentPage, setCurrentPage] = useState('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isMobileView, setIsMobileView] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
-  
-  // Set default follow-up page if a follow-up page is loaded directly
-  useEffect(() => {
-    const path = window.location.pathname.split('/').pop();
-    if (path.startsWith('followup-') && followUpPages[path]) {
-      setCurrentPage(path);
-    } else if (path === 'followup') {
-      setCurrentPage('followup-connected');
-    }
-  }, []);
 
   // Auto-detect mobile view based on viewport width (no manual toggle)
   useEffect(() => {
@@ -48,7 +29,6 @@ export default function SalespersonLayout({ onLogout }) {
     window.addEventListener('resize', updateIsMobile);
     return () => window.removeEventListener('resize', updateIsMobile);
   }, []);
-  
   const handleNavigation = (page) => {
     setCurrentPage(page);
     // Update the URL without a page reload
@@ -92,16 +72,13 @@ export default function SalespersonLayout({ onLogout }) {
             {currentPage === 'customers' && <CustomerListContent isDarkMode={isDarkMode} />}
             {currentPage === 'stock' && <StockManagement isDarkMode={isDarkMode} />}
             {currentPage === 'products' && <ProductsPage isDarkMode={isDarkMode} />}
+            {currentPage === 'lead-status' && <LeadStatusPage isDarkMode={isDarkMode} />}
+            {currentPage === 'scheduled-call' && <ScheduledCallPage isDarkMode={isDarkMode} />}
+            {currentPage === 'last-call' && <LastCallPage isDarkMode={isDarkMode} />}
+            {currentPage === 'due-payment' && <DuePaymentPage isDarkMode={isDarkMode} />}
+            {currentPage === 'advance-payment' && <AdvancePaymentPage isDarkMode={isDarkMode} />}
             {currentPage === 'toolbox' && <ToolboxInterface isDarkMode={isDarkMode} />}
-            
-            {/* Render the appropriate follow-up component */}
-            {Object.entries(followUpPages).map(([key, Component]) => (
-              currentPage === key && (
-                <FollowUpDataProvider key={key}>
-                  <Component isDarkMode={isDarkMode} />
-                </FollowUpDataProvider>
-              )
-            ))}
+            {currentPage === 'notifications' && <NotificationsPage isDarkMode={isDarkMode} />}
           </div>
         </div>
       </div>

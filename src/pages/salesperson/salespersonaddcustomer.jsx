@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { X, User, Phone, MessageCircle, Mail, Building2, FileText, MapPin, Globe, Package, Wrench } from "lucide-react"
+import { X, User, Phone, MessageCircle, Mail, Building2, FileText, MapPin, Globe, Package } from "lucide-react"
 
 function Card({ className, children }) {
   return <div className={`rounded-lg border bg-white shadow-sm ${className || ''}`}>{children}</div>
@@ -65,14 +65,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     date: new Date().toISOString().split('T')[0],
     meetingDate: editingCustomer?.meetingDate || '',
     meetingTime: editingCustomer?.meetingTime || '',
-    // Technical Data fields for AB Cable
-    reference: editingCustomer?.reference || "IS 14255:1995",
-    ratedVoltage: editingCustomer?.ratedVoltage || "1100 volts",
-    conductor: editingCustomer?.conductor || "Class-2 as per IS-8130",
-    insulation: editingCustomer?.insulation || "Cross link polythene insulated",
-    messenger: editingCustomer?.messenger || "Aluminium alloy conductor as per IS-398 pt-4",
-    temperatureRange: editingCustomer?.temperatureRange || "-30°C to 90°C",
-    features: editingCustomer?.features || "• UV radiation protected\n• Higher current carrying capacity\n• High temperature range -30°C to 90°C",
   })
 
   const handleInputChange = (field, value) => {
@@ -409,101 +401,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
               />
             </div>
 
-            {/* Technical Data Section - AB Cable Specifications */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Wrench className="h-5 w-5 text-blue-600" />
-                Technical Data
-              </h3>
-              <div className="bg-gray-50 rounded-lg p-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Reference
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.reference || "IS 14255:1995"}
-                      onChange={(e) => handleInputChange("reference", e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter reference standard"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Rated Voltage
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.ratedVoltage || "1100 volts"}
-                      onChange={(e) => handleInputChange("ratedVoltage", e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter rated voltage"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Conductor
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.conductor || "Class-2 as per IS-8130"}
-                      onChange={(e) => handleInputChange("conductor", e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter conductor specification"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Insulation
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.insulation || "Cross link polythene insulated"}
-                      onChange={(e) => handleInputChange("insulation", e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter insulation type"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Messenger
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.messenger || "Aluminium alloy conductor as per IS-398 pt-4"}
-                      onChange={(e) => handleInputChange("messenger", e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter messenger specification"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Temperature Range
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.temperatureRange || "-30°C to 90°C"}
-                      onChange={(e) => handleInputChange("temperatureRange", e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter temperature range"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Features
-                  </label>
-                  <textarea
-                    value={formData.features || "• UV radiation protected\n• Higher current carrying capacity\n• High temperature range -30°C to 90°C"}
-                    onChange={(e) => handleInputChange("features", e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    placeholder="Enter features (one per line)"
-                  />
-                </div>
-              </div>
-            </div>
+            
 
             {/* Form Actions */}
             <div className="flex items-center justify-end gap-3 pt-6 border-t">

@@ -13,7 +13,8 @@ import {
   MapPin,
   ShoppingCart,
   Clock,
-  IndianRupee
+  IndianRupee,
+  User
 } from 'lucide-react';
 
 const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
@@ -54,16 +55,16 @@ const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
       hasDropdown: false
     },
     {
-      id: 'expenses',
-      label: 'Expenses',
-      icon: <IndianRupee className="w-5 h-5" />,
-      hasDropdown: false
-    },
-    {
       id: 'follow-up',
-      label: 'Follow Up',
+      label: 'Lead Status',
       icon: <Clock className="w-5 h-5" />,
       hasDropdown: true
+    },
+    {
+      id: 'calendar',
+      label: 'Calendar',
+      icon: <Calendar className="w-5 h-5" />,
+      hasDropdown: false
     },
     {
       id: 'toolbox',
