@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun, BarChart3, Clock, User } from 'lucide-react';
+import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun, BarChart3, Clock, User, Factory, Wrench } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { useCompany } from './context/CompanyContext';
 
@@ -324,6 +324,77 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
           subtitle: "Update and manage inventory stock levels"
         };
       
+      // Production Department Head pages
+      case 'production-dashboard':
+        return {
+          icon: <Factory className="w-6 h-6 text-white" />,
+          title: "Production Dashboard",
+          subtitle: "Production department performance overview"
+        };
+      case 'production-planning':
+      case 'production-schedule':
+      case 'design-cost':
+      case 'work-orders':
+      case 'capacity-planning':
+      case 'backload-planning':
+        return {
+          icon: <Calendar className="w-6 h-6 text-white" />,
+          title: "Production Planning",
+          subtitle: "Manage schedules, work orders, and capacity"
+        };
+      case 'quality-control':
+      case 'inspection-lots':
+      case 'quality-metrics':
+      case 'non-conformance':
+        return {
+          icon: <CheckCircle className="w-6 h-6 text-white" />,
+          title: "Quality Control",
+          subtitle: "Inspections, metrics, and non-conformance"
+        };
+      case 'production-execution':
+      case 'execution-console':
+      case 'machine-status':
+      case 'operator-performance':
+        return {
+          icon: <Factory className="w-6 h-6 text-white" />,
+          title: "Production Execution",
+          subtitle: "Shop-floor execution and machine status"
+        };
+      case 'maintenance':
+      case 'maintenance-orders':
+      case 'preventive-maintenance':
+      case 'equipment-status':
+        return {
+          icon: <Wrench className="w-6 h-6 text-white" />,
+          title: "Maintenance",
+          subtitle: "Orders, preventive plans, equipment status"
+        };
+      case 'inventory':
+      case 'raw-materials':
+      case 'finished-goods':
+      case 'stock-alerts':
+        return {
+          icon: <Package className="w-6 h-6 text-white" />,
+          title: "Inventory",
+          subtitle: "Materials, finished goods, and alerts"
+        };
+      case 'production-users':
+      case 'operator-performance':
+        return {
+          icon: <Users className="w-6 h-6 text-white" />,
+          title: "Production Staff",
+          subtitle: "Manage production users and roles"
+        };
+      case 'reports':
+      case 'production-reports':
+      case 'efficiency-metrics':
+      case 'cost-analysis':
+        return {
+          icon: <BarChart3 className="w-6 h-6 text-white" />,
+          title: "Reports & Analytics",
+          subtitle: "Production KPIs and cost analysis"
+        };
+
       // Marketing Department Head pages
       case 'marketing-dashboard':
         return {
@@ -390,19 +461,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
             </div>
           )}
           {/* Mobile Toggle Button - Only for salesperson */}
-          {userType === "salesperson" && onToggleMobileView && (
-            <button
-              onClick={onToggleMobileView}
-              className={`p-2 rounded-lg transition-colors ${
-                isMobileView 
-                  ? 'bg-blue-100 text-blue-600' 
-                  : 'hover:bg-gray-100 text-gray-600'
-              }`}
-              title={isMobileView ? 'Switch to Desktop View' : 'Switch to Mobile View'}
-            >
-              <Smartphone className="w-5 h-5" />
-            </button>
-          )}
+          {/* Mobile toggle removed; mobile layout auto-detected via viewport */}
           
           {/* Dark Mode Toggle Button - Only for salesperson */}
           {userType === "salesperson" && onToggleDarkMode && (

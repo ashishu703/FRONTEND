@@ -49,7 +49,26 @@ class ApiClient {
    * Handle API response and errors
    */
   async handleResponse(response) {
-    const data = await response.json();
+    // Gracefully handle empty bodies and non-JSON
+    const contentType = response.headers.get('content-type') || '';
+    const contentLength = response.headers.get('content-length');
+    let data = null;
+    if (response.status === 204 || contentLength === '0') {
+      data = {};
+    } else if (contentType.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch (_) {
+        data = {};
+      }
+    } else {
+      try {
+        const text = await response.text();
+        data = text ? { message: text } : {};
+      } catch (_) {
+        data = {};
+      }
+    }
     
     if (!response.ok) {
       const error = new Error(data.error || 'An error occurred');
