@@ -24,7 +24,8 @@ import { PieChart as RechartsPieChart, Cell, BarChart, Bar, XAxis, YAxis, Cartes
 
 const ProductionHeadDashboard = ({ setActiveView }) => {
   const [selectedProductionLine, setSelectedProductionLine] = useState('All Production Lines');
-  const [dateRange, setDateRange] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [showCharts, setShowCharts] = useState(false);
 
   // Sample data for different production lines
@@ -202,7 +203,7 @@ const ProductionHeadDashboard = ({ setActiveView }) => {
   );
 
   return (
-    <div className="px-6 pt-2 pb-6 space-y-4">
+    <div className="px-6 pb-6 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -212,35 +213,10 @@ const ProductionHeadDashboard = ({ setActiveView }) => {
           </h1>
           <p className="text-gray-600 mt-1">Production department performance overview</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 text-gray-400" />
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-              <span className="text-orange-600 font-semibold text-sm">P</span>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">production@anocab.com</p>
-              <p className="text-xs text-gray-500">DEPARTMENT HEAD</p>
-            </div>
-          </div>
-        </div>
+        {/* Remove duplicate identity block; global header already shows user info */}
       </div>
 
-      {/* Dashboard Card */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-50 rounded-lg">
-            <BarChart3 className="w-5 h-5 text-blue-600" />
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-gray-900">Dashboard</h3>
-            <p className="text-xs text-gray-500">Monitor performance and metrics</p>
-          </div>
-        </div>
-      </div>
+      {/* Removed redundant dashboard card to reduce noise */}
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
@@ -259,23 +235,33 @@ const ProductionHeadDashboard = ({ setActiveView }) => {
           </div>
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
-            <input
-              type="text"
-              placeholder="Select date range"
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                aria-label="Start date"
+              />
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                aria-label="End date"
+              />
+            </div>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => setShowCharts(!showCharts)}
               className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
+              aria-pressed={showCharts}
             >
               <BarChart3 className="w-4 h-4" />
-              Show Charts
+              {showCharts ? 'Hide Charts' : 'Show Charts'}
             </button>
-            <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors" aria-label="Refresh dashboard data">
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>

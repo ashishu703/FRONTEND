@@ -1,79 +1,78 @@
-import React, { useState } from 'react';
-import { Factory, Activity, Settings, Users, Play, Pause, Square, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Factory, Activity, Settings, Play, Pause, Square, Plus } from 'lucide-react';
 
 const ProductionExecution = ({ activeView, setActiveView }) => {
   const [selectedTab, setSelectedTab] = useState(activeView || 'execution-console');
 
   const tabs = [
-    { id: 'execution-console', label: 'Execution Console', icon: <Activity className="w-4 h-4" /> },
-    { id: 'machine-status', label: 'Machine Status', icon: <Settings className="w-4 h-4" /> },
-    { id: 'operator-performance', label: 'Operator Performance', icon: <Users className="w-4 h-4" /> }
+    { id: 'execution-console', label: 'Daily Machine Report', icon: <Activity className="w-4 h-4" /> },
+    { id: 'machine-status', label: 'Machine Status', icon: <Settings className="w-4 h-4" /> }
   ];
+
+
+  useEffect(() => {
+    if (activeView && tabs.some(t => t.id === activeView)) {
+      setSelectedTab(activeView);
+    }
+  }, [activeView]);
 
   const renderExecutionConsole = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-gray-900">Production Execution Console</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Daily Machine Report</h2>
         <button className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2">
           <Plus className="w-4 h-4" />
-          Start New Order
+          Export CSV
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Production Lines</h3>
-          <div className="space-y-4">
-            {[
-              { line: 'Line 1 - Assembly', status: 'Running', progress: 75, speed: 'Normal' },
-              { line: 'Line 2 - Packaging', status: 'Running', progress: 60, speed: 'High' },
-              { line: 'Line 3 - Quality Control', status: 'Stopped', progress: 0, speed: 'Stopped' },
-              { line: 'Line 4 - Finishing', status: 'Running', progress: 90, speed: 'Normal' }
-            ].map((line, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium">{line.line}</span>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    line.status === 'Running' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {line.status}
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                  <div 
-                    className="bg-orange-600 h-2 rounded-full" 
-                    style={{ width: `${line.progress}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>Progress: {line.progress}%</span>
-                  <span>Speed: {line.speed}</span>
-                </div>
-              </div>
-            ))}
+      {/* Shift Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[{ label: 'Total Runtime', value: '19.5 h' }, { label: 'Total Downtime', value: '2.1 h' }, { label: 'Total Output', value: '3,450 pcs' }, { label: 'Scrap', value: '1.8 %' }].map((kpi, idx) => (
+          <div key={idx} className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-xs text-gray-500">{kpi.label}</p>
+            <p className="text-2xl font-semibold text-gray-900">{kpi.value}</p>
           </div>
-        </div>
+        ))}
+      </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 flex flex-col items-center gap-2">
-              <Play className="w-6 h-6 text-green-600" />
-              <span className="text-sm font-medium">Start All Lines</span>
-            </button>
-            <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 flex flex-col items-center gap-2">
-              <Pause className="w-6 h-6 text-yellow-600" />
-              <span className="text-sm font-medium">Pause All Lines</span>
-            </button>
-            <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 flex flex-col items-center gap-2">
-              <Square className="w-6 h-6 text-red-600" />
-              <span className="text-sm font-medium">Stop All Lines</span>
-            </button>
-            <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 flex flex-col items-center gap-2">
-              <Settings className="w-6 h-6 text-blue-600" />
-              <span className="text-sm font-medium">Settings</span>
-            </button>
-          </div>
+      {/* Machine Report Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Machine</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shift</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Runtime (h)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Downtime (h)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Output (pcs)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scrap %</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">OEE %</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Primary Operator</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {[
+                { name: 'Assembly Machine 1', shift: 'Day', runtime: 7.5, downtime: 0.5, output: 980, scrap: 1.2, oee: 86, operator: 'Ravi K.', notes: 'Normal operation' },
+                { name: 'Packaging Machine 2', shift: 'Day', runtime: 6.0, downtime: 1.2, output: 820, scrap: 2.5, oee: 78, operator: 'Priya S.', notes: 'Intermittent jams' },
+                { name: 'Finishing Machine 1', shift: 'Night', runtime: 6.0, downtime: 0.4, output: 920, scrap: 1.6, oee: 84, operator: 'Amit K.', notes: 'All good' }
+              ].map((row, index) => (
+                <tr key={index} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.shift}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.runtime}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.downtime}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.output}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.scrap}%</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.oee}%</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.operator}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.notes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -114,46 +113,6 @@ const ProductionExecution = ({ activeView, setActiveView }) => {
     </div>
   );
 
-  const renderOperatorPerformance = () => (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-gray-900">Operator Performance</h2>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Operator</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shift</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Efficiency</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quality Score</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {[
-              { name: 'John Smith', shift: 'Day', efficiency: 92, quality: 98, status: 'Active' },
-              { name: 'Jane Doe', shift: 'Day', efficiency: 88, quality: 95, status: 'Active' },
-              { name: 'Mike Johnson', shift: 'Night', efficiency: 85, quality: 97, status: 'Active' },
-              { name: 'Sarah Wilson', shift: 'Night', efficiency: 90, quality: 96, status: 'Break' }
-            ].map((operator, index) => (
-              <tr key={index} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{operator.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{operator.shift}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{operator.efficiency}%</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{operator.quality}%</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    operator.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {operator.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
 
   return (
     <div className="p-6">
@@ -186,7 +145,6 @@ const ProductionExecution = ({ activeView, setActiveView }) => {
 
       {selectedTab === 'execution-console' && renderExecutionConsole()}
       {selectedTab === 'machine-status' && renderMachineStatus()}
-      {selectedTab === 'operator-performance' && renderOperatorPerformance()}
     </div>
   );
 };

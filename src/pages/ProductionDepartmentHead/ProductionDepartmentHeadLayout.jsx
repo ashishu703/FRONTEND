@@ -45,7 +45,7 @@ export default function ProductionDepartmentHeadLayout({ onLogout, activeView, s
   }
 
   return (
-    <div className={`min-h-screen relative transition-colors ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen relative transition-colors flex ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <ProductionDepartmentHeadSidebar
         onLogout={onLogout}
         activeView={activeView}
@@ -54,7 +54,7 @@ export default function ProductionDepartmentHeadLayout({ onLogout, activeView, s
         setSidebarOpen={setSidebarOpen}
         isDarkMode={isDarkMode}
       />
-      <div className={sidebarOpen ? "flex-1 ml-64 transition-all duration-300" : "flex-1 ml-16 transition-all duration-300"}>
+      <div className={sidebarOpen ? "flex-1 transition-all duration-300 min-w-0" : "flex-1 transition-all duration-300 min-w-0"}>
         <FixedHeader
           userType="productiondepartmenthead"
           currentPage={activeView}

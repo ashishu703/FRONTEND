@@ -50,9 +50,21 @@ const ProductionDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }
       icon: <Calendar className="w-5 h-5" />,
       hasDropdown: true,
       dropdownItems: [
-        { id: 'production-schedule', label: 'Production Schedule', icon: <Clock className="w-4 h-4" /> },
+        { id: 'production-schedule', label: 'Sales Orders', icon: <Clock className="w-4 h-4" /> },
+        { id: 'design-cost', label: 'Design & Cost', icon: <DollarSign className="w-4 h-4" /> },
         { id: 'work-orders', label: 'Work Orders', icon: <FileText className="w-4 h-4" /> },
-        { id: 'capacity-planning', label: 'Capacity Planning', icon: <Target className="w-4 h-4" /> }
+        { id: 'capacity-planning', label: 'Shop Floor', icon: <Target className="w-4 h-4" /> },
+        { id: 'backload-planning', label: 'Backload Planning', icon: <Clock className="w-4 h-4" /> }
+      ]
+    },
+    {
+      id: 'production-execution',
+      label: 'Production Execution',
+      icon: <Factory className="w-5 h-5" />,
+      hasDropdown: true,
+      dropdownItems: [
+        { id: 'execution-console', label: 'Daily Machine Report', icon: <Activity className="w-4 h-4" /> },
+        { id: 'machine-status', label: 'Machine Status', icon: <Settings className="w-4 h-4" /> }
       ]
     },
     {
@@ -64,17 +76,6 @@ const ProductionDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }
         { id: 'inspection-lots', label: 'Inspection Lots', icon: <Package className="w-4 h-4" /> },
         { id: 'quality-metrics', label: 'Quality Metrics', icon: <TrendingUp className="w-4 h-4" /> },
         { id: 'non-conformance', label: 'Non-Conformance', icon: <AlertTriangle className="w-4 h-4" /> }
-      ]
-    },
-    {
-      id: 'production-execution',
-      label: 'Production Execution',
-      icon: <Factory className="w-5 h-5" />,
-      hasDropdown: true,
-      dropdownItems: [
-        { id: 'execution-console', label: 'Execution Console', icon: <Activity className="w-4 h-4" /> },
-        { id: 'machine-status', label: 'Machine Status', icon: <Settings className="w-4 h-4" /> },
-        { id: 'operator-performance', label: 'Operator Performance', icon: <Users className="w-4 h-4" /> }
       ]
     },
     {
@@ -103,7 +104,11 @@ const ProductionDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }
       id: 'production-users',
       label: 'Production Staff',
       icon: <Users className="w-5 h-5" />,
-      hasDropdown: false
+      hasDropdown: true,
+      dropdownItems: [
+        { id: 'production-users', label: 'Staff Members', icon: <Users className="w-4 h-4" /> },
+        { id: 'operator-performance', label: 'Operator Performance', icon: <Users className="w-4 h-4" /> }
+      ]
     },
     {
       id: 'reports',
@@ -119,7 +124,7 @@ const ProductionDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }
   ];
 
   return (
-    <div className={`bg-white shadow-lg transition-all duration-300 ${isExpanded ? 'w-64' : 'w-16'} h-screen flex flex-col border-r border-gray-200`}>
+    <div className={`bg-white shadow-lg transition-all duration-300 ${isExpanded ? 'w-64' : 'w-16'} h-screen flex flex-col border-r border-gray-200 overflow-y-auto overflow-x-hidden shrink-0`}>
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
