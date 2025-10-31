@@ -94,6 +94,15 @@ class DepartmentHeadService {
   async updateLead(id, payload) {
     return apiClient.put(API_ENDPOINTS.LEAD_BY_ID(id), payload);
   }
+
+  // Proforma Invoices
+  async getAllPendingPIs() {
+    return apiClient.get('/api/proforma-invoices/pending');
+  }
+
+  async getAllPIs() {
+    return apiClient.get('/api/proforma-invoices/all');
+  }
 }
 
 const departmentHeadService = new DepartmentHeadService();

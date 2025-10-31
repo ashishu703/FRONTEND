@@ -210,14 +210,14 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                 <strong>Valid Upto</strong>
               </div>
               <div>
-                <strong>Voucher Number</strong>
+                <strong>Quotation Number</strong>
               </div>
             </div>
             <div className="grid grid-cols-4 gap-2 p-2 text-xs">
               <div>{new Date().toLocaleDateString()}</div>
               <div>PI-{new Date().getFullYear()}-{String(new Date().getMonth() + 1).padStart(2, '0')}-{String(Math.floor(Math.random() * 1000)).padStart(3, '0')}</div>
               <div>{new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
-              <div>VOUCH-{String(Math.floor(Math.random() * 10000)).padStart(4, '0')}</div>
+              <div>{selectedQuotation?.quotationNumber || 'N/A'}</div>
             </div>
           </div>
 
@@ -246,18 +246,34 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                 )}
               </div>
               <div>
-                <p>
-                  <strong>L.R. No:</strong> -
-                </p>
-                <p>
-                  <strong>Transport:</strong> STAR TRANSPORTS
-                </p>
-                <p>
-                  <strong>Transport ID:</strong> 562345
-                </p>
-                <p>
-                  <strong>Vehicle Number:</strong> GJ01HJ2520
-                </p>
+                {(() => {
+                  const sd = (selectedQuotation && selectedQuotation.shippingDetails) || {}
+                  const dm = selectedQuotation?.dispatchMode
+                  const na = 'N/A'
+                  return (
+                    <div className="space-y-1">
+                      <p><strong>L.R. No:</strong> {sd.lrNo || na}</p>
+                      <p><strong>Transport:</strong> {sd.transportName || billTo.transport || na}</p>
+                      <p><strong>Transport ID:</strong> {sd.transportId || na}</p>
+                      <p><strong>Vehicle Number:</strong> {sd.vehicleNumber || na}</p>
+                      {dm === 'BY COURIER' && (
+                        <>
+                          <p><strong>Courier:</strong> {sd.courierName || na}</p>
+                          <p><strong>Consignment No:</strong> {sd.consignmentNo || na}</p>
+                        </>
+                      )}
+                      {dm === 'BY HAND' && (
+                        <p><strong>By Hand:</strong> {sd.byHand || 'Self'}</p>
+                      )}
+                      {(dm === 'BY TRAIN' || dm === 'BY BUS') && (
+                        <>
+                          <p><strong>Carrier:</strong> {sd.carrierName || na}</p>
+                          <p><strong>Number:</strong> {sd.carrierNumber || na}</p>
+                        </>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           </div>
@@ -278,7 +294,7 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                 </tr>
               </thead>
               <tbody>
-                {Array.isArray(items) && items.length > 0 ? (
+                {Array.isArray(items) && items.length > 0 && (
                   items.map((item, index) => (
                     <tr key={index}>
                       <td className="border border-gray-300 p-1 text-center">{index + 1}</td>
@@ -292,18 +308,6 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                       <td className="border border-gray-300 p-1 text-right">{parseFloat((item.amount ?? item.total ?? 0) * (item.gstMultiplier ?? 1.18)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                     </tr>
                   ))
-                ) : (
-                  <tr>
-                    <td className="border border-gray-300 p-1 text-center">1</td>
-                    <td className="border border-gray-300 p-2">cable</td>
-                    <td className="border border-gray-300 p-1 text-center">85446090</td>
-                    <td className="border border-gray-300 p-1 text-center">1</td>
-                    <td className="border border-gray-300 p-1 text-center">Nos</td>
-                    <td className="border border-gray-300 p-1 text-right">100.00</td>
-                    <td className="border border-gray-300 p-1 text-right">100.00</td>
-                    <td className="border border-gray-300 p-0 text-center text-xs">18%</td>
-                    <td className="border border-gray-300 p-1 text-right">118.00</td>
-                  </tr>
                 )}
 
                 {Array.from({ length: 8 }).map((_, i) => (

@@ -59,12 +59,14 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     leadSource: editingCustomer?.enquiryBy || "",
     salesStatus: editingCustomer?.salesStatus || 'pending',
     salesStatusRemark: editingCustomer?.salesStatusRemark || '',
+    followUpStatus: editingCustomer?.followUpStatus || '',
+    followUpRemark: editingCustomer?.followUpRemark || '',
+    followUpDate: editingCustomer?.followUpDate || '',
+    followUpTime: editingCustomer?.followUpTime || '',
     callDurationSeconds: editingCustomer?.callDurationSeconds || '',
     callRecordingFile: null,
     transferredTo: editingCustomer?.transferredTo || '',
     date: new Date().toISOString().split('T')[0],
-    meetingDate: editingCustomer?.meetingDate || '',
-    meetingTime: editingCustomer?.meetingTime || '',
   })
 
   const handleInputChange = (field, value) => {
@@ -325,8 +327,33 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
               </div>
             </div>
 
-            {/* Sales Status */}
+            {/* Follow Up + Sales Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <User className="h-4 w-4 text-amber-600" />
+                  Follow Up Status
+                </label>
+                <select
+                  value={formData.followUpStatus}
+                  onChange={(e) => handleInputChange('followUpStatus', e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select Follow Up Status</option>
+                  <option value="Appointment Scheduled">Appointment Scheduled</option>
+                  <option value="Next Meeting">Next Meeting</option>
+                  <option value="Not Interested">Not Interested</option>
+                  <option value="Interested">Interested</option>
+                  <option value="Quotation Sent">Quotation Sent</option>
+                  <option value="Negotiation">Negotiation</option>
+                  <option value="Close Order">Close Order</option>
+                  <option value="Closed/Lost">Closed/Lost</option>
+                  <option value="Call Back Request">Call Back Request</option>
+                  <option value="Unreachable/Call Not Connected">Unreachable/Call Not Connected</option>
+                  <option value="Currently Not Required">Currently Not Required</option>
+                  <option value="Not Relevant">Not Relevant</option>
+                </select>
+              </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   <User className="h-4 w-4 text-blue-600" />
@@ -338,28 +365,26 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="pending">Pending</option>
-                  <option value="running">Running</option>
-                  <option value="converted">Converted</option>
-                  <option value="lost_closed">Lost/Closed</option>
-                  <option value="interested">Interested</option>
-                  <option value="win_converted">Win - CONVERTED</option>
+                  <option value="connected">Connected</option>
+                  <option value="not_connected">Not Connected</option>
+                  <option value="follow_up">Follow Up</option>
+                  <option value="not_interested">Not Interested</option>
                   <option value="next_meeting">Next Meeting</option>
+                  <option value="closed">Closed</option>
                 </select>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  {formData.salesStatus === 'other' ? 'Please specify status' : 
-                   formData.salesStatus === 'next_meeting' ? 'Meeting Date & Time' : 
-                   'Remark for sales status'}
-                </label>
-                {formData.salesStatus === 'next_meeting' ? (
+
+              {/* Follow Up Date & Time - Shows for specific statuses */}
+              {formData.followUpStatus && ['Appointment Scheduled', 'Next Meeting', 'Interested', 'Quotation Sent', 'Negotiation', 'Call Back Request'].includes(formData.followUpStatus) && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Follow Up Date & Time</label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs text-gray-500 mb-1 block">Date</label>
                       <input
                         type="date"
-                        value={formData.meetingDate || ''}
-                        onChange={(e) => handleInputChange("meetingDate", e.target.value)}
+                        value={formData.followUpDate || ''}
+                        onChange={(e) => handleInputChange("followUpDate", e.target.value)}
                         className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -367,21 +392,37 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                       <label className="text-xs text-gray-500 mb-1 block">Time</label>
                       <input
                         type="time"
-                        value={formData.meetingTime || ''}
-                        onChange={(e) => handleInputChange("meetingTime", e.target.value)}
+                        value={formData.followUpTime || ''}
+                        onChange={(e) => handleInputChange("followUpTime", e.target.value)}
                         className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
-                ) : (
-                  <textarea
-                    value={formData.salesStatusRemark}
-                    onChange={(e) => handleInputChange("salesStatusRemark", e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    placeholder={formData.salesStatus === 'other' ? 'Please specify sales status' : 'Remark for sales status'}
-                  />
-                )}
+                </div>
+              )}
+
+              {/* Follow Up Remark */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Follow Up Remark</label>
+                <textarea
+                  value={formData.followUpRemark}
+                  onChange={(e) => handleInputChange("followUpRemark", e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  placeholder="Enter remark for follow up status"
+                />
+              </div>
+
+              {/* Sales Status Remark */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Sales Status Remark</label>
+                <textarea
+                  value={formData.salesStatusRemark}
+                  onChange={(e) => handleInputChange("salesStatusRemark", e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  placeholder="Enter remark for sales status"
+                />
               </div>
             </div>
 

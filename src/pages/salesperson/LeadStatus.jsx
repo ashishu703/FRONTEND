@@ -4,10 +4,47 @@ import React, { useState, useEffect } from 'react';
 import { Eye, Edit, MessageCircle, Mail, Search, Filter, Download, ChevronDown, X, Save, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, FileText, Receipt, CreditCard } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
+import quotationService from '../../api/admin_api/quotationService';
+import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 
 // Lead Status Preview Modal Component
 const LeadStatusPreview = ({ lead, onClose }) => {
   if (!lead) return null;
+
+  const [latestQuotation, setLatestQuotation] = useState(null);
+  const [latestPI, setLatestPI] = useState(null);
+  const [payments, setPayments] = useState([]);
+  const [paymentSummary, setPaymentSummary] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadDocs() {
+      try {
+        if (!lead?.id) return;
+        const qRes = await quotationService.getQuotationsByCustomer(lead.id);
+        const qList = (qRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        const q = qList[0] || null;
+        if (!cancelled) setLatestQuotation(q);
+        if (q?.id) {
+          const piRes = await proformaInvoiceService.getPIsByQuotation(q.id);
+          const piList = (piRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          if (!cancelled) setLatestPI(piList[0] || null);
+          const payRes = await apiClient.get(`/api/payments/quotation/${q.id}`);
+          if (!cancelled) setPayments(payRes?.data || []);
+          const sumRes = await apiClient.get(`/api/quotations/${q.id}/summary`);
+          if (!cancelled) setPaymentSummary(sumRes?.data || null);
+        } else if (!cancelled) {
+          setLatestPI(null);
+          setPayments([]);
+          setPaymentSummary(null);
+        }
+      } catch (e) {
+        console.warn('Failed to load quotation/PI for lead preview', e);
+      }
+    }
+    loadDocs();
+    return () => { cancelled = true; };
+  }, [lead?.id]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-end z-50">
@@ -175,13 +212,17 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                   <div className="bg-white border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <h5 className="font-medium text-gray-900">Quotation Status</h5>
-                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">
-                        PENDING
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                        (latestQuotation?.status || '').toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
+                        (latestQuotation?.status || '').toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
+                        (latestQuotation?.status ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800')
+                      }`}>
+                        {(latestQuotation?.status || 'PENDING').toUpperCase()}
                       </span>
                     </div>
                     <div className="text-sm text-gray-600">
-                      <div>Date: N/A</div>
-                      <div>Time: N/A</div>
+                      <div>Date: {latestQuotation?.quotation_date ? new Date(latestQuotation.quotation_date).toLocaleDateString('en-GB') : 'N/A'}</div>
+                      <div>No.: {latestQuotation?.quotation_number || 'N/A'}</div>
                     </div>
                   </div>
                 </div>
@@ -196,13 +237,17 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                   <div className="bg-white border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <h5 className="font-medium text-gray-900">PI Status</h5>
-                      <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded">
-                        PENDING
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                        (latestPI?.status || '').toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
+                        (latestPI?.status || '').toLowerCase() === 'pending_approval' ? 'bg-yellow-100 text-yellow-800' :
+                        (latestPI?.status ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800')
+                      }`}>
+                        {(latestPI?.status || 'PENDING').toUpperCase()}
                       </span>
                     </div>
                     <div className="text-sm text-gray-600">
-                      <div>Date: N/A</div>
-                      <div>Time: N/A</div>
+                      <div>Date: {latestPI?.created_at ? new Date(latestPI.created_at).toLocaleDateString('en-GB') : 'N/A'}</div>
+                      <div>No.: {latestPI?.pi_number || 'N/A'}</div>
                     </div>
                   </div>
                 </div>
@@ -217,12 +262,49 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                   <div className="bg-white border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <h5 className="font-medium text-gray-900">Payment Status</h5>
-                      <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded">
-                        PENDING
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                        paymentSummary && paymentSummary.remaining <= 0 ? 'bg-green-100 text-green-800' :
+                        paymentSummary && paymentSummary.paid > 0 ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {paymentSummary && paymentSummary.remaining <= 0 ? 'COMPLETED' :
+                         paymentSummary && paymentSummary.paid > 0 ? 'PARTIAL' : 'PENDING'}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      <div>Amount: N/A</div>
+                    <div className="text-sm text-gray-600 space-y-2">
+                      {paymentSummary && (
+                        <>
+                          <div className="font-medium text-gray-900">Total: ₹{Number(paymentSummary.total || 0).toLocaleString('en-IN')}</div>
+                          <div className="text-green-700">Paid: ₹{Number(paymentSummary.paid || 0).toLocaleString('en-IN')}</div>
+                          <div className="text-red-700">Due: ₹{Number(paymentSummary.remaining || 0).toLocaleString('en-IN')}</div>
+                          {payments.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <div className="font-medium text-gray-700 mb-2 text-xs">Payment History:</div>
+                              {payments.map((payment, idx) => (
+                                <div key={payment.id} className="text-xs mb-1.5 p-2 bg-gray-50 rounded">
+                                  <div className="flex justify-between">
+                                    <span className="font-medium">Advance Payment #{idx + 1}</span>
+                                    <span className="text-green-700 font-medium">₹{Number(payment.installment_amount || 0).toLocaleString('en-IN')}</span>
+                                  </div>
+                                  <div className="text-gray-500 mt-0.5">
+                                    Method: {payment.payment_method || 'N/A'}
+                                  </div>
+                                  <div className="text-gray-500">
+                                    Date: {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-GB') : 'N/A'}
+                                  </div>
+                                  {payment.quotation_number && (
+                                    <div className="text-gray-500">Quotation: {payment.quotation_number}</div>
+                                  )}
+                                  {payment.pi_number && (
+                                    <div className="text-gray-500">PI: {payment.pi_number}</div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {!paymentSummary && <div>No payment data available</div>}
                     </div>
                   </div>
                 </div>
@@ -448,6 +530,8 @@ export default function LeadStatusPage() {
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [followUpFilter, setFollowUpFilter] = useState('');
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
 
   // Fetch leads data
   useEffect(() => {
@@ -472,18 +556,36 @@ export default function LeadStatusPage() {
     fetchLeads();
   }, []);
 
+  // Close filter panel when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showFilterPanel && !event.target.closest('.filter-panel-container')) {
+        setShowFilterPanel(false);
+      }
+    };
+
+    if (showFilterPanel) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showFilterPanel]);
+
   // Handle search
   const handleSearch = (query) => {
     setSearchQuery(query);
     
     if (!query.trim()) {
-      setFilteredLeads(leads);
+      // When search is cleared, apply existing filters
+      applyFilters(statusFilter, followUpFilter);
       setCurrentPage(1);
       return;
     }
     
     const lowercasedQuery = query.toLowerCase();
-    const filtered = leads.filter(
+    let filtered = leads.filter(
       (lead) =>
         lead.name?.toLowerCase().includes(lowercasedQuery) ||
         lead.phone?.toLowerCase().includes(lowercasedQuery) ||
@@ -496,6 +598,15 @@ export default function LeadStatusPage() {
         lead.follow_up_status?.toLowerCase().includes(lowercasedQuery) ||
         lead.id?.toString().includes(lowercasedQuery)
     );
+    
+    // Apply filters on top of search results
+    if (statusFilter) {
+      filtered = filtered.filter(lead => lead.sales_status === statusFilter);
+    }
+    if (followUpFilter) {
+      filtered = filtered.filter(lead => lead.follow_up_status === followUpFilter);
+    }
+    
     setFilteredLeads(filtered);
     setCurrentPage(1);
   };
@@ -503,20 +614,59 @@ export default function LeadStatusPage() {
   // Handle status filter
   const handleStatusFilter = (status) => {
     setStatusFilter(status);
-    
-    if (!status) {
-      setFilteredLeads(leads);
-    } else {
-      const filtered = leads.filter(lead => lead.sales_status === status);
-      setFilteredLeads(filtered);
-    }
+    applyFilters(status, followUpFilter);
     setCurrentPage(1);
+  };
+
+  // Handle follow-up filter
+  const handleFollowUpFilter = (followUp) => {
+    setFollowUpFilter(followUp);
+    applyFilters(statusFilter, followUp);
+    setCurrentPage(1);
+  };
+
+  // Apply both filters
+  const applyFilters = (status, followUp) => {
+    let filtered = leads;
+    
+    // Apply search query first if exists
+    if (searchQuery.trim()) {
+      const lowercasedQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (lead) =>
+          lead.name?.toLowerCase().includes(lowercasedQuery) ||
+          lead.phone?.toLowerCase().includes(lowercasedQuery) ||
+          lead.email?.toLowerCase().includes(lowercasedQuery) ||
+          lead.business?.toLowerCase().includes(lowercasedQuery) ||
+          lead.address?.toLowerCase().includes(lowercasedQuery) ||
+          lead.product_type?.toLowerCase().includes(lowercasedQuery) ||
+          lead.lead_source?.toLowerCase().includes(lowercasedQuery) ||
+          lead.sales_status?.toLowerCase().includes(lowercasedQuery) ||
+          lead.follow_up_status?.toLowerCase().includes(lowercasedQuery) ||
+          lead.id?.toString().includes(lowercasedQuery)
+      );
+    }
+    
+    // Apply sales status filter
+    if (status) {
+      filtered = filtered.filter(lead => lead.sales_status?.toLowerCase() === status.toLowerCase());
+    }
+    
+    // Apply follow-up status filter
+    if (followUp) {
+      filtered = filtered.filter(lead => {
+        const leadFollowUp = lead.follow_up_status?.toLowerCase() || '';
+        return leadFollowUp === followUp.toLowerCase();
+      });
+    }
+    
+    setFilteredLeads(filtered);
   };
 
   // Handle lead status update
   const handleUpdateLeadStatus = async (leadId, statusData) => {
     try {
-      const response = await apiClient.put(`/api/leads/${leadId}/status`, statusData);
+      const response = await apiClient.put(`/api/leads/assigned/salesperson/lead/${leadId}`, statusData);
       
       if (response.success) {
         // Update the leads list
@@ -661,22 +811,104 @@ export default function LeadStatusPage() {
             </div>
           </div>
 
-          {/* Right side - Filters */}
-          <div className="flex items-center gap-3">
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => handleStatusFilter(e.target.value)}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          {/* Right side - Filter Button */}
+          <div className="flex items-center gap-3 relative filter-panel-container">
+            {/* Filter Button */}
+            <button
+              onClick={() => setShowFilterPanel(!showFilterPanel)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                statusFilter || followUpFilter
+                  ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
             >
-              <option value="">All Lead Status</option>
-              <option value="pending">Pending</option>
-              <option value="running">Running</option>
-              <option value="converted">Converted</option>
-              <option value="lost/closed">Lost/Closed</option>
-              <option value="interested">Interested</option>
-              <option value="win lead">Win Lead</option>
-            </select>
+              <Filter className="h-4 w-4" />
+              <span className="text-sm font-medium">Filters</span>
+              {(statusFilter || followUpFilter) && (
+                <span className="ml-1 px-2 py-0.5 bg-white text-blue-600 rounded-full text-xs font-semibold">
+                  {[statusFilter, followUpFilter].filter(Boolean).length}
+                </span>
+              )}
+            </button>
+
+            {/* Filter Panel */}
+            {showFilterPanel && (
+              <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                <div className="p-4">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-gray-900">Filter Leads</h3>
+                    {(statusFilter || followUpFilter) && (
+                      <button
+                        onClick={() => {
+                          setStatusFilter('');
+                          setFollowUpFilter('');
+                          applyFilters('', '');
+                        }}
+                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Lead Status Filter */}
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      Lead Status
+                    </label>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => handleStatusFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">All Lead Status</option>
+                      <option value="pending">Pending</option>
+                      <option value="running">Running</option>
+                      <option value="converted">Converted</option>
+                      <option value="lost/closed">Lost/Closed</option>
+                      <option value="interested">Interested</option>
+                      <option value="win lead">Win Lead</option>
+                    </select>
+                  </div>
+
+                  {/* Follow Up Status Filter */}
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      Follow Up Status
+                    </label>
+                    <select
+                      value={followUpFilter}
+                      onChange={(e) => handleFollowUpFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">All Follow Up Status</option>
+                      <option value="pending">Pending</option>
+                      <option value="next meeting">Next Meeting</option>
+                      <option value="appointment scheduled">Appointment Scheduled</option>
+                      <option value="not interested">Not Interested</option>
+                      <option value="interested">Interested</option>
+                      <option value="quotation sent">Quotation Sent</option>
+                      <option value="negotiation">Negotiation</option>
+                      <option value="close order">Close Order</option>
+                      <option value="closed/lost">Closed/Lost</option>
+                      <option value="call back request">Call Back Request</option>
+                      <option value="unreachable/call not connected">Unreachable/Call Not Connected</option>
+                      <option value="currently not required">Currently Not Required</option>
+                      <option value="not relevant">Not Relevant</option>
+                    </select>
+                  </div>
+
+                  {/* Apply Button */}
+                  <button
+                    onClick={() => setShowFilterPanel(false)}
+                    className="w-full px-4 py-2 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
+                  >
+                    Apply Filters
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

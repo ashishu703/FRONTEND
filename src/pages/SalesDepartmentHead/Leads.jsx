@@ -7,9 +7,11 @@ import {
 import html2pdf from 'html2pdf.js';
 import AddCustomerModal from './AddCustomerModal';
 import QuotationPreview from '../../components/QuotationPreview';
+import PIPreviewModal from '../salesperson/PIPreviewModal';
 import departmentHeadService from '../../api/admin_api/departmentHeadService';
 import departmentUserService from '../../api/admin_api/departmentUserService';
 import quotationService from '../../api/admin_api/quotationService';
+import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import apiErrorHandler from '../../utils/ApiErrorHandler';
 import toastManager from '../../utils/ToastManager';
 
@@ -80,6 +82,11 @@ const LeadsSimplified = () => {
   const [loadingQuotations, setLoadingQuotations] = useState(false);
   const [showQuotationModal, setShowQuotationModal] = useState(false);
   const [selectedQuotation, setSelectedQuotation] = useState(null);
+  const [proformaInvoices, setProformaInvoices] = useState([]);
+  const [loadingPIs, setLoadingPIs] = useState(false);
+  const [showPIPreview, setShowPIPreview] = useState(false);
+  const [piPreviewData, setPiPreviewData] = useState(null);
+  const [selectedPIBranch, setSelectedPIBranch] = useState('ANODE');
 
   // Company branches configuration (same as salesperson)
   const companyBranches = {
@@ -377,10 +384,6 @@ const LeadsSimplified = () => {
         // Force a reflow to ensure content is rendered
         tempDiv.offsetHeight;
         
-        // Debug: Check if content is actually there
-        console.log('Content length:', tempDiv.innerHTML.length);
-        console.log('Content preview:', tempDiv.innerHTML.substring(0, 200));
-        
         // Use html2pdf to generate PDF with better settings
         try {
           const opt = {
@@ -410,9 +413,7 @@ const LeadsSimplified = () => {
             }
           };
           
-          console.log('Starting PDF generation...');
           await html2pdf().set(opt).from(tempDiv).save();
-          console.log('PDF generation completed');
           toastManager.success('PDF downloaded successfully');
         } catch (error) {
           console.error('PDF generation error:', error);
@@ -735,6 +736,16 @@ const LeadsSimplified = () => {
     }));
   };
 
+  // Treat literal strings like 'Unassigned' or 'N/A' as not assigned
+  const isValueAssigned = (val) => {
+    if (!val) return false;
+    const s = String(val).trim().toLowerCase();
+    return s !== 'unassigned' && s !== 'n/a' && s !== 'na' && s !== '-';
+  };
+
+  const isLeadAssigned = (lead) =>
+    isValueAssigned(lead.assignedSalesperson) || isValueAssigned(lead.assignedTelecaller);
+
   const resetColumns = () => {
     setVisibleColumns({
       customerId: false,
@@ -776,18 +787,18 @@ const LeadsSimplified = () => {
     }
     // Only select leads that are not already assigned
     const ids = filteredLeads
-      .filter(l => !l.assignedSalesperson && !l.assignedTelecaller)
+      .filter(l => !isLeadAssigned(l))
       .map(l => l.id);
     setSelectedLeadIds(ids);
-    setIsAllSelected(ids.length > 0 && ids.length === filteredLeads.filter(l => !l.assignedSalesperson && !l.assignedTelecaller).length);
+    setIsAllSelected(ids.length > 0 && ids.length === filteredLeads.filter(l => !isLeadAssigned(l)).length);
   };
 
   const toggleSelectOne = (id) => {
     const lead = filteredLeads.find(l => l.id === id);
-    if (lead && (lead.assignedSalesperson || lead.assignedTelecaller)) return; // prevent selecting assigned
+    if (lead && isLeadAssigned(lead)) return; // prevent selecting assigned
     setSelectedLeadIds((prev) => {
       const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
-      const totalUnassigned = filteredLeads.filter(l => !l.assignedSalesperson && !l.assignedTelecaller).length;
+      const totalUnassigned = filteredLeads.filter(l => !isLeadAssigned(l)).length;
       setIsAllSelected(next.length > 0 && next.length === totalUnassigned);
       return next;
     });
@@ -875,6 +886,164 @@ const LeadsSimplified = () => {
     }
   };
 
+
+  // Fetch all PIs (not just pending)
+  const fetchPIsForLead = async (lead) => {
+    try {
+      setLoadingPIs(true);
+      const response = await departmentHeadService.getAllPIs();
+      
+      if (response && response.success) {
+        // Show all PIs (pending, approved, rejected)
+        setProformaInvoices(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching PIs:', error);
+      setProformaInvoices([]);
+    } finally {
+      setLoadingPIs(false);
+    }
+  };
+
+  // Handle PI approval
+  const handleApprovePI = async (piId) => {
+    if (!confirm('Are you sure you want to approve this PI?')) return;
+    try {
+      await proformaInvoiceService.updatePI(piId, { status: 'approved' });
+      toastManager.success('PI approved successfully!');
+      // Refresh PIs
+      if (previewLead) {
+        await fetchPIsForLead(previewLead);
+      }
+    } catch (error) {
+      console.error('Error approving PI:', error);
+      toastManager.error('Failed to approve PI');
+    }
+  };
+
+  // Handle PI rejection
+  const handleRejectPI = async (piId) => {
+    const reason = prompt('Please enter rejection reason:');
+    if (!reason) return;
+    try {
+      await proformaInvoiceService.updatePI(piId, { 
+        status: 'rejected',
+        rejection_reason: reason 
+      });
+      toastManager.success('PI rejected');
+      // Refresh PIs
+      if (previewLead) {
+        await fetchPIsForLead(previewLead);
+      }
+    } catch (error) {
+      console.error('Error rejecting PI:', error);
+      toastManager.error('Failed to reject PI');
+    }
+  };
+
+  // Handle PI view
+  const handleViewPI = async (piId) => {
+    try {
+      // Fetch PI details
+      const piResponse = await proformaInvoiceService.getPI(piId);
+      if (!piResponse || !piResponse.success) {
+        alert('Failed to fetch PI details');
+        return;
+      }
+
+      const pi = piResponse.data;
+
+      // Fetch complete quotation data
+      const quotationResponse = await quotationService.getCompleteData(pi.quotation_id);
+      
+      if (!quotationResponse || !quotationResponse.success) {
+        alert('Failed to fetch quotation details');
+        return;
+      }
+
+      const completeQuotation = quotationResponse.data?.quotation || quotationResponse.data || {};
+      const quotationItems = completeQuotation.items || [];
+
+      // If no items, show error
+      if (!quotationItems || quotationItems.length === 0) {
+        alert(`No items found in quotation!\n\nQuotation ID: ${pi.quotation_id}`);
+        return;
+      }
+
+      // Map quotation items to PI format
+      const mappedItems = quotationItems.map((item) => {
+        const mapped = {
+          id: item.id || Math.random(),
+          description: item.product_name || item.productName || item.description || 'Product',
+          subDescription: item.description || '',
+          hsn: item.hsn_code || item.hsn || item.hsnCode || '85446090',
+          dueOn: new Date().toISOString().split('T')[0],
+          quantity: Number(item.quantity) || 1,
+          unit: item.unit || 'Nos',
+          rate: Number(item.unit_price || item.buyer_rate || item.unitPrice || 0),
+          buyerRate: Number(item.unit_price || item.buyer_rate || item.unitPrice || 0),
+          amount: Number(item.taxable_amount ?? item.amount ?? item.taxable ?? item.total_amount ?? item.total ?? 0),
+          gstRate: Number(item.gst_rate ?? item.gstRate ?? 18),
+          gstMultiplier: 1 + Number(item.gst_rate ?? item.gstRate ?? 18) / 100
+        };
+        return mapped;
+      });
+
+      const subtotal = mappedItems.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+      const discountRate = Number(completeQuotation.discount_rate ?? completeQuotation.discountRate ?? 0);
+      const discountAmount = Number(completeQuotation.discount_amount ?? completeQuotation.discountAmount ?? (subtotal * discountRate) / 100);
+      const taxableAmount = Math.max(0, subtotal - discountAmount);
+      const taxRate = Number(completeQuotation.tax_rate ?? completeQuotation.taxRate ?? 18);
+      const taxAmount = Number(completeQuotation.tax_amount ?? completeQuotation.taxAmount ?? (taxableAmount * taxRate) / 100);
+      const total = Number(completeQuotation.total_amount ?? completeQuotation.total ?? taxableAmount + taxAmount);
+
+      const billTo = {
+        business: completeQuotation.customer_business || completeQuotation.billTo?.business || pi.customer_business || '',
+        address: completeQuotation.customer_address || completeQuotation.billTo?.address || '',
+        phone: completeQuotation.customer_phone || completeQuotation.billTo?.phone || '',
+        gstNo: completeQuotation.customer_gst_no || completeQuotation.billTo?.gstNo || '',
+        state: completeQuotation.customer_state || completeQuotation.billTo?.state || ''
+      };
+
+      // Build PI preview data with dispatch details
+      const previewData = {
+        quotationNumber: completeQuotation.quotation_number || pi.pi_number,
+        items: mappedItems,
+        subtotal,
+        discountRate,
+        discountAmount,
+        taxableAmount,
+        taxRate,
+        taxAmount,
+        total,
+        billTo,
+        dispatchMode: pi.dispatch_mode,
+        shippingDetails: {
+          transportName: pi.transport_name,
+          vehicleNumber: pi.vehicle_number,
+          transportId: pi.transport_id,
+          lrNo: pi.lr_no,
+          courierName: pi.courier_name,
+          consignmentNo: pi.consignment_no,
+          byHand: pi.by_hand,
+          postService: pi.post_service,
+          carrierName: pi.carrier_name,
+          carrierNumber: pi.carrier_number
+        }
+      };
+
+      // Wrap in the format expected by PIPreviewModal
+      setPiPreviewData({
+        data: previewData,
+        selectedBranch: completeQuotation.branch || 'ANODE'
+      });
+      setSelectedPIBranch(completeQuotation.branch || 'ANODE');
+      setShowPIPreview(true);
+    } catch (error) {
+      console.error('Error viewing PI:', error);
+      toastManager.error('Failed to load PI details');
+    }
+  };
 
   // Handle edit
   const handleEdit = (lead) => {
@@ -1227,8 +1396,8 @@ const LeadsSimplified = () => {
                       type="checkbox"
                       checked={selectedLeadIds.includes(lead.id)}
                       onChange={() => toggleSelectOne(lead.id)}
-                      disabled={!!lead.assignedSalesperson || !!lead.assignedTelecaller}
-                      title={(lead.assignedSalesperson || lead.assignedTelecaller) ? 'Already assigned' : ''}
+                      disabled={isLeadAssigned(lead)}
+                      title={isLeadAssigned(lead) ? 'Already assigned' : ''}
                     />
                   </td>
                   {visibleColumns.customerId && (
@@ -1280,10 +1449,10 @@ const LeadsSimplified = () => {
                     </td>
                   )}
                   {visibleColumns.assignedSalesperson && (
-                    <td className="px-4 py-4 text-sm text-gray-900">{lead.assignedSalesperson || 'Unassigned'}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900">{isValueAssigned(lead.assignedSalesperson) ? lead.assignedSalesperson : 'Unassigned'}</td>
                   )}
                   {visibleColumns.assignedTelecaller && (
-                    <td className="px-4 py-4 text-sm text-gray-900">{lead.assignedTelecaller || 'Unassigned'}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900">{isValueAssigned(lead.assignedTelecaller) ? lead.assignedTelecaller : 'Unassigned'}</td>
                   )}
                   {visibleColumns.gstNo && (
                     <td className="px-4 py-4 text-sm text-gray-900">{lead.gstNo}</td>
@@ -1323,17 +1492,19 @@ const LeadsSimplified = () => {
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           setPreviewLead(lead);
                           setActiveTab('overview');
                           setShowPreviewModal(true);
+                          // Fetch PIs for quotations of this lead
+                          await fetchPIsForLead(lead);
                         }}
                         className="text-green-600 hover:text-green-900"
                         title="View Lead"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      {lead.assignedSalesperson || lead.assignedTelecaller ? (
+                      {isLeadAssigned(lead) ? (
                         <span className="px-2 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded" title="Already assigned">
                           Assigned
                         </span>
@@ -1567,11 +1738,11 @@ const LeadsSimplified = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Assigned Salesperson</label>
-                    <p className="text-gray-900 font-semibold">{previewLead.assignedSalesperson || 'Unassigned'}</p>
+                    <p className="text-gray-900 font-semibold">{isValueAssigned(previewLead.assignedSalesperson) ? previewLead.assignedSalesperson : 'Unassigned'}</p>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Assigned Telecaller</label>
-                    <p className="text-gray-900 font-semibold">{previewLead.assignedTelecaller || 'Unassigned'}</p>
+                    <p className="text-gray-900 font-semibold">{isValueAssigned(previewLead.assignedTelecaller) ? previewLead.assignedTelecaller : 'Unassigned'}</p>
                   </div>
                 </div>
               </div>
@@ -1700,87 +1871,75 @@ const LeadsSimplified = () => {
                         </div>
                       </div>
                     </div>
+
+                    {/* PIs for this quotation */}
+                    {(() => {
+                      const quotationPIs = proformaInvoices.filter(pi => pi.quotation_id === quotation.id);
+                      if (quotationPIs.length === 0) return null;
+
+                      return (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <p className="text-xs font-semibold text-gray-700 mb-2">Proforma Invoices:</p>
+                          <div className="space-y-2">
+                            {quotationPIs.map((pi) => (
+                              <div key={pi.id} className="bg-gray-50 border border-gray-200 rounded-md p-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-purple-600" />
+                                    <div>
+                                      <p className="text-xs font-semibold text-gray-900">{pi.pi_number}</p>
+                                      <p className="text-xs text-gray-500">
+                                        {new Date(pi.created_at).toLocaleDateString()} • ₹{Number(pi.total_amount || 0).toLocaleString()}
+                                      </p>
+                                    </div>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                      pi.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                      pi.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                      pi.status === 'pending_approval' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-blue-100 text-blue-800'
+                                    }`}>
+                                      {pi.status === 'approved' ? '✅ Approved' :
+                                       pi.status === 'rejected' ? '❌ Rejected' :
+                                       pi.status === 'pending_approval' ? '⏳ Pending' :
+                                       '📄 ' + (pi.status || 'Draft')}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => handleViewPI(pi.id)}
+                                      className="text-blue-600 text-xs hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50"
+                                    >
+                                      View
+                                    </button>
+                                    {pi.status === 'pending_approval' && (
+                                      <>
+                                        <button
+                                          onClick={() => handleApprovePI(pi.id)}
+                                          className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs"
+                                        >
+                                          Approve
+                                        </button>
+                                        <button
+                                          onClick={() => handleRejectPI(pi.id)}
+                                          className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs"
+                                        >
+                                          Reject
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                       );
                     })
                   )}
                 </div>
-
-              {/* Proforma Invoice */}
-              <div className="space-y-4">
-                <h3 className="text-base font-semibold text-gray-900">Proforma Invoice</h3>
-                  {/* Payment Summary */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="text-base font-semibold text-gray-900 mb-2">Payment Summary</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Advance Payment</label>
-                        <p className="text-green-600 font-semibold text-base">₹10,000</p>
-                        <p className="text-xs text-gray-500">Received on: 2024-01-10</p>
-                        <p className="text-xs text-gray-600">Receiver: John Smith</p>
-                        <p className="text-xs text-gray-600">Account ID: ACC-2024-001</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Pending Payment</label>
-                        <p className="text-yellow-600 font-semibold text-base">₹15,000</p>
-                        <p className="text-xs text-gray-500">Due on: 2024-02-15</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
-                        <p className="text-gray-900 font-semibold text-base">₹25,000</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Balance</label>
-                        <p className="text-red-600 font-semibold text-base">₹15,000</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Voucher Details */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h3 className="text-base font-semibold text-gray-900 mb-2">Voucher Details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Number</label>
-                        <p className="text-gray-900 font-mono text-sm">VCH-2024-001</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Date</label>
-                        <p className="text-gray-900">{new Date().toLocaleDateString()}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Quotation Reference</label>
-                        <p className="text-gray-900">#QT-2024-001</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Lead ID</label>
-                        <p className="text-gray-900">{previewLead.customerId}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
-                        <p className="text-gray-900">{previewLead.customer}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-                        <p className="text-gray-900 font-semibold text-base">₹25,000</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center justify-end space-x-2">
-                    <button className="px-3 py-1.5 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 text-xs">
-                      Preview Voucher
-                    </button>
-                    <button className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs">
-                      Generate Voucher
-                    </button>
-                    <button className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs">
-                      Download PDF
-                    </button>
-                  </div>
-                  </div>
-                )}
             </div>
 
             <div className="flex items-center justify-end gap-3 px-6 md:px-8 py-4 border-t border-gray-200 sticky bottom-0 bg-white">
@@ -2246,6 +2405,21 @@ const LeadsSimplified = () => {
           </div>
         </div>
       )}
+
+      {/* PI Preview Modal */}
+      <PIPreviewModal
+        open={showPIPreview}
+        onClose={() => {
+          setShowPIPreview(false);
+          setPiPreviewData(null);
+        }}
+        piPreviewData={piPreviewData}
+        selectedBranch={selectedPIBranch}
+        companyBranches={companyBranches}
+        approvedQuotationId={null}
+        viewingCustomerId={null}
+        onPICreated={null}
+      />
 
     </div>
   );
