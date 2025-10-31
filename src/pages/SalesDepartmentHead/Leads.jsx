@@ -1780,7 +1780,7 @@ const LeadsSimplified = () => {
                     </button>
                   </div>
                   </div>
-                )}
+                
             </div>
 
             <div className="flex items-center justify-end gap-3 px-6 md:px-8 py-4 border-t border-gray-200 sticky bottom-0 bg-white">
