@@ -12,6 +12,7 @@ import MarketingSalespersonDashboard from './SuperAdmin/MarketingSalespersonDash
 import TeleSalesDashboard from './SuperAdmin/TeleSalesDashboard';
 import OfficeSalesPersonDashboard from './SuperAdmin/OfficeSalesPersonDashboard';
 import HRDepartmentDashboard from './SuperAdmin/HRDepartmentDashboard';
+import ProductionDepartmentDashboard from './SuperAdmin/ProductionDepartmentDashboard';
 
 const MainDashboard = ({ activeView, setActiveView }) => {
   const { selectedCompany } = useCompany();
@@ -56,6 +57,8 @@ const MainDashboard = ({ activeView, setActiveView }) => {
         return <OfficeSalesPersonDashboard />;
       case 'hr-department':
         return <HRDepartmentDashboard />;
+      case 'production-department':
+        return <ProductionDepartmentDashboard />;
       default:
         return <SuperAdminSalesDashboard setActiveView={setActiveView} />;
     }

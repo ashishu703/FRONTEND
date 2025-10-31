@@ -21,7 +21,14 @@ export default function SalespersonLayout({ onLogout }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isMobileView, setIsMobileView] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
-  
+
+  // Auto-detect mobile view based on viewport width (no manual toggle)
+  useEffect(() => {
+    const updateIsMobile = () => setIsMobileView(window.innerWidth <= 768);
+    updateIsMobile();
+    window.addEventListener('resize', updateIsMobile);
+    return () => window.removeEventListener('resize', updateIsMobile);
+  }, []);
   const handleNavigation = (page) => {
     setCurrentPage(page);
     // Update the URL without a page reload
@@ -54,7 +61,6 @@ export default function SalespersonLayout({ onLogout }) {
           <FixedHeader 
             userType="salesperson" 
             currentPage={currentPage} 
-            onToggleMobileView={() => setIsMobileView(!isMobileView)}
             isMobileView={isMobileView}
             isDarkMode={isDarkMode}
             onToggleDarkMode={handleToggleDarkMode}
