@@ -143,8 +143,41 @@ const Visits = () => {
     console.log('Filtering customers with visits:', customersWithVisits);
     console.log('Customers with visitingStatus:', customers.map(c => ({ name: c.name, visitingStatus: c.visitingStatus })));
     
-    // Use dummy data if no real visits exist
-    const visitsToShow = customersWithVisits.length > 0 ? customersWithVisits : dummyVisits;
+    // Merge visits coming from calendar/localStorage
+    let externalVisits = [];
+    try {
+      const raw = JSON.parse(localStorage.getItem('marketingVisits') || '[]');
+      externalVisits = Array.isArray(raw) ? raw : [];
+    } catch {}
+
+    // Normalize fields to match table
+    const normalizedExternal = externalVisits.map(v => ({
+      id: v.id || Date.now(),
+      leadId: v.leadId,
+      name: v.name,
+      phone: v.phone,
+      address: v.address,
+      gstNo: v.gstNo,
+      productType: v.productType,
+      state: v.state,
+      leadSource: v.leadSource,
+      visitingStatus: v.visitingStatus || 'scheduled',
+      visitDate: v.visitDate || ''
+    }));
+
+    // Use combined list: real customers with visits + externally moved visits; fallback to dummy
+    const combinedVisits = (customersWithVisits.length > 0 || normalizedExternal.length > 0)
+      ? [...normalizedExternal, ...customersWithVisits]
+      : dummyVisits;
+
+    // Deduplicate by (leadId + visitDate) or fallback (name+phone)
+    const seenVisits = new Set();
+    const visitsToShow = combinedVisits.filter(v => {
+      const key = `${String(v.leadId || v.id)}|${v.visitDate || ''}|${(v.name || '').toLowerCase()}|${(v.phone || '').toLowerCase()}`;
+      if (seenVisits.has(key)) return false;
+      seenVisits.add(key);
+      return true;
+    });
     
     console.log('All customers:', customers);
     console.log('Customers with visits:', customersWithVisits);

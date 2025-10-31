@@ -15,14 +15,17 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useMarketingSharedData } from './MarketingSharedDataContext';
+import { useAuth } from '../../context/AuthContext';
 
 const MarketingSalespersonCalendar = () => {
   const { customers: leads, loading, updateCustomer } = useMarketingSharedData();
+  const { user } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('week'); // 'month' or 'week'
   const [showLeadPanel, setShowLeadPanel] = useState(false);
   const [selectedLeadDetails, setSelectedLeadDetails] = useState(null);
+  const [assignmentsTick, setAssignmentsTick] = useState(0);
 
   // Get current month and year
   const currentMonth = currentDate.getMonth();
@@ -66,7 +69,81 @@ const MarketingSalespersonCalendar = () => {
     ];
   }, []);
 
-  const effectiveLeads = Array.isArray(leads) && leads.length > 0 ? leads : demoLeads;
+  // Merge assigned events from localStorage for current salesperson
+  const assignedEvents = React.useMemo(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem('marketingAssignments') || '[]');
+      const salespersonId = (localStorage.getItem('currentMarketingSalesperson') || user?.email || user?.username || '').toLowerCase();
+      if (!Array.isArray(raw)) return [];
+
+      const mapped = raw.map(e => ({
+        id: e.leadId || e.id,
+        name: e.name,
+        phone: e.phone,
+        address: e.address,
+        productType: e.productType,
+        visitingStatus: e.visitingStatus || 'Scheduled',
+        finalStatus: e.finalStatus || 'Pending',
+        assignedDate: (typeof e.assignedDate === 'string' ? e.assignedDate : (e.assignedDate ? new Date(e.assignedDate) : null)) ? (typeof e.assignedDate === 'string' ? e.assignedDate : (()=>{ const y=e.assignedDate.getFullYear?.(); return y?`${y}-${String(e.assignedDate.getMonth()+1).padStart(2,'0')}-${String(e.assignedDate.getDate()).padStart(2,'0')}`:e.assignedDate; })()) : e.assignedDate,
+        assignedToName: e.assignedToName || '',
+        assignedToEmail: e.assignedToEmail || '',
+      }));
+
+      // Deduplicate by (leadId + assignedDate + assignee)
+      const seen = new Set();
+      const uniqueMapped = mapped.filter(e => {
+        const k = `${String(e.id)}|${e.assignedDate}|${(e.assignedToEmail||e.assignedToName||'').toLowerCase()}`;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+
+      if (!salespersonId) {
+        return uniqueMapped; // no context, show all
+      }
+
+      const filtered = uniqueMapped.filter(e => {
+        const byName = (e.assignedToName || '').toLowerCase();
+        const byEmail = (e.assignedToEmail || '').toLowerCase();
+        return (byEmail.includes(salespersonId) || byName.includes(salespersonId));
+      });
+
+      return filtered.length ? filtered : uniqueMapped; // fallback to all if no match
+    } catch { return []; }
+  }, [user, assignmentsTick]);
+
+  // Listen for assignment updates
+  useEffect(() => {
+    const onUpdate = () => setAssignmentsTick(t => t + 1);
+    window.addEventListener('marketingAssignmentsUpdated', onUpdate);
+    return () => window.removeEventListener('marketingAssignmentsUpdated', onUpdate);
+  }, []);
+
+  const effectiveLeads = React.useMemo(() => {
+    const base = Array.isArray(leads) && leads.length > 0 ? leads : demoLeads;
+    return [...base, ...assignedEvents];
+  }, [leads, demoLeads, assignedEvents]);
+
+  // Local date helpers to avoid timezone shifting issues
+  const toLocalYMD = (input) => {
+    if (typeof input === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+    const dt = input instanceof Date ? input : new Date(input);
+    if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return null;
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const d = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const parseAssignedDate = (raw) => {
+    if (!raw) return null;
+    if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      const [y, m, d] = raw.split('-').map(n => parseInt(n, 10));
+      return new Date(y, m - 1, d, 0, 0, 0, 0);
+    }
+    const dt = new Date(raw);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  };
 
   // Filter leads by date
   const getLeadsForDate = (date) => {
@@ -74,16 +151,16 @@ const MarketingSalespersonCalendar = () => {
     const dateTime = date.getTime();
     if (Number.isNaN(dateTime)) return [];
 
-    const dateStr = date.toISOString().split('T')[0];
+    const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+    const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
 
     return effectiveLeads.filter((lead) => {
-      // Prefer head assigned or planned follow-up date for day grouping
-      const rawDate = lead?.assignedDate || lead?.followUpDate || lead?.date || lead?.createdAt;
+      // STRICT: show only leads explicitly assigned for a date
+      const rawDate = lead?.assignedDate;
       if (!rawDate) return false;
-      const leadDate = new Date(rawDate);
-      if (Number.isNaN(leadDate.getTime())) return false;
-      const leadDateStr = leadDate.toISOString().split('T')[0];
-      return leadDateStr === dateStr;
+      const assigned = parseAssignedDate(rawDate);
+      if (!assigned) return false;
+      return assigned >= dayStart && assigned <= dayEnd;
     });
   };
 
@@ -155,6 +232,41 @@ const MarketingSalespersonCalendar = () => {
     }
   };
 
+  // Move a lead from calendar to Visits page
+  const moveToVisits = (lead) => {
+    try {
+      // 1) Add to visits storage
+      const visitItem = {
+        id: lead.id,
+        leadId: lead.leadId || lead.id,
+        name: lead.name,
+        phone: lead.phone || '',
+        address: lead.address || '',
+        gstNo: lead.gstNo || '',
+        productType: lead.productType || '',
+        state: lead.state || '',
+        leadSource: lead.leadSource || '',
+        visitingStatus: 'scheduled',
+        visitDate: toLocalYMD(selectedDate)
+      };
+      const existing = JSON.parse(localStorage.getItem('marketingVisits') || '[]');
+      const isDup = Array.isArray(existing) && existing.some(v => String(v.leadId || v.id) === String(visitItem.leadId) && (v.visitDate || '') === (visitItem.visitDate || ''));
+      const next = isDup ? existing : (Array.isArray(existing) ? [...existing, visitItem] : [visitItem]);
+      localStorage.setItem('marketingVisits', JSON.stringify(next));
+
+      // 2) Remove from assignments so it disappears from calendar
+      const allAssignments = JSON.parse(localStorage.getItem('marketingAssignments') || '[]');
+      const dayStr = toLocalYMD(selectedDate);
+      const filtered = Array.isArray(allAssignments)
+        ? allAssignments.filter(e => String(e.leadId || e.id) !== String(lead.id) || (e.assignedDate && e.assignedDate !== dayStr))
+        : [];
+      localStorage.setItem('marketingAssignments', JSON.stringify(filtered));
+
+      // 3) Refresh calendar consumers
+      try { window.dispatchEvent(new CustomEvent('marketingAssignmentsUpdated')); } catch {}
+    } catch (e) { console.error('moveToVisits error', e); }
+  };
+
   if (loading) {
     return (
       <div className="p-6 text-center">
@@ -165,8 +277,8 @@ const MarketingSalespersonCalendar = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div className="bg-gray-50 min-h-screen pl-0 pr-6 py-6">
+      <div className="w-full">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -319,17 +431,17 @@ const MarketingSalespersonCalendar = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Calendar Grid */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              {viewMode === 'month' ? (
-                <>
-                  <div className="grid grid-cols-7 bg-gray-50 border-b">
+            <div className="bg-white rounded-lg shadow-sm">
+                  {viewMode === 'month' ? (
+                    <>
+                      <div className="grid grid-cols-7 bg-gray-50 border-b">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                       <div key={day} className="p-3 text-center text-sm font-medium text-gray-600">
                         {day}
                       </div>
                     ))}
-                  </div>
-                  <div className="grid grid-cols-7">
+                      </div>
+                      <div className="grid grid-cols-7">
                     {calendarDays.map((date, index) => {
                       if (!date) {
                         return <div key={index} className="h-24 border-r border-b border-gray-200"></div>;
@@ -341,7 +453,7 @@ const MarketingSalespersonCalendar = () => {
                         <div
                           key={index}
                           onClick={() => setSelectedDate(date)}
-                          className={`h-24 border-r border-b border-gray-200 p-2 cursor-pointer hover:bg-gray-50 transition-colors ${
+                            className={`h-28 border-r border-b border-gray-200 p-2 cursor-pointer hover:bg-gray-50 transition-colors ${
                             isToday ? 'bg-blue-50' : ''
                           } ${isSelected ? 'bg-blue-100' : ''}`}
                         >
@@ -372,10 +484,10 @@ const MarketingSalespersonCalendar = () => {
                         </div>
                       );
                     })}
-                  </div>
-                </>
-              ) : (
-                <div className="grid grid-cols-7">
+                      </div>
+                    </>
+                  ) : (
+                    <div className="grid grid-cols-7">
                   {weekDays.map((date, index) => {
                     const dayLeads = getLeadsForDate(date);
                     const isToday = date.toDateString() === new Date().toDateString();
@@ -383,7 +495,7 @@ const MarketingSalespersonCalendar = () => {
                     return (
                       <div
                         key={index}
-                        className={`border-r border-gray-200 min-h-[320px] cursor-pointer ${isSelected ? 'ring-1 ring-blue-400' : ''}`}
+                            className={`border-r border-gray-200 min-h-[360px] cursor-pointer ${isSelected ? 'ring-1 ring-blue-400' : ''}`}
                         onClick={() => setSelectedDate(date)}
                       >
                         <div className={`p-3 border-b ${isToday ? 'bg-blue-50' : 'bg-gray-50'}`}>
@@ -394,7 +506,7 @@ const MarketingSalespersonCalendar = () => {
                             {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                           </div>
                         </div>
-                        <div className="p-2 space-y-2 max-h-[360px] overflow-auto">
+                            <div className="p-2 space-y-2 max-h-[400px] overflow-auto">
                           {dayLeads.length === 0 ? (
                             <div className="text-xs text-gray-400 text-center py-6">No leads</div>
                           ) : (
@@ -410,16 +522,12 @@ const MarketingSalespersonCalendar = () => {
                                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getVisitingStatusColor(lead.visitingStatus)}`}>
                                     {lead.visitingStatus}
                                   </span>
-                                  {lead.visitingStatus !== 'Visited' ? (
-                                    <button
-                                      onClick={() => updateCustomer(lead.id, { visitingStatus: 'Visited', visitingStatusUpdated: new Date().toISOString() })}
-                                      className="text-[10px] px-1.5 py-0.5 rounded bg-green-600 text-white hover:bg-green-700"
-                                    >
-                                      Visit Done
-                                    </button>
-                                  ) : (
-                                    <span className="text-[10px] text-green-700">Visited</span>
-                                  )}
+                                  <button
+                                    onClick={() => moveToVisits(lead)}
+                                    className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                                  >
+                                    Move to Visits
+                                  </button>
                                 </div>
                               </div>
                             ))
@@ -428,8 +536,8 @@ const MarketingSalespersonCalendar = () => {
                       </div>
                     );
                   })}
-                </div>
-              )}
+                    </div>
+                  )}
             </div>
           </div>
 
@@ -494,18 +602,12 @@ const MarketingSalespersonCalendar = () => {
                         )}
 
                         <div className="pt-2 flex justify-end">
-                          {lead.visitingStatus !== 'Visited' ? (
-                            <button
-                              onClick={() => updateCustomer(lead.id, { visitingStatus: 'Visited', visitingStatusUpdated: new Date().toISOString() })}
-                              className="px-2 py-1 text-xs rounded-md bg-green-600 text-white hover:bg-green-700 inline-flex items-center gap-1"
-                            >
-                              <CheckCircle className="w-3.5 h-3.5" /> Mark Visit Done
-                            </button>
-                          ) : (
-                            <span className="text-xs text-green-700 inline-flex items-center gap-1">
-                              <CheckCircle className="w-3.5 h-3.5" /> Visited
-                            </span>
-                          )}
+                          <button
+                            onClick={() => moveToVisits(lead)}
+                            className="px-2 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 inline-flex items-center gap-1"
+                          >
+                            Move to Visits
+                          </button>
                         </div>
                       </div>
                     </div>

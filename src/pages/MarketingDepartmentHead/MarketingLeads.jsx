@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Search, Filter, Upload, RefreshCw, User, Mail, Building, Shield, Tag, Clock, Calendar, Phone, CheckCircle, XCircle, Hash, MapPin, Info, Plus, TrendingUp, Target, Users, BarChart3, ChevronDown, Download, UserPlus, X, Package, CreditCard, PhoneCall, FileText, Calendar as CalendarIcon, Edit, Eye, Navigation, Printer, DollarSign, Map, Globe } from 'lucide-react';
+import { Search, Filter, Upload, RefreshCw, User, Mail, Building, Shield, Tag, Clock, Calendar, Phone, CheckCircle, XCircle, Hash, MapPin, Info, Plus, TrendingUp, Target, Users, BarChart3, ChevronDown, Download, UserPlus, X, Package, CreditCard, PhoneCall, FileText, Calendar as CalendarIcon, Edit, Eye, Navigation, Printer, DollarSign, Map, Globe, Settings } from 'lucide-react';
 import departmentUsersService, { apiToUiDepartment } from '../../api/admin_api/departmentUsersService';
 import AddCustomerForm from '../salesperson/salespersonaddcustomer.jsx';
 import MarketingQuotation from '../MarketingSalesperson/MarketingQuotation';
@@ -90,6 +90,33 @@ const MarketingLeads = () => {
     address: ''
   });
 
+  // Column visibility chooser
+  const defaultVisibleColumns = {
+    leadId: true,
+    namePhone: true,
+    address: true,
+    area: true,
+    division: true,
+    gstNo: true,
+    productType: true,
+    phone: false,
+    email: false,
+    state: false,
+    customerType: false,
+    leadSource: false,
+    assignedSalesperson: false,
+    followUpStatus: false,
+    salesStatus: false,
+    connectedStatus: false,
+    finalStatus: false,
+    expectedValue: false,
+    createdAt: false,
+    updatedAt: false,
+    notes: false
+  };
+  const [showColumnChooser, setShowColumnChooser] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState(defaultVisibleColumns);
+
   // Fetch real department users for assignment
   useEffect(() => {
     const fetchSalespersons = async () => {
@@ -152,7 +179,33 @@ const MarketingLeads = () => {
       visitingStatus: 'SCHEDULED',
       gstNo: '29ABCDE1234F1Z5',
       state: 'Madhya Pradesh',
-      customerType: 'Individual'
+      customerType: 'Individual',
+      // Demo payment data
+      totalAmount: 25000,
+      paidAmount: 10000,
+      paymentMethod: 'Bank Transfer',
+      paymentDueDate: '2025-11-29',
+      paymentHistory: [
+        { title: 'Initial Payment', status: 'completed', amount: 10000, method: 'Bank Transfer', date: '2025-10-15' },
+        { title: 'Second Payment', status: 'pending', amount: 15000, method: '—', note: 'Due on 2025-11-29' }
+      ],
+      // Demo quotation & PI
+      quotation: {
+        quotationNumber: 'ANQ-000458',
+        total: 40639200,
+        validUpto: '2025-11-29',
+        preparedBy: 'Sarah Johnson',
+        status: 'Active',
+        title: 'Digital Marketing Package - Premium Plan'
+      },
+      proforma: {
+        invoiceNumber: 'PI-2024-001',
+        total: 40639200,
+        invoiceDate: '2025-10-30',
+        generatedBy: 'David Lee',
+        status: 'Generated',
+        title: 'Electrical Cables & Wires Supply'
+      }
     },
     {
       id: 2,
@@ -177,7 +230,30 @@ const MarketingLeads = () => {
       visitingStatus: 'COMPLETED',
       gstNo: '27FGHIJ5678K2L6',
       state: 'Madhya Pradesh',
-      customerType: 'Business'
+      customerType: 'Business',
+      totalAmount: 18000,
+      paidAmount: 18000,
+      paymentMethod: 'UPI',
+      paymentDueDate: '2025-10-30',
+      paymentHistory: [
+        { title: 'Single Payment', status: 'completed', amount: 18000, method: 'UPI', date: '2025-10-15' }
+      ],
+      quotation: {
+        quotationNumber: 'ANQ-000459',
+        total: 18000,
+        validUpto: '2025-12-15',
+        preparedBy: 'David Lee',
+        status: 'Active',
+        title: 'SEO Services - Monthly'
+      },
+      proforma: {
+        invoiceNumber: 'PI-2024-002',
+        total: 18000,
+        invoiceDate: '2025-10-16',
+        generatedBy: 'Ops Team',
+        status: 'Generated',
+        title: 'SEO Services Billing'
+      }
     },
     {
       id: 3,
@@ -202,7 +278,12 @@ const MarketingLeads = () => {
       visitingStatus: 'PENDING',
       gstNo: '24MNOPQ9012R3S7',
       state: 'Madhya Pradesh',
-      customerType: 'Enterprise'
+      customerType: 'Enterprise',
+      totalAmount: 52000,
+      paidAmount: 0,
+      paymentMethod: '—',
+      paymentDueDate: '2025-12-10',
+      paymentHistory: []
     },
     {
       id: 4,
@@ -227,7 +308,14 @@ const MarketingLeads = () => {
       visitingStatus: 'IN_PROGRESS',
       gstNo: '31TUVWX3456Y8Z9',
       state: 'Madhya Pradesh',
-      customerType: 'Enterprise'
+      customerType: 'Enterprise',
+      totalAmount: 75000,
+      paidAmount: 50000,
+      paymentMethod: 'NEFT',
+      paymentDueDate: '2025-11-20',
+      paymentHistory: [
+        { title: 'Advance', status: 'completed', amount: 50000, method: 'NEFT', date: '2025-10-10' }
+      ]
     },
     {
       id: 5,
@@ -252,74 +340,19 @@ const MarketingLeads = () => {
       visitingStatus: 'SCHEDULED',
       gstNo: '07ABCD1234E1F2',
       state: 'Madhya Pradesh',
-      customerType: 'Startup'
+      customerType: 'Startup',
+      totalAmount: 32000,
+      paidAmount: 8000,
+      paymentMethod: 'Cash',
+      paymentDueDate: '2025-11-05',
+      paymentHistory: [
+        { title: 'Booking', status: 'completed', amount: 8000, method: 'Cash', date: '2025-10-12' },
+        { title: 'Balance', status: 'pending', amount: 24000, method: '—', note: 'Due on 2025-11-05' }
+      ]
     }
   ];
 
-  // Sample quotation data
-  const sampleQuotationData = {
-    quotationNumber: 'ANO/25-26/458',
-    quotationDate: new Date().toLocaleDateString(),
-    validUpto: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-    billTo: {
-      business: 'Das Industrial Controls',
-      address: 'Panvel, Maharashtra, India',
-      phone: '7039542259',
-      gstNo: '27DVTPS2973B1Z0',
-      state: 'Maharashtra'
-    },
-    items: [
-      {
-        description: 'ACSR Dog Conductor',
-        quantity: '120,000',
-        unit: 'MTR',
-        amount: 9840000,
-        hsn: '76042910'
-      },
-      {
-        description: 'AAAC Panther 232 SQMM',
-        quantity: '120,000',
-        unit: 'MTR',
-        amount: 24600000,
-        hsn: '85446090'
-      }
-    ],
-    subtotal: 34440000,
-    taxAmount: 6199200,
-    total: 40639200
-  };
-
-  // Sample proforma invoice data
-  const sampleProformaData = {
-    invoiceNumber: 'PI-2024-001',
-    invoiceDate: new Date().toLocaleDateString(),
-    billTo: {
-      business: 'Das Industrial Controls',
-      address: 'Panvel, Maharashtra, India',
-      phone: '7039542259',
-      gstNo: '27DVTPS2973B1Z0',
-      state: 'Maharashtra'
-    },
-    items: [
-      {
-        description: 'ACSR Dog Conductor',
-        quantity: '120,000',
-        unit: 'MTR',
-        amount: 9840000,
-        hsn: '76042910'
-      },
-      {
-        description: 'AAAC Panther 232 SQMM',
-        quantity: '120,000',
-        unit: 'MTR',
-        amount: 24600000,
-        hsn: '85446090'
-      }
-    ],
-    subtotal: 34440000,
-    taxAmount: 6199200,
-    total: 40639200
-  };
+  // Removed sample quotation/proforma constants to avoid hardcoded UI data
 
   const handleSelectAll = () => {
     if (selectedLeads.length === leads.length) {
@@ -362,6 +395,40 @@ const MarketingLeads = () => {
       
       // In a real app, you would update the database here
       console.log(`Assigned lead ${selectedLeadForAssignment.customerId} to ${selectedSalesperson} on ${assignmentDate}`);
+
+      // Persist assignment event for calendar consumption (localStorage)
+      try {
+        const existing = JSON.parse(localStorage.getItem('marketingAssignments') || '[]');
+        const salespersonMeta = salespersons.find(u => u.name === selectedSalesperson) || {};
+        const event = {
+          id: `${selectedLeadForAssignment.id}-${Date.now()}`,
+          leadId: selectedLeadForAssignment.id,
+          customerId: selectedLeadForAssignment.customerId,
+          name: selectedLeadForAssignment.customer,
+          phone: selectedLeadForAssignment.phone || '',
+          address: selectedLeadForAssignment.address || '',
+          productType: selectedLeadForAssignment.productType || selectedLeadForAssignment.productName || '',
+          assignedDate: assignmentDate || new Date().toISOString().split('T')[0],
+          assignedToName: selectedSalesperson,
+          assignedToEmail: salespersonMeta.email || '',
+          visitingStatus: 'Scheduled',
+          finalStatus: 'Pending'
+        };
+        const next = Array.isArray(existing) ? [...existing, event] : [event];
+        localStorage.setItem('marketingAssignments', JSON.stringify(next));
+      } catch {}
+
+      // Help calendar identify current demo salesperson context (non-auth flows)
+      try {
+        if (salespersonMeta?.email) {
+          localStorage.setItem('currentMarketingSalesperson', salespersonMeta.email);
+        } else if (selectedSalesperson) {
+          localStorage.setItem('currentMarketingSalesperson', selectedSalesperson);
+        }
+      } catch {}
+
+      // Notify other tabs/components
+      try { window.dispatchEvent(new CustomEvent('marketingAssignmentsUpdated')); } catch {}
       
       // Close modal and reset state
       setShowAssignmentModal(false);
@@ -524,6 +591,43 @@ const MarketingLeads = () => {
     });
 
     setLeadsData(updatedLeads);
+
+    // Persist assignment events for calendar (localStorage)
+    try {
+      const existing = JSON.parse(localStorage.getItem('marketingAssignments') || '[]');
+      const salespersonMeta = salespersons.find(u => u.name === bulkAssignmentUser) || {};
+      const baseLeads = leadsData || leads;
+      const eventsToAdd = baseLeads
+        .filter(l => selectedLeadsForBulk.includes(l.id))
+        .map(l => ({
+          id: `${l.id}-${Date.now()}`,
+          leadId: l.id,
+          customerId: l.customerId,
+          name: l.customer,
+          phone: l.phone || '',
+          address: l.address || '',
+          productType: l.productType || l.productName || '',
+          assignedDate: l.assignmentDate || bulkAssignmentDate || new Date().toISOString().split('T')[0],
+          assignedToName: bulkAssignmentUser,
+          assignedToEmail: salespersonMeta.email || '',
+          visitingStatus: 'Scheduled',
+          finalStatus: 'Pending'
+        }));
+      const next = Array.isArray(existing) ? [...existing, ...eventsToAdd] : eventsToAdd;
+      localStorage.setItem('marketingAssignments', JSON.stringify(next));
+    } catch {}
+
+    // Help calendar identify current demo salesperson context (non-auth flows)
+    try {
+      if (salespersonMeta?.email) {
+        localStorage.setItem('currentMarketingSalesperson', salespersonMeta.email);
+      } else if (bulkAssignmentUser) {
+        localStorage.setItem('currentMarketingSalesperson', bulkAssignmentUser);
+      }
+    } catch {}
+
+    // Notify other tabs/components
+    try { window.dispatchEvent(new CustomEvent('marketingAssignmentsUpdated')); } catch {}
 
     // Log the bulk assignment
     console.log(`Bulk assigned ${selectedLeadsForBulk.length} leads to ${bulkAssignmentUser} for ${bulkAssignmentDate}`);
@@ -779,7 +883,7 @@ const MarketingLeads = () => {
         );
       case 'payment':
         return (
-          <span className={`${baseClasses} ${
+          <span className={`${baseClasses} text-[10px] px-2 py-0.5 min-w-[90px] ${
             status === 'COMPLETED' 
               ? 'bg-green-100 text-green-800 border border-green-200'
               : status === 'IN_PROGRESS'
@@ -1036,7 +1140,7 @@ const MarketingLeads = () => {
               
               {/* Header Row */}
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: showCheckboxes ? '50px' : '100px', minWidth: showCheckboxes ? '50px' : '100px'}}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: showCheckboxes ? '50px' : '100px', minWidth: showCheckboxes ? '50px' : '100px', display: visibleColumns.leadId ? '' : 'none'}}>
                   {showCheckboxes ? (
                     <div className="flex items-center space-x-2">
                       <input
@@ -1053,45 +1157,95 @@ const MarketingLeads = () => {
                     </div>
                   )}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '200px', minWidth: '200px'}}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '200px', minWidth: '200px', display: visibleColumns.namePhone ? '' : 'none'}}>
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4 text-blue-600" />
                     <span>NAME & PHONE</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '250px', minWidth: '250px'}}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '250px', minWidth: '250px', display: visibleColumns.address ? '' : 'none'}}>
                   <div className="flex items-center space-x-2">
                     <MapPin className="w-4 h-4 text-green-600" />
                     <span>ADDRESS</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '140px', minWidth: '140px'}}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '140px', minWidth: '140px', display: visibleColumns.area ? '' : 'none'}}>
                   <div className="flex items-center space-x-2">
                     <Map className="w-4 h-4 text-green-600" />
                     <span>AREA</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '140px', minWidth: '140px'}}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '140px', minWidth: '140px', display: visibleColumns.division ? '' : 'none'}}>
                   <div className="flex items-center space-x-2">
                     <Globe className="w-4 h-4 text-green-600" />
                     <span>DIVISION</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '150px', minWidth: '150px'}}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '150px', minWidth: '150px', display: visibleColumns.gstNo ? '' : 'none'}}>
                   <div className="flex items-center space-x-2">
                     <FileText className="w-4 h-4 text-purple-600" />
                     <span>GST NO.</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '150px', minWidth: '150px'}}>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '150px', minWidth: '150px', display: visibleColumns.productType ? '' : 'none'}}>
                   <div className="flex items-center space-x-2">
                     <Package className="w-4 h-4 text-purple-600" />
                     <span>PRODUCT TYPE</span>
                   </div>
                 </th>
+                {/* Extra selectable columns */}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.phone ? '' : 'none'}}>
+                  <span>PHONE</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.email ? '' : 'none'}}>
+                  <span>EMAIL</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.state ? '' : 'none'}}>
+                  <span>STATE</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.customerType ? '' : 'none'}}>
+                  <span>CUSTOMER TYPE</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.leadSource ? '' : 'none'}}>
+                  <span>LEAD SOURCE</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.assignedSalesperson ? '' : 'none'}}>
+                  <span>ASSIGNED SALESPERSON</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.followUpStatus ? '' : 'none'}}>
+                  <span>FOLLOW UP STATUS</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.salesStatus ? '' : 'none'}}>
+                  <span>SALES STATUS</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.connectedStatus ? '' : 'none'}}>
+                  <span>CONNECTED STATUS</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.finalStatus ? '' : 'none'}}>
+                  <span>FINAL STATUS</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.expectedValue ? '' : 'none'}}>
+                  <span>EXPECTED VALUE</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.createdAt ? '' : 'none'}}>
+                  <span>CREATED AT</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.updatedAt ? '' : 'none'}}>
+                  <span>UPDATED AT</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.notes ? '' : 'none'}}>
+                  <span>NOTES</span>
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '120px', minWidth: '120px'}}>
                   <div className="flex items-center space-x-2">
-                    <Edit className="w-4 h-4 text-gray-600" />
+                    <button
+                      type="button"
+                      onClick={() => setShowColumnChooser(true)}
+                      className="ml-2 p-1 rounded hover:bg-gray-100"
+                      title="Column Filter"
+                    >
+                      <Settings className="w-4 h-4 text-gray-600" />
+                    </button>
                     <span>ACTION</span>
                   </div>
                 </th>
@@ -1103,7 +1257,7 @@ const MarketingLeads = () => {
                 <tr key={lead.id} className="hover:bg-gray-50" 
                     onClick={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap" style={{display: visibleColumns.leadId ? '' : 'none'}}>
                     {showCheckboxes ? (
                       <input
                         type="checkbox"
@@ -1115,7 +1269,7 @@ const MarketingLeads = () => {
                       <span className="text-sm font-medium text-gray-900">{lead.customerId}</span>
                     )}
                   </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap" style={{display: visibleColumns.namePhone ? '' : 'none'}}>
                       <div>
                         <div className="text-sm font-medium text-gray-900">{lead.customer}</div>
                         <div className="text-sm text-gray-500">{lead.phone}</div>
@@ -1142,23 +1296,75 @@ const MarketingLeads = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs" style={{display: visibleColumns.address ? '' : 'none'}}>
                       <div className="truncate">{lead.address}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.area ? '' : 'none'}}>
                       {lead.area || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.division ? '' : 'none'}}>
                       {lead.division || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.gstNo ? '' : 'none'}}>
                       {lead.gstNo}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.productType ? '' : 'none'}}>
                       {lead.productType}
                     </td>
+                    {/* Extra selectable cells */}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.phone ? '' : 'none'}}>
+                      {lead.phone || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.email ? '' : 'none'}}>
+                      {lead.email || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.state ? '' : 'none'}}>
+                      {lead.state || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.customerType ? '' : 'none'}}>
+                      {lead.customerType || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.leadSource ? '' : 'none'}}>
+                      {lead.leadSource || lead.source || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.assignedSalesperson ? '' : 'none'}}>
+                      {lead.assignedSalesperson || lead.assignedTo || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.followUpStatus ? '' : 'none'}}>
+                      {lead.followUpStatus || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.salesStatus ? '' : 'none'}}>
+                      {lead.salesStatus || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.connectedStatus ? '' : 'none'}}>
+                      {lead.connectedStatus || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.finalStatus ? '' : 'none'}}>
+                      {lead.finalStatus || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.expectedValue ? '' : 'none'}}>
+                      {lead.expectedValue != null ? lead.expectedValue : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.createdAt ? '' : 'none'}}>
+                      {lead.createdAt ? new Date(lead.createdAt).toLocaleString() : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.updatedAt ? '' : 'none'}}>
+                      {lead.updatedAt ? new Date(lead.updatedAt).toLocaleString() : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.notes ? '' : 'none'}}>
+                      {lead.notes || lead.remark || '-'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex space-x-2">
+                      <div className="flex items-center space-x-2">
+                        {lead.assigned && lead.assigned !== 'Unassigned' ? (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200" title={`Assigned to ${lead.assigned}`}>
+                            Assigned
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200" title="Not Assigned">
+                            Unassigned
+                          </span>
+                        )}
                         <button 
                           onClick={() => {
                             console.log('Opening view modal for lead:', lead);
@@ -1182,40 +1388,6 @@ const MarketingLeads = () => {
                         >
                           <Edit className="w-4 h-4 text-orange-500" />
                         </button>
-                        <button 
-                          onClick={() => {
-                            console.log('Opening assignment modal for lead:', lead);
-                            setSelectedLeadForAssignment(lead);
-                            setShowAssignmentModal(true);
-                          }}
-                          className="w-8 h-8 rounded-full border-2 border-purple-500 bg-white hover:bg-purple-50 transition-colors flex items-center justify-center"
-                          title="Assign Lead"
-                        >
-                          <Users className="w-4 h-4 text-purple-500" />
-                        </button>
-                        <button 
-                          onClick={() => {
-                            console.log('Opening status update modal for lead:', lead);
-                            setSelectedLeadForEdit(lead);
-                            setShowStatusUpdateModal(true);
-                          }}
-                          className="w-8 h-8 rounded-full border-2 border-indigo-500 bg-white hover:bg-indigo-50 transition-colors flex items-center justify-center"
-                          title="Update Status"
-                        >
-                          <CheckCircle className="w-4 h-4 text-indigo-500" />
-                        </button>
-                        <button 
-                          onClick={() => {
-                            console.log('Deleting lead:', lead);
-                            if (window.confirm(`Are you sure you want to delete lead ${lead.customerId || lead.id}?`)) {
-                              handleDeleteLead(lead.id);
-                            }
-                          }}
-                          className="w-8 h-8 rounded-full border-2 border-red-500 bg-white hover:bg-red-50 transition-colors flex items-center justify-center"
-                          title="Delete Lead"
-                        >
-                          <X className="w-4 h-4 text-red-500" />
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1231,6 +1403,79 @@ const MarketingLeads = () => {
           </table>
         </div>
       </div>
+
+    {/* Column Chooser Modal */}
+    {showColumnChooser && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/30" onClick={() => setShowColumnChooser(false)}></div>
+        <div className="relative bg-white w-full max-w-sm mx-4 rounded-lg shadow-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold text-gray-900">Column Filter</h3>
+            <button className="p-1 rounded hover:bg-gray-100" onClick={() => setShowColumnChooser(false)} title="Close">
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mb-3">Show/Hide Columns</p>
+          <div className="max-h-72 overflow-y-auto pr-1">
+            {[
+              { key: 'leadId', label: 'Customer ID' },
+              { key: 'namePhone', label: 'Customer' },
+              { key: 'address', label: 'Address' },
+              { key: 'area', label: 'Area' },
+              { key: 'division', label: 'Division' },
+              { key: 'gstNo', label: 'GST No.' },
+              { key: 'productType', label: 'Product Type' },
+              { key: 'phone', label: 'Phone' },
+              { key: 'email', label: 'Email' },
+              { key: 'state', label: 'State' },
+              { key: 'customerType', label: 'Customer Type' },
+              { key: 'leadSource', label: 'Lead Source' },
+              { key: 'assignedSalesperson', label: 'Assigned Salesperson' },
+              { key: 'followUpStatus', label: 'Follow Up Status' },
+              { key: 'salesStatus', label: 'Sales Status' },
+              { key: 'connectedStatus', label: 'Connected Status' },
+              { key: 'finalStatus', label: 'Final Status' },
+              { key: 'expectedValue', label: 'Expected Value' },
+              { key: 'createdAt', label: 'Created At' },
+              { key: 'updatedAt', label: 'Updated At' },
+              { key: 'notes', label: 'Notes' }
+            ].map(({ key, label }) => (
+              <label key={key} className="flex items-center justify-between py-2 text-sm">
+                <span className="text-gray-800">{label}</span>
+                <input
+                  type="checkbox"
+                  checked={!!visibleColumns[key]}
+                  onChange={(e) => setVisibleColumns(prev => ({ ...prev, [key]: e.target.checked }))}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                />
+              </label>
+            ))}
+          </div>
+          <div className="flex items-center justify-between mt-3">
+            <div className="space-x-2">
+              <button
+                className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+                onClick={() => setVisibleColumns(defaultVisibleColumns)}
+              >
+                Reset
+              </button>
+              <button
+                className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+                onClick={() => setVisibleColumns(Object.keys(defaultVisibleColumns).reduce((a,k)=>({ ...a, [k]: true}), {}))}
+              >
+                Show All
+              </button>
+            </div>
+            <button
+              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+              onClick={() => setShowColumnChooser(false)}
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
       {/* Add leads Modal */}
       {showAddCustomer && (
@@ -1357,26 +1602,23 @@ const MarketingLeads = () => {
         </div>
       )}
 
-      {/* View Modal */}
+      {/* View Drawer (Right Sidebar) */}
       {showViewModal && selectedLeadForView && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Lead Details - {selectedLeadForView.customerId || selectedLeadForView.id}</h3>
-                <button
-                  onClick={closeViewModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={closeViewModal}></div>
+          <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-xl border-l border-gray-200 flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Lead Details - {selectedLeadForView.customerId || selectedLeadForView.id}</h3>
+              <button onClick={closeViewModal} className="text-gray-400 hover:text-gray-600 transition-colors" title="Close">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
               {/* Tab Navigation */}
-              <div className="flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg">
+              <div className="grid grid-cols-4 gap-1 mb-6 bg-gray-100 p-1 rounded-lg">
                 <button
                   onClick={() => setActiveViewTab('overview')}
-                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  className={`w-full text-center px-3 py-1.5 text-xs whitespace-nowrap font-medium rounded-md transition-colors ${
                     activeViewTab === 'overview'
                       ? 'bg-white text-blue-600 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
@@ -1386,7 +1628,7 @@ const MarketingLeads = () => {
                 </button>
                 <button
                   onClick={() => setActiveViewTab('payment')}
-                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  className={`w-full text-center px-3 py-1.5 text-xs whitespace-nowrap font-medium rounded-md transition-colors ${
                     activeViewTab === 'payment'
                       ? 'bg-white text-blue-600 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
@@ -1395,8 +1637,18 @@ const MarketingLeads = () => {
                   Payment Status
                 </button>
                 <button
+                  onClick={() => setActiveViewTab('docs')}
+                  className={`w-full text-center px-3 py-1.5 text-xs whitespace-nowrap font-medium rounded-md transition-colors ${
+                    activeViewTab === 'docs'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Quotation & PI
+                </button>
+                <button
                   onClick={() => setActiveViewTab('meetings')}
-                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  className={`w-full text-center px-3 py-1.5 text-xs whitespace-nowrap font-medium rounded-md transition-colors ${
                     activeViewTab === 'meetings'
                       ? 'bg-white text-blue-600 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
@@ -1454,39 +1706,36 @@ const MarketingLeads = () => {
                 <div className="space-y-6">
                   <div className="bg-white border border-gray-200 rounded-lg p-6">
                     <h4 className="font-semibold text-gray-900 mb-6">Payment Overview</h4>
-                    
-                    {/* Payment Summary Cards */}
+
+                    {/* Payment Summary Cards - stacked with wrapping */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                       <div className="bg-gray-50 p-4 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-gray-600">Total Amount</span>
-                          <span className="text-lg font-bold text-gray-900">₹25,000</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Status</span>
-                          {getStatusBadge(selectedLeadForView.paymentStatus, 'payment')}
+                       <div className="text-xs text-gray-600">Total Amount</div>
+                         <div className="text-lg font-semibold text-gray-900 mt-1">₹{(selectedLeadForView?.paymentTotal || selectedLeadForView?.totalAmount || 0).toLocaleString?.() || (selectedLeadForView?.paymentTotal || selectedLeadForView?.totalAmount || 0)}</div>
+                        <div className="text-xs text-gray-600 mt-2 flex items-center gap-2">
+                          <span>Status</span>
+                          <span className="text-[10px] leading-none">{getStatusBadge(selectedLeadForView.paymentStatus, 'payment')}</span>
                         </div>
                       </div>
-                      
+
                       <div className="bg-gray-50 p-4 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-gray-600">Paid Amount</span>
-                          <span className="text-lg font-bold text-green-600">₹10,000</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Method</span>
-                          <span className="text-sm text-gray-900">Bank Transfer</span>
+                         <div className="text-xs text-gray-600">Paid Amount</div>
+                         <div className="text-lg font-semibold text-green-600 mt-1">₹{(selectedLeadForView?.paidAmount || 0).toLocaleString?.() || (selectedLeadForView?.paidAmount || 0)}</div>
+                        <div className="text-xs text-gray-600 mt-2">
+                           Method <span className="text-gray-900">{selectedLeadForView?.paymentMethod || '—'}</span>
                         </div>
                       </div>
-                      
+
                       <div className="bg-gray-50 p-4 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-gray-600">Pending Amount</span>
-                          <span className="text-lg font-bold text-orange-600">₹15,000</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">Due Date</span>
-                          <span className="text-sm text-gray-900">2024-02-15</span>
+                         <div className="text-xs text-gray-600">Pending Amount</div>
+                         <div className="text-lg font-semibold text-orange-600 mt-1">₹{(() => {
+                           const total = selectedLeadForView?.paymentTotal ?? selectedLeadForView?.totalAmount ?? 0;
+                           const paid = selectedLeadForView?.paidAmount ?? 0;
+                           const pending = selectedLeadForView?.pendingAmount ?? Math.max(total - paid, 0);
+                           return pending.toLocaleString?.() || pending;
+                         })()}</div>
+                        <div className="text-xs text-gray-600 mt-2">
+                           Due Date <span className="text-gray-900">{selectedLeadForView?.paymentDueDate || '—'}</span>
                         </div>
                       </div>
                     </div>
@@ -1495,98 +1744,98 @@ const MarketingLeads = () => {
                     <div>
                       <h5 className="font-semibold text-gray-900 mb-4">Payment History</h5>
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <div>
-                              <p className="font-medium text-gray-900">Initial Payment</p>
-                              <p className="text-sm text-gray-600">Completed on 2024-01-15</p>
+                        {(selectedLeadForView?.paymentHistory || []).length === 0 ? (
+                          <div className="text-sm text-gray-600">No payment history available</div>
+                        ) : (
+                          (selectedLeadForView.paymentHistory).map((row, idx) => (
+                            <div key={idx} className={`flex items-center justify-between p-3 border rounded-lg ${row.status === 'completed' ? 'bg-green-50 border-green-200' : row.status === 'pending' ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200'}`}>
+                              <div className="flex items-center gap-3">
+                                <div className={`w-3 h-3 rounded-full ${row.status === 'completed' ? 'bg-green-500' : row.status === 'pending' ? 'bg-yellow-500' : 'bg-gray-400'}`}></div>
+                                <div>
+                                  <p className="font-medium text-gray-900">{row.title || 'Payment'}</p>
+                                  <p className="text-sm text-gray-600">{row.note || row.date || ''}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className={`font-semibold ${row.status === 'completed' ? 'text-green-600' : row.status === 'pending' ? 'text-orange-600' : 'text-gray-700'}`}>₹{(row.amount || 0).toLocaleString?.() || (row.amount || 0)}</p>
+                                <p className="text-sm text-gray-600">{row.method || '—'}</p>
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold text-green-600">₹10,000</p>
-                            <p className="text-sm text-gray-600">Bank Transfer</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                            <div>
-                              <p className="font-medium text-gray-900">Second Payment</p>
-                              <p className="text-sm text-gray-600">Due on 2024-02-15</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold text-orange-600">₹15,000</p>
-                            <p className="text-sm text-gray-600">Pending</p>
-                          </div>
-                        </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Active Quotation Section */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h5 className="font-semibold text-gray-900 mb-3">Active Quotation</h5>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <div>
-                          <span className="text-sm font-medium text-gray-900">Quotation #{sampleQuotationData.quotationNumber}</span>
-                          <p className="text-sm text-gray-600">Digital Marketing Package - Premium Plan</p>
-                        </div>
-                        <span className="text-sm font-medium text-green-600">₹{sampleQuotationData.total.toLocaleString()} - Active</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <div>
-                          <span className="text-sm text-gray-600">Valid Until: {sampleQuotationData.validUpto}</span>
-                          <p className="text-sm text-gray-600">Prepared by: Sarah Johnson</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              setQuotationData(sampleQuotationData);
-                              setShowQuotationModal(true);
-                            }}
-                            className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
-                          >
-                            View Quotation
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  {/* Quotation & PI removed from Payment tab; now shown under Docs tab only */}
+                </div>
+              )}
 
-                  {/* Proforma Invoice Section */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h5 className="font-semibold text-gray-900 mb-3">Proforma Invoice</h5>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <div>
-                          <span className="text-sm font-medium text-gray-900">Invoice #PI-2024-001</span>
-                          <p className="text-sm text-gray-600">Electrical Cables & Wires Supply</p>
-                        </div>
-                        <span className="text-sm font-medium text-blue-600">₹{sampleQuotationData.total.toLocaleString()} - Generated</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <div>
-                          <span className="text-sm text-gray-600">Invoice Date: {sampleQuotationData.quotationDate}</span>
-                          <p className="text-sm text-gray-600">Generated by: David Lee</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              setProformaData(sampleProformaData);
-                              setShowProformaModal(true);
-                            }}
-                            className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
-                          >
-                            View Invoice
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              {activeViewTab === 'docs' && (
+                <div className="space-y-6">
+                   {/* Active Quotation Section */}
+                   <div className="bg-white border border-gray-200 rounded-lg p-4">
+                     <h5 className="font-semibold text-gray-900 mb-3">Active Quotation</h5>
+                     {selectedLeadForView?.quotation ? (
+                       <div className="space-y-3">
+                         <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                           <div>
+                             <span className="text-sm font-medium text-gray-900">Quotation #{selectedLeadForView.quotation.quotationNumber || selectedLeadForView.quotation.number}</span>
+                             <p className="text-sm text-gray-600">{selectedLeadForView.quotation.title || '—'}</p>
+                           </div>
+                           <span className="text-sm font-medium text-green-600">₹{(selectedLeadForView.quotation.total || 0).toLocaleString?.() || (selectedLeadForView.quotation.total || 0)}{selectedLeadForView.quotation.status ? ` - ${selectedLeadForView.quotation.status}` : ''}</span>
+                         </div>
+                         <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                           <div>
+                             <span className="text-sm text-gray-600">Valid Until: {selectedLeadForView.quotation.validUpto || '—'}</span>
+                             <p className="text-sm text-gray-600">Prepared by: {selectedLeadForView.quotation.preparedBy || '—'}</p>
+                           </div>
+                           <div className="flex gap-2">
+                             <button
+                               onClick={() => { setQuotationData(selectedLeadForView.quotation); setShowQuotationModal(true); }}
+                               className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                             >
+                               View Quotation
+                             </button>
+                           </div>
+                         </div>
+                       </div>
+                     ) : (
+                       <div className="text-sm text-gray-600">No quotation available</div>
+                     )}
+                   </div>
+
+                   {/* Proforma Invoice Section */}
+                   <div className="bg-white border border-gray-200 rounded-lg p-4">
+                     <h5 className="font-semibold text-gray-900 mb-3">Proforma Invoice</h5>
+                     {selectedLeadForView?.proforma ? (
+                       <div className="space-y-3">
+                         <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                           <div>
+                             <span className="text-sm font-medium text-gray-900">Invoice #{selectedLeadForView.proforma.invoiceNumber || selectedLeadForView.proforma.number}</span>
+                             <p className="text-sm text-gray-600">{selectedLeadForView.proforma.title || '—'}</p>
+                           </div>
+                           <span className="text-sm font-medium text-blue-600">₹{(selectedLeadForView.proforma.total || 0).toLocaleString?.() || (selectedLeadForView.proforma.total || 0)}{selectedLeadForView.proforma.status ? ` - ${selectedLeadForView.proforma.status}` : ''}</span>
+                         </div>
+                         <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                           <div>
+                             <span className="text-sm text-gray-600">Invoice Date: {selectedLeadForView.proforma.invoiceDate || '—'}</span>
+                             <p className="text-sm text-gray-600">Generated by: {selectedLeadForView.proforma.generatedBy || '—'}</p>
+                           </div>
+                           <div className="flex gap-2">
+                             <button
+                               onClick={() => { setProformaData(selectedLeadForView.proforma); setShowProformaModal(true); }}
+                               className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                             >
+                               View PI
+                             </button>
+                           </div>
+                         </div>
+                       </div>
+                     ) : (
+                       <div className="text-sm text-gray-600">No proforma invoice available</div>
+                     )}
+                   </div>
                 </div>
               )}
 

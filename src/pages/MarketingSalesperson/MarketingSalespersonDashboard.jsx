@@ -554,9 +554,8 @@ const DocStyleDashboard = () => {
 const PerformanceContent = ({ customers, getStatusCounts }) => {
   const leadsData = customers || [];
 
-  // Date filter state (from - to)
-  const [startDate, setStartDate] = React.useState('');
-  const [endDate, setEndDate] = React.useState('');
+  // Specific single date filter
+  const [specificDate, setSpecificDate] = React.useState('');
 
   // Helper: parse date safely
   const parseDate = (d) => {
@@ -570,20 +569,23 @@ const PerformanceContent = ({ customers, getStatusCounts }) => {
     return lead.connectedStatusDate || lead.finalStatusDate || lead.createdAt || lead.date || null;
   };
 
-  // Apply date filter to leads
+  // Apply date filter to leads (single specific date)
   const filteredLeads = React.useMemo(() => {
-    const from = parseDate(startDate);
-    const to = parseDate(endDate);
-    if (!from && !to) return leadsData;
-    return leadsData.filter(l => {
-      const dateStr = getLeadDate(l);
-      const dt = parseDate(dateStr);
-      if (!dt) return false;
-      if (from && dt < new Date(from.setHours(0,0,0,0))) return false;
-      if (to && dt > new Date(new Date(to).setHours(23,59,59,999))) return false;
-      return true;
-    });
-  }, [leadsData, startDate, endDate]);
+    const only = parseDate(specificDate);
+    if (only) {
+      const dayStart = new Date(only);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(only);
+      dayEnd.setHours(23, 59, 59, 999);
+      return leadsData.filter(l => {
+        const dateStr = getLeadDate(l);
+        const dt = parseDate(dateStr);
+        if (!dt) return false;
+        return dt >= dayStart && dt <= dayEnd;
+      });
+    }
+    return leadsData;
+  }, [leadsData, specificDate]);
 
   // Build status counts from filtered leads
   const filteredStatusCounts = React.useMemo(() => {
@@ -704,40 +706,31 @@ const PerformanceContent = ({ customers, getStatusCounts }) => {
           <h1 className="text-2xl font-semibold text-gray-900">Performance Dashboard</h1>
           <p className="text-sm text-gray-500">Track your targets and performance metrics</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="px-3 py-2 border rounded-md text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <span className="text-sm text-gray-500">to</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="px-3 py-2 border rounded-md text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {(startDate || endDate) && (
-              <button
-                onClick={() => { setStartDate(''); setEndDate(''); }}
-                className="px-3 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-50"
-                title="Clear date filter"
-              >
-                Clear
-              </button>
-            )}
-          </div>
+            <div className="flex items-center gap-2">
+              <input
+            type="date"
+            value={specificDate}
+            onChange={(e) => setSpecificDate(e.target.value)}
+            className="px-3 py-2 border rounded-md text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {specificDate && (
+            <button
+              onClick={() => setSpecificDate('')}
+              className="px-2 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-50"
+              title="Clear specific date"
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
       {/* Target Cards (top row) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {Object.entries(performanceData.targets).map(([key, target]) => {
-          const progress = (target.current / target.target) * 100;
-          const remaining = target.target - target.current;
-          const remainingPct = Math.max(0, Math.ceil(100 - progress));
+          const progress = target.target > 0 ? (target.current / target.target) * 100 : 0;
+          const progressPct = Math.max(0, Math.min(100, Math.ceil(progress)));
+          const remaining = Math.max(0, target.target - target.current);
           return (
             <div key={key} className="relative bg-white border rounded-lg p-4 shadow-sm">
               {remaining > 0 && (
@@ -749,9 +742,9 @@ const PerformanceContent = ({ customers, getStatusCounts }) => {
                 <span className="text-sm text-gray-500">{key === 'conversionRate' ? '/ ' + target.target : '/ ' + target.target}</span>
               </div>
               <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
-                <div className="h-full bg-red-500" style={{ width: `${Math.min(progress, 100)}%` }}></div>
+                <div className="h-full bg-red-500" style={{ width: `${progressPct}%` }}></div>
               </div>
-              <div className="mt-1 text-xs text-red-600 font-medium">{remainingPct}% remaining</div>
+              <div className="mt-1 text-xs text-red-600 font-medium">{progressPct}% achieved</div>
               <div className="text-xs text-red-600">{key === 'revenue' ? `${(remaining).toLocaleString()} more needed to hit target` : `${remaining} more needed to hit target`}</div>
             </div>
           );
