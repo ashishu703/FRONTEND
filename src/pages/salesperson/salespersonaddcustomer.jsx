@@ -57,7 +57,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     state: editingCustomer?.state || "",
     customerType: editingCustomer?.customerType || "",
     leadSource: editingCustomer?.enquiryBy || "",
-    salesStatus: editingCustomer?.salesStatus || 'pending',
+    salesStatus: editingCustomer?.salesStatus || 'follow up',
     salesStatusRemark: editingCustomer?.salesStatusRemark || '',
     callDurationSeconds: editingCustomer?.callDurationSeconds || '',
     callRecordingFile: null,
@@ -337,51 +337,23 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                   onChange={(e) => handleInputChange("salesStatus", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="pending">Pending</option>
-                  <option value="running">Running</option>
-                  <option value="converted">Converted</option>
-                  <option value="lost_closed">Lost/Closed</option>
-                  <option value="interested">Interested</option>
-                  <option value="win_converted">Win - CONVERTED</option>
-                  <option value="next_meeting">Next Meeting</option>
+                  <option value="win">Win</option>
+                  <option value="closed">Closed</option>
+                  <option value="not interested">Not Interested</option>
+                  <option value="follow up">Follow Up</option>
                 </select>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">
-                  {formData.salesStatus === 'other' ? 'Please specify status' : 
-                   formData.salesStatus === 'next_meeting' ? 'Meeting Date & Time' : 
-                   'Remark for sales status'}
+                  Remark for sales status
                 </label>
-                {formData.salesStatus === 'next_meeting' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Date</label>
-                      <input
-                        type="date"
-                        value={formData.meetingDate || ''}
-                        onChange={(e) => handleInputChange("meetingDate", e.target.value)}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Time</label>
-                      <input
-                        type="time"
-                        value={formData.meetingTime || ''}
-                        onChange={(e) => handleInputChange("meetingTime", e.target.value)}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <textarea
-                    value={formData.salesStatusRemark}
-                    onChange={(e) => handleInputChange("salesStatusRemark", e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    placeholder={formData.salesStatus === 'other' ? 'Please specify sales status' : 'Remark for sales status'}
-                  />
-                )}
+                <textarea
+                  value={formData.salesStatusRemark}
+                  onChange={(e) => handleInputChange("salesStatusRemark", e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  placeholder="Remark for sales status"
+                />
               </div>
             </div>
 

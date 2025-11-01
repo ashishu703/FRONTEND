@@ -900,7 +900,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
     }
 
     const reader = new FileReader()
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const csv = e.target.result
         const lines = csv.split('\n').filter(line => line.trim()) // Remove empty lines
@@ -966,13 +966,45 @@ export default function CustomerListContent({ isDarkMode = false }) {
         }
         
         if (importedCustomers.length > 0) {
-          setCustomers(prev => [...prev, ...importedCustomers])
-              const successMessage = errors.length > 0 
-            ? `Successfully imported ${importedCustomers.length} leads. ${errors.length} rows had errors and were skipped.`
-            : `Successfully imported ${importedCustomers.length} leads`
-              alert(successMessage)
-              setShowImportModal(false)
-              setImportFile(null)
+          // Upload imported leads to API
+          try {
+            for (const customer of importedCustomers) {
+              const formData = new FormData();
+              formData.append('name', customer.name);
+              formData.append('phone', customer.phone.replace(/\D/g, '').slice(-10));
+              formData.append('whatsapp', customer.whatsapp ? customer.whatsapp.replace('+91','').replace(/\D/g, '').slice(-10) : customer.phone.replace(/\D/g, '').slice(-10));
+              formData.append('email', customer.email === 'N/A' ? '' : customer.email);
+              formData.append('business', customer.business || 'N/A');
+              formData.append('address', customer.address || 'N/A');
+              formData.append('state', customer.state || 'N/A');
+              formData.append('gst_no', customer.gstNo === 'N/A' ? '' : customer.gstNo);
+              formData.append('product_type', customer.productName || 'N/A');
+              formData.append('lead_source', customer.enquiryBy || 'N/A');
+              formData.append('customer_type', customer.customerType || 'N/A');
+              formData.append('date', customer.date);
+              formData.append('sales_status', customer.salesStatus || 'follow up');
+              formData.append('sales_status_remark', customer.salesStatusRemark || 'Imported from CSV');
+              
+              await apiClient.postFormData(API_ENDPOINTS.LEADS_CREATE(), formData);
+            }
+            
+            // Refresh leads from API after successful import
+            await handleRefresh();
+            
+            const successMessage = errors.length > 0 
+              ? `Successfully imported ${importedCustomers.length} leads. ${errors.length} rows had errors and were skipped.`
+              : `Successfully imported ${importedCustomers.length} leads`;
+            alert(successMessage);
+            setShowImportModal(false);
+            setImportFile(null);
+          } catch (error) {
+            console.error('Error uploading imported leads:', error);
+            // Still update local state even if API fails
+            setCustomers(prev => [...prev, ...importedCustomers]);
+            alert(`Imported ${importedCustomers.length} leads locally. Some may not have been saved to server.`);
+            setShowImportModal(false);
+            setImportFile(null);
+          }
         } else {
           const errorMessage = errors.length > 0 
             ? `CSV validation failed:\n\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? `\n... and ${errors.length - 5} more errors` : ''}\n\nPlease check the format and try again.`
@@ -1567,8 +1599,18 @@ export default function CustomerListContent({ isDarkMode = false }) {
           
           // Special handling for sales status to match exactly
           if (key === 'salesStatus') {
+            // Map old status values to new ones for compatibility
+            const statusMapping = {
+              'connected': 'win',
+              'not connected': 'loose'
+            };
+            
+            const customerStatus = customer.salesStatus?.toLowerCase() || '';
+            const mappedStatus = statusMapping[customerStatus] || customerStatus;
+            const filterValue = statusMapping[value.toLowerCase()] || value.toLowerCase();
+            
             // For sales status, do an exact match (case-insensitive)
-            return customer.salesStatus?.toLowerCase() === value.toLowerCase();
+            return mappedStatus === filterValue;
           }
           
           // For other fields, do a partial match
@@ -1900,10 +1942,10 @@ export default function CustomerListContent({ isDarkMode = false }) {
                         }`}
                       >
                         <option value="">All Statuses</option>
-                        <option value="Connected">Connected</option>
-                        <option value="Not Connected">Not Connected</option>
-                        <option value="Follow Up">Follow Up</option>
-                        <option value="Not Interested">Not Interested</option>
+                        <option value="win">Win Leads</option>
+                        <option value="loose">Loose Leads</option>
+                        <option value="follow up">Follow Up</option>
+                        <option value="not interested">Not Interested</option>
                       </select>
                     )}
                   </th>

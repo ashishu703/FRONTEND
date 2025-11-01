@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Calculator, 
   DollarSign, 
@@ -31,6 +31,7 @@ import {
   Eye,
   Plus
 } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 
 const sections = [
   {
@@ -41,6 +42,7 @@ const sections = [
         { name: "Aerial Bunch Cable", description: "Overhead power distribution cable", icon: Image, imageUrl: "/images/products/aerial bunch cable.jpeg" },
       { name: "Aluminium Conductor Galvanized Steel Reinforced", description: "ACSR conductor for transmission lines", icon: Image, imageUrl: "/images/products/all aluminium alloy conductor.jpeg" },
       { name: "All Aluminium Alloy Conductor", description: "AAAC conductor for overhead lines", icon: Image, imageUrl: "/images/products/all aluminium alloy conductor.jpeg" },
+      { name: "PVC Insulated Submersible Cable", description: "Water-resistant submersible cable", icon: Image, imageUrl: "/images/products/pvc insulated submersible cable.jpeg" },
       { name: "Paper Cover Aluminium Conductor", description: "Traditional paper insulated conductor", icon: Image, imageUrl: "/images/products/paper covered aluminium conductor.jpeg" },
       { name: "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable", description: "Single core power cable with PVC insulation", icon: Image, imageUrl: "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg" },
       { name: "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable", description: "Single core power cable with XLPE insulation", icon: Image, imageUrl: "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg" },
@@ -51,7 +53,7 @@ const sections = [
       { name: "Multistrand Single Core Copper Cable", description: "Flexible single core copper cable", icon: Image, imageUrl: "/images/products/multistrand single core copper cable.jpeg" },
       { name: "Multi Core Copper Cable", description: "Multi-core copper power cable", icon: Image, imageUrl: "/images/products/multi core copper cable.jpeg" },
       { name: "PVC Insulated Single Core Aluminium Cable", description: "Single core aluminium cable with PVC insulation", icon: Image, imageUrl: "/images/products/pvc insulated single core aluminium cables.jpeg" },
-      { name: "PVC Insulated Submersible Cable", description: "Water-resistant submersible cable", icon: Image, imageUrl: "/images/products/pvc insulated submersible cable.jpeg" },
+      
       { name: "PVC Insulated Multicore Aluminium Cable", description: "Multi-core aluminium cable with PVC insulation", icon: Image, imageUrl: "/images/products/pvc insulated multicore aluminium cable.jpeg" },
       { name: "Submersible Winding Wire", description: "Specialized winding wire for submersible applications", icon: Image, imageUrl: "/images/products/submersible winding wire.jpeg" },
       { name: "Twin Twisted Copper Wire", description: "Twisted pair copper wire", icon: Image, imageUrl: "/images/products/twin twisted copper wire.jpeg" },
@@ -64,19 +66,6 @@ const sections = [
       { name: "Uni-tube Unarmoured Optical Fibre Cable", description: "Single tube optical fibre cable", icon: Image, imageUrl: "/images/products/unitube unarmoured optical fibre cable.jpeg" },
       { name: "Armoured Unarmoured PVC Insulated Copper Control Cable", description: "Control cable for industrial applications", icon: Image, imageUrl: "/images/products/armoured unarmoured pvc insulated copper control cable.jpeg" },
       { name: "Telecom Switch Board Cables", description: "Telecommunications switchboard cable", icon: Image, imageUrl: "/images/products/telecom switch board cables.jpeg" },
-    ],
-  },
-  {
-    id: "technical-size-chart",
-    title: "Technical Size Chart",
-    icon: Ruler,
-    tools: [
-      { name: "ANOCAB 1100 VOLT ELECTRIC WIRE MULTISTRAND SINGLE CORE PVC INSULATED", description: "Single core multistrand cable specifications", icon: Zap, dataId: "anocab-1100-volt-multistrand-single-core" },
-      { name: "ANOCAB 1100 VOLT ELECTRIC MULTI-STRAND MULTI-CORE PVC INSULATED COPPER CABLE", description: "Multi-core copper cable specifications", icon: Cable, dataId: "anocab-1100-volt-multi-strand-multi-core" },
-      { name: "ANOCAB 750 VOLT ELECTRIC SINGLE CORE PVC INSULATED CABLE", description: "Single core 750V cable specifications", icon: Zap, dataId: "anocab-750-volt-single-core" },
-      { name: "ANOCAB 1100 VOLT ELECTRIC PVC INSULATED SUBMERSIBLE FLAT CABLE", description: "Submersible flat cable specifications", icon: Droplets, dataId: "anocab-1100-volt-submersible-flat" },
-      { name: "ALL ALUMINIUM ALLOY CONDUCTORS (AAAC) IS 398 PT-IV : 1994", description: "Aluminium alloy conductor specifications", icon: Layers, dataId: "aaac-conductors" },
-      { name: "ALUMINIUM CONDUCTOR GALVANISED STEEL REINFORCED IS 398 PT-II : 1996", description: "Galvanised steel reinforced conductor specifications", icon: Shield, dataId: "aluminium-conductor-galvanised-steel" },
     ],
   },
 ];
@@ -104,7 +93,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   const [isTemperatureCorrectionOpen, setIsTemperatureCorrectionOpen] = useState(false);
   
   // Sidebar state
-  const [selectedLocation, setSelectedLocation] = useState("Anode Electric Private Limited");
+  const [selectedLocation, setSelectedLocation] = useState("IT Park, Jabalpur");
   const [showBusinessCard, setShowBusinessCard] = useState(false);
   const [showCompanyEmails, setShowCompanyEmails] = useState(false);
   const [showLocations, setShowLocations] = useState(false);
@@ -114,12 +103,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   // Product detail state
   const [isProductDetailOpen, setIsProductDetailOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState("");
+  const [showDataUpcoming, setShowDataUpcoming] = useState(false);
+  
+  // List of products that have full data
+  const productsWithData = [
+    'aerial bunch cable',
+    'aluminium conductor galvanized steel reinforced',
+    'all aluminium alloy conductor',
+    'pvc insulated submersible cable'
+  ];
+  
+  // Check if product has data
+  const hasProductData = (productName) => {
+    const nameLower = productName.toLowerCase();
+    return productsWithData.some(allowed => nameLower.includes(allowed));
+  };
   const [isFileViewerOpen, setIsFileViewerOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isBusinessCardOpen, setIsBusinessCardOpen] = useState(false);
   const [isCompanyEmailsOpen, setIsCompanyEmailsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredTools, setFilteredTools] = useState([]);
+  const businessCardRef = useRef(null);
 
   // Image upload state
   const [productImages, setProductImages] = useState({}); // { [productName]: { [rowIndex]: [dataUrl1, ...] } }
@@ -588,42 +593,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         rows: tempCorrection.data.rows
       });
       setIsTableOpen(true);
-    } else if (tool.name === "Aerial Bunch Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Aluminium Conductor Galvanized Steel Reinforced") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "All Aluminium Alloy Conductor") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Paper Cover Aluminium Conductor") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Multi Core PVC Insulated Aluminium Armoured Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Multi Core XLPE Insulated Aluminium Armoured Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Multi Core PVC Insulated Aluminium Unarmoured Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Multi Core XLPE Insulated Aluminium Unarmoured Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Multistrand Single Core Copper Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Multi Core Copper Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
     } else if (tool.name === "Business Card") {
       setSelectedProduct(tool.name);
       setIsProductDetailOpen(true);
@@ -639,48 +608,24 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     } else if (tool.name === "Location") {
       setSelectedProduct(tool.name);
       setIsProductDetailOpen(true);
-    } else if (tool.name === "PVC Insulated Single Core Aluminium Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "PVC Insulated Submersible Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "PVC Insulated Multicore Aluminium Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Submersible Winding Wire") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Twin Twisted Copper Wire") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Speaker Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "CCTV Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "LAN Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Automobile Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "PV Solar Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Co Axial Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Uni-tube Unarmoured Optical Fibre Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Armoured Unarmoured PVC Insulated Copper Control Cable") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
-    } else if (tool.name === "Telecom Switch Board Cables") {
-      setSelectedProduct(tool.name);
-      setIsProductDetailOpen(true);
+    } else {
+      // For product tools, check if they have data
+      // Exclude special items (Business Card, Brochure, GST Details, Company Emails, Location)
+      const specialItems = ["Business Card", "Brochure", "GST Details", "Company Emails", "Location"];
+      if (!specialItems.includes(tool.name)) {
+        // Check if it's a product from the products section
+        const productsSection = sections.find(s => s.id === "products");
+        const isProduct = productsSection?.tools.some(t => t.name === tool.name);
+        
+        if (isProduct) {
+          if (hasProductData(tool.name)) {
+            setSelectedProduct(tool.name);
+            setIsProductDetailOpen(true);
+          } else {
+            setShowDataUpcoming(true);
+          }
+        }
+      }
     }
   };
 
@@ -929,12 +874,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "All Aluminium Alloy Conductor for overhead lines",
         imageUrl: "/images/products/all aluminium alloy conductor.jpeg",
         priceList: [
-          { size: "25 sq.mm", price: "₹78.50/m", stock: "Available", image: "/images/aaac-25mm.jpg" },
-          { size: "50 sq.mm", price: "₹145.20/m", stock: "Available", image: "/images/aaac-50mm.jpg" },
-          { size: "70 sq.mm", price: "₹198.80/m", stock: "Available", image: "/images/aaac-70mm.jpg" },
-          { size: "95 sq.mm", price: "₹265.40/m", stock: "Available", image: "/images/aaac-95mm.jpg" },
-          { size: "120 sq.mm", price: "₹325.60/m", stock: "Available", image: "/images/aaac-120mm.jpg" },
-          { size: "150 sq.mm", price: "₹398.20/m", stock: "Available", image: "/images/aaac-150mm.jpg" }
+          { size: "MOLE - 15 SQMM", price: "", stock: "", image: "" },
+          { size: "SQUIRREL - 22 SQMM", price: "", stock: "", image: "" },
+          { size: "WEASEL - 34 SQMM", price: "", stock: "", image: "" },
+          { size: "RABBIT - 55 SQMM", price: "", stock: "", image: "" },
+          { size: "RACCOON - 80 SQMM", price: "", stock: "", image: "" },
+          { size: "DOG - 100 SQMM", price: "", stock: "", image: "" }
         ],
         technicalData: {
           voltage: "33 kV",
@@ -1267,12 +1212,11 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Water-resistant submersible cable",
         imageUrl: "/images/products/pvc insulated submersible cable.jpeg",
         priceList: [
-          { size: "1.5 sq.mm", price: "₹45.50/m", stock: "Available", image: "/images/submersible-1.5mm.jpg" },
-          { size: "2.5 sq.mm", price: "₹68.75/m", stock: "Available", image: "/images/submersible-2.5mm.jpg" },
-          { size: "4 sq.mm", price: "₹92.30/m", stock: "Available", image: "/images/submersible-4mm.jpg" },
-          { size: "6 sq.mm", price: "₹125.80/m", stock: "Available", image: "/images/submersible-6mm.jpg" },
-          { size: "10 sq.mm", price: "₹168.90/m", stock: "Available", image: "/images/submersible-10mm.jpg" },
-          { size: "16 sq.mm", price: "₹215.60/m", stock: "Available", image: "/images/submersible-16mm.jpg" }
+          { size: "1.0 mm² (32/0.20 | 32/0.00788)", price: "", stock: "", image: "" },
+          { size: "1.5 mm² (30/0.25 | 30/0.00985)", price: "", stock: "", image: "" },
+          { size: "2.5 mm² (50/0.25 | 50/0.00985)", price: "", stock: "", image: "" },
+          { size: "4.0 mm² (56/0.30 | 56/0.01181)", price: "", stock: "", image: "" },
+          { size: "6.0 mm² (84/0.30 | 84/0.01181)", price: "", stock: "", image: "" }
         ],
         technicalData: {
           voltage: "1.1 kV",
@@ -1589,6 +1533,112 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     setIsBusinessCardOpen(false);
   };
 
+  const downloadBusinessCard = async (format = 'pdf') => {
+    if (!businessCardRef.current) return;
+
+    try {
+      const cardElement = businessCardRef.current;
+      
+      // Wait a bit to ensure all images are loaded
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (format === 'pdf') {
+        // Download as PDF - capture card exactly as displayed
+        const opt = {
+          margin: [0, 0, 0, 0],
+          filename: 'business-card.pdf',
+          image: { type: 'jpeg', quality: 1.0 },
+          html2canvas: { 
+            scale: 3,
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: '#ffffff',
+            logging: false,
+            letterRendering: true,
+            width: cardElement.offsetWidth,
+            height: cardElement.offsetHeight,
+            scrollX: 0,
+            scrollY: 0
+          },
+          jsPDF: { 
+            unit: 'px', 
+            format: [cardElement.offsetWidth, cardElement.offsetHeight],
+            orientation: cardElement.offsetWidth > cardElement.offsetHeight ? 'landscape' : 'portrait',
+            compress: false
+          }
+        };
+        
+        await html2pdf().set(opt).from(cardElement).save();
+      } else if (format === 'image') {
+        // Download as image - use html2canvas directly for better quality
+        try {
+          // Dynamically import html2canvas
+          const html2canvas = (await import('html2canvas')).default;
+          
+          const canvas = await html2canvas(cardElement, {
+            scale: 3,
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: '#ffffff',
+            logging: false,
+            letterRendering: true,
+            width: cardElement.offsetWidth,
+            height: cardElement.offsetHeight,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: cardElement.offsetWidth,
+            windowHeight: cardElement.offsetHeight
+          });
+          
+          // Convert canvas to image
+          const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
+          
+          // Create download link
+          const link = document.createElement('a');
+          link.download = 'business-card.jpg';
+          link.href = dataUrl;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } catch (error) {
+          console.error('Image download error:', error);
+          // Fallback: use html2pdf to generate canvas
+          const opt = {
+            margin: [0, 0, 0, 0],
+            image: { type: 'jpeg', quality: 1.0 },
+            html2canvas: { 
+              scale: 3,
+              useCORS: true,
+              backgroundColor: '#ffffff',
+              logging: false,
+              width: cardElement.offsetWidth,
+              height: cardElement.offsetHeight
+            },
+            jsPDF: { 
+              unit: 'px', 
+              format: [cardElement.offsetWidth, cardElement.offsetHeight]
+            }
+          };
+          
+          html2pdf().set(opt).from(cardElement).outputImg('dataurlstring').then((dataUrl) => {
+            const link = document.createElement('a');
+            link.download = 'business-card.jpg';
+            link.href = dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }).catch((err) => {
+            console.error('Fallback image download failed:', err);
+            alert('Failed to download image. Please try again.');
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error downloading business card:', error);
+      alert('Failed to download business card. Please try again.');
+    }
+  };
+
   const openBrochure = () => {
     // Open the brochure PDF directly in a new tab
     const pdfUrl = `${window.location.origin}/pdf/Anocab brochure.pdf`;
@@ -1630,18 +1680,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               const IconComponent = section.icon;
               return (
                 <section key={section.id} id={section.id} className="scroll-mt-6">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className={`p-2 rounded-lg ${
-                      isDarkMode ? 'bg-blue-900' : 'bg-blue-100'
-                    }`}>
-                      <IconComponent className={`h-6 w-6 ${
-                        isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                      }`} />
+                  {section.id !== "products" && (
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className={`p-2 rounded-lg ${
+                        isDarkMode ? 'bg-blue-900' : 'bg-blue-100'
+                      }`}>
+                        <IconComponent className={`h-6 w-6 ${
+                          isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                        }`} />
+                      </div>
+                      <h2 className={`text-2xl font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>{section.title}</h2>
                     </div>
-                    <h2 className={`text-2xl font-semibold ${
-                      isDarkMode ? 'text-white' : 'text-gray-900'
-                    }`}>{section.title}</h2>
-                  </div>
+                  )}
 
                   {section.id === "products" && (
                     <div className="mb-6">
@@ -2024,112 +2076,56 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
           ? 'bg-gray-800 border-gray-700' 
           : 'bg-white border-gray-200'
       }`}>
-        <div className="p-6">
-          {/* Company Details Header */}
-          <div className="mb-6">
-            <h2 className={`text-xl font-bold mb-4 flex items-center gap-2 ${
-              isDarkMode ? 'text-white' : 'text-gray-900'
-            }`}>
-              <Building className={`h-5 w-5 ${
-                isDarkMode ? 'text-blue-400' : 'text-blue-600'
-              }`} />
-              Company Details
-            </h2>
-          </div>
+        <div className="p-6 pt-12">
+          {/* Blank space placeholder */}
+          <div className="mb-12"></div>
 
-          {/* Business Card */}
+          {/* Business Card & Brochure - Side by Side */}
           <div className="mb-4">
-            <div 
-              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
-                isDarkMode 
-                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
-                  : 'border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100'
-              }`}
-              onClick={openBusinessCard}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm">
-                  <User className="h-5 w-5 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h3 className={`font-semibold text-sm ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>Business Card</h3>
-                  <p className={`text-xs ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}>Company contact information</p>
-                </div>
-                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                } ${showBusinessCard ? 'rotate-90' : ''}`} />
-              </div>
-            </div>
-            
-            {showBusinessCard && (
-              <div className={`mt-3 p-4 rounded-xl border shadow-sm ${
-                isDarkMode 
-                  ? 'bg-gray-700 border-gray-600' 
-                  : 'bg-white border-gray-200'
-              }`}>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Building className={`h-4 w-4 ${
-                      isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                    }`} />
-                    <span className={`text-sm font-medium ${
-                      isDarkMode ? 'text-white' : 'text-gray-900'
-                    }`}>{selectedLocation}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className={`h-4 w-4 ${
-                      isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                    }`} />
-                    <span className={`text-sm ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-900'
-                    }`}>+91 9876543210</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Mail className={`h-4 w-4 ${
-                      isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                    }`} />
-                    <span className={`text-sm ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-900'
-                    }`}>info@anodeelectric.com</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className={`h-4 w-4 ${
-                      isDarkMode ? 'text-blue-400' : 'text-blue-600'
-                    }`} />
-                    <span className={`text-sm ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-900'
-                    }`}>Industrial Area, Mumbai</span>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Business Card */}
+              <div className="flex-1">
+                <div 
+                  className={`p-3 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+                    isDarkMode 
+                      ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
+                      : 'border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100'
+                  }`}
+                  onClick={openBusinessCard}
+                >
+                  <div className="flex flex-col items-center text-center gap-2">
+                    <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm">
+                      <User className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="w-full">
+                      <h3 className={`font-semibold text-xs ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Business Card</h3>
+                    </div>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Brochure */}
-          <div className="mb-4">
-            <div 
-              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
-                isDarkMode 
-                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
-                  : 'border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100'
-              }`}
-              onClick={openBrochure}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-sm">
-                  <FileText className="h-5 w-5 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h3 className={`font-semibold text-sm ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>Brochure</h3>
-                  <p className={`text-xs ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}>Company brochure and catalog</p>
+              {/* Brochure */}
+              <div className="flex-1">
+                <div 
+                  className={`p-3 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+                    isDarkMode 
+                      ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
+                      : 'border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100'
+                  }`}
+                  onClick={openBrochure}
+                >
+                  <div className="flex flex-col items-center text-center gap-2">
+                    <div className="p-2 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-sm">
+                      <FileText className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="w-full">
+                      <h3 className={`font-semibold text-xs ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Brochure</h3>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2155,37 +2151,176 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   }`}>Tax registration information</p>
                 </div>
               </div>
-              <div className="space-y-2 text-sm">
-                <div className={`flex justify-between items-center py-1 border-b ${
-                  isDarkMode ? 'border-gray-600' : 'border-gray-100'
+              <div className="space-y-3">
+                {/* ANODE ELECTRIC PVT LTD */}
+                <div className={`p-3 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-white border-gray-200'
                 }`}>
-                  <span className={`font-medium ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}>GSTIN:</span>
-                  <span className={`font-mono text-xs ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>27ABCDE1234F1Z5</span>
+                  <div className={`font-semibold text-xs mb-1 ${
+                    isDarkMode ? 'text-purple-300' : 'text-purple-700'
+                  }`}>ANODE ELECTRIC PVT LTD.</div>
+                  <div className={`font-mono text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>23AANCA7455R1ZX</div>
                 </div>
-                <div className={`flex justify-between items-center py-1 border-b ${
-                  isDarkMode ? 'border-gray-600' : 'border-gray-100'
+                
+                {/* SAMRIDDHI CABLE INDUSTRIES PVT LTD */}
+                <div className={`p-3 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-white border-gray-200'
                 }`}>
-                  <span className={`font-medium ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}>PAN:</span>
-                  <span className={`font-mono text-xs ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>ABCDE1234F</span>
+                  <div className={`font-semibold text-xs mb-1 ${
+                    isDarkMode ? 'text-purple-300' : 'text-purple-700'
+                  }`}>SAMRIDDHI CABLE INDUSTRIES PVT LTD.</div>
+                  <div className={`font-mono text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>23ABPCS7684F1ZT</div>
                 </div>
-                <div className="flex justify-between items-center py-1">
-                  <span className={`font-medium ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}>State:</span>
-                  <span className={`${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>Maharashtra</span>
+                
+                {/* SAMRIDDHI INDUSTRIES */}
+                <div className={`p-3 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-white border-gray-200'
+                }`}>
+                  <div className={`font-semibold text-xs mb-1 ${
+                    isDarkMode ? 'text-purple-300' : 'text-purple-700'
+                  }`}>SAMRIDDHI INDUSTRIES</div>
+                  <div className={`font-mono text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>23ABWFS1117M1ZT</div>
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Company Emails */}
+          <div className="mb-4">
+            <div 
+              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+                isDarkMode 
+                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
+                  : 'border-gray-200 bg-gradient-to-r from-pink-50 to-rose-50 hover:from-pink-100 hover:to-rose-100'
+              }`}
+              onClick={openCompanyEmails}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 shadow-sm">
+                  <Mail className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className={`font-semibold text-sm ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>Company Emails</h3>
+                  <p className={`text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>All company email addresses</p>
+                </div>
+                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`} />
+              </div>
+            </div>
+            
+          </div>
+          {/* Location Dropdown */}
+          <div className="mb-4">
+            <div 
+              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+                isDarkMode 
+                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
+                  : 'border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50 hover:from-slate-100 hover:to-gray-100'
+              }`}
+              onClick={() => setShowLocations(!showLocations)}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-slate-500 to-gray-600 shadow-sm">
+                  <MapPin className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className={`font-semibold text-sm ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>Location</h3>
+                  <p className={`text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>Company locations</p>
+                </div>
+                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                } ${showLocations ? 'rotate-90' : ''}`} />
+              </div>
+            </div>
+            
+            {showLocations && (
+              <div className="mt-3 space-y-2">
+                {/* IT Park, Jabalpur */}
+                <div 
+                  className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
+                    selectedLocation === "IT Park, Jabalpur" 
+                      ? isDarkMode 
+                        ? "bg-gray-600 border-gray-500 shadow-md" 
+                        : "bg-slate-50 border-slate-200 shadow-md"
+                      : isDarkMode 
+                        ? "bg-gray-700 border-gray-600 hover:bg-gray-600" 
+                        : "bg-white border-gray-200 hover:bg-slate-50"
+                  }`}
+                  onClick={() => setSelectedLocation("IT Park, Jabalpur")}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-gray-600' : 'bg-slate-100'
+                    }`}>
+                      <MapPin className={`h-4 w-4 ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className={`text-sm font-semibold mb-1 ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>IT Park, Jabalpur</div>
+                      <div className={`text-xs ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>Plot No 10, IT Park, Bargi Hills, Jabalpur, M.P.</div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Dadda Nagar */}
+                <div 
+                  className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
+                    selectedLocation === "Dadda Nagar" 
+                      ? isDarkMode 
+                        ? "bg-gray-600 border-gray-500 shadow-md" 
+                        : "bg-slate-50 border-slate-200 shadow-md"
+                      : isDarkMode 
+                        ? "bg-gray-700 border-gray-600 hover:bg-gray-600" 
+                        : "bg-white border-gray-200 hover:bg-slate-50"
+                  }`}
+                  onClick={() => setSelectedLocation("Dadda Nagar")}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-gray-600' : 'bg-slate-100'
+                    }`}>
+                      <MapPin className={`h-4 w-4 ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className={`text-sm font-semibold mb-1 ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Dadda Nagar</div>
+                      <div className={`text-xs ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>Ward no. 73 in front of Dadda Nagar, Karmeta Road, Jabalpur, M.P.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Calculators */}
@@ -2256,6 +2391,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               </div>
             )}
           </div>
+          
           {/* Helping Calculators */}
           <div className="mb-4">
             <div 
@@ -2324,119 +2460,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
             )}
           </div>
 
-          {/* Company Emails */}
-          <div className="mb-4">
-            <div 
-              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
-                isDarkMode 
-                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
-                  : 'border-gray-200 bg-gradient-to-r from-pink-50 to-rose-50 hover:from-pink-100 hover:to-rose-100'
-              }`}
-              onClick={openCompanyEmails}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 shadow-sm">
-                  <Mail className="h-5 w-5 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h3 className={`font-semibold text-sm ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>Company Emails</h3>
-                  <p className={`text-xs ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}>All company email addresses</p>
-                </div>
-                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`} />
-              </div>
-            </div>
-            
-          </div>
-          {/* Location Dropdown */}
-          <div className="mb-4">
-            <div 
-              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
-                isDarkMode 
-                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
-                  : 'border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50 hover:from-slate-100 hover:to-gray-100'
-              }`}
-              onClick={() => setShowLocations(!showLocations)}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-slate-500 to-gray-600 shadow-sm">
-                  <MapPin className="h-5 w-5 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h3 className={`font-semibold text-sm ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>Location</h3>
-                  <p className={`text-xs ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}>Select company location</p>
-                </div>
-                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                } ${showLocations ? 'rotate-90' : ''}`} />
-              </div>
-            </div>
-            
-            {showLocations && (
-              <div className="mt-3 space-y-2">
-                <div 
-                  className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
-                    selectedLocation === "Anode Electric Private Limited" 
-                      ? isDarkMode 
-                        ? "bg-gray-600 border-gray-500 shadow-md" 
-                        : "bg-slate-50 border-slate-200 shadow-md"
-                      : isDarkMode 
-                        ? "bg-gray-700 border-gray-600 hover:bg-gray-600" 
-                        : "bg-white border-gray-200 hover:bg-slate-50"
-                  }`}
-                  onClick={() => setSelectedLocation("Anode Electric Private Limited")}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      isDarkMode ? 'bg-gray-600' : 'bg-slate-100'
-                    }`}>
-                      <Building className={`h-4 w-4 ${
-                        isDarkMode ? 'text-slate-300' : 'text-slate-600'
-                      }`} />
-                    </div>
-                    <span className={`text-sm font-medium ${
-                      isDarkMode ? 'text-white' : 'text-gray-900'
-                    }`}>Anode Electric Private Limited</span>
-                  </div>
-                </div>
-                <div 
-                  className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
-                    selectedLocation === "Samriddhi Industries" 
-                      ? isDarkMode 
-                        ? "bg-gray-600 border-gray-500 shadow-md" 
-                        : "bg-slate-50 border-slate-200 shadow-md"
-                      : isDarkMode 
-                        ? "bg-gray-700 border-gray-600 hover:bg-gray-600" 
-                        : "bg-white border-gray-200 hover:bg-slate-50"
-                  }`}
-                  onClick={() => setSelectedLocation("Samriddhi Industries")}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      isDarkMode ? 'bg-gray-600' : 'bg-slate-100'
-                    }`}>
-                      <Building className={`h-4 w-4 ${
-                        isDarkMode ? 'text-slate-300' : 'text-slate-600'
-                      }`} />
-                    </div>
-                    <span className={`text-sm font-medium ${
-                      isDarkMode ? 'text-white' : 'text-gray-900'
-                    }`}>Samriddhi Industries</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
         </div>
       </div>
       {/* Product Detail Modal - Dynamic */}
@@ -2473,8 +2496,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
               )}
 
-              {/* Technical Specifications Section - Only for Aerial Bunch Cable */}
-              {selectedProduct === "Aerial Bunch Cable" && (
+              {/* Technical Specifications Section - Aerial Bunch Cable, AAAC and PVC Submersible */}
+              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "All Aluminium Alloy Conductor" || selectedProduct === "PVC Insulated Submersible Cable") && (
                 <div className="mb-8">
                   <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Wrench className="h-5 w-5 text-blue-600" />
@@ -2483,48 +2506,141 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                     <div className="p-6 flex flex-col lg:flex-row gap-8">
                       <div className="flex-1">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <span className="text-sm font-semibold text-gray-800">REFERENCE</span>
-                            <p className="text-sm text-gray-800">IS 14255:1995</p>
+                        {selectedProduct === "All Aluminium Alloy Conductor" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Application</h4>
+                              <p className="text-sm text-gray-800">Over Head Power Transmission Purposes</p>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>100% Pure EC Grade Aluminium.</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS-398 (PT-4):1994</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">Conductor Containing All Aluminium Alloy wire in Concentric Layer.</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Resistivity</span>
+                                  <p className="text-sm text-gray-800">Resistivity of Material MAX. 0.0328 Ohm mm²/m at 20°C</p>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <span className="text-sm font-semibold text-gray-800">RATED VOLTAGE</span>
-                            <p className="text-sm text-gray-800">1100 volts</p>
+                        ) : selectedProduct === "PVC Insulated Submersible Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Application</h4>
+                              <p className="text-sm text-gray-800">Submersible pump connections and wet environments</p>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>High quality multilayer PVC having greater IR Value.</li>
+                                <li>REACH and RoHS Compliant Cable.</li>
+                                <li>Flame Retardant Cable with higher Oxygen Index.</li>
+                                <li>Anti-Rodent, Anti-Termite.</li>
+                                <li>100% Pure EC Grade Aluminium.</li>
+                                <li>Super Annealed Conductor.</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">ISO & BIS Certification</span>
+                                  <p className="text-sm text-gray-800">Certified Company</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">Electrolytic grade annealed copper, Class 2/5 as per IS 8130</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">PVC Type A as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of Core</span>
+                                  <p className="text-sm text-gray-800">Red, Yellow, Blue</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
+                                  <p className="text-sm text-gray-800">PVC Type ST-1 / ST-2 as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of Sheath</span>
+                                  <p className="text-sm text-gray-800">Black and other colours as per customer demand</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
+                                  <p className="text-sm text-gray-800">Up to and including 1100V</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
+                                  <p className="text-sm text-gray-800">Standard packing of 300/500 mtr coil; other lengths on request. Cables printed with ‘ANOCAB’ marking.</p>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <span className="text-sm font-semibold text-gray-800">CONDUCTOR</span>
-                            <p className="text-sm text-gray-800">Class-2 as per IS-8130</p>
-                          </div>
-                          <div className="space-y-2">
-                            <span className="text-sm font-semibold text-gray-800">INSULATION</span>
-                            <p className="text-sm text-gray-800">Cross link polythene insulated</p>
-                          </div>
-                          <div className="space-y-2">
-                            <span className="text-sm font-semibold text-gray-800">MESSENGER</span>
-                            <p className="text-sm text-gray-800">Aluminium alloy conductor as per IS-398 pt-4</p>
-                          </div>
-                          <div className="space-y-2">
-                            <span className="text-sm font-semibold text-gray-800">TEMPERATURE RANGE</span>
-                            <p className="text-sm text-gray-800">-30°C to 90°C</p>
-                          </div>
-                        </div>
-                        <div className="space-y-2 mt-4">
-                          <span className="text-sm font-semibold text-gray-800">FEATURES</span>
-                          <div className="text-sm text-gray-800">
-                            <ul className="list-disc list-inside space-y-1">
-                              <li>UV radiation protected</li>
-                              <li>Higher current carrying capacity</li>
-                              <li>High temperature range -30°C to 90°C</li>
-                            </ul>
-                          </div>
-                        </div>
+                        ) : (
+                          <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <span className="text-sm font-semibold text-gray-800">REFERENCE</span>
+                                <p className="text-sm text-gray-800">IS 14255:1995</p>
+                              </div>
+                              <div className="space-y-2">
+                                <span className="text-sm font-semibold text-gray-800">RATED VOLTAGE</span>
+                                <p className="text-sm text-gray-800">1100 volts</p>
+                              </div>
+                              <div className="space-y-2">
+                                <span className="text-sm font-semibold text-gray-800">CONDUCTOR</span>
+                                <p className="text-sm text-gray-800">Class-2 as per IS-8130</p>
+                              </div>
+                              <div className="space-y-2">
+                                <span className="text-sm font-semibold text-gray-800">INSULATION</span>
+                                <p className="text-sm text-gray-800">Cross link polythene insulated</p>
+                              </div>
+                              <div className="space-y-2">
+                                <span className="text-sm font-semibold text-gray-800">MESSENGER</span>
+                                <p className="text-sm text-gray-800">Aluminium alloy conductor as per IS-398 pt-4</p>
+                              </div>
+                              <div className="space-y-2">
+                                <span className="text-sm font-semibold text-gray-800">TEMPERATURE RANGE</span>
+                                <p className="text-sm text-gray-800">-30°C to 90°C</p>
+                              </div>
+                            </div>
+                            <div className="space-y-2 mt-4">
+                              <span className="text-sm font-semibold text-gray-800">FEATURES</span>
+                              <div className="text-sm text-gray-800">
+                                <ul className="list-disc list-inside space-y-1">
+                                  <li>UV radiation protected</li>
+                                  <li>Higher current carrying capacity</li>
+                                  <li>High temperature range -30°C to 90°C</li>
+                                </ul>
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                       <div className="lg:w-1/3 flex flex-col items-center">
                         <div className="w-full h-64 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
                           <img 
-                            src="/images/products/aerial bunch cable.jpeg"
-                            alt="Aerial Bunch Cable"
+                            src={selectedProduct === "All Aluminium Alloy Conductor" 
+                                  ? "/images/products/all aluminium alloy conductor.jpeg" 
+                                  : selectedProduct === "PVC Insulated Submersible Cable" 
+                                  ? "/images/products/pvc insulated submersible cable.jpeg" 
+                                  : "/images/products/aerial bunch cable.jpeg"}
+                            alt={selectedProduct}
                             className="w-full h-full object-contain p-4"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
@@ -2535,19 +2651,31 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           <div className="hidden w-full h-full items-center justify-center text-gray-400">
                             <div className="text-center p-4">
                               <Image className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                              <p className="text-sm">Aerial Bunch Cable</p>
+                              <p className="text-sm">{selectedProduct}</p>
                             </div>
                           </div>
                         </div>
-                        <p className="text-sm text-gray-500 mt-2 text-center">Aerial Bunch Cable Sample</p>
+                        <p className="text-sm text-gray-500 mt-2 text-center">{selectedProduct} Sample</p>
                         
                         <div className="mt-6 w-full">
                           <h4 className="font-semibold text-gray-800 mb-3">Standards Compliance:</h4>
                           <ul className="text-sm text-gray-700 space-y-1">
-                            <li>• IS 14255: 1995 (Reaffirmed 2020)</li>
-                            <li>• IS 8130: 1984 (Reaffirmed 2021)</li>
-                            <li>• IS 1554 (Part-1): 1988 (Reaffirmed 2021)</li>
-                            <li>• IS 7098 (Part-1): 1988 (Reaffirmed 2021)</li>
+                            {selectedProduct === "All Aluminium Alloy Conductor" ? (
+                              <>
+                                <li>• IS 398 (Part 4)</li>
+                              </>
+                            ) : selectedProduct === "PVC Insulated Submersible Cable" ? (
+                              <>
+                                <li>• IS 694 (PVC Insulated Cables)</li>
+                              </>
+                            ) : (
+                              <>
+                                <li>• IS 14255: 1995 (Reaffirmed 2020)</li>
+                                <li>• IS 8130: 1984 (Reaffirmed 2021)</li>
+                                <li>• IS 1554 (Part-1): 1988 (Reaffirmed 2021)</li>
+                                <li>• IS 7098 (Part-1): 1988 (Reaffirmed 2021)</li>
+                              </>
+                            )}
                           </ul>
                         </div>
                       </div>
@@ -2556,12 +2684,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
               )}
 
-              {/* Identification Section - Only for ACSR */}
-              {selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" && (
+              {/* Technical Specification Section - Only for ACSR (AAAC moved below after calculators) */}
+              {(selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced") && (
                 <div className="mb-8">
                   <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Wrench className="h-5 w-5 text-blue-600" />
-                    Identification
+                    Technical Specification
                   </h3>
                   <div className="bg-gray-50 rounded-lg p-6 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -2592,8 +2720,17 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           <span className="text-sm font-semibold text-gray-800">FEATURES</span>
                           <div className="text-sm text-gray-800">
                             <ul className="list-disc list-inside space-y-1">
-                              <li>100% pure EC grade aluminium</li>
-                              <li>Heavy duty cable suitable for outdoor installation</li>
+                              {selectedProduct === "All Aluminium Alloy Conductor" ? (
+                                <>
+                                  <li>Alloyed aluminium for improved strength</li>
+                                  <li>Lightweight, corrosion-resistant, long span capability</li>
+                                </>
+                              ) : (
+                                <>
+                                  <li>100% pure EC grade aluminium</li>
+                                  <li>Heavy duty cable suitable for outdoor installation</li>
+                                </>
+                              )}
                             </ul>
                           </div>
                         </div>
@@ -2602,7 +2739,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         <div className="w-full h-64 bg-white rounded-lg border border-gray-200 overflow-hidden">
                           <img 
                             src={getProductData(selectedProduct)?.imageUrl || "/images/products/acsr-conductor.jpg"}
-                            alt={getProductData(selectedProduct)?.title || "ACSR Conductor"}
+                            alt={getProductData(selectedProduct)?.title || selectedProduct}
                             className="w-full h-full object-contain p-4"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
@@ -2745,6 +2882,122 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               </div>
               )}
 
+              {/* Technical Data (PVC Submersible) - appears right after Price List */}
+              {selectedProduct === "PVC Insulated Submersible Cable" && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-blue-600" />
+                    Technical Data
+                  </h3>
+                  <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table className="min-w-full bg-white">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Nominal Area (mm²)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">No./Dia of Strands (mm)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Insulation Thickness (mm)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Sheath Thickness (mm)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Width (mm)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Height (mm)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Max Conductor Resistance 20°C (Ω/km)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Current Capacity at 40°C (Amps)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
+                          { area: "1.5", strands: "22/0.3", ins: "0.60", sheath: "0.90", width: "10.10", height: "4.70", res: "12.10", amps: "13" },
+                          { area: "2.5", strands: "36/0.3", ins: "0.70", sheath: "1.00", width: "12.20", height: "5.50", res: "7.41", amps: "18" },
+                          { area: "4", strands: "56/0.3", ins: "0.80", sheath: "1.10", width: "16.20", height: "6.30", res: "4.95", amps: "24" },
+                          { area: "6", strands: "84/0.3", ins: "0.80", sheath: "1.10", width: "16.20", height: "7.20", res: "3.30", amps: "31" },
+                          { area: "10", strands: "140/0.3", ins: "1.00", sheath: "1.20", width: "22.00", height: "8.30", res: "1.91", amps: "42" },
+                          { area: "16", strands: "126/0.4", ins: "1.00", sheath: "1.30", width: "23.50", height: "9.70", res: "1.21", amps: "57" },
+                          { area: "25", strands: "196/0.4", ins: "1.20", sheath: "1.60", width: "28.40", height: "11.10", res: "0.78", amps: "72" },
+                          { area: "35", strands: "276/0.4", ins: "1.20", sheath: "1.70", width: "32.10", height: "13.10", res: "0.554", amps: "90" },
+                          { area: "50", strands: "396/0.4", ins: "1.20", sheath: "1.80", width: "35.00", height: "15.00", res: "0.386", amps: "115" },
+                          { area: "70", strands: "360/0.5", ins: "1.40", sheath: "2.20", width: "43.40", height: "17.00", res: "0.272", amps: "143" },
+                          { area: "95", strands: "475/0.5", ins: "1.60", sheath: "2.40", width: "49.60", height: "19.10", res: "0.206", amps: "165" }
+                        ].map((row, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.area}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 whitespace-nowrap">{row.strands}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.ins}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.sheath}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.width}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.height}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.res}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.amps}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Technical Data (AAAC) - appears right after Price List */}
+              {selectedProduct === "All Aluminium Alloy Conductor" && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-blue-600" />
+                    Technical Data
+                  </h3>
+                  <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table className="min-w-full bg-white">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">AAAC Code</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Nom Alloy Area (mm²)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Stranding And Wire Dia. (nos/mm)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">DC Resistance (N) Nom (Ω/km)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">DC Resistance (M) Max (Ω/km)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">AC Resistance 65°C (Ω/km)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">AC Resistance 75°C (Ω/km)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">AC Resistance 90°C (Ω/km)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Current 65°C (A/km)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Current 75°C (A/km)</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Current 90°C (A/km)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
+                          { code: "Mole", area: "15", strand: "3/2.50", dcn: "2.2286", dcm: "2.3040", ac65: "2.590", ac75: "2.670", ac90: "2.790", i65: "72", i75: "87", i90: "104" },
+                          { code: "Squirrel", area: "20", strand: "7/2.00", dcn: "1.4969", dcm: "1.5410", ac65: "1.740", ac75: "1.793", ac90: "1.874", i65: "90", i75: "109", i90: "130" },
+                          { code: "Weasel", area: "34", strand: "7/2.50", dcn: "0.9580", dcm: "0.9900", ac65: "1.113", ac75: "1.148", ac90: "1.195", i65: "121", i75: "146", i90: "175" },
+                          { code: "Rabbit", area: "55", strand: "7/3.15", dcn: "0.6034", dcm: "0.6210", ac65: "0.701", ac75: "0.723", ac90: "0.756", i65: "160", i75: "194", i90: "234" },
+                          { code: "Raccoon", area: "80", strand: "7/3.81", dcn: "0.4125", dcm: "0.4250", ac65: "0.494", ac75: "0.510", ac90: "0.533", i65: "202", i75: "246", i90: "297" },
+                          { code: "Dog", area: "100", strand: "7/4.26", dcn: "0.3299", dcm: "0.3390", ac65: "0.384", ac75: "0.396", ac90: "0.413", i65: "232", i75: "283", i90: "343" },
+                          { code: "Dog(up)", area: "125", strand: "19/2.89", dcn: "0.2654", dcm: "0.2735", ac65: "0.309", ac75: "0.318", ac90: "0.333", i65: "266", i75: "325", i90: "394" },
+                          { code: "Coyote", area: "150", strand: "19/3.15", dcn: "0.2234", dcm: "0.2290", ac65: "0.260", ac75: "0.268", ac90: "0.280", i65: "395", i75: "362", i90: "440" },
+                          { code: "Wolf", area: "175", strand: "19/3.40", dcn: "0.1918", dcm: "0.1969", ac65: "0.223", ac75: "0.230", ac90: "0.240", i65: "392", i75: "398", i90: "485" },
+                          { code: "Wolf(up)", area: "200", strand: "19/3.66", dcn: "0.1655", dcm: "0.1710", ac65: "0.193", ac75: "0.199", ac90: "0.208", i65: "354", i75: "436", i90: "532" },
+                          { code: "Panther", area: "232", strand: "19/3.94", dcn: "0.1428", dcm: "0.1471", ac65: "0.166", ac75: "0.172", ac90: "0.179", i65: "387", i75: "478", i90: "584" },
+                          { code: "Panther (up)", area: "290", strand: "37/3.15", dcn: "0.11500", dcm: "0.11820", ac65: "0.134", ac75: "0.138", ac90: "0.145", i65: "442", i75: "548", i90: "670" },
+                          { code: "Panther (up)", area: "345", strand: "37/3.45", dcn: "0.09585", dcm: "0.09840", ac65: "0.112", ac75: "0.116", ac90: "0.121", i65: "493", i75: "613", i90: "752" },
+                          { code: "Kundah", area: "400", strand: "37/3.71", dcn: "0.08289", dcm: "0.08550", ac65: "0.097", ac75: "0.100", ac90: "0.105", i65: "538", i75: "670", i90: "824" },
+                          { code: "Zebra", area: "465", strand: "37/4.00", dcn: "0.07130", dcm: "0.07340", ac65: "0.084", ac75: "0.086", ac90: "0.090", i65: "589", i75: "736", i90: "905" },
+                          { code: "Zebra (up)", area: "525", strand: "61/3.31", dcn: "0.06330", dcm: "0.06510", ac65: "0.075", ac75: "0.077", ac90: "0.082", i65: "632", i75: "792", i90: "976" },
+                          { code: "Moose", area: "570", strand: "61/3.45", dcn: "0.05827", dcm: "0.05980", ac65: "0.069", ac75: "0.071", ac90: "0.074", i65: "663", i75: "833", i90: "1028" }
+                        ].map((row, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 whitespace-nowrap">{row.code}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.area}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 whitespace-nowrap">{row.strand}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.dcn}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.dcm}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.ac65}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.ac75}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.ac90}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.i65}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.i75}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.i90}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {/* Hidden file input for image upload */}
               <input
                 type="file"
@@ -2836,8 +3089,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   </div>
                 );
               })()}
-              {/* Costing Calculator Section - For Aerial Bunch Cable and ACSR */}
-              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced") && (
+              {/* Costing Calculator Section - For Aerial Bunch Cable, ACSR, AAAC and PVC Submersible */}
+              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" || selectedProduct === "All Aluminium Alloy Conductor" || selectedProduct === "PVC Insulated Submersible Cable") && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-blue-600" />
@@ -3077,8 +3330,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               </div>
               )}
 
-              {/* Reduction Gauge Calculator Section - For Aerial Bunch Cable and ACSR */}
-              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced") && (
+              {/* Reduction Gauge Calculator Section - For Aerial Bunch Cable, ACSR and AAAC */}
+              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" || selectedProduct === "All Aluminium Alloy Conductor") && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-blue-600" />
@@ -3151,8 +3404,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
               </div>
               )}
-              {/* Wire Selection Calculator Section - For Aerial Bunch Cable and ACSR */}
-              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced") && (
+              {/* Wire Selection Calculator Section - For Aerial Bunch Cable, ACSR and AAAC */}
+              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" || selectedProduct === "All Aluminium Alloy Conductor") && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-blue-600" />
@@ -3267,8 +3520,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               </div>
               )}
 
-              {/* Technical Data Section - Only for Product Cards */}
-              {getProductData(selectedProduct).technicalData && Object.keys(getProductData(selectedProduct).technicalData).length > 0 && (
+              {/* Technical Data Section - Only for Product Cards (exclude AAAC and PVC Submersible to avoid duplication) */}
+              {selectedProduct !== "All Aluminium Alloy Conductor" && selectedProduct !== "PVC Insulated Submersible Cable" && getProductData(selectedProduct).technicalData && Object.keys(getProductData(selectedProduct).technicalData).length > 0 && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Wrench className="h-5 w-5 text-blue-600" />
@@ -3353,6 +3606,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
               </div>
               )}
+
+              
               {/* Approvals, Licenses, GTP, Type Test, Others - Only for Product Cards */}
               {getProductData(selectedProduct).priceList && getProductData(selectedProduct).priceList.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -3369,7 +3624,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         "Aerial Bunch Cable": "aerial bunch cable, bis certificate .pdf",
                         "All Aluminium Alloy Conductor": "all aluminium alloy conductor,bis certificate .pdf",
                         "Aluminium Conductor Galvanized Steel Reinforced": "aluminium conductor galvanised steel reinforced, bis certificate.pdf",
-                        "Multi Core XLPE Insulated Aluminium Unarmoured Cable": "multicore xlpe insulated aluminium unrmoured cable,bis certificate.pdf"
+                        "Multi Core XLPE Insulated Aluminium Unarmoured Cable": "multicore xlpe insulated aluminium unrmoured cable,bis certificate.pdf",
+                        "PVC Insulated Submersible Cable": "pvc insulated submersible cable, bis certificate .pdf"
                       };
                       
                       const productName = selectedProduct; // Use the original product name from tools array
@@ -4089,6 +4345,126 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     accounts@anodeelectric.com
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Business Card Modal */}
+      {isBusinessCardOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeBusinessCard}>
+          <div 
+            className={`rounded-lg shadow-2xl overflow-hidden border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex flex-col max-w-md w-full bg-white`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header with Actions */}
+            <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
+              <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Business Card</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => downloadBusinessCard('image')}
+                  className="p-2 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors"
+                  title="Download as Image"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => downloadBusinessCard('pdf')}
+                  className="p-2 rounded-lg hover:bg-green-100 text-green-600 transition-colors"
+                  title="Download as PDF"
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={closeBusinessCard}
+                  className="p-2 rounded-lg hover:bg-red-100 text-red-600 transition-colors"
+                  title="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Business Card Content - for download */}
+            <div className="py-8 px-4">
+              <div ref={businessCardRef} className="w-96 bg-white rounded-lg shadow-2xl overflow-hidden border border-gray-200 flex flex-col mx-auto">
+              {/* Header with Logo */}
+              <div className="bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 px-6 py-5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-white text-sm font-bold tracking-wide">ANODE ELECTRICAL</h2>
+                  <p className="text-slate-300 text-xs italic">A Positive Connection...</p>
+                </div>
+                <img
+                  src="/images/Anocab logo.png"
+                  alt="Anocab Logo"
+                  className="h-8 object-contain opacity-90"
+                  style={{ filter: "brightness(0.9) saturate(0.8)" }}
+                />
+              </div>
+
+              {/* Main Content */}
+              <div className="flex-1 px-6 py-4 flex items-center gap-4 bg-white">
+                <img
+                  src="/images/profiles/ABHAY.png"
+                  alt="Abhay Tiwari"
+                  className="w-16 h-16 rounded border-2 border-blue-600 object-cover flex-shrink-0"
+                  onError={(e) => {
+                    e.currentTarget.src = '/images/default-avatar.png';
+                  }}
+                />
+
+                <div className="flex-1">
+                  <h1 className="text-lg font-bold text-slate-900">Abhay Tiwari</h1>
+                  <p className="text-blue-600 font-semibold text-sm">Intern</p>
+                  <p className="text-xs text-slate-600 mt-1">Electrical Systems & Design</p>
+                </div>
+              </div>
+
+              {/* Footer with Contact */}
+              <div className="bg-slate-50 px-6 py-3 border-t border-gray-200">
+                <div className="grid grid-cols-3 gap-3 text-xs text-slate-700">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-blue-600 text-xs mb-1">📧</p>
+                    <p className="text-xs text-slate-600 break-words leading-tight">abhu9513@gmail.com</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-blue-600 text-xs mb-1">📱</p>
+                    <p className="text-xs text-slate-600">0000000000</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-blue-600 text-xs mb-1">📍</p>
+                    <p className="text-xs text-slate-600">Jabalpur, MP</p>
+                  </div>
+                </div>
+              </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Data Upcoming Modal */}
+      {showDataUpcoming && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="w-full max-w-md bg-white rounded-lg shadow-xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Product Information</h2>
+              <button
+                onClick={() => setShowDataUpcoming(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-12 flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-6xl mb-6">📊</div>
+                <h3 className="text-2xl font-semibold text-gray-900 mb-3">Data Upcoming</h3>
+                <p className="text-gray-600">Product data will be available soon.</p>
               </div>
             </div>
           </div>
