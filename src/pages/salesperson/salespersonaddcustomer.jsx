@@ -59,12 +59,14 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     leadSource: editingCustomer?.enquiryBy || "",
     salesStatus: editingCustomer?.salesStatus || 'follow up',
     salesStatusRemark: editingCustomer?.salesStatusRemark || '',
+    followUpStatus: editingCustomer?.followUpStatus || '',
+    followUpRemark: editingCustomer?.followUpRemark || '',
+    followUpDate: editingCustomer?.followUpDate || '',
+    followUpTime: editingCustomer?.followUpTime || '',
     callDurationSeconds: editingCustomer?.callDurationSeconds || '',
     callRecordingFile: null,
     transferredTo: editingCustomer?.transferredTo || '',
     date: new Date().toISOString().split('T')[0],
-    meetingDate: editingCustomer?.meetingDate || '',
-    meetingTime: editingCustomer?.meetingTime || '',
   })
 
   const handleInputChange = (field, value) => {
@@ -325,8 +327,33 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
               </div>
             </div>
 
-            {/* Sales Status */}
+            {/* Follow Up + Sales Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <User className="h-4 w-4 text-amber-600" />
+                  Follow Up Status
+                </label>
+                <select
+                  value={formData.followUpStatus}
+                  onChange={(e) => handleInputChange('followUpStatus', e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select Follow Up Status</option>
+                  <option value="Appointment Scheduled">Appointment Scheduled</option>
+                  <option value="Next Meeting">Next Meeting</option>
+                  <option value="Not Interested">Not Interested</option>
+                  <option value="Interested">Interested</option>
+                  <option value="Quotation Sent">Quotation Sent</option>
+                  <option value="Negotiation">Negotiation</option>
+                  <option value="Close Order">Close Order</option>
+                  <option value="Closed/Lost">Closed/Lost</option>
+                  <option value="Call Back Request">Call Back Request</option>
+                  <option value="Unreachable/Call Not Connected">Unreachable/Call Not Connected</option>
+                  <option value="Currently Not Required">Currently Not Required</option>
+                  <option value="Not Relevant">Not Relevant</option>
+                </select>
+              </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   <User className="h-4 w-4 text-blue-600" />
@@ -343,16 +370,16 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                   <option value="follow up">Follow Up</option>
                 </select>
               </div>
+
+              {/* Sales Status Remark */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Remark for sales status
-                </label>
+                <label className="text-sm font-medium text-gray-700">Sales Status Remark</label>
                 <textarea
                   value={formData.salesStatusRemark}
                   onChange={(e) => handleInputChange("salesStatusRemark", e.target.value)}
                   rows={2}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  placeholder="Remark for sales status"
+                  placeholder="Enter remark for sales status"
                 />
               </div>
             </div>

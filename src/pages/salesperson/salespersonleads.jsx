@@ -48,14 +48,14 @@ function numberToWords(num) {
 import apiClient from '../../utils/apiClient'
 import { API_ENDPOINTS } from '../../api/admin_api/api'
 import quotationService from '../../api/admin_api/quotationService'
-import paymentService from '../../api/admin_api/paymentService'
-import { Search, RefreshCw, User, Mail, Building2, Pencil, Eye, Plus, Download, Filter, Wallet, MessageCircle, Package, MapPin, Map, BadgeCheck, XCircle, FileText, Globe, X, Clock, Check, Clock as ClockIcon, ArrowRightLeft, Upload, Send, Trash2 } from "lucide-react"
+import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService'
+import { Search, RefreshCw, User, Mail, Building2, Pencil, Eye, Plus, Download, Filter, MessageCircle, Package, MapPin, Map, BadgeCheck, XCircle, FileText, Globe, X, Clock, Check, Clock as ClockIcon, ArrowRightLeft, Upload, Send, Trash2, Settings } from "lucide-react"
 import html2pdf from 'html2pdf.js'
 import Quotation from './salespersonquotation.jsx'
-// using html2pdf.js (already imported above); no direct html2canvas/jsPDF imports needed
 import AddCustomerForm from './salespersonaddcustomer.jsx'
 import CreateQuotationForm from './salespersoncreatequotation.jsx'
 import { CorporateStandardInvoice } from './salespersonpi'
+import PIPreviewModal from './PIPreviewModal'
 import { useSharedData } from './SharedDataContext'
 import QuotationPreview from "../../components/QuotationPreview"
 
@@ -74,15 +74,25 @@ function CardContent({ className, children }) {
 export default function CustomerListContent({ isDarkMode = false }) {
   const { customers, setCustomers, updateCustomer, addCustomer, deleteCustomer } = useSharedData()
   
-  // Demo user data
-  const user = {
-    username: 'Abhay',
-    email: 'abhay@anocab.com',
-    name: 'Abhay'
+  // Get user data from localStorage or auth context
+  const getUserData = () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem('user') || '{}')
+      return {
+        username: userData.username || userData.name || 'User',
+        email: userData.email || '',
+        name: userData.name || userData.username || 'User'
+      }
+    } catch {
+      return {
+        username: 'User',
+        email: '',
+        name: 'User'
+      }
+    }
   }
   
-  // Debug: Log user data
-  console.log('User data:', user)
+  const user = getUserData()
   const [viewingCustomer, setViewingCustomer] = React.useState(null)
   const [modalTab, setModalTab] = React.useState('details')
   const [showAddCustomer, setShowAddCustomer] = React.useState(false)
@@ -93,6 +103,59 @@ export default function CustomerListContent({ isDarkMode = false }) {
   const [showFollowUpPicker, setShowFollowUpPicker] = React.useState(null) // lead id or null
   const [piData, setPiData] = React.useState(null)
   const [showPIPreview, setShowPIPreview] = React.useState(false)
+  
+  // Tag Management State - Dynamic from actual data
+  const [selectedTag, setSelectedTag] = React.useState('all')
+  const [showCreateTagModal, setShowCreateTagModal] = React.useState(false)
+  const [newTagName, setNewTagName] = React.useState('')
+  const [selectedLeadsForTag, setSelectedLeadsForTag] = React.useState([])
+  const [isCreatingTag, setIsCreatingTag] = React.useState(false)
+  
+  // Get unique tags dynamically from customers
+  const tags = React.useMemo(() => {
+    const uniqueTypes = [...new Set(customers.map(c => c.customerType).filter(t => t && t !== 'N/A'))]
+    return uniqueTypes.sort()
+  }, [customers])
+  
+  // Advanced Filter State
+  const [showFilterPanel, setShowFilterPanel] = React.useState(false)
+  const [advancedFilters, setAdvancedFilters] = React.useState({
+    tag: '',
+    followUpStatus: '',
+    salesStatus: '',
+    state: '',
+    leadSource: '',
+    productType: '',
+    dateFrom: '',
+    dateTo: ''
+  })
+  
+  // Filter section toggle state
+  const [enabledFilters, setEnabledFilters] = React.useState({
+    tag: false,
+    followUpStatus: false,
+    salesStatus: false,
+    state: false,
+    leadSource: false,
+    productType: false,
+    dateRange: false
+  })
+  
+  // Close filter panel when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      const filterPanel = document.getElementById('filter-panel')
+      const filterButton = document.getElementById('filter-button')
+      if (filterPanel && !filterPanel.contains(event.target) && !filterButton?.contains(event.target)) {
+        setShowFilterPanel(false)
+      }
+    }
+    
+    if (showFilterPanel) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showFilterPanel])
   const [piFormData, setPiFormData] = React.useState({
     items: [{
       id: 1,
@@ -114,10 +177,258 @@ export default function CustomerListContent({ isDarkMode = false }) {
       state: ''
     }
   })
+  const [dispatchMode, setDispatchMode] = React.useState('BY TRANSPORT')
+  const [shippingDetails, setShippingDetails] = React.useState({
+    lrNo: '',
+    transportName: '',
+    transportId: '',
+    vehicleNumber: '',
+    courierName: '',
+    consignmentNo: '',
+    byHand: 'Self',
+    postService: 'By Post',
+    carrierName: '',
+    carrierNumber: ''
+  })
   const [quotationData, setQuotationData] = React.useState(null)
   const [lastQuotationData, setLastQuotationData] = React.useState(null)
   const [isRefreshing, setIsRefreshing] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState('')
+  
+  // Tag handling functions
+  const handleCreateTag = async () => {
+    const trimmedTag = newTagName.trim().toLowerCase()
+    
+    if (!trimmedTag) {
+      alert('Please enter a tag name')
+      return
+    }
+    
+    if (selectedLeadsForTag.length === 0) {
+      alert('Please select at least one lead to assign this tag')
+      return
+    }
+    
+    setIsCreatingTag(true)
+    
+    try {
+      // Update all selected leads with the new customer_type
+      const updatePromises = selectedLeadsForTag.map(async (leadId) => {
+        const lead = customers.find(c => c.id === leadId)
+        if (!lead) return null
+        
+        const formData = new FormData()
+        formData.append('name', lead.name)
+        formData.append('phone', lead.phone)
+        formData.append('email', lead.email === 'N/A' ? '' : lead.email)
+        formData.append('business', lead.business)
+        formData.append('address', lead.address)
+        formData.append('gst_no', lead.gstNo === 'N/A' ? '' : lead.gstNo)
+        formData.append('product_type', lead.productName)
+        formData.append('state', lead.state)
+        formData.append('lead_source', lead.enquiryBy)
+        formData.append('customer_type', trimmedTag) // New tag as customer_type
+        formData.append('date', lead.date)
+        formData.append('whatsapp', lead.whatsapp ? lead.whatsapp.replace('+91','') : '')
+        formData.append('sales_status', lead.salesStatus)
+        formData.append('sales_status_remark', lead.salesStatusRemark || '')
+        formData.append('follow_up_status', lead.followUpStatus || '')
+        formData.append('follow_up_remark', lead.followUpRemark || '')
+        formData.append('follow_up_date', lead.followUpDate || '')
+        formData.append('follow_up_time', lead.followUpTime || '')
+        
+        return apiClient.putFormData(API_ENDPOINTS.SALESPERSON_LEAD_BY_ID(leadId), formData)
+      })
+      
+      await Promise.all(updatePromises)
+      
+      // Update local state for all selected leads
+      setCustomers(prev => prev.map(customer => 
+        selectedLeadsForTag.includes(customer.id) 
+          ? { ...customer, customerType: trimmedTag }
+          : customer
+      ))
+      
+      // Reset modal state
+      setNewTagName('')
+      setSelectedLeadsForTag([])
+      setShowCreateTagModal(false)
+      
+      alert(`Tag "${trimmedTag}" created and assigned to ${selectedLeadsForTag.length} lead(s) successfully!`)
+    } catch (error) {
+      console.error('Failed to create tag:', error)
+      alert('Failed to create tag. Please try again.')
+    } finally {
+      setIsCreatingTag(false)
+    }
+  }
+  
+  const handleToggleLeadForTag = (leadId) => {
+    setSelectedLeadsForTag(prev => 
+      prev.includes(leadId) 
+        ? prev.filter(id => id !== leadId)
+        : [...prev, leadId]
+    )
+  }
+  
+  const handleSelectAllLeadsForTag = () => {
+    if (selectedLeadsForTag.length === customers.length) {
+      setSelectedLeadsForTag([])
+    } else {
+      setSelectedLeadsForTag(customers.map(c => c.id))
+    }
+  }
+
+  const handleDeleteTag = (tagToDelete) => {
+    // Tags are dynamic based on actual customer_type values
+    // To "delete" a tag, we would need to update all customers with that type
+    // For now, we just inform the user
+    alert(`To remove the "${tagToDelete}" tag, please change the customer type for all leads using this tag.`)
+  }
+
+  const handleTagSelect = (tag) => {
+    setSelectedTag(tag)
+  }
+  
+  // Advanced filter handling
+  const handleAdvancedFilterChange = (filterKey, value) => {
+    setAdvancedFilters(prev => ({
+      ...prev,
+      [filterKey]: value
+    }))
+  }
+  
+  const clearAdvancedFilters = () => {
+    setAdvancedFilters({
+      tag: '',
+      followUpStatus: '',
+      salesStatus: '',
+      state: '',
+      leadSource: '',
+      productType: '',
+      dateFrom: '',
+      dateTo: ''
+    })
+    setEnabledFilters({
+      tag: false,
+      followUpStatus: false,
+      salesStatus: false,
+      state: false,
+      leadSource: false,
+      productType: false,
+      dateRange: false
+    })
+  }
+  
+  const toggleFilterSection = (filterKey) => {
+    setEnabledFilters(prev => ({
+      ...prev,
+      [filterKey]: !prev[filterKey]
+    }))
+    
+    // Clear filter value when disabling
+    if (enabledFilters[filterKey]) {
+      if (filterKey === 'dateRange') {
+        setAdvancedFilters(prev => ({
+          ...prev,
+          dateFrom: '',
+          dateTo: ''
+        }))
+      } else {
+        setAdvancedFilters(prev => ({
+          ...prev,
+          [filterKey]: ''
+        }))
+      }
+    }
+  }
+  
+  // Get unique values from customers for dynamic filter options
+  const getUniqueFilterOptions = React.useMemo(() => {
+    const uniqueTags = [...new Set(customers.map(c => c.customerType).filter(Boolean))].sort()
+    const uniqueFollowUpStatuses = [...new Set(customers.map(c => c.followUpStatus).filter(Boolean))].sort()
+    const uniqueSalesStatuses = [...new Set(customers.map(c => c.salesStatus).filter(Boolean))].sort()
+    const uniqueStates = [...new Set(customers.map(c => c.state).filter(s => s && s !== 'N/A'))].sort()
+    const uniqueLeadSources = [...new Set(customers.map(c => c.enquiryBy).filter(s => s && s !== 'N/A'))].sort()
+    const uniqueProducts = [...new Set(customers.map(c => c.productName).filter(s => s && s !== 'N/A'))].sort()
+    
+    return {
+      tags: uniqueTags,
+      followUpStatuses: uniqueFollowUpStatuses,
+      salesStatuses: uniqueSalesStatuses,
+      states: uniqueStates,
+      leadSources: uniqueLeadSources,
+      products: uniqueProducts
+    }
+  }, [customers])
+  
+  const defaultColumns = React.useMemo(() => ({
+    id: false,
+    namePhone: true,
+    business: true,
+    address: true,
+    gstNo: false,
+    productName: false,
+    state: true,
+    leadSource: false,
+    customerType: true,
+    date: false,
+    salesStatus: false,
+    followUp: true,
+    transferredTo: true,
+    actions: true,
+  }), [])
+  const [columnVisibility, setColumnVisibility] = React.useState(defaultColumns)
+  const [showColumnModal, setShowColumnModal] = React.useState(false)
+
+  const toTitleStatus = (value) => {
+    if (!value) return 'Pending'
+    const v = String(value).toLowerCase()
+    if (v === 'connected') return 'Connected'
+    if (v === 'not_connected') return 'Not Connected'
+    if (v === 'follow_up') return 'Follow Up'
+    if (v === 'not_interested') return 'Not Interested'
+    if (v === 'next_meeting') return 'Next Meeting'
+    if (v === 'order_confirmed') return 'Order Confirmed'
+    if (v === 'closed') return 'Closed'
+    if (v === 'open') return 'Open'
+    return value
+  }
+
+  const toMachineStatus = (label) => {
+    const l = String(label).toLowerCase()
+    if (l.includes('not connected')) return 'not_connected'
+    if (l.includes('connected')) return 'connected'
+    if (l.includes('follow')) return 'follow_up'
+    if (l.includes('not interested')) return 'not_interested'
+    if (l.includes('next') || l.includes('meeting')) return 'next_meeting'
+    if (l.includes('order')) return 'order_confirmed'
+    if (l.includes('closed')) return 'closed'
+    if (l.includes('open')) return 'open'
+    return l.replace(/\s+/g, '_')
+  }
+
+  // ---------- Quotation Helpers (DRY) ----------
+  const isApprovedQuotation = (q) => (q?.status || '').toLowerCase() === 'approved'
+  const isPaymentCompleted = (q) => {
+    const s = (q?.status || '').toLowerCase()
+    return s === 'completed' || s === 'paid' || s === 'deal_closed' || s === 'closed'
+  }
+
+  // ---------- PI Number Generation ----------
+  const generatePiNumber = () => {
+    const now = new Date()
+    const mm = String(now.getMonth() + 1).padStart(2, '0')
+    // Financial year (Apr-Mar)
+    const year = now.getFullYear()
+    const fyStart = now.getMonth() + 1 >= 4 ? year : year - 1
+    const fyEnd = (fyStart + 1).toString().slice(-2)
+    const fyStartShort = fyStart.toString().slice(-2)
+    const rand = String(Math.floor(Math.random() * 10000)).padStart(4, '0')
+    return `PI-${fyStartShort}${fyEnd}-${mm}${rand}`
+  }
+  const [piNumber, setPiNumber] = React.useState('')
+  const isPiLocked = React.useMemo(() => Boolean(selectedCustomerForPI?.approvedQuotation), [selectedCustomerForPI])
 
   // Fetch quotations for the currently viewed customer (DB-backed) on open/refresh
   React.useEffect(() => {
@@ -138,6 +449,15 @@ export default function CustomerListContent({ isDarkMode = false }) {
             total: q.total_amount,
             status: q.status,
             createdAt: q.created_at,
+            branch: q.branch || 'ANODE',
+            billTo: {
+              business: viewingCustomer?.business,
+              address: viewingCustomer?.address,
+              phone: viewingCustomer?.phone,
+              gstNo: viewingCustomer?.gstNo,
+              state: viewingCustomer?.state,
+              transport: q.transport || q.transport_company || q.transportCompany || null,
+            },
             items: q.items || []
           }))
           console.log('Normalized quotations with statuses:', normalized);
@@ -168,6 +488,15 @@ export default function CustomerListContent({ isDarkMode = false }) {
             total: q.total_amount,
             status: q.status,
             createdAt: q.created_at,
+            branch: q.branch || 'ANODE',
+            billTo: {
+              business: viewingCustomer?.business,
+              address: viewingCustomer?.address,
+              phone: viewingCustomer?.phone,
+              gstNo: viewingCustomer?.gstNo,
+              state: viewingCustomer?.state,
+              transport: q.transport || q.transport_company || q.transportCompany || null,
+            },
             items: q.items || []
           }))
           
@@ -206,57 +535,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
     return () => clearInterval(interval)
   }, [viewingCustomer?.id])
   const [editingCustomer, setEditingCustomer] = React.useState(null)
-  const [showFilters, setShowFilters] = React.useState(false)
-  // Payment related state
-  const [showPaymentDetails, setShowPaymentDetails] = React.useState(false)
-  const [showAddPaymentModal, setShowAddPaymentModal] = React.useState(false)
-  const [selectedCustomer, setSelectedCustomer] = React.useState(null)
-  const [addPaymentForm, setAddPaymentForm] = React.useState({
-    quotationId: '',
-    piId: '',
-    amount: '',
-    paymentMethod: 'Cash',
-    paymentDate: new Date().toISOString().split('T')[0],
-    reference: '',
-    remarks: ''
-  })
-  const [paymentHistory, setPaymentHistory] = React.useState([
-    {
-      id: 1,
-      amount: 50000,
-      date: '2024-01-15',
-      status: 'paid',
-      paymentMethod: 'Cash',
-      remarks: 'Initial advance payment',
-      reference: 'CASH001',
-      dueDate: '2024-01-15',
-      paidDate: '2024-01-15'
-    },
-    {
-      id: 2,
-      amount: 25000,
-      date: '2024-01-20',
-      status: 'paid',
-      paymentMethod: 'UPI',
-      remarks: 'Second installment',
-      reference: 'UPI123456',
-      dueDate: '2024-01-20',
-      paidDate: '2024-01-20'
-    },
-    {
-      id: 3,
-      amount: 15000,
-      date: '2024-01-25',
-      status: 'pending',
-      paymentMethod: 'Bank Transfer',
-      remarks: 'Final payment pending',
-      reference: 'BANK789',
-      dueDate: '2024-01-25',
-      paidDate: null
-    }
-  ])
-  const [totalAmount, setTotalAmount] = React.useState(90000)
-  const [selectedPayment, setSelectedPayment] = React.useState(null)
+  // Payment features removed
   
   // Company branch configuration
   const [selectedBranch, setSelectedBranch] = React.useState('ANODE') // Default branch
@@ -296,21 +575,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
     }
   }
   
-  // Set the last payment as default when payment modal opens
-  React.useEffect(() => {
-    if (showPaymentDetails && paymentHistory.length > 0) {
-      console.log('Setting last payment as default:', paymentHistory[paymentHistory.length - 1])
-      setSelectedPayment(paymentHistory[paymentHistory.length - 1])
-    }
-  }, [showPaymentDetails, paymentHistory])
-  
-  // Function to open payment modal for a specific customer
-  const handlePaymentDetails = (customer) => {
-    setSelectedCustomer(customer)
-    setShowPaymentDetails(true)
-    // Reset selected payment to null so useEffect can set the last payment
-    setSelectedPayment(null)
-  }
+  // Payment logic removed
   const [showImportModal, setShowImportModal] = React.useState(false)
   const [importFile, setImportFile] = React.useState(null)
   
@@ -318,6 +583,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
   const [quotations, setQuotations] = React.useState([])
   const [piStore, setPiStore] = React.useState({})
   const [savedPiPreview, setSavedPiPreview] = React.useState(null) // { data, selectedBranch }
+  const [quotationPIs, setQuotationPIs] = React.useState({}) // Store PIs by quotation ID
 
   React.useEffect(() => {
     function handlePiSaved(e) {
@@ -361,48 +627,9 @@ export default function CustomerListContent({ isDarkMode = false }) {
     'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
   ];
 
-  const [filters, setFilters] = React.useState({
-    customer: '',
-    business: '',
-    gstNo: '',
-    address: '',
-    state: '',
-    productName: '',
-    customerType: '',
-    enquiryBy: '',
-    date: '',
-    salesStatus: ''
-  });
-
   // Pagination state
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
-
-  const toggleFilters = () => {
-    setShowFilters(!showFilters);
-  };
-
-  const handleFilterChange = (field, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const clearFilters = () => {
-    setFilters({
-      customer: '',
-      business: '',
-      gstNo: '',
-      address: '',
-      state: '',
-      productName: '',
-      customerType: '',
-      enquiryBy: '',
-      date: '',
-      salesStatus: ''
-    });
-  };
 
   // Load assigned leads for the logged-in salesperson/telecaller
   React.useEffect(() => {
@@ -441,6 +668,11 @@ export default function CustomerListContent({ isDarkMode = false }) {
           quotationCount: typeof r.quotation_count === 'number' ? r.quotation_count : (parseInt(r.quotation_count) || 0),
           paymentStatusDb: r.payment_status || null,
           paymentModeDb: r.payment_mode || null,
+          // Follow-up fields from DB
+          followUpStatus: r.follow_up_status || null,
+          followUpRemark: r.follow_up_remark || null,
+          followUpDate: r.follow_up_date ? new Date(r.follow_up_date).toISOString().split('T')[0] : null,
+          followUpTime: r.follow_up_time || null,
         }));
         setCustomers(mapped);
       } catch (err) {
@@ -567,45 +799,245 @@ export default function CustomerListContent({ isDarkMode = false }) {
     setSelectedCustomerForPI(null)
   }
 
+  // Fetch PIs for a quotation
+  const fetchPIsForQuotation = async (quotationId) => {
+    try {
+      const response = await proformaInvoiceService.getPIsByQuotation(quotationId)
+      if (response && response.success) {
+        setQuotationPIs(prev => ({
+          ...prev,
+          [quotationId]: response.data || []
+        }))
+      }
+    } catch (error) {
+      console.error('Error fetching PIs:', error)
+    }
+  }
+
+  // Send PI for approval
+  const handleSendPIForApproval = async (piId, quotationId) => {
+    try {
+      await proformaInvoiceService.updatePI(piId, { status: 'pending_approval' })
+      alert('PI sent for approval!')
+      await fetchPIsForQuotation(quotationId)
+    } catch (error) {
+      console.error('Error sending PI for approval:', error)
+      alert('Failed to send PI for approval')
+    }
+  }
+
+  // Delete PI
+  const handleDeletePI = async (piId, quotationId) => {
+    if (!confirm('Are you sure you want to delete this PI?')) return
+    try {
+      await proformaInvoiceService.deletePI(piId)
+      alert('PI deleted successfully!')
+      await fetchPIsForQuotation(quotationId)
+    } catch (error) {
+      console.error('Error deleting PI:', error)
+      alert('Failed to delete PI')
+    }
+  }
+
+  // View PI
+  const handleViewPI = async (piId, quotation) => {
+    try {
+      // Fetch PI details
+      const piResponse = await proformaInvoiceService.getPI(piId)
+      if (!piResponse || !piResponse.success) {
+        alert('Failed to fetch PI details')
+        return
+      }
+
+      const pi = piResponse.data
+
+      // Fetch complete quotation data
+      const quotationResponse = await quotationService.getCompleteData(quotation.id)
+      if (!quotationResponse || !quotationResponse.success) {
+        alert('Failed to fetch quotation details')
+        return
+      }
+
+      const completeQuotation = quotationResponse.data?.quotation || {}
+      const quotationItems = completeQuotation.items || []
+
+      // Map quotation items to PI format
+      const mappedItems = quotationItems.map(item => ({
+        id: item.id || Math.random(),
+        description: item.product_name || item.productName || item.description || 'Product',
+        subDescription: item.description || '',
+        hsn: item.hsn_code || item.hsn || item.hsnCode || '85446090',
+        dueOn: new Date().toISOString().split('T')[0],
+        quantity: Number(item.quantity) || 1,
+        unit: item.unit || 'Nos',
+        rate: Number(item.buyer_rate || item.unit_price || item.unitPrice || 0),
+        buyerRate: Number(item.unit_price || item.buyer_rate || item.unitPrice || 0),
+        amount: Number(item.taxable_amount ?? item.amount ?? item.taxable ?? item.total_amount ?? item.total ?? 0),
+        gstRate: Number(item.gst_rate ?? item.gstRate ?? 18),
+        gstMultiplier: 1 + Number(item.gst_rate ?? item.gstRate ?? 18) / 100
+      }))
+
+      const subtotal = mappedItems.reduce((s, i) => s + (Number(i.amount) || 0), 0)
+      const discountRate = Number(completeQuotation.discount_rate ?? completeQuotation.discountRate ?? 0)
+      const discountAmount = Number(completeQuotation.discount_amount ?? completeQuotation.discountAmount ?? (subtotal * discountRate) / 100)
+      const taxableAmount = Math.max(0, subtotal - discountAmount)
+      const taxRate = Number(completeQuotation.tax_rate ?? completeQuotation.taxRate ?? 18)
+      const taxAmount = Number(completeQuotation.tax_amount ?? completeQuotation.taxAmount ?? (taxableAmount * taxRate) / 100)
+      const total = Number(completeQuotation.total_amount ?? completeQuotation.total ?? taxableAmount + taxAmount)
+
+      const billTo = {
+        business: viewingCustomer.business || completeQuotation.customer_business || completeQuotation.billTo?.business || '',
+        address: viewingCustomer.address || completeQuotation.customer_address || completeQuotation.billTo?.address || '',
+        phone: viewingCustomer.phone || completeQuotation.customer_phone || completeQuotation.billTo?.phone || '',
+        gstNo: viewingCustomer.gstNo || completeQuotation.customer_gst_no || completeQuotation.billTo?.gstNo || '',
+        state: viewingCustomer.state || completeQuotation.customer_state || completeQuotation.billTo?.state || ''
+      }
+
+      // Build PI preview data with dispatch details
+      const piPreviewData = {
+        quotationNumber: quotation.quotationNumber || pi.pi_number,
+        items: mappedItems,
+        subtotal,
+        discountRate,
+        discountAmount,
+        taxableAmount,
+        taxRate,
+        taxAmount,
+        total,
+        billTo,
+        dispatchMode: pi.dispatch_mode,
+        shippingDetails: {
+          transportName: pi.transport_name,
+          vehicleNumber: pi.vehicle_number,
+          transportId: pi.transport_id,
+          lrNo: pi.lr_no,
+          courierName: pi.courier_name,
+          consignmentNo: pi.consignment_no,
+          byHand: pi.by_hand,
+          postService: pi.post_service,
+          carrierName: pi.carrier_name,
+          carrierNumber: pi.carrier_number
+        }
+      }
+
+      setSavedPiPreview({ 
+        data: piPreviewData, 
+        selectedBranch: completeQuotation.branch || selectedBranch 
+      })
+      setShowPIPreview(true)
+    } catch (error) {
+      console.error('Error viewing PI:', error)
+      alert('Failed to load PI details')
+    }
+  }
+
+  // Fetch PIs when viewing customer
+  React.useEffect(() => {
+    if (viewingCustomer && quotations && quotations.length > 0) {
+      const customerQuotations = quotations.filter(q => q.customerId === viewingCustomer.id)
+      customerQuotations.forEach(quotation => {
+        if (quotation.id) {
+          fetchPIsForQuotation(quotation.id)
+        }
+      })
+    }
+  }, [viewingCustomer, quotations])
+
   // Auto-fill PI form with approved quotation data
   React.useEffect(() => {
     if (showCreatePI && selectedCustomerForPI?.approvedQuotation) {
+      if (!piNumber) setPiNumber(generatePiNumber())
       const approvedQuotation = selectedCustomerForPI.approvedQuotation;
-      
-      // Auto-fill PI form with quotation data
-      setPiFormData({
-        items: approvedQuotation.items?.map(item => ({
-          id: item.id || Math.random(),
-          description: item.productName || item.description || 'Product',
-          subDescription: item.description || '',
-          hsn: item.hsnCode || item.hsn || '85446090',
-          dueOn: new Date().toISOString().split('T')[0],
-          quantity: item.quantity || 1,
-          unit: item.unit || 'Nos',
-          rate: item.unitPrice || item.buyerRate || 0,
-          amount: item.totalAmount || item.amount || 0
-        })) || [{
-          id: 1,
-          description: '',
-          subDescription: '',
-          hsn: '76141000',
-          dueOn: new Date().toISOString().split('T')[0],
-          quantity: 1,
-          unit: 'MTR',
-          rate: 0,
-          amount: 0
-        }],
-        discountRate: 0,
-        customer: {
-          business: selectedCustomerForPI.business || '',
-          address: selectedCustomerForPI.address || '',
-          phone: selectedCustomerForPI.phone || '',
-          gstNo: selectedCustomerForPI.gstNo || '',
-          state: selectedCustomerForPI.state || ''
+
+      const populateFrom = async () => {
+        try {
+          // Always fetch full quotation to get items with authoritative values
+          let source = approvedQuotation
+          const res = await quotationService.getCompleteData(approvedQuotation.id)
+          if (res && res.success) {
+            const q = res.data?.quotation || {}
+            source = {
+              ...approvedQuotation,
+              ...q,
+              items: Array.isArray(q.items) ? q.items : []
+            }
+          }
+
+          const mappedItems = (source.items || []).map(item => ({
+            id: item.id || Math.random(),
+            description: item.product_name || item.productName || item.description || 'Product',
+            subDescription: item.description || '',
+            hsn: item.hsn_code || item.hsn || item.hsnCode || '85446090',
+            dueOn: new Date().toISOString().split('T')[0],
+            quantity: Number(item.quantity) || 1,
+            unit: item.unit || 'Nos',
+            rate: Number(item.buyer_rate || item.unit_price || item.unitPrice || 0),
+            buyerRate: Number(item.unit_price || item.buyer_rate || item.unitPrice || 0),
+            amount: Number(
+              item.taxable_amount ?? item.amount ?? item.taxable ?? item.total_amount ?? item.total ?? 0
+            ),
+            gstRate: Number(item.gst_rate ?? item.gstRate ?? 18),
+            gstMultiplier: 1 + Number(item.gst_rate ?? item.gstRate ?? 18) / 100
+          }))
+
+          const subtotal = mappedItems.reduce((s, i) => s + (Number(i.amount) || 0), 0)
+          const discountRate = Number(source.discount_rate ?? source.discountRate ?? 0)
+          const discountAmount = Number(source.discount_amount ?? source.discountAmount ?? (subtotal * discountRate) / 100)
+          const taxableAmount = Math.max(0, subtotal - discountAmount)
+          const taxRate = Number(source.tax_rate ?? source.taxRate ?? 18)
+          const taxAmount = Number(source.tax_amount ?? source.taxAmount ?? (taxableAmount * taxRate) / 100)
+          const total = Number(source.total_amount ?? source.total ?? taxableAmount + taxAmount)
+
+          const billTo = {
+            business: selectedCustomerForPI.business || source.customer_business || source.billTo?.business || '',
+            address: selectedCustomerForPI.address || source.customer_address || source.billTo?.address || '',
+            phone: selectedCustomerForPI.phone || source.customer_phone || source.billTo?.phone || '',
+            gstNo: selectedCustomerForPI.gstNo || source.customer_gst_no || source.billTo?.gstNo || '',
+            state: selectedCustomerForPI.state || source.customer_state || source.billTo?.state || '',
+            transport: source.billTo?.transport || null
+          }
+
+          const previewData = {
+            quotationNumber: source.quotation_number || approvedQuotation.quotationNumber || '',
+            items: mappedItems,
+            subtotal,
+            discountRate,
+            discountAmount,
+            taxableAmount,
+            taxRate,
+            taxAmount,
+            total,
+            billTo,
+            shippingDetails: shippingDetails,
+            dispatchMode: dispatchMode
+          }
+
+          setSavedPiPreview({ data: previewData, selectedBranch: source.branch || selectedBranch })
+
+          setPiFormData({
+            items: mappedItems.length > 0 ? mappedItems : [{
+              id: 1,
+              description: '',
+              subDescription: '',
+              hsn: '76141000',
+              dueOn: new Date().toISOString().split('T')[0],
+              quantity: 1,
+              unit: 'MTR',
+              rate: 0,
+              amount: 0
+            }],
+            discountRate,
+            customer: billTo
+          })
+
+          console.log('Auto-filled PI form with quotation (complete, normalized):', source);
+          if (source.branch) setSelectedBranch(source.branch)
+        } catch (e) {
+          console.warn('Failed to fetch complete quotation; using available data', e?.message || e)
         }
-      });
-      
-      console.log('Auto-filled PI form with approved quotation:', approvedQuotation);
+      }
+
+      populateFrom()
     }
   }, [showCreatePI, selectedCustomerForPI]);
 
@@ -761,95 +1193,9 @@ export default function CustomerListContent({ isDarkMode = false }) {
     handleViewQuotation(latest)
   }
 
-  const handleWalletClick = async (customer) => {
-    console.log('Opening payment modal for customer:', customer)
-    
-    try {
-      // Fetch real payment data from database
-      const response = await paymentService.getPaymentsByCustomer(customer.id);
-      if (response.success && response.data.length > 0) {
-        const dbPayments = response.data.map(payment => ({
-          id: payment.id,
-          amount: payment.amount,
-          date: payment.payment_date,
-          status: payment.status,
-          paymentMethod: payment.payment_method,
-          remarks: payment.remarks,
-          reference: payment.reference_number,
-          dueDate: payment.payment_date,
-          paidDate: payment.status === 'completed' ? payment.payment_date : null,
-          receiptUrl: payment.receipt_url
-        }));
-        setPaymentHistory(dbPayments);
-        
-        // Calculate total amount from payments
-        const totalPaid = dbPayments
-          .filter(p => p.status === 'completed')
-          .reduce((sum, p) => sum + p.amount, 0);
-        setTotalAmount(totalPaid);
-      } else {
-        // Fallback to DB-backed URLs if no payments found
-        const inferredPayments = []
-        if (customer.paymentReceiptUrl) {
-          inferredPayments.push({
-        id: 1,
-            amount: 0,
-            date: new Date().toISOString().split('T')[0],
-            status: (customer.paymentStatusDb || 'pending').toLowerCase(),
-            paymentMethod: customer.paymentModeDb || 'Other',
-            remarks: 'Payment receipt uploaded',
-            reference: 'DOC',
-            dueDate: new Date().toISOString().split('T')[0],
-            paidDate: (customer.paymentStatusDb === 'COMPLETED') ? new Date().toISOString().split('T')[0] : null,
-            receiptUrl: customer.paymentReceiptUrl,
-          })
-        }
-        setPaymentHistory(inferredPayments);
-        setTotalAmount(0);
-      }
-    } catch (error) {
-      console.error('Error fetching payment data:', error);
-      // Fallback to empty payment history
-      setPaymentHistory([]);
-      setTotalAmount(0);
-    }
-    
-    setSelectedCustomer({
-      id: customer.id,
-      name: customer.name,
-      phone: customer.phone,
-      email: customer.email,
-      business: customer.business,
-      address: customer.address
-    })
-    setShowPaymentDetails(true)
-  }
+  // Wallet click removed
 
-  const handleDownloadReceipt = () => {
-    // In a real app, this would generate a PDF receipt
-    // For now, we'll create a simple download link
-    const receiptText = `
-      PAYMENT RECEIPT
-      ----------------------------
-      Receipt No: ${selectedPayment.receiptNo}
-      Date: ${selectedPayment.date}
-      Customer: ${selectedPayment.customerName}
-      Amount: ${selectedPayment.amount}
-      Payment Method: ${selectedPayment.paymentMethod}
-      Status: ${selectedPayment.status}
-      
-      Thank you for your payment!
-      ANODE ELECTRIC PVT. LTD.
-    `
-    
-    const element = document.createElement('a')
-    const file = new Blob([receiptText], {type: 'text/plain'})
-    element.href = URL.createObjectURL(file)
-    element.download = `payment-receipt-${selectedPayment.receiptNo}.txt`
-    document.body.appendChild(element)
-    element.click()
-    document.body.removeChild(element)
-  }
+  // Receipt download removed
 
   const handleDownloadTemplate = () => {
     // Create CSV template with headers
@@ -1237,8 +1583,9 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       customer.finalInfo?.status === 'next_meeting' ? 'Next Meeting' : 
                       customer.finalStatus || 'New'}
                   </span>
-                </td>
-              </tr>
+                  </td>
+                  )}
+                  </tr>
             `).join('')}
           </tbody>
         </table>
@@ -1446,6 +1793,11 @@ export default function CustomerListContent({ isDarkMode = false }) {
         transferredLeads: newCustomerData.transferredLeads || 0,
         transferredFrom: newCustomerData.transferredFrom || null,
         transferredTo: newCustomerData.transferredTo || null,
+        // Follow-up fields
+        followUpStatus: newCustomerData.followUpStatus || null,
+        followUpRemark: newCustomerData.followUpRemark || null,
+        followUpDate: newCustomerData.followUpDate || null,
+        followUpTime: newCustomerData.followUpTime || null,
       }
       
       setCustomers(prev => prev.map(customer => 
@@ -1470,6 +1822,11 @@ export default function CustomerListContent({ isDarkMode = false }) {
       formData.append('sales_status_remark', updatedCustomer.salesStatusRemark);
       formData.append('call_duration_seconds', updatedCustomer.callDurationSeconds || '');
       formData.append('transferred_to', updatedCustomer.transferredTo || '');
+      // Follow-up fields
+      formData.append('follow_up_status', updatedCustomer.followUpStatus || '');
+      formData.append('follow_up_remark', updatedCustomer.followUpRemark || '');
+      formData.append('follow_up_date', updatedCustomer.followUpDate || '');
+      formData.append('follow_up_time', updatedCustomer.followUpTime || '');
       
       // Add call recording file if present
       if (newCustomerData.callRecordingFile) {
@@ -1547,6 +1904,18 @@ export default function CustomerListContent({ isDarkMode = false }) {
         transferredLeads: 0,
         transferredTo: r.transferred_to || null,
         callDurationSeconds: r.call_duration_seconds || null,
+        // Docs and payment info from DB (backend fields)
+        quotationUrl: r.quotation_url || null,
+        proformaInvoiceUrl: r.proforma_invoice_url || null,
+        paymentReceiptUrl: r.payment_receipt_url || null,
+        quotationCount: typeof r.quotation_count === 'number' ? r.quotation_count : (parseInt(r.quotation_count) || 0),
+        paymentStatusDb: r.payment_status || null,
+        paymentModeDb: r.payment_mode || null,
+        // Follow-up fields from DB
+        followUpStatus: r.follow_up_status || null,
+        followUpRemark: r.follow_up_remark || null,
+        followUpDate: r.follow_up_date ? new Date(r.follow_up_date).toISOString().split('T')[0] : null,
+        followUpTime: r.follow_up_time || null,
       }));
       setCustomers(mapped)
     } catch (err) {
@@ -1563,7 +1932,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
     }
   }
 
-  // Filter customers based on search query and column filters
+  // Filter customers based on search query and advanced filters
   const filteredCustomers = React.useMemo(() => {
     let result = [...customers];
     
@@ -1588,11 +1957,46 @@ export default function CustomerListContent({ isDarkMode = false }) {
       });
     }
     
-    // Apply column filters if any active
-    const activeFilters = Object.entries(filters).filter(([_, value]) => value.trim() !== '');
+    // Apply advanced filters
+    if (advancedFilters.tag) {
+      result = result.filter(customer => 
+        customer.customerType?.toLowerCase() === advancedFilters.tag.toLowerCase()
+      );
+    }
     
-    if (activeFilters.length > 0) {
+    if (advancedFilters.followUpStatus) {
+      result = result.filter(customer => 
+        customer.followUpStatus?.toLowerCase() === advancedFilters.followUpStatus.toLowerCase()
+      );
+    }
+    
+    if (advancedFilters.salesStatus) {
+      result = result.filter(customer => 
+        customer.salesStatus?.toLowerCase() === advancedFilters.salesStatus.toLowerCase()
+      );
+    }
+    
+    if (advancedFilters.state) {
+      result = result.filter(customer => 
+        customer.state?.toLowerCase() === advancedFilters.state.toLowerCase()
+      );
+    }
+    
+    if (advancedFilters.leadSource) {
+      result = result.filter(customer => 
+        customer.enquiryBy?.toLowerCase() === advancedFilters.leadSource.toLowerCase()
+      );
+    }
+    
+    if (advancedFilters.productType) {
+      result = result.filter(customer => 
+        customer.productName?.toLowerCase().includes(advancedFilters.productType.toLowerCase())
+      );
+    }
+    
+    if (advancedFilters.dateFrom) {
       result = result.filter(customer => {
+<<<<<<< HEAD
         return activeFilters.every(([key, filterValue]) => {
           const value = filterValue.toString().toLowerCase().trim();
           if (!value) return true;
@@ -1620,8 +2024,24 @@ export default function CustomerListContent({ isDarkMode = false }) {
       });
     }
     
+    if (advancedFilters.dateFrom) {
+      result = result.filter(customer => {
+        const customerDate = new Date(customer.date);
+        const filterDate = new Date(advancedFilters.dateFrom);
+        return customerDate >= filterDate;
+      });
+    }
+    
+    if (advancedFilters.dateTo) {
+      result = result.filter(customer => {
+        const customerDate = new Date(customer.date);
+        const filterDate = new Date(advancedFilters.dateTo);
+        return customerDate <= filterDate;
+      });
+    }
+    
     return result;
-  }, [customers, searchQuery, filters])
+  }, [customers, searchQuery, advancedFilters])
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
@@ -1632,7 +2052,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
   // Reset to first page when filters change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filters]);
+  }, [searchQuery, advancedFilters]);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
@@ -1675,19 +2095,281 @@ export default function CustomerListContent({ isDarkMode = false }) {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={toggleFilters}
-              className={`p-2 rounded-md border inline-flex items-center justify-center relative ${showFilters ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}
-              title="Filters"
-            >
-              <Filter className="h-4 w-4" />
-              {Object.values(filters).some(Boolean) && (
-                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-4 h-4 text-[10px] font-medium text-white bg-blue-500 rounded-full">
-                  {Object.values(filters).filter(Boolean).length}
-                </span>
+          <div className="flex items-center gap-3 ml-auto">
+            <div className="relative">
+              <button 
+                id="filter-button"
+                onClick={() => setShowFilterPanel(!showFilterPanel)}
+                className={`p-2 rounded-md border inline-flex items-center justify-center relative ${showFilterPanel ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                title="Filters"
+              >
+                <Filter className="h-4 w-4" />
+                {Object.values(enabledFilters).some(Boolean) && (
+                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-4 h-4 text-[10px] font-medium text-white bg-blue-500 rounded-full">
+                    {Object.values(enabledFilters).filter(Boolean).length}
+                  </span>
+                )}
+              </button>
+              
+              {/* Filter Panel */}
+              {showFilterPanel && (
+                <div 
+                  id="filter-panel"
+                  className="fixed right-4 top-32 z-[100] bg-white rounded-lg shadow-2xl border border-gray-200 w-96 max-h-[calc(100vh-150px)] overflow-hidden flex flex-col"
+                >
+                  <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <Filter className="h-5 w-5 text-blue-600" />
+                      Filters
+                    </h3>
+                    <button
+                      onClick={() => setShowFilterPanel(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  
+                  <div className="p-4 space-y-3 overflow-y-auto flex-1">
+                    {/* Tag Filter */}
+                    <div className="border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-2 p-3 bg-gray-50">
+                        <input
+                          type="checkbox"
+                          id="filter-tag"
+                          checked={enabledFilters.tag}
+                          onChange={() => toggleFilterSection('tag')}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <label htmlFor="filter-tag" className="flex-1 text-sm font-medium text-gray-700 cursor-pointer">
+                          Filter by Tag
+                        </label>
+                      </div>
+                      {enabledFilters.tag && (
+                        <div className="p-3 border-t border-gray-200">
+                          <select
+                            value={advancedFilters.tag}
+                            onChange={(e) => handleAdvancedFilterChange('tag', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">All Tags</option>
+                            {getUniqueFilterOptions.tags.map(tag => (
+                              <option key={tag} value={tag}>{tag}</option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => setShowCreateTagModal(true)}
+                            className="mt-2 w-full inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-md border border-dashed border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                          >
+                            <Plus className="h-3 w-3" />
+                            Create New Tag
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Follow Up Status Filter */}
+                    <div className="border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-2 p-3 bg-gray-50">
+                        <input
+                          type="checkbox"
+                          id="filter-followup"
+                          checked={enabledFilters.followUpStatus}
+                          onChange={() => toggleFilterSection('followUpStatus')}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <label htmlFor="filter-followup" className="flex-1 text-sm font-medium text-gray-700 cursor-pointer">
+                          Filter by Follow Up Status
+                        </label>
+                      </div>
+                      {enabledFilters.followUpStatus && (
+                        <div className="p-3 border-t border-gray-200">
+                          <select
+                            value={advancedFilters.followUpStatus}
+                            onChange={(e) => handleAdvancedFilterChange('followUpStatus', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">All Statuses</option>
+                            {getUniqueFilterOptions.followUpStatuses.map(status => (
+                              <option key={status} value={status}>{status}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Sales Status Filter */}
+                    <div className="border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-2 p-3 bg-gray-50">
+                        <input
+                          type="checkbox"
+                          id="filter-sales"
+                          checked={enabledFilters.salesStatus}
+                          onChange={() => toggleFilterSection('salesStatus')}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <label htmlFor="filter-sales" className="flex-1 text-sm font-medium text-gray-700 cursor-pointer">
+                          Filter by Sales Status
+                        </label>
+                      </div>
+                      {enabledFilters.salesStatus && (
+                        <div className="p-3 border-t border-gray-200">
+                          <select
+                            value={advancedFilters.salesStatus}
+                            onChange={(e) => handleAdvancedFilterChange('salesStatus', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">All Statuses</option>
+                            {getUniqueFilterOptions.salesStatuses.map(status => (
+                              <option key={status} value={status}>{status}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* State Filter */}
+                    <div className="border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-2 p-3 bg-gray-50">
+                        <input
+                          type="checkbox"
+                          id="filter-state"
+                          checked={enabledFilters.state}
+                          onChange={() => toggleFilterSection('state')}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <label htmlFor="filter-state" className="flex-1 text-sm font-medium text-gray-700 cursor-pointer">
+                          Filter by State
+                        </label>
+                      </div>
+                      {enabledFilters.state && (
+                        <div className="p-3 border-t border-gray-200">
+                          <select
+                            value={advancedFilters.state}
+                            onChange={(e) => handleAdvancedFilterChange('state', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">All States</option>
+                            {getUniqueFilterOptions.states.map(state => (
+                              <option key={state} value={state}>{state}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Lead Source Filter */}
+                    <div className="border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-2 p-3 bg-gray-50">
+                        <input
+                          type="checkbox"
+                          id="filter-source"
+                          checked={enabledFilters.leadSource}
+                          onChange={() => toggleFilterSection('leadSource')}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <label htmlFor="filter-source" className="flex-1 text-sm font-medium text-gray-700 cursor-pointer">
+                          Filter by Lead Source
+                        </label>
+                      </div>
+                      {enabledFilters.leadSource && (
+                        <div className="p-3 border-t border-gray-200">
+                          <select
+                            value={advancedFilters.leadSource}
+                            onChange={(e) => handleAdvancedFilterChange('leadSource', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">All Sources</option>
+                            {getUniqueFilterOptions.leadSources.map(source => (
+                              <option key={source} value={source}>{source}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Product Type Filter */}
+                    <div className="border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-2 p-3 bg-gray-50">
+                        <input
+                          type="checkbox"
+                          id="filter-product"
+                          checked={enabledFilters.productType}
+                          onChange={() => toggleFilterSection('productType')}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <label htmlFor="filter-product" className="flex-1 text-sm font-medium text-gray-700 cursor-pointer">
+                          Filter by Product
+                        </label>
+                      </div>
+                      {enabledFilters.productType && (
+                        <div className="p-3 border-t border-gray-200">
+                          <select
+                            value={advancedFilters.productType}
+                            onChange={(e) => handleAdvancedFilterChange('productType', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">All Products</option>
+                            {getUniqueFilterOptions.products.map(product => (
+                              <option key={product} value={product}>{product}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Date Range Filter */}
+                    <div className="border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-2 p-3 bg-gray-50">
+                        <input
+                          type="checkbox"
+                          id="filter-date"
+                          checked={enabledFilters.dateRange}
+                          onChange={() => toggleFilterSection('dateRange')}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <label htmlFor="filter-date" className="flex-1 text-sm font-medium text-gray-700 cursor-pointer">
+                          Filter by Date Range
+                        </label>
+                      </div>
+                      {enabledFilters.dateRange && (
+                        <div className="p-3 border-t border-gray-200 space-y-2">
+                          <input
+                            type="date"
+                            value={advancedFilters.dateFrom}
+                            onChange={(e) => handleAdvancedFilterChange('dateFrom', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="From Date"
+                          />
+                          <input
+                            type="date"
+                            value={advancedFilters.dateTo}
+                            onChange={(e) => handleAdvancedFilterChange('dateTo', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="To Date"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 p-4 flex gap-2">
+                    <button
+                      onClick={clearAdvancedFilters}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-white transition-colors"
+                    >
+                      Clear All
+                    </button>
+                    <button
+                      onClick={() => setShowFilterPanel(false)}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
             <button 
               onClick={handleAddCustomer}
               className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 inline-flex items-center gap-2"
@@ -1711,6 +2393,13 @@ export default function CustomerListContent({ isDarkMode = false }) {
             >
               <RefreshCw className={`h-4 w-4 transition-transform duration-500 ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
+            <button 
+              onClick={() => setShowColumnModal(true)}
+              className="h-9 w-9 inline-flex items-center justify-center rounded-md bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-all duration-200"
+              title="Column Filter"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>
@@ -1723,9 +2412,12 @@ export default function CustomerListContent({ isDarkMode = false }) {
                 <tr className={`border-b ${
                   isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-100 bg-gray-50/50'
                 }`}>
-                  <th className={`text-left py-4 px-4 font-medium text-sm ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}>#</th>
+                  {columnVisibility.id && (
+                    <th className={`text-left py-4 px-4 font-medium text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                    }`}>#</th>
+                  )}
+                  {columnVisibility.namePhone && (
                   <th className={`text-left py-2 px-4 font-medium text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>
@@ -1733,20 +2425,9 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       <User className={`h-4 w-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
                       Name & Phone
                     </div>
-                    {showFilters && (
-                      <input
-                        type="text"
-                        value={filters.customer}
-                        onChange={(e) => handleFilterChange('customer', e.target.value)}
-                        className={`mt-1 w-full text-xs p-1 border rounded ${
-                          isDarkMode 
-                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                        placeholder="Filter customer..."
-                      />
-                    )}
                   </th>
+                  )}
+                  {columnVisibility.business && (
                   <th className={`text-left py-2 px-4 font-medium text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>
@@ -1754,20 +2435,9 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       <Building2 className={`h-4 w-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
                       Business
                     </div>
-                    {showFilters && (
-                      <input
-                        type="text"
-                        value={filters.business}
-                        onChange={(e) => handleFilterChange('business', e.target.value)}
-                        className={`mt-1 w-full text-xs p-1 border rounded ${
-                          isDarkMode 
-                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                        placeholder="Filter business..."
-                      />
-                    )}
                   </th>
+                  )}
+                  {columnVisibility.address && (
                   <th className={`text-left py-2 px-4 font-medium text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>
@@ -1775,20 +2445,9 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       <MapPin className={`h-4 w-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
                       Address
                     </div>
-                    {showFilters && (
-                      <input
-                        type="text"
-                        value={filters.address}
-                        onChange={(e) => handleFilterChange('address', e.target.value)}
-                        className={`mt-1 w-full text-xs p-1 border rounded ${
-                          isDarkMode 
-                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                        placeholder="Filter address..."
-                      />
-                    )}
                   </th>
+                  )}
+                  {columnVisibility.gstNo && (
                   <th className={`text-left py-2 px-4 font-medium text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>
@@ -1796,20 +2455,9 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       <FileText className={`h-4 w-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
                       GST No.
                     </div>
-                    {showFilters && (
-                      <input
-                        type="text"
-                        value={filters.gstNo}
-                        onChange={(e) => handleFilterChange('gstNo', e.target.value)}
-                        className={`mt-1 w-full text-xs p-1 border rounded ${
-                          isDarkMode 
-                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                        placeholder="Filter GST..."
-                      />
-                    )}
                   </th>
+                  )}
+                  {columnVisibility.productName && (
                   <th className={`text-left py-2 px-4 font-medium text-sm w-48 ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>
@@ -1817,21 +2465,10 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       <Package className={`h-4 w-4 ${isDarkMode ? 'text-violet-400' : 'text-violet-500'}`} />
                       Product Name
                     </div>
-                    {showFilters && (
-                      <input
-                        type="text"
-                        value={filters.productName}
-                        onChange={(e) => handleFilterChange('productName', e.target.value)}
-                        className={`mt-1 w-full text-xs p-1 border rounded ${
-                          isDarkMode 
-                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                        placeholder="Filter product name..."
-                      />
-                    )}
                   </th>
+                  )}
                   
+                  {columnVisibility.state && (
                   <th className={`text-left py-2 px-4 font-medium text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>
@@ -1839,23 +2476,9 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       <Map className={`h-4 w-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
                       State
                     </div>
-                    {showFilters && (
-                      <select
-                        value={filters.state}
-                        onChange={(e) => handleFilterChange('state', e.target.value)}
-                        className={`mt-1 w-full text-xs p-1 border rounded ${
-                          isDarkMode 
-                            ? 'bg-gray-700 border-gray-600 text-white' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                      >
-                        <option value="">All States</option>
-                        {states.map(state => (
-                          <option key={state} value={state}>{state}</option>
-                        ))}
-                      </select>
-                    )}
                   </th>
+                  )}
+                  {columnVisibility.leadSource && (
                   <th className={`text-left py-2 px-4 font-medium text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>
@@ -1863,23 +2486,9 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       <Globe className={`h-4 w-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-500'}`} />
                       Lead Source
                     </div>
-                    {showFilters && (
-                      <select
-                        value={filters.enquiryBy}
-                        onChange={(e) => handleFilterChange('enquiryBy', e.target.value)}
-                        className={`mt-1 w-full text-xs p-1 border rounded ${
-                          isDarkMode 
-                            ? 'bg-gray-700 border-gray-600 text-white' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                      >
-                        <option value="">All Sources</option>
-                        {leadSources.map(source => (
-                          <option key={source} value={source}>{source}</option>
-                        ))}
-                      </select>
-                    )}
                   </th>
+                  )}
+                  {columnVisibility.customerType && (
                   <th className={`text-left py-2 px-4 font-medium text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>
@@ -1887,23 +2496,9 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       <User className={`h-4 w-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
                       Customer Type
                     </div>
-                    {showFilters && (
-                      <select
-                        value={filters.customerType}
-                        onChange={(e) => handleFilterChange('customerType', e.target.value)}
-                        className={`mt-1 w-full text-xs p-1 border rounded ${
-                          isDarkMode 
-                            ? 'bg-gray-700 border-gray-600 text-white' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                      >
-                        <option value="">All Types</option>
-                        {customerTypes.map(type => (
-                          <option key={type} value={type}>{type}</option>
-                        ))}
-                      </select>
-                    )}
                   </th>
+                  )}
+                  {columnVisibility.date && (
                   <th className={`text-left py-2 px-4 font-medium text-sm w-32 ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>
@@ -1911,19 +2506,9 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       <FileText className={`h-4 w-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
                       Date
                     </div>
-                    {showFilters && (
-                      <input
-                        type="date"
-                        value={filters.date}
-                        onChange={(e) => handleFilterChange('date', e.target.value)}
-                        className={`mt-1 w-full text-xs p-1 border rounded ${
-                          isDarkMode 
-                            ? 'bg-gray-700 border-gray-600 text-white' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                      />
-                    )}
                   </th>
+                  )}
+                  {columnVisibility.salesStatus && (
                   <th className={`text-left py-2 px-4 font-medium text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>
@@ -1931,6 +2516,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       <BadgeCheck className={`h-4 w-4 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
                       Sales Status
                     </div>
+<<<<<<< HEAD
                     {showFilters && (
                       <select
                         value={filters.salesStatus}
@@ -1949,6 +2535,18 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       </select>
                     )}
                   </th>
+                  )}
+                  {columnVisibility.followUp && (
+                  <th className={`text-left py-2 px-4 font-medium text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <Clock className={`h-4 w-4 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`} />
+                      Follow Up
+                    </div>
+                  </th>
+                  )}
+                  {columnVisibility.transferredTo && (
                   <th className={`text-left py-2 px-4 font-medium text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>
@@ -1957,6 +2555,8 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       Transferred To
                     </div>
                   </th>
+                  )}
+                  {columnVisibility.actions && (
                   <th className={`text-left py-2 px-4 font-medium text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>
@@ -1965,6 +2565,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       Action
                     </div>
                   </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -2000,9 +2601,12 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       ? 'border-gray-700 odd:bg-gray-800 even:bg-gray-800/50 hover:bg-gray-700' 
                       : 'border-gray-50 odd:bg-white even:bg-gray-50/40 hover:bg-white'
                   }`}>
-                    <td className={`py-4 px-4 text-sm font-medium ${
-                      isDarkMode ? 'text-gray-100' : 'text-gray-900'
-                    }`}>{customer.id}</td>
+                    {columnVisibility.id && (
+                      <td className={`py-4 px-4 text-sm font-medium ${
+                        isDarkMode ? 'text-gray-100' : 'text-gray-900'
+                      }`}>{customer.id}</td>
+                    )}
+                    {columnVisibility.namePhone && (
                     <td className="py-4 px-4">
                       <div>
                         <div className={`font-medium text-sm ${
@@ -2039,47 +2643,65 @@ export default function CustomerListContent({ isDarkMode = false }) {
                         )}
                       </div>
                     </td>
+                    )}
+                    {columnVisibility.business && (
                     <td className={`py-4 px-4 text-sm ${
                       isDarkMode ? 'text-gray-300' : 'text-gray-700'
                     }`}>
                       <div className="font-medium">{customer.business}</div>
                     </td>
+                    )}
+                    {columnVisibility.address && (
                     <td className={`py-4 px-4 text-sm ${
                       isDarkMode ? 'text-gray-300' : 'text-gray-700'
                     }`}>
                       <div className="font-medium">{customer.address}</div>
                     </td>
-                    <td className={`py-4 px-4 text-sm ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
-                      <div className="font-medium">{customer.gstNo}</div>
-                    </td>
-                    <td className={`py-4 px-4 text-sm ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
-                      <div className="font-medium">{customer.productName}</div>
-                    </td>
+                    )}
+                    {columnVisibility.gstNo && (
+                      <td className={`py-4 px-4 text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                      }`}>
+                        <div className="font-medium">{customer.gstNo}</div>
+                      </td>
+                    )}
+                    {columnVisibility.productName && (
+                      <td className={`py-4 px-4 text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                      }`}>
+                        <div className="font-medium">{customer.productName}</div>
+                      </td>
+                    )}
                     
+                    {columnVisibility.state && (
                     <td className={`py-4 px-4 text-sm ${
                       isDarkMode ? 'text-gray-300' : 'text-gray-700'
                     }`}>
                       <div className="font-medium">{customer.state}</div>
                     </td>
-                    <td className={`py-4 px-4 text-sm ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
-                      <div className="font-medium">{customer.enquiryBy}</div>
-                    </td>
+                    )}
+                    {columnVisibility.leadSource && (
+                      <td className={`py-4 px-4 text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                      }`}>
+                        <div className="font-medium">{customer.enquiryBy}</div>
+                      </td>
+                    )}
+                    {columnVisibility.customerType && (
                     <td className={`py-4 px-4 text-sm ${
                       isDarkMode ? 'text-gray-300' : 'text-gray-700'
                     }`}>
                       <div className="font-medium">{customer.customerType || 'N/A'}</div>
                     </td>
-                    <td className={`py-4 px-4 text-sm w-32 ${
-                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
-                      <div className="font-medium whitespace-nowrap">{customer.date}</div>
-                    </td>
+                    )}
+                    {columnVisibility.date && (
+                      <td className={`py-4 px-4 text-sm w-32 ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                      }`}>
+                        <div className="font-medium whitespace-nowrap">{customer.date}</div>
+                      </td>
+                    )}
+                    {columnVisibility.salesStatus && (
                     <td className={`py-4 px-4 text-sm ${
                       isDarkMode ? 'text-gray-300' : 'text-gray-700'
                     }`}>
@@ -2149,6 +2771,51 @@ export default function CustomerListContent({ isDarkMode = false }) {
                         )}
                       </div>
                     </td>
+                    )}
+                    {columnVisibility.followUp && (
+                    <td className={`py-4 px-4 text-sm ${
+                      isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
+                      <div className="flex flex-col gap-1">
+                        {customer.followUpStatus && (
+                          <span className={`inline-flex items-center w-fit px-2 py-0.5 rounded-md text-xs font-medium border ${
+                            isDarkMode 
+                              ? 'bg-yellow-900 text-yellow-300 border-yellow-700' 
+                              : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                          }`}>
+                            {toTitleStatus(customer.followUpStatus)}
+                          </span>
+                        )}
+                        {customer.followUpRemark && (
+                          <span className={`text-xs ${
+                            isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                          }`}>
+                            {customer.followUpRemark}
+                          </span>
+                        )}
+                        {customer.followUpDate && (
+                          <span className={`text-xs ${
+                            isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                          }`}>
+                            {new Date(customer.followUpDate).toLocaleDateString('en-IN', { 
+                              day: '2-digit', 
+                              month: '2-digit', 
+                              year: 'numeric' 
+                            })}
+                            {customer.followUpTime && `, ${customer.followUpTime}`}
+                          </span>
+                        )}
+                        {!customer.followUpStatus && !customer.followUpRemark && !customer.followUpDate && (
+                          <span className={`text-xs ${
+                            isDarkMode ? 'text-gray-500' : 'text-gray-400'
+                          }`}>
+                            PENDING
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    )}
+                    {columnVisibility.transferredTo && (
                     <td className="py-4 px-4">
                           <div className="flex flex-col">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -2173,8 +2840,10 @@ export default function CustomerListContent({ isDarkMode = false }) {
                         )}
                       </div>
                     </td>
+                    )}
+                    {columnVisibility.actions && (
                     <td className="py-4 px-4">
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-row items-center gap-2">
                         <button onClick={() => handleEdit(customer)} className={`p-1.5 rounded-md relative group ${
                           isDarkMode 
                             ? 'hover:bg-gray-700' 
@@ -2199,48 +2868,9 @@ export default function CustomerListContent({ isDarkMode = false }) {
                             View Details
                           </span>
                         </button>
-                        <button 
-                          onClick={() => handleWalletClick(customer)}
-                          className={`p-1.5 rounded-md relative group ${
-                            isDarkMode 
-                              ? 'hover:bg-green-900 text-green-400' 
-                              : 'hover:bg-green-50 text-green-600'
-                          }`} 
-                          title="View Payment Receipt"
-                        >
-                          <Wallet className="h-4 w-4" />
-                          <span className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none ${
-                            isDarkMode ? 'bg-gray-600' : 'bg-gray-800'
-                          }`}>
-                            Payment
-                          </span>
-                        </button>
-                        <button onClick={() => handleQuotation(customer)} className={`p-1.5 rounded-md relative group ${
-                          isDarkMode 
-                            ? 'hover:bg-purple-900 text-purple-400' 
-                            : 'hover:bg-purple-50 text-purple-600'
-                        }`} title="Quotation">
-                          <FileText className="h-4 w-4" />
-                          <span className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none ${
-                            isDarkMode ? 'bg-gray-600' : 'bg-gray-800'
-                          }`}>
-                            Quotation
-                          </span>
-                        </button>
-                        <button onClick={() => setShowFollowUpPicker(customer.id)} className={`p-1.5 rounded-md relative group ${
-                          isDarkMode 
-                            ? 'hover:bg-yellow-900 text-yellow-400' 
-                            : 'hover:bg-yellow-50 text-yellow-600'
-                        }`} title="Set Follow-up">
-                          <ClockIcon className="h-4 w-4" />
-                          <span className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none ${
-                            isDarkMode ? 'bg-gray-600' : 'bg-gray-800'
-                          }`}>
-                            Set Follow-up
-                          </span>
-                        </button>
                       </div>
                     </td>
+                    )}
                   </tr>
                   ))
                 )}
@@ -2249,6 +2879,44 @@ export default function CustomerListContent({ isDarkMode = false }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Column Filter Modal */}
+      {showColumnModal && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900">Column Filter</h3>
+              <button className="text-gray-400 hover:text-gray-600" onClick={() => setShowColumnModal(false)}>
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {Object.entries(columnVisibility).map(([key, value]) => (
+                  <label key={key} className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={!!value}
+                      onChange={(e) => setColumnVisibility(prev => ({ ...prev, [key]: e.target.checked }))}
+                    />
+                    <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ')}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <button className="px-3 py-1.5 rounded border" onClick={() => setColumnVisibility(defaultColumns)}>Reset</button>
+                  <button className="px-3 py-1.5 rounded border" onClick={() => setColumnVisibility(Object.fromEntries(Object.keys(columnVisibility).map(k => [k, true])))}>Show All</button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button className="px-3 py-1.5 rounded" onClick={() => setShowColumnModal(false)}>Cancel</button>
+                  <button className="px-3 py-1.5 rounded bg-blue-600 text-white" onClick={() => setShowColumnModal(false)}>Apply</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Follow-up Picker Modal */}
       {showFollowUpPicker && (
@@ -2267,7 +2935,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
                   onClick={async () => {
                     try {
                       const formData = new FormData()
-                      formData.append('connectedStatus', cat)
+                      formData.append('sales_status', toMachineStatus(cat))
                       await apiClient.putFormData(API_ENDPOINTS.SALESPERSON_LEAD_BY_ID(showFollowUpPicker), formData)
                       setShowFollowUpPicker(null)
                       await fetchAssigned()
@@ -2441,7 +3109,8 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       return (
                         <div className="rounded-md border border-gray-200 divide-y">
                         {customerQuotations.map((quotation, index) => (
-                          <div key={quotation.id || index} className="p-3 flex items-center justify-between">
+                          <div key={quotation.id || index} className="p-3">
+                          <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <FileText className="h-4 w-4 text-gray-500" />
                           <div>
@@ -2486,8 +3155,8 @@ export default function CustomerListContent({ isDarkMode = false }) {
                           </button>
                               )}
                           
-                          {/* Show Create PI button for approved quotations, otherwise show status button */}
-                          {quotation.status === 'approved' ? (
+                          {/* Show Create PI only for approved and not deal-closed; hide send/delete when deal closed */}
+                          {isApprovedQuotation(quotation) && !isPaymentCompleted(quotation) ? (
                             <button 
                               onClick={() => {
                                 // Set the approved quotation for PI creation
@@ -2503,31 +3172,35 @@ export default function CustomerListContent({ isDarkMode = false }) {
                               <FileText className="h-3 w-3" />
                               Create PI
                             </button>
-                          ) : (
+                          ) : !isPaymentCompleted(quotation) ? (
                             <button 
-                                onClick={() => handleSendQuotation(quotation)}
-                                className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
-                                  quotation.status === 'pending'
-                                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                                : quotation.status === 'rejected'
-                                ? 'bg-red-600 text-white cursor-not-allowed'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                            }`}
-                                disabled={quotation.status === 'rejected'}
+                              onClick={() => handleSendQuotation(quotation)}
+                              className={`text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 ${
+                                quotation.status === 'pending'
+                                  ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                                  : quotation.status === 'rejected'
+                                  ? 'bg-red-600 text-white cursor-not-allowed'
+                                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                              }`}
+                              disabled={quotation.status === 'rejected'}
                             >
-                                {quotation.status === 'pending' 
-                              ? <Clock className="h-3 w-3" />
-                              : quotation.status === 'rejected'
-                              ? <XCircle className="h-3 w-3" />
-                              : <Send className="h-3 w-3" />
-                            }
-                                {quotation.status === 'pending' ? 'Pending' : 
-                                 quotation.status === 'rejected' ? 'Rejected' : 'Send'}
+                              {quotation.status === 'pending' 
+                                ? <Clock className="h-3 w-3" />
+                                : quotation.status === 'rejected'
+                                ? <XCircle className="h-3 w-3" />
+                                : <Send className="h-3 w-3" />
+                              }
+                              {quotation.status === 'pending' ? 'Pending' : 
+                                quotation.status === 'rejected' ? 'Rejected' : 'Send'}
                             </button>
+                          ) : (
+                            <span className="text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 bg-emerald-100 text-emerald-700">
+                              Deal Closed
+                            </span>
                           )}
                           
                           {/* Only show delete button for non-approved quotations */}
-                          {quotation.status !== 'approved' && (
+                          {!isApprovedQuotation(quotation) && !isPaymentCompleted(quotation) && (
                             <button 
                                 onClick={() => handleDeleteQuotation(quotation)}
                                 className="p-1 rounded-full bg-red-600 text-white hover:bg-red-700"
@@ -2538,138 +3211,67 @@ export default function CustomerListContent({ isDarkMode = false }) {
                           )}
                         </div>
                       </div>
+
+                      {/* PI List for this quotation - Show directly below */}
+                      {quotationPIs[quotation.id] && quotationPIs[quotation.id].length > 0 && (
+                        <div className="mt-2 pl-4 border-l-2 border-purple-200 space-y-2">
+                          {quotationPIs[quotation.id].map((pi) => (
+                                <div key={pi.id} className="p-2 bg-purple-50 rounded flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-3.5 w-3.5 text-purple-600" />
+                                    <div>
+                                      <p className="text-xs font-medium text-gray-900">{pi.pi_number}</p>
+                                      <p className="text-xs text-gray-500">{new Date(pi.created_at).toLocaleDateString()}</p>
+                                    </div>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                      pi.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                      pi.status === 'pending_approval' ? 'bg-yellow-100 text-yellow-800' :
+                                      pi.status === 'pending' ? 'bg-blue-100 text-blue-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {pi.status === 'approved' ? '✅ Approved' :
+                                       pi.status === 'pending_approval' ? '⏳ Pending Approval' :
+                                       pi.status === 'pending' ? '📄 Draft' :
+                                       pi.status || 'Draft'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => handleViewPI(pi.id, quotation)}
+                                      className="text-blue-600 text-xs underline hover:text-blue-700"
+                                    >
+                                      View
+                                    </button>
+                                    {pi.status !== 'approved' && pi.status !== 'pending_approval' && (
+                                      <>
+                                        <button
+                                          onClick={() => handleSendPIForApproval(pi.id, quotation.id)}
+                                          className="text-xs px-2 py-1 rounded bg-yellow-600 text-white hover:bg-yellow-700"
+                                        >
+                                          Send for Approval
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeletePI(pi.id, quotation.id)}
+                                          className="p-1 rounded bg-red-600 text-white hover:bg-red-700"
+                                          title="Delete PI"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                          ))}
+                        </div>
+                      )}
+                      </div>
                         ))}
                           </div>
                       )
                     })()}
                   </div>
 
-                  {/* Payment Summary Section */}
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Payment Summary</h3>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-gray-900">
-                          ₹{(() => {
-                            const customerQuotations = quotations.filter(q => q.customerId === viewingCustomer.id);
-                            const latestQuotation = customerQuotations[0];
-                            if (latestQuotation && piStore[latestQuotation.quotationNumber]) {
-                              return piStore[latestQuotation.quotationNumber].totalAmount?.toLocaleString('en-IN') || '0';
-                            }
-                            return '0';
-                          })()}
-                        </div>
-                        <div className="text-xs text-gray-600">Total Amount</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-green-600">
-                          ₹{(() => {
-                            const customerPayments = paymentHistory.filter(p => p.customerId === viewingCustomer.id);
-                            const totalPaid = customerPayments.reduce((sum, payment) => sum + payment.amount, 0);
-                            return totalPaid.toLocaleString('en-IN');
-                          })()}
-                        </div>
-                        <div className="text-xs text-gray-600">Advance Paid</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-orange-600">
-                          ₹{(() => {
-                            const customerQuotations = quotations.filter(q => q.customerId === viewingCustomer.id);
-                            const latestQuotation = customerQuotations[0];
-                            const totalAmount = latestQuotation && piStore[latestQuotation.quotationNumber] 
-                              ? piStore[latestQuotation.quotationNumber].totalAmount || 0 
-                              : 0;
-                            const customerPayments = paymentHistory.filter(p => p.customerId === viewingCustomer.id);
-                            const totalPaid = customerPayments.reduce((sum, payment) => sum + payment.amount, 0);
-                            return (totalAmount - totalPaid).toLocaleString('en-IN');
-                          })()}
-                        </div>
-                        <div className="text-xs text-gray-600">Remaining</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Quick Add Payment Button */}
-                  <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Quick Payment</h3>
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-gray-600">
-                        Auto-fill payment form with quotation and PI details
-                      </div>
-                      <button
-                        onClick={() => {
-                          const customerQuotations = quotations.filter(q => q.customerId === viewingCustomer.id);
-                          const latestQuotation = customerQuotations[0];
-                          
-                          if (!latestQuotation) {
-                            alert('No quotation found for this customer');
-                            return;
-                          }
-
-                          const quotationId = latestQuotation.quotationNumber || `ANQ${latestQuotation.id}`;
-                          const piId = latestQuotation && piStore[latestQuotation.quotationNumber] 
-                            ? (piStore[latestQuotation.quotationNumber].piNumber || `PI-${latestQuotation.quotationNumber}`)
-                            : '';
-                          const totalAmount = latestQuotation && piStore[latestQuotation.quotationNumber] 
-                            ? piStore[latestQuotation.quotationNumber].totalAmount || 0 
-                            : 0;
-
-                          // Auto-fill the payment form
-                          setAddPaymentForm({
-                            quotationId: quotationId,
-                            piId: piId,
-                            amount: totalAmount.toString(),
-                            paymentMethod: 'Cash',
-                            paymentDate: new Date().toISOString().split('T')[0],
-                            reference: `REF-${Date.now()}`,
-                            remarks: `Payment for ${quotationId}`
-                          });
-
-                          // Open the payment modal
-                          setShowAddPaymentModal(true);
-                        }}
-                        className="px-4 py-2 text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 flex items-center gap-2"
-                      >
-                        <Wallet className="h-3 w-3" />
-                        Quick Add Payment
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Payment History */}
-                  <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Payment History</h3>
-                    {(() => {
-                      const customerPayments = paymentHistory.filter(p => p.customerId === viewingCustomer.id);
-                      if (customerPayments.length === 0) {
-                        return (
-                          <div className="text-center py-4 text-gray-500">
-                            <Wallet className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                            <p className="text-xs">No payments recorded yet</p>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div className="space-y-2">
-                          {customerPayments.slice(0, 3).map((payment, index) => (
-                            <div key={payment.id || index} className="flex items-center justify-between bg-white rounded p-2 border border-yellow-200">
-                              <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${payment.status === 'paid' ? 'bg-green-500' : 'bg-orange-500'}`}></div>
-                                <span className="text-xs font-medium">₹{payment.amount.toLocaleString('en-IN')}</span>
-                                <span className="text-xs text-gray-500">({payment.paymentMethod})</span>
-                              </div>
-                              <div className="text-xs text-gray-500">{payment.date}</div>
-                            </div>
-                          ))}
-                          {customerPayments.length > 3 && (
-                            <div className="text-xs text-center text-gray-500">
-                              +{customerPayments.length - 3} more payments
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
+                  {/* Payment UI removed */}
                   
                   
                 </div>
@@ -2713,172 +3315,22 @@ export default function CustomerListContent({ isDarkMode = false }) {
 
       {/* PI Preview Modal */}
       {showPIPreview && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-white flex items-center justify-center">
-          <div className="w-full h-full flex flex-col">
-            {/* Floating Action Buttons */}
-            <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
-              <button
-                onClick={() => {
-                  setShowPIPreview(false)
-                  alert('PI saved successfully!')
-                }}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 inline-flex items-center gap-2 shadow-lg"
-              >
-                <Check className="h-4 w-4" />
-                Save PI
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    const element = document.getElementById('pi-preview-content');
-                    if (!element) {
-                      alert('Unable to find PI content for PDF.');
-                      return;
-                    }
-
-                    // Convert images to base64 to avoid CORS/tainted canvas issues
-                    const convertImageToBase64 = (imgUrl) => {
-                      return new Promise((resolve) => {
-                        try {
-                          const img = new Image();
-                          img.crossOrigin = 'anonymous';
-                          img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            const ctx = canvas.getContext('2d');
-                            canvas.width = img.width;
-                            canvas.height = img.height;
-                            ctx.drawImage(img, 0, 0);
-                            resolve(canvas.toDataURL('image/png'));
-                          };
-                          img.onerror = () => resolve(imgUrl);
-                          img.src = imgUrl;
-                        } catch (e) {
-                          resolve(imgUrl);
-                        }
-                      });
-                    };
-
-                    const imgs = Array.from(element.querySelectorAll('img'));
-                    await Promise.all(
-                      imgs.map(async (img) => {
-                        if (img && img.src && !img.src.startsWith('data:')) {
-                          const b64 = await convertImageToBase64(img.src);
-                          img.setAttribute('src', b64);
-                        }
-                      })
-                    );
-
-                    // Compute scale to fit a single A4 page
-                    const originalTransform = element.style.transform
-                    const originalTransformOrigin = element.style.transformOrigin
-                    const DPI = 96
-                    const A4_WIDTH_PX = Math.round(8.27 * DPI)
-                    const A4_HEIGHT_PX = Math.round(11.69 * DPI)
-                    const marginPxX = Math.round(0.4 * DPI) * 2
-                    const marginPxY = Math.round(0.4 * DPI) * 2
-                    const availableWidth = A4_WIDTH_PX - marginPxX
-                    const availableHeight = A4_HEIGHT_PX - marginPxY
-                    const contentWidth = Math.max(element.scrollWidth, element.getBoundingClientRect().width)
-                    const contentHeight = Math.max(element.scrollHeight, element.getBoundingClientRect().height)
-                    const scaleFactor = Math.min(1, availableWidth / contentWidth, availableHeight / contentHeight)
-                    if (scaleFactor < 1) {
-                      element.style.transform = `scale(${scaleFactor})`
-                      element.style.transformOrigin = 'top left'
-                    }
-
-                    // Robust html2pdf one-page export
-                    const opt = {
-                      margin: [0.4, 0.4, 0.4, 0.4],
-                      filename: `PI-${companyBranches[selectedBranch].name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`,
-                      image: { type: 'jpeg', quality: 0.95 },
-                      html2canvas: {
-                        scale: 2,
-                        useCORS: true,
-                        allowTaint: false,
-                        backgroundColor: '#ffffff',
-                        logging: false
-                      },
-                      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait', compress: true, putOnlyUsedFonts: true },
-                      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-                    }
-                    await html2pdf().set(opt).from(element).save()
-
-                    // restore styles
-                    element.style.transform = originalTransform
-                    element.style.transformOrigin = originalTransformOrigin
-                  } catch (err) {
-                    console.error('PDF generation failed:', err);
-                    alert('Failed to generate PDF. Please try again, or use the Print button as a fallback.');
-                  }
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-2 shadow-lg"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                Download PDF
-              </button>
-              <button
-                onClick={() => setShowPIPreview(false)}
-                className="p-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 shadow-lg"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            
-            {/* PI Content - Full Screen */}
-            <div className="flex-1 overflow-y-auto bg-white">
-              <div className="flex justify-center p-4">
-                <div className="bg-white max-w-full" style={{width: '100%', maxWidth: '8.5in'}}>
-                  <div id="pi-preview-content">
-                    <CorporateStandardInvoice 
-                      selectedBranch={(savedPiPreview && savedPiPreview.selectedBranch) || selectedBranch} 
-                      companyBranches={companyBranches}
-                      quotations={[(() => {
-                        if (savedPiPreview && savedPiPreview.data) {
-                          return savedPiPreview.data
-                        }
-                        const items = piFormData.items.map(item => ({
-                          productName: item.description || item.subDescription || 'Product',
-                          description: item.description || item.subDescription || 'Product',
-                          quantity: item.quantity,
-                          unit: item.unit,
-                          buyerRate: item.rate,
-                          amount: item.amount,
-                          hsn: item.hsn
-                        }))
-                        const subtotal = items.reduce((sum, it) => sum + (it.amount || 0), 0)
-                        const discountRate = parseFloat(piFormData.discountRate || 0)
-                        const discountAmount = (subtotal * discountRate) / 100
-                        const taxable = Math.max(0, subtotal - discountAmount)
-                        const taxRate = 18
-                        const taxAmount = taxable * (taxRate / 100)
-                        const total = taxable + taxAmount
-                        return ({
-                          quotationNumber: `PI-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-                          items,
-                          subtotal,
-                          discountRate,
-                          discountAmount,
-                          taxRate,
-                          taxAmount,
-                          total,
-                          billTo: {
-                            business: piFormData.customer.business || 'Customer Business Name',
-                            address: piFormData.customer.address || 'Customer Address',
-                            phone: piFormData.customer.phone || 'Customer Phone',
-                            gstNo: piFormData.customer.gstNo || 'Customer GST',
-                            state: piFormData.customer.state || 'Customer State'
-                          }
-                        })
-                      })()]}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PIPreviewModal
+          open={showPIPreview}
+          onClose={() => {
+            setShowPIPreview(false)
+            setSelectedCustomerForPI(null) // Clear selection when closing
+          }}
+          piPreviewData={savedPiPreview}
+          selectedBranch={savedPiPreview?.selectedBranch || selectedBranch}
+          companyBranches={companyBranches}
+          approvedQuotationId={selectedCustomerForPI?.approvedQuotation?.id}
+          viewingCustomerId={viewingCustomer?.id}
+          onPICreated={() => {
+            const quotationId = selectedCustomerForPI?.approvedQuotation?.id
+            if (quotationId) fetchPIsForQuotation(quotationId)
+          }}
+        />
       )}
       
       {showAddCustomer && (
@@ -2932,13 +3384,22 @@ export default function CustomerListContent({ isDarkMode = false }) {
                   </select>
                 </div>
 
-                {/* Invoice Details */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Invoice Details - Minimal */}
+                <div className="grid grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Voucher No.</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">PI Number</label>
                     <input
                       type="text"
-                      value={`PI-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`}
+                      value={piNumber || generatePiNumber()}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Quotation Number</label>
+                    <input
+                      type="text"
+                      value={selectedCustomerForPI?.approvedQuotation?.quotationNumber || ''}
                       readOnly
                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
                     />
@@ -2953,68 +3414,114 @@ export default function CustomerListContent({ isDarkMode = false }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      <option value="ADVANCE">ADVANCE</option>
-                      <option value="CREDIT">CREDIT</option>
-                      <option value="CASH">CASH</option>
-                      <option value="CHEQUE">CHEQUE</option>
-                      <option value="NET BANKING">NET BANKING</option>
-                      <option value="UPI">UPI</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Buyer's Ref.</label>
-                    <input
-                      type="text"
-                      value={`BR-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`}
-                      readOnly
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Other References</label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                      <option value="DIRECT SALE">DIRECT SALE</option>
-                      <option value="REFERRAL">REFERRAL</option>
-                      <option value="WEBSITE">WEBSITE</option>
-                      <option value="SOCIAL MEDIA">SOCIAL MEDIA</option>
-                      <option value="ADVERTISING">ADVERTISING</option>
-                      <option value="TRADE SHOW">TRADE SHOW</option>
-                      <option value="EXISTING CUSTOMER">EXISTING CUSTOMER</option>
-                      <option value="PARTNER">PARTNER</option>
-                    </select>
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Dispatched Through</label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select 
+                      value={dispatchMode}
+                      onChange={(e)=> setDispatchMode(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                       <option value="BY TRANSPORT">BY TRANSPORT</option>
                       <option value="BY COURIER">BY COURIER</option>
                       <option value="BY HAND">BY HAND</option>
                       <option value="BY POST">BY POST</option>
-                      <option value="BY TRUCK">BY TRUCK</option>
                       <option value="BY TRAIN">BY TRAIN</option>
+                      <option value="BY BUS">BY BUS</option>
                     </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Destination</label>
-                    <input
-                      type="text"
-                      defaultValue="Chandrapur Transport"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Terms</label>
-                    <input
-                      type="text"
-                      defaultValue="Delivery :- FOR upto Chandrapur Transport"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
                   </div>
                 </div>
 
-                {/* Customer Information */}
+                {/* Dynamic dispatch detail fields */}
+                <div className="grid grid-cols-4 gap-4 mt-3">
+                  {dispatchMode === 'BY TRANSPORT' && (
+                    <React.Fragment>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Transport Name</label>
+                        <input type="text" value={shippingDetails.transportName}
+                          onChange={(e)=> setShippingDetails(prev=>({...prev, transportName: e.target.value}))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Number</label>
+                        <input type="text" value={shippingDetails.vehicleNumber}
+                          onChange={(e)=> setShippingDetails(prev=>({...prev, vehicleNumber: e.target.value}))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Transport ID</label>
+                        <input type="text" value={shippingDetails.transportId}
+                          onChange={(e)=> setShippingDetails(prev=>({...prev, transportId: e.target.value}))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">L.R. No.</label>
+                        <input type="text" value={shippingDetails.lrNo}
+                          onChange={(e)=> setShippingDetails(prev=>({...prev, lrNo: e.target.value}))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                    </React.Fragment>
+                  )}
+                  {dispatchMode === 'BY COURIER' && (
+                    <React.Fragment>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Courier Name</label>
+                        <input type="text" value={shippingDetails.courierName}
+                          onChange={(e)=> setShippingDetails(prev=>({...prev, courierName: e.target.value}))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Consignment No</label>
+                        <input type="text" value={shippingDetails.consignmentNo}
+                          onChange={(e)=> setShippingDetails(prev=>({...prev, consignmentNo: e.target.value}))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                    </React.Fragment>
+                  )}
+                  {dispatchMode === 'BY HAND' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Handed Over To</label>
+                      <input type="text" value={shippingDetails.byHand}
+                        onChange={(e)=> setShippingDetails(prev=>({...prev, byHand: e.target.value}))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                  )}
+                  {dispatchMode === 'BY POST' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Post Service</label>
+                      <input type="text" value={shippingDetails.postService}
+                        onChange={(e)=> setShippingDetails(prev=>({...prev, postService: e.target.value}))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                  )}
+                  {(dispatchMode === 'BY TRAIN' || dispatchMode === 'BY BUS') && (
+                    <React.Fragment>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Carrier Name</label>
+                        <input type="text" value={shippingDetails.carrierName}
+                          onChange={(e)=> setShippingDetails(prev=>({...prev, carrierName: e.target.value}))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Number</label>
+                        <input type="text" value={shippingDetails.carrierNumber}
+                          onChange={(e)=> setShippingDetails(prev=>({...prev, carrierNumber: e.target.value}))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                    </React.Fragment>
+                  )}
+                </div>
+
+                {/* Valid Upto Field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Valid Upto</label>
+                  <input
+                    type="date"
+                    value={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
+                  />
+                </div>
+
+                {/* Customer Information (hidden) */}
+                {false && (
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3085,8 +3592,10 @@ export default function CustomerListContent({ isDarkMode = false }) {
                     </div>
                   </div>
                 </div>
+                )}
 
-                {/* Items Section */}
+                {/* Items Section (hidden) */}
+                {false && (
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-medium text-gray-900">Items</h3>
@@ -3116,7 +3625,12 @@ export default function CustomerListContent({ isDarkMode = false }) {
                     </button>
                   </div>
                   
-                  <div className="space-y-4">
+                <div className="space-y-4">
+                  {/** Lock item fields when PI is created from an approved quotation */}
+                  {/** This ensures products auto-capture exactly from quotation */}
+                  {/** and users cannot accidentally change them here. */}
+                  {/** Read-only mode is controlled by the presence of selectedCustomerForPI.approvedQuotation */}
+                  {/** (i.e., when PI comes from an approved quotation). */}
                     {piFormData.items.map((item, index) => (
                       <div key={item.id} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex justify-between items-center mb-4">
@@ -3140,54 +3654,72 @@ export default function CustomerListContent({ isDarkMode = false }) {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                            <select 
-                              value={item.description}
-                              onChange={(e) => {
-                                const updatedItems = [...piFormData.items]
-                                updatedItems[index].description = e.target.value
-                                setPiFormData(prev => ({ ...prev, items: updatedItems }))
-                              }}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Select Description</option>
-                              <option value="COVERED CONDUCTOR 34 SQMM">COVERED CONDUCTOR 34 SQMM</option>
-                              <option value="XLPE CABLE 1.5MM">XLPE CABLE 1.5MM</option>
-                              <option value="ACSR CONDUCTOR 50MM²">ACSR CONDUCTOR 50MM²</option>
-                              <option value="AAAC CONDUCTOR 70MM²">AAAC CONDUCTOR 70MM²</option>
-                              <option value="ALUMINIUM WIRE">ALUMINIUM WIRE</option>
-                              <option value="COPPER WIRE">COPPER WIRE</option>
-                              <option value="ELECTRICAL PANEL">ELECTRICAL PANEL</option>
-                              <option value="TRANSFORMER">TRANSFORMER</option>
-                            </select>
+                            {isPiLocked ? (
+                              <input
+                                type="text"
+                                value={item.description}
+                                readOnly
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
+                              />
+                            ) : (
+                              <select 
+                                value={item.description}
+                                onChange={(e) => {
+                                  const updatedItems = [...piFormData.items]
+                                  updatedItems[index].description = e.target.value
+                                  setPiFormData(prev => ({ ...prev, items: updatedItems }))
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Select Description</option>
+                                <option value="COVERED CONDUCTOR 34 SQMM">COVERED CONDUCTOR 34 SQMM</option>
+                                <option value="XLPE CABLE 1.5MM">XLPE CABLE 1.5MM</option>
+                                <option value="ACSR CONDUCTOR 50MM²">ACSR CONDUCTOR 50MM²</option>
+                                <option value="AAAC CONDUCTOR 70MM²">AAAC CONDUCTOR 70MM²</option>
+                                <option value="ALUMINIUM WIRE">ALUMINIUM WIRE</option>
+                                <option value="COPPER WIRE">COPPER WIRE</option>
+                                <option value="ELECTRICAL PANEL">ELECTRICAL PANEL</option>
+                                <option value="TRANSFORMER">TRANSFORMER</option>
+                              </select>
+                            )}
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Sub Description</label>
-                            <select 
-                              value={item.subDescription}
-                              onChange={(e) => {
-                                const updatedItems = [...piFormData.items]
-                                updatedItems[index].subDescription = e.target.value
-                                setPiFormData(prev => ({ ...prev, items: updatedItems }))
-                              }}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Select Sub Description</option>
-                              <option value="COVERED CONDUCTOR 34SQMM XLPE 3 LAYER">COVERED CONDUCTOR 34SQMM XLPE 3 LAYER</option>
-                              <option value="XLPE CABLE 1.5MM SINGLE CORE">XLPE CABLE 1.5MM SINGLE CORE</option>
-                              <option value="XLPE CABLE 1.5MM MULTI CORE">XLPE CABLE 1.5MM MULTI CORE</option>
-                              <option value="ACSR CONDUCTOR 50MM² 7 STRAND">ACSR CONDUCTOR 50MM² 7 STRAND</option>
-                              <option value="ACSR CONDUCTOR 50MM² 19 STRAND">ACSR CONDUCTOR 50MM² 19 STRAND</option>
-                              <option value="AAAC CONDUCTOR 70MM² 7 STRAND">AAAC CONDUCTOR 70MM² 7 STRAND</option>
-                              <option value="AAAC CONDUCTOR 70MM² 19 STRAND">AAAC CONDUCTOR 70MM² 19 STRAND</option>
-                              <option value="ALUMINIUM WIRE 4MM">ALUMINIUM WIRE 4MM</option>
-                              <option value="ALUMINIUM WIRE 6MM">ALUMINIUM WIRE 6MM</option>
-                              <option value="COPPER WIRE 2.5MM">COPPER WIRE 2.5MM</option>
-                              <option value="COPPER WIRE 4MM">COPPER WIRE 4MM</option>
-                              <option value="ELECTRICAL PANEL 3 PHASE">ELECTRICAL PANEL 3 PHASE</option>
-                              <option value="ELECTRICAL PANEL SINGLE PHASE">ELECTRICAL PANEL SINGLE PHASE</option>
-                              <option value="TRANSFORMER 11KV/440V">TRANSFORMER 11KV/440V</option>
-                              <option value="TRANSFORMER 33KV/11KV">TRANSFORMER 33KV/11KV</option>
-                            </select>
+                            {isPiLocked ? (
+                              <input
+                                type="text"
+                                value={item.subDescription}
+                                readOnly
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
+                              />
+                            ) : (
+                              <select 
+                                value={item.subDescription}
+                                onChange={(e) => {
+                                  const updatedItems = [...piFormData.items]
+                                  updatedItems[index].subDescription = e.target.value
+                                  setPiFormData(prev => ({ ...prev, items: updatedItems }))
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Select Sub Description</option>
+                                <option value="COVERED CONDUCTOR 34SQMM XLPE 3 LAYER">COVERED CONDUCTOR 34SQMM XLPE 3 LAYER</option>
+                                <option value="XLPE CABLE 1.5MM SINGLE CORE">XLPE CABLE 1.5MM SINGLE CORE</option>
+                                <option value="XLPE CABLE 1.5MM MULTI CORE">XLPE CABLE 1.5MM MULTI CORE</option>
+                                <option value="ACSR CONDUCTOR 50MM² 7 STRAND">ACSR CONDUCTOR 50MM² 7 STRAND</option>
+                                <option value="ACSR CONDUCTOR 50MM² 19 STRAND">ACSR CONDUCTOR 50MM² 19 STRAND</option>
+                                <option value="AAAC CONDUCTOR 70MM² 7 STRAND">AAAC CONDUCTOR 70MM² 7 STRAND</option>
+                                <option value="AAAC CONDUCTOR 70MM² 19 STRAND">AAAC CONDUCTOR 70MM² 19 STRAND</option>
+                                <option value="ALUMINIUM WIRE 4MM">ALUMINIUM WIRE 4MM</option>
+                                <option value="ALUMINIUM WIRE 6MM">ALUMINIUM WIRE 6MM</option>
+                                <option value="COPPER WIRE 2.5MM">COPPER WIRE 2.5MM</option>
+                                <option value="COPPER WIRE 4MM">COPPER WIRE 4MM</option>
+                                <option value="ELECTRICAL PANEL 3 PHASE">ELECTRICAL PANEL 3 PHASE</option>
+                                <option value="ELECTRICAL PANEL SINGLE PHASE">ELECTRICAL PANEL SINGLE PHASE</option>
+                                <option value="TRANSFORMER 11KV/440V">TRANSFORMER 11KV/440V</option>
+                                <option value="TRANSFORMER 33KV/11KV">TRANSFORMER 33KV/11KV</option>
+                              </select>
+                            )}
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">HSN/SAC</label>
@@ -3199,7 +3731,8 @@ export default function CustomerListContent({ isDarkMode = false }) {
                                 updatedItems[index].hsn = e.target.value
                                 setPiFormData(prev => ({ ...prev, items: updatedItems }))
                               }}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              readOnly={isPiLocked}
+                              className={`w-full px-3 py-2 border border-gray-300 rounded-md ${isPiLocked ? 'bg-gray-50 text-gray-600' : 'focus:outline-none focus:ring-2 focus:ring-blue-500'}`}
                             />
                           </div>
                           <div>
@@ -3212,7 +3745,8 @@ export default function CustomerListContent({ isDarkMode = false }) {
                                 updatedItems[index].dueOn = e.target.value
                                 setPiFormData(prev => ({ ...prev, items: updatedItems }))
                               }}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              readOnly={isPiLocked}
+                              className={`w-full px-3 py-2 border border-gray-300 rounded-md ${isPiLocked ? 'bg-gray-50 text-gray-600' : 'focus:outline-none focus:ring-2 focus:ring-blue-500'}`}
                             />
                           </div>
                           <div>
@@ -3227,7 +3761,8 @@ export default function CustomerListContent({ isDarkMode = false }) {
                                 updatedItems[index].amount = updatedItems[index].quantity * updatedItems[index].rate
                                 setPiFormData(prev => ({ ...prev, items: updatedItems }))
                               }}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              readOnly={isPiLocked}
+                              className={`w-full px-3 py-2 border border-gray-300 rounded-md ${isPiLocked ? 'bg-gray-50 text-gray-600' : 'focus:outline-none focus:ring-2 focus:ring-blue-500'}`}
                             />
                           </div>
                           <div>
@@ -3239,7 +3774,8 @@ export default function CustomerListContent({ isDarkMode = false }) {
                                 updatedItems[index].unit = e.target.value
                                 setPiFormData(prev => ({ ...prev, items: updatedItems }))
                               }}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              disabled={isPiLocked}
+                              className={`w-full px-3 py-2 border border-gray-300 rounded-md ${isPiLocked ? 'bg-gray-50 text-gray-600' : 'focus:outline-none focus:ring-2 focus:ring-blue-500'}`}
                             >
                               <option value="MTR">MTR</option>
                               <option value="KG">KG</option>
@@ -3266,7 +3802,8 @@ export default function CustomerListContent({ isDarkMode = false }) {
                                 updatedItems[index].amount = updatedItems[index].quantity * updatedItems[index].rate
                                 setPiFormData(prev => ({ ...prev, items: updatedItems }))
                               }}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              readOnly={isPiLocked}
+                              className={`w-full px-3 py-2 border border-gray-300 rounded-md ${isPiLocked ? 'bg-gray-50 text-gray-600' : 'focus:outline-none focus:ring-2 focus:ring-blue-500'}`}
                             />
                           </div>
                           <div>
@@ -3284,8 +3821,10 @@ export default function CustomerListContent({ isDarkMode = false }) {
                     ))}
                   </div>
                 </div>
+                )}
 
-                {/* Totals Section */}
+                {/* Totals Section (hidden) */}
+                {false && (
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
@@ -3344,8 +3883,10 @@ export default function CustomerListContent({ isDarkMode = false }) {
                     />
                   </div>
                 </div>
+                )}
 
-                {/* Bank Details */}
+                {/* Bank Details (hidden) */}
+                {false && (
                 <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
                   <h3 className="text-lg font-medium text-gray-900 mb-4 text-blue-800">🏦 Bank Details (Separate Fields)</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -3406,6 +3947,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
                     </div>
                   </div>
                 </div>
+                )}
               </div>
             </div>
             <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200">
@@ -3427,432 +3969,6 @@ export default function CustomerListContent({ isDarkMode = false }) {
                 <Eye className="h-4 w-4" />
                 Preview & Save PI
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Payment Details Modal */}
-      {showPaymentDetails && selectedCustomer && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col">
-            <div className="p-4 flex-1 overflow-y-auto">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Payment Details</h3>
-                <button 
-                  onClick={() => setShowPaymentDetails(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                  aria-label="Close payment details"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              
-              {/* Main Content Layout */}
-              <div className="flex gap-4 mb-4">
-                {/* Customer Details Box (Left - Main Area) */}
-                <div className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-                  <div className="mb-4">
-                    <h4 className="font-bold text-gray-900 text-xl mb-2">{selectedCustomer.name}</h4>
-                    <div className="space-y-1">
-                      <p className="text-sm text-gray-700 flex items-center">
-                        <span className="w-16 text-gray-500">Phone:</span> 
-                        <span className="font-medium">{selectedCustomer.phone}</span>
-                      </p>
-                      <p className="text-sm text-gray-700 flex items-center">
-                        <span className="w-16 text-gray-500">Email:</span> 
-                        <span className="font-medium">{selectedCustomer.email}</span>
-                      </p>
-                      <p className="text-sm text-gray-700 flex items-center">
-                        <span className="w-16 text-gray-500">Business:</span> 
-                        <span className="font-medium">{selectedCustomer.business || 'N/A'}</span>
-                      </p>
-                      <p className="text-sm text-gray-700 flex items-center">
-                        <span className="w-16 text-gray-500">Address:</span> 
-                        <span className="font-medium">{selectedCustomer.address || 'N/A'}</span>
-                      </p>
-                            </div>
-                          </div>
-                          
-                  {/* Selected Payment Details */}
-                  <div className="bg-white rounded-lg border-2 border-blue-200 p-4 shadow-sm">
-                    <h5 className="font-semibold text-gray-800 mb-3 text-sm">Selected Payment Details</h5>
-                    {selectedPayment ? (
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Method:</span> 
-                          <span className="font-semibold text-blue-600">{selectedPayment.paymentMethod}</span>
-                              </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Amount:</span> 
-                          <span className="font-semibold text-green-600">₹{selectedPayment.amount.toLocaleString('en-IN')}</span>
-                              </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Due Date:</span> 
-                          <span className="font-medium">{selectedPayment.dueDate}</span>
-                              </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Paid Date:</span> 
-                          <span className="font-medium">{selectedPayment.paidDate || 'Not Paid'}</span>
-                              </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Status:</span> 
-                          <span className={`font-semibold ${selectedPayment.status === 'paid' ? 'text-green-600' : 'text-orange-600'}`}>
-                            {selectedPayment.status === 'paid' ? 'Paid' : 'Pending'}
-                          </span>
-                            </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Reference:</span> 
-                          <span className="font-medium text-xs">{selectedPayment.reference}</span>
-                          </div>
-                        </div>
-                    ) : (
-                      <p className="text-gray-500 text-sm">Click on a payment to view details</p>
-                    )}
-                      </div>
-                    </div>
-                    
-                {/* Payment Methods (Right - Vertical) */}
-                <div className="w-32 space-y-2">
-                  <div className="bg-blue-100 border-2 border-blue-300 p-2 rounded-lg text-center text-sm font-semibold cursor-pointer hover:bg-blue-200 hover:scale-105 transition-all duration-200 shadow-sm">
-                    Cash
-                      </div>
-                  <div className="bg-gray-100 border-2 border-gray-300 p-2 rounded-lg text-center text-sm font-semibold cursor-pointer hover:bg-gray-200 hover:scale-105 transition-all duration-200 shadow-sm">
-                    Card
-                      </div>
-                  <div className="bg-gray-100 border-2 border-gray-300 p-2 rounded-lg text-center text-sm font-semibold cursor-pointer hover:bg-gray-200 hover:scale-105 transition-all duration-200 shadow-sm">
-                    UPI
-                      </div>
-                  <div className="bg-gray-100 border-2 border-gray-300 p-2 rounded-lg text-center text-sm font-semibold cursor-pointer hover:bg-gray-200 hover:scale-105 transition-all duration-200 shadow-sm">
-                    Bank
-                      </div>
-                  <div className="bg-gray-100 border-2 border-gray-300 p-2 rounded-lg text-center text-sm font-semibold cursor-pointer hover:bg-gray-200 hover:scale-105 transition-all duration-200 shadow-sm">
-                    Cheque
-                    </div>
-                  <div className="bg-gray-100 border-2 border-gray-300 p-2 rounded-lg text-center text-sm font-semibold cursor-pointer hover:bg-gray-200 hover:scale-105 transition-all duration-200 shadow-sm">
-                    Other
-                  </div>
-                </div>
-              </div>
-              
-              {/* Payment History - Interactive */}
-              <div>
-                <h4 className="font-medium text-gray-900 mb-3 text-sm">Payment History</h4>
-                {paymentHistory.length > 0 ? (
-                  <div className="space-y-2">
-                    {paymentHistory.map((payment) => (
-                      <div 
-                        key={payment.id} 
-                        className={`rounded-lg p-3 text-sm cursor-pointer transition-all duration-200 hover:scale-105 shadow-sm border-2 ${
-                          selectedPayment?.id === payment.id 
-                            ? 'bg-blue-100 border-blue-300 shadow-md' 
-                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
-                        }`}
-                        onClick={() => setSelectedPayment(payment)}
-                        title="Click to view payment details"
-                      >
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center space-x-3">
-                            <span className="font-bold text-lg">₹{payment.amount.toLocaleString('en-IN')}</span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              payment.status === 'paid' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-orange-100 text-orange-800'
-                            }`}>
-                              {payment.status === 'paid' ? 'Paid' : 'Pending'}
-                                </span>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-medium text-gray-700">{payment.paymentMethod}</div>
-                            <div className="text-gray-500 text-xs">{payment.date}</div>
-                          </div>
-                        </div>
-                        {selectedPayment?.id === payment.id && (
-                          <div className="mt-2 pt-2 border-t border-gray-300">
-                            <p className="text-xs text-gray-600">
-                              <span className="font-medium">Reference:</span> {payment.reference}
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              <span className="font-medium">Remarks:</span> {payment.remarks}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-center text-gray-500 py-4 text-sm">No payment history found</p>
-                )}
-              </div>
-            </div>
-            
-            <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowPaymentDetails(false)}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50"
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded shadow-sm hover:bg-blue-700"
-                onClick={() => {
-                  setShowAddPaymentModal(true);
-                }}
-                >
-                Add Payment
-                </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Payment Modal */}
-      {showAddPaymentModal && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-blue-200">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-900">Add Payment</h3>
-                <button 
-                  onClick={() => {
-                    setShowAddPaymentModal(false);
-                    setAddPaymentForm({
-                      quotationId: '',
-                      piId: '',
-                      amount: '',
-                      paymentMethod: 'Cash',
-                      paymentDate: new Date().toISOString().split('T')[0],
-                      reference: '',
-                      remarks: ''
-                    });
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Form Content */}
-            <div className="p-6 flex-1 overflow-y-auto">
-              <div className="space-y-6">
-                {/* Customer Info */}
-                {selectedCustomer && (
-                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                    <h4 className="font-semibold text-gray-900 mb-2">Customer Information</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600">Name:</span>
-                        <span className="ml-2 font-medium">{selectedCustomer.name}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Phone:</span>
-                        <span className="ml-2 font-medium">{selectedCustomer.phone}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Payment Form */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Left Column */}
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Quotation ID <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={addPaymentForm.quotationId}
-                        onChange={(e) => setAddPaymentForm({...addPaymentForm, quotationId: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter quotation ID"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        PI ID <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={addPaymentForm.piId}
-                        onChange={(e) => setAddPaymentForm({...addPaymentForm, piId: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter PI ID"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Amount <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        value={addPaymentForm.amount}
-                        onChange={(e) => setAddPaymentForm({...addPaymentForm, amount: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter amount"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Payment Method <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={addPaymentForm.paymentMethod}
-                        onChange={(e) => setAddPaymentForm({...addPaymentForm, paymentMethod: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="Cash">Cash</option>
-                        <option value="Card">Card</option>
-                        <option value="UPI">UPI</option>
-                        <option value="Bank">Bank Transfer</option>
-                        <option value="Cheque">Cheque</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Right Column */}
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Payment Date <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        value={addPaymentForm.paymentDate}
-                        onChange={(e) => setAddPaymentForm({...addPaymentForm, paymentDate: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Reference Number
-                      </label>
-                      <input
-                        type="text"
-                        value={addPaymentForm.reference}
-                        onChange={(e) => setAddPaymentForm({...addPaymentForm, reference: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter reference number"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Remarks
-                      </label>
-                      <textarea
-                        value={addPaymentForm.remarks}
-                        onChange={(e) => setAddPaymentForm({...addPaymentForm, remarks: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        rows={3}
-                        placeholder="Enter any additional remarks"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Payment Summary */}
-                {addPaymentForm.amount && (
-                  <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                    <h4 className="font-semibold text-gray-900 mb-2">Payment Summary</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600">Amount:</span>
-                        <span className="ml-2 font-bold text-green-600">₹{parseInt(addPaymentForm.amount || 0).toLocaleString('en-IN')}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Method:</span>
-                        <span className="ml-2 font-medium">{addPaymentForm.paymentMethod}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Date:</span>
-                        <span className="ml-2 font-medium">{addPaymentForm.paymentDate}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Reference:</span>
-                        <span className="ml-2 font-medium">{addPaymentForm.reference || 'N/A'}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAddPaymentModal(false);
-                  setAddPaymentForm({
-                    quotationId: '',
-                    piId: '',
-                    amount: '',
-                    paymentMethod: 'Cash',
-                    paymentDate: new Date().toISOString().split('T')[0],
-                    reference: '',
-                    remarks: ''
-                  });
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  // Handle payment submission
-                  if (!addPaymentForm.quotationId || !addPaymentForm.piId || !addPaymentForm.amount) {
-                    alert('Please fill in all required fields');
-                    return;
-                  }
-                  
-                  // Add to payment history
-                  const newPayment = {
-                    id: paymentHistory.length + 1,
-                    amount: parseInt(addPaymentForm.amount),
-                    date: addPaymentForm.paymentDate,
-                    paymentMethod: addPaymentForm.paymentMethod,
-                    status: 'paid',
-                    reference: addPaymentForm.reference || `REF-${Date.now()}`,
-                    remarks: addPaymentForm.remarks,
-                    dueDate: addPaymentForm.paymentDate,
-                    paidDate: addPaymentForm.paymentDate
-                  };
-                  
-                  setPaymentHistory([...paymentHistory, newPayment]);
-                  
-                  // Reset form and close modal
-                  setAddPaymentForm({
-                    quotationId: '',
-                    piId: '',
-                    amount: '',
-                    paymentMethod: 'Cash',
-                    paymentDate: new Date().toISOString().split('T')[0],
-                    reference: '',
-                    remarks: ''
-                  });
-                  setShowAddPaymentModal(false);
-                  
-                  alert('Payment added successfully!');
-                }}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg shadow-sm hover:bg-blue-700"
-                >
-                Add Payment
-                </button>
             </div>
           </div>
         </div>
@@ -3928,6 +4044,142 @@ export default function CustomerListContent({ isDarkMode = false }) {
                   className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Import Leads
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Tag Modal */}
+      {showCreateTagModal && (
+        <div className="fixed inset-0 z-[100] overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Create New Tag</h3>
+                <button
+                  onClick={() => {
+                    setShowCreateTagModal(false);
+                    setNewTagName('');
+                    setSelectedLeadsForTag([]);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                  disabled={isCreatingTag}
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 flex-1 overflow-y-auto">
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tag Name
+                </label>
+                <input
+                  type="text"
+                  value={newTagName}
+                  onChange={(e) => setNewTagName(e.target.value)}
+                  placeholder="e.g. Dealer, Contractor, Distributor"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  autoFocus
+                  disabled={isCreatingTag}
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  This tag will be saved as customer type in the database
+                </p>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Select Leads to Tag ({selectedLeadsForTag.length} selected)
+                  </label>
+                  <button
+                    onClick={handleSelectAllLeadsForTag}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    disabled={isCreatingTag}
+                  >
+                    {selectedLeadsForTag.length === customers.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                
+                <div className="border border-gray-200 rounded-lg max-h-96 overflow-y-auto">
+                  {customers.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">
+                      No leads available
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-200">
+                      {customers.map((customer) => (
+                        <label
+                          key={customer.id}
+                          className={`flex items-center p-3 hover:bg-gray-50 cursor-pointer ${
+                            isCreatingTag ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedLeadsForTag.includes(customer.id)}
+                            onChange={() => handleToggleLeadForTag(customer.id)}
+                            disabled={isCreatingTag}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <div className="ml-3 flex-1">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">
+                                  {customer.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {customer.phone} • {customer.business}
+                                </p>
+                              </div>
+                              <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
+                                {customer.customerType}
+                              </span>
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-between items-center bg-gray-50">
+              <p className="text-sm text-gray-600">
+                {selectedLeadsForTag.length > 0 
+                  ? `${selectedLeadsForTag.length} lead(s) will be tagged as "${newTagName || '...'}"`
+                  : 'Select leads to tag'}
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowCreateTagModal(false);
+                    setNewTagName('');
+                    setSelectedLeadsForTag([]);
+                  }}
+                  disabled={isCreatingTag}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateTag}
+                  disabled={!newTagName.trim() || selectedLeadsForTag.length === 0 || isCreatingTag}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                >
+                  {isCreatingTag ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Tag'
+                  )}
                 </button>
               </div>
             </div>
@@ -4036,4 +4288,5 @@ export default function CustomerListContent({ isDarkMode = false }) {
     </main>
   )
 }
+
 
