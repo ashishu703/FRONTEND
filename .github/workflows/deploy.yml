@@ -12,14 +12,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # This step is no longer needed since we aren't using agent forwarding
-      # - name: Setup SSH Agent
-      #   uses: webfactory/ssh-agent@v0.9.0
-      #   with:
-      #     ssh-private-key: ${{ secrets.DEPLOY_KEY }}
-
       - name: Add remote server to known_hosts
-        run: ssh-keyscan -H 62.72.12.249 >> ~/.ssh/known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 62.72.12.249 >> ~/.ssh/known_hosts
 
       - name: Deploy on VPS
         env:
