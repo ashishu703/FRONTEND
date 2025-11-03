@@ -379,7 +379,6 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
           subtitle: "Materials, finished goods, and alerts"
         };
       case 'production-users':
-      case 'operator-performance':
         return {
           icon: <Users className="w-6 h-6 text-white" />,
           title: "Production Staff",

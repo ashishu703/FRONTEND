@@ -446,15 +446,20 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
     // Get the latest approved quotation amount
     const latestApprovedQuotation = approvedQuotations[approvedQuotations.length - 1];
     // Prefer backend summary if available for accuracy
-    const totalAmount = (quotationSummary?.total ?? latestApprovedQuotation.total_amount) || 0;
-    const paidAmount = typeof quotationSummary?.paid === 'number'
-      ? quotationSummary.paid
-      : (Array.isArray(paymentsForQuotation)
-          ? paymentsForQuotation.filter(p => (p.status || '').toLowerCase() === 'completed').reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-          : 0);
-    const remainingAmount = typeof quotationSummary?.remaining === 'number'
-      ? quotationSummary.remaining
-      : Math.max(0, Number(totalAmount) - Number(paidAmount));
+    const totalAmount = (quotationSummary?.total_amount ?? latestApprovedQuotation.total_amount) || 0;
+    const paidAmount = typeof quotationSummary?.total_paid === 'number'
+      ? quotationSummary.total_paid
+      : (typeof quotationSummary?.paid === 'number'
+        ? quotationSummary.paid
+        : (Array.isArray(paymentsForQuotation)
+            ? paymentsForQuotation.filter(p => (p.payment_status || p.status || '').toLowerCase() === 'completed')
+                .reduce((sum, p) => sum + (Number((p.paid_amount ?? p.installment_amount ?? p.amount) || 0)), 0)
+            : 0));
+    const remainingAmount = typeof quotationSummary?.current_remaining === 'number'
+      ? quotationSummary.current_remaining
+      : (typeof quotationSummary?.remaining === 'number'
+        ? quotationSummary.remaining
+        : Math.max(0, Number(totalAmount) - Number(paidAmount)));
     
     // Calculate advance (first payment), partial (subsequent payments), due (remaining)
     let advanceAmount = 0;
@@ -462,9 +467,9 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
     
     const pmts = Array.isArray(paymentsForQuotation) ? paymentsForQuotation.slice().sort((a,b)=> new Date(a.payment_date) - new Date(b.payment_date)) : [];
     if (pmts.length > 0) {
-      advanceAmount = Number(pmts[0]?.amount || 0);
+      advanceAmount = Number((pmts[0]?.paid_amount ?? pmts[0]?.installment_amount ?? pmts[0]?.amount) || 0);
       if (pmts.length > 1) {
-        partialAmount = pmts.slice(1).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+        partialAmount = pmts.slice(1).reduce((sum, p) => sum + (Number((p.paid_amount ?? p.installment_amount ?? p.amount) || 0)), 0);
       }
     }
     
@@ -498,16 +503,18 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
     const approvedQuotations = customerQuotations.filter(q => q.status === 'approved');
     if (approvedQuotations.length === 0) return [];
     const latestApprovedQuotation = approvedQuotations[approvedQuotations.length - 1];
-    const totalAmount = (quotationSummary?.total ?? latestApprovedQuotation.total_amount) || 0;
+    const totalAmount = (quotationSummary?.total_amount ?? latestApprovedQuotation.total_amount) || 0;
     const pmts = Array.isArray(paymentsForQuotation)
       ? paymentsForQuotation.slice().sort((a, b) => new Date(a.payment_date) - new Date(b.payment_date))
       : [];
     let cumulativePaid = 0;
     return pmts.map((p, idx) => {
-      const amountNum = Number(p.amount ?? p.installment_amount) || 0;
+      const amountNum = Number(p.paid_amount ?? p.installment_amount ?? p.amount ?? 0);
       cumulativePaid += amountNum;
       const remaining = Math.max(0, Number(totalAmount) - cumulativePaid);
-      const label = idx === 0 ? 'Advance' : 'Partial';
+      // Label logic: If cumulative paid >= total amount, it's "Full Payment", otherwise "Advance Payment"
+      const isFullPayment = cumulativePaid >= totalAmount && totalAmount > 0;
+      const label = isFullPayment ? 'Full Payment' : 'Advance Payment';
       return { ...p, amount: amountNum, label, remainingAfter: remaining };
     });
   };

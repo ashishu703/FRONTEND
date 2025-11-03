@@ -389,7 +389,7 @@ const ProductionPlanning = ({ activeView, setActiveView }) => {
             <p className="text-2xl font-semibold text-gray-900">{totalBacklog}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">Aging > 7 days</p>
+            <p className="text-xs text-gray-500">Aging {'>'} 7 days</p>
             <p className="text-2xl font-semibold text-gray-900">{agingOver7}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
