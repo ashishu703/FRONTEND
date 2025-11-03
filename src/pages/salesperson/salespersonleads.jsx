@@ -1994,6 +1994,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
       );
     }
     
+   
     if (advancedFilters.dateFrom) {
       result = result.filter(customer => {
         const customerDate = new Date(customer.date);
@@ -2486,6 +2487,23 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       <BadgeCheck className={`h-4 w-4 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
                       Sales Status
                     </div>
+                    {showFilters && (
+                      <select
+                        value={filters.salesStatus}
+                        onChange={(e) => handleFilterChange('salesStatus', e.target.value)}
+                        className={`mt-1 w-full text-xs p-1 border rounded ${
+                          isDarkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white' 
+                            : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                      >
+                        <option value="">All Statuses</option>
+                        <option value="win">Win Leads</option>
+                        <option value="loose">Loose Leads</option>
+                        <option value="follow up">Follow Up</option>
+                        <option value="not interested">Not Interested</option>
+                      </select>
+                    )}
                   </th>
                   )}
                   {columnVisibility.followUp && (

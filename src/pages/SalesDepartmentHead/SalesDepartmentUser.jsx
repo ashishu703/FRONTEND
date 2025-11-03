@@ -129,14 +129,15 @@ const SalesDepartmentUser = ({ setActiveView }) => {
         const achievedTarget = parseFloat(u.achievedTarget || u.achieved_target || 0);
         const remainingTarget = target - achievedTarget;
         
-        // Format dates properly for display
+        // Format dates properly for display (supports 'YYYY-MM-DD' and full ISO strings)
         const formatDateForDisplay = (dateString) => {
           if (!dateString) return null;
           try {
-            // Handle ISO date string (YYYY-MM-DD)
-            const date = new Date(dateString + 'T00:00:00'); // Add time to avoid timezone issues
+            const normalized = typeof dateString === 'string' && dateString.includes('T')
+              ? dateString
+              : `${dateString}T00:00:00`;
+            const date = new Date(normalized);
             if (isNaN(date.getTime())) return null;
-            // Format as MM/DD/YYYY consistently
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             const year = date.getFullYear();
@@ -149,8 +150,10 @@ const SalesDepartmentUser = ({ setActiveView }) => {
         const formatDateForInput = (dateString) => {
           if (!dateString) return '';
           try {
-            // Convert ISO date (YYYY-MM-DD) or any valid date string to YYYY-MM-DD for input field
-            const date = new Date(dateString + 'T00:00:00');
+            const normalized = typeof dateString === 'string' && dateString.includes('T')
+              ? dateString
+              : `${dateString}T00:00:00`;
+            const date = new Date(normalized);
             if (isNaN(date.getTime())) return '';
             return date.toISOString().split('T')[0];
           } catch {

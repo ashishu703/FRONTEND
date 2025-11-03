@@ -1317,21 +1317,34 @@ const MobileProducts = () => {
                           "PVC Insulated Submersible Cable": "pvc insulated submersible cable, bis certificate .pdf"
                         };
                         
+                        // List of products that actually have certificates uploaded and available
+                        // Buttons will be disabled for products not in this list
+                        const availableCertificates = [
+                          "Aerial Bunch Cable",
+                          "All Aluminium Alloy Conductor",
+                          "Aluminium Conductor Galvanized Steel Reinforced",
+                          "Multi Core XLPE Insulated Aluminium Unarmoured Cable"
+                          // "PVC Insulated Submersible Cable" - certificate not uploaded yet, buttons will be disabled
+                        ];
+                        
                         const productName = selectedProduct?.name || "";
                         const relevantPdfs = [];
                         
+                        // Show BIS certificate for all products in pdfMappings, but buttons will be disabled if not in availableCertificates
                         if (pdfMappings[productName]) {
                           relevantPdfs.push({
                             type: `BIS Certification - ${productName}`,
                             status: "Valid",
                             expiry: "2025-12-31",
-                            file: pdfMappings[productName]
+                            file: pdfMappings[productName],
+                            isAvailable: availableCertificates.includes(productName)
                           });
                         }
                         
+                        // Add general certifications (always available)
                         relevantPdfs.push(
-                          { type: "ISO 9001:2015", status: "Valid", expiry: "2024-06-30", file: "ISO_9001_2015_Certificate.pdf" },
-                          { type: "CE Marking", status: "Valid", expiry: "2025-03-15", file: "CE_Marking_Certificate.pdf" }
+                          { type: "ISO 9001:2015", status: "Valid", expiry: "2024-06-30", file: "ISO_9001_2015_Certificate.pdf", isAvailable: false },
+                          { type: "CE Marking", status: "Valid", expiry: "2025-03-15", file: "CE_Marking_Certificate.pdf", isAvailable: false }
                         );
                         
                         return relevantPdfs.map((approval, index) => (
@@ -1340,36 +1353,82 @@ const MobileProducts = () => {
                               <div className="font-medium text-xs">{approval.type}</div>
                               <div className="flex gap-2">
                               <button
-                      onClick={() => {
+                      onClick={async (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    
+                                    // Check if certificate is available (not disabled)
+                                    const isCertificateAvailable = approval.isAvailable || false;
+                                    
+                                    if (!isCertificateAvailable) {
+                                      return; // Button is disabled, do nothing
+                                    }
+                                    
                                     if (pdfMappings[productName] && approval.file === pdfMappings[productName]) {
                                       const pdfUrl = `${window.location.origin}/pdf/${approval.file}`;
-                                      const link = document.createElement('a');
-                                      link.href = pdfUrl;
-                                      link.download = approval.file;
-                                      document.body.appendChild(link);
-                                      link.click();
-                                      document.body.removeChild(link);
+                                      
+                                      // Verify PDF exists before downloading
+                                      try {
+                                        const response = await fetch(pdfUrl, { method: 'HEAD' });
+                                        if (response.ok) {
+                                          const link = document.createElement('a');
+                                          link.href = pdfUrl;
+                                          link.download = approval.file;
+                                          document.body.appendChild(link);
+                                          link.click();
+                                          document.body.removeChild(link);
+                                        } else {
+                                          alert('Certificate not available for download. The file does not exist.');
+                                        }
+                                      } catch (error) {
+                                        console.error('Error checking PDF:', error);
+                                        alert('Certificate not available for download. The file does not exist.');
+                                      }
                                     } else {
                                       alert('Certificate not available for download');
                                     }
                                   }}
-                                  className={`${pdfMappings[productName] && approval.file === pdfMappings[productName] ? 'text-green-600 hover:text-green-800' : 'text-gray-400 cursor-not-allowed'} transition-colors`}
-                                  title={pdfMappings[productName] && approval.file === pdfMappings[productName] ? "Download PDF" : "PDF not available"}
+                                  disabled={approval.isAvailable === false}
+                                  className={`${approval.isAvailable ? 'text-green-600 hover:text-green-800 cursor-pointer' : 'text-gray-400 cursor-not-allowed opacity-50'} transition-colors`}
+                                  title={approval.isAvailable ? "Download PDF" : "PDF not available"}
                                 >
                                   <Download className="h-3 w-3" />
                     </button>
                               <button
-                                onClick={() => {
+                                onClick={async (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    
+                                    // Check if certificate is available (not disabled)
+                                    const isCertificateAvailable = approval.isAvailable || false;
+                                    
+                                    if (!isCertificateAvailable) {
+                                      return; // Button is disabled, do nothing
+                                    }
+                                    
                                     if (pdfMappings[productName] && approval.file === pdfMappings[productName]) {
                                       const pdfUrl = `${window.location.origin}/pdf/${approval.file}`;
-                                      setBisDocUrl(pdfUrl);
-                                      setBisPreviewOpen(true);
+                                      
+                                      // Verify PDF exists before opening
+                                      try {
+                                        const response = await fetch(pdfUrl, { method: 'HEAD' });
+                                        if (response.ok) {
+                                          setBisDocUrl(pdfUrl);
+                                          setBisPreviewOpen(true);
+                                        } else {
+                                          alert('Certificate not available for viewing. The file does not exist.');
+                                        }
+                                      } catch (error) {
+                                        console.error('Error checking PDF:', error);
+                                        alert('Certificate not available for viewing. The file does not exist.');
+                                      }
                                     } else {
                                       alert('Certificate not available for viewing');
                                     }
                                   }}
-                                  className={`${pdfMappings[productName] && approval.file === pdfMappings[productName] ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 cursor-not-allowed'} transition-colors`}
-                                  title={pdfMappings[productName] && approval.file === pdfMappings[productName] ? "View Document" : "PDF not available"}
+                                  disabled={approval.isAvailable === false}
+                                  className={`${approval.isAvailable ? 'text-blue-600 hover:text-blue-800 cursor-pointer' : 'text-gray-400 cursor-not-allowed opacity-50'} transition-colors`}
+                                  title={approval.isAvailable ? "View Document" : "PDF not available"}
                                 >
                                   <Eye className="h-3 w-3" />
                               </button>
