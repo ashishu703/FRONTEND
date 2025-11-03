@@ -28,8 +28,9 @@ jobs:
             echo '>>> Testing SSH connection to GitHub...'
             ssh -T git@github.com
 
-            echo '>>> Now attempting git fetch...'
+            echo '>>> Now attempting git fetch with explicit SSH Agent...'
             cd /home/deploy/app && \
+            export GIT_SSH_COMMAND=\"ssh -o IdentitiesOnly=yes\" && \
             git fetch origin main && \
             git reset --hard origin/main && \
             echo '>>> Building and starting Docker containers...' && \
