@@ -43,13 +43,14 @@ const sections = [
       { name: "Aluminium Conductor Galvanized Steel Reinforced", description: "ACSR conductor for transmission lines", icon: Image, imageUrl: "/images/products/all aluminium alloy conductor.jpeg" },
       { name: "All Aluminium Alloy Conductor", description: "AAAC conductor for overhead lines", icon: Image, imageUrl: "/images/products/all aluminium alloy conductor.jpeg" },
       { name: "PVC Insulated Submersible Cable", description: "Water-resistant submersible cable", icon: Image, imageUrl: "/images/products/pvc insulated submersible cable.jpeg" },
+      { name: "Multi Core XLPE Insulated Aluminium Unarmoured Cable", description: "Multi-core XLPE cable without armour", icon: Image, imageUrl: "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg" },
       { name: "Paper Cover Aluminium Conductor", description: "Traditional paper insulated conductor", icon: Image, imageUrl: "/images/products/paper covered aluminium conductor.jpeg" },
       { name: "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable", description: "Single core power cable with PVC insulation", icon: Image, imageUrl: "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg" },
       { name: "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable", description: "Single core power cable with XLPE insulation", icon: Image, imageUrl: "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg" },
       { name: "Multi Core PVC Insulated Aluminium Armoured Cable", description: "Multi-core power cable with aluminium armour", icon: Image, imageUrl: "/images/products/multi core pvc isulated aluminium armoured cable.jpeg" },
       { name: "Multi Core XLPE Insulated Aluminium Armoured Cable", description: "Multi-core XLPE cable with aluminium armour", icon: Image, imageUrl: "/images/products/multi core xlpe insulated aluminium armoured cable.jpeg" },
       { name: "Multi Core PVC Insulated Aluminium Unarmoured Cable", description: "Multi-core PVC cable without armour", icon: Image, imageUrl: "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg" },
-      { name: "Multi Core XLPE Insulated Aluminium Unarmoured Cable", description: "Multi-core XLPE cable without armour", icon: Image, imageUrl: "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg" },
+      
       { name: "Multistrand Single Core Copper Cable", description: "Flexible single core copper cable", icon: Image, imageUrl: "/images/products/multistrand single core copper cable.jpeg" },
       { name: "Multi Core Copper Cable", description: "Multi-core copper power cable", icon: Image, imageUrl: "/images/products/multi core copper cable.jpeg" },
       { name: "PVC Insulated Single Core Aluminium Cable", description: "Single core aluminium cable with PVC insulation", icon: Image, imageUrl: "/images/products/pvc insulated single core aluminium cables.jpeg" },
@@ -110,7 +111,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     'aerial bunch cable',
     'aluminium conductor galvanized steel reinforced',
     'all aluminium alloy conductor',
-    'pvc insulated submersible cable'
+    'pvc insulated submersible cable',
+    'multi core xlpe insulated aluminium unarmoured cable'
   ];
   
   // Check if product has data
@@ -1030,12 +1032,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Multi-core XLPE cable without armour",
         imageUrl: "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg",
         priceList: [
-          { size: "2x25 sq.mm", price: "₹205.80/m", stock: "Available", image: "/images/multicore-xlpe-unarmoured-25mm.jpg" },
-          { size: "2x50 sq.mm", price: "₹405.60/m", stock: "Available", image: "/images/multicore-xlpe-unarmoured-50mm.jpg" },
-          { size: "3x25 sq.mm", price: "₹275.40/m", stock: "Available", image: "/images/multicore-xlpe-unarmoured-3x25mm.jpg" },
-          { size: "3x50 sq.mm", price: "₹545.80/m", stock: "Available", image: "/images/multicore-xlpe-unarmoured-3x50mm.jpg" },
-          { size: "4x25 sq.mm", price: "₹365.60/m", stock: "Available", image: "/images/multicore-xlpe-unarmoured-4x25mm.jpg" },
-          { size: "4x50 sq.mm", price: "₹725.20/m", stock: "Available", image: "/images/multicore-xlpe-unarmoured-4x50mm.jpg" }
+          { size: "2.5 sq.mm (Ø 1.78 mm | 0.070 in)", price: "", stock: "Available", image: "" },
+          { size: "4 sq.mm (Ø 2.25 mm | 0.088 in)", price: "", stock: "Available", image: "" },
+          { size: "6 sq.mm (Ø 2.76 mm | 0.108 in)", price: "", stock: "Available", image: "" },
+          { size: "10 sq.mm (Ø 3.56 mm | 0.140 in)", price: "", stock: "Available", image: "" },
+          { size: "16 sq.mm (7/1.71 | 7/0.067 in)", price: "", stock: "Available", image: "" },
+          { size: "25 sq.mm (7/2.13 | 7/0.084 in)", price: "", stock: "Available", image: "" },
+          { size: "35 sq.mm (7/2.52 | 7/0.099 in)", price: "", stock: "Available", image: "" },
+          { size: "50 sq.mm (7/3.02 | 7/0.119 in)", price: "", stock: "Available", image: "" },
+          { size: "70 sq.mm (19/2.16 | 19/0.085 in)", price: "", stock: "Available", image: "" },
+          { size: "95 sq.mm (19/2.52 | 19/0.099 in)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "1.1 kV",
@@ -2496,8 +2502,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
               )}
 
-              {/* Technical Specifications Section - Aerial Bunch Cable, AAAC and PVC Submersible */}
-              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "All Aluminium Alloy Conductor" || selectedProduct === "PVC Insulated Submersible Cable") && (
+              {/* Technical Specifications Section - Aerial Bunch Cable, AAAC, PVC Submersible, Multi Core XLPE Unarmoured */}
+              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "All Aluminium Alloy Conductor" || selectedProduct === "PVC Insulated Submersible Cable" || selectedProduct === "Multi Core XLPE Insulated Aluminium Unarmoured Cable") && (
                 <div className="mb-8">
                   <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Wrench className="h-5 w-5 text-blue-600" />
@@ -2591,6 +2597,54 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                               </div>
                             </div>
                           </div>
+                        ) : selectedProduct === "Multi Core XLPE Insulated Aluminium Unarmoured Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>Premium Quality Compound having protection against UV, O₃, oil, grease and diverse weather conditions.</li>
+                                <li>100% Pure EC Grade Aluminium.</li>
+                                <li>Heavy duty cable suitable for outdoor installation.</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS 7098 PT-1</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">EC Grade Aluminium Class 1 & 2 as per IS 8130</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">XLPE Insulation as per 7098 PT-1</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of Core</span>
+                                  <p className="text-sm text-gray-800">Red & Black for 2 core cable; Red, Yellow, Blue for 3 core cable; Red, Yellow, Blue & Black for 4 core cable</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
+                                  <p className="text-sm text-gray-800">PVC Type ST-1 / PVC Type ST-2 as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of Sheath</span>
+                                  <p className="text-sm text-gray-800">Black and other colours as per requirement</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
+                                  <p className="text-sm text-gray-800">Up to and including 1100 Volt</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
+                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr coil; other lengths available on request. Cables are printed with marking of ‘ANOCAB’.</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         ) : (
                           <>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2639,6 +2693,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   ? "/images/products/all aluminium alloy conductor.jpeg" 
                                   : selectedProduct === "PVC Insulated Submersible Cable" 
                                   ? "/images/products/pvc insulated submersible cable.jpeg" 
+                                  : selectedProduct === "Multi Core XLPE Insulated Aluminium Unarmoured Cable"
+                                  ? "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg"
                                   : "/images/products/aerial bunch cable.jpeg"}
                             alt={selectedProduct}
                             className="w-full h-full object-contain p-4"
@@ -3090,7 +3146,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 );
               })()}
               {/* Costing Calculator Section - For Aerial Bunch Cable, ACSR, AAAC and PVC Submersible */}
-              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" || selectedProduct === "All Aluminium Alloy Conductor" || selectedProduct === "PVC Insulated Submersible Cable") && (
+              {selectedProduct === "Aerial Bunch Cable" && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-blue-600" />
@@ -3331,7 +3387,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               )}
 
               {/* Reduction Gauge Calculator Section - For Aerial Bunch Cable, ACSR and AAAC */}
-              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" || selectedProduct === "All Aluminium Alloy Conductor") && (
+              {selectedProduct === "Aerial Bunch Cable" && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-blue-600" />
@@ -3405,7 +3461,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               </div>
               )}
               {/* Wire Selection Calculator Section - For Aerial Bunch Cable, ACSR and AAAC */}
-              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" || selectedProduct === "All Aluminium Alloy Conductor") && (
+              {selectedProduct === "Aerial Bunch Cable" && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-blue-600" />
@@ -3521,7 +3577,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               )}
 
               {/* Technical Data Section - Only for Product Cards (exclude AAAC and PVC Submersible to avoid duplication) */}
-              {selectedProduct !== "All Aluminium Alloy Conductor" && selectedProduct !== "PVC Insulated Submersible Cable" && getProductData(selectedProduct).technicalData && Object.keys(getProductData(selectedProduct).technicalData).length > 0 && (
+              {selectedProduct !== "All Aluminium Alloy Conductor" && selectedProduct !== "PVC Insulated Submersible Cable" && selectedProduct !== "Multi Core XLPE Insulated Aluminium Unarmoured Cable" && getProductData(selectedProduct).technicalData && Object.keys(getProductData(selectedProduct).technicalData).length > 0 && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Wrench className="h-5 w-5 text-blue-600" />
@@ -3628,23 +3684,34 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         "PVC Insulated Submersible Cable": "pvc insulated submersible cable, bis certificate .pdf"
                       };
                       
+                      // List of products that actually have certificates uploaded and available
+                      // Buttons will be disabled for products not in this list
+                      const availableCertificates = [
+                        "Aerial Bunch Cable",
+                        "All Aluminium Alloy Conductor",
+                        "Aluminium Conductor Galvanized Steel Reinforced",
+                        "Multi Core XLPE Insulated Aluminium Unarmoured Cable"
+                        // "PVC Insulated Submersible Cable" - certificate not uploaded yet, buttons will be disabled
+                      ];
+                      
                       const productName = selectedProduct; // Use the original product name from tools array
                       const relevantPdfs = [];
                       
-                      // Add product-specific BIS certificate if available
+                      // Show BIS certificate for all products in pdfMappings, but buttons will be disabled if not in availableCertificates
                       if (pdfMappings[productName]) {
                         relevantPdfs.push({
                           type: `BIS Certification - ${productName}`,
                           status: "Valid",
                           expiry: "2025-12-31",
-                          file: pdfMappings[productName]
+                          file: pdfMappings[productName],
+                          isAvailable: availableCertificates.includes(productName)
                         });
                       }
                       
-                      // Add general certifications
+                      // Add general certifications (always available)
                       relevantPdfs.push(
-                        { type: "ISO 9001:2015", status: "Valid", expiry: "2024-06-30", file: "ISO_9001_2015_Certificate.pdf" },
-                        { type: "CE Marking", status: "Valid", expiry: "2025-03-15", file: "CE_Marking_Certificate.pdf" }
+                        { type: "ISO 9001:2015", status: "Valid", expiry: "2024-06-30", file: "ISO_9001_2015_Certificate.pdf", isAvailable: false },
+                        { type: "CE Marking", status: "Valid", expiry: "2025-03-15", file: "CE_Marking_Certificate.pdf", isAvailable: false }
                       );
                       
                       return relevantPdfs.map((approval, index) => (
@@ -3653,52 +3720,90 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           <div className="font-medium">{approval.type}</div>
                           <div className="flex gap-2">
                             <button
-                              onClick={() => {
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                
+                                // Check if certificate is available (not disabled)
+                                const isCertificateAvailable = approval.isAvailable || false;
+                                
+                                if (!isCertificateAvailable) {
+                                  return; // Button is disabled, do nothing
+                                }
+                                
                                 // Check if PDF exists for this product
                                 if (pdfMappings[productName] && approval.file === pdfMappings[productName]) {
                                   const pdfUrl = `${window.location.origin}/pdf/${approval.file}`;
-                                  console.log('Downloading PDF:', pdfUrl);
                                   
-                                  const link = document.createElement('a');
-                                  link.href = pdfUrl;
-                                  link.download = approval.file;
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
+                                  // Verify PDF exists before downloading
+                                  try {
+                                    const response = await fetch(pdfUrl, { method: 'HEAD' });
+                                    if (response.ok) {
+                                      console.log('Downloading PDF:', pdfUrl);
+                                      const link = document.createElement('a');
+                                      link.href = pdfUrl;
+                                      link.download = approval.file;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                    } else {
+                                      alert('Certificate not available for download. The file does not exist.');
+                                    }
+                                  } catch (error) {
+                                    console.error('Error checking PDF:', error);
+                                    alert('Certificate not available for download. The file does not exist.');
+                                  }
                                 } else if (approval.type.includes('ISO') || approval.type.includes('CE')) {
                                   // For general certifications, show placeholder message
                                   alert('Certificate not available for download');
-                                } else {
-                                  // For products without PDFs, do nothing
-                                  return;
                                 }
                               }}
-                              className={`${pdfMappings[productName] && approval.file === pdfMappings[productName] ? 'text-green-600 hover:text-green-800' : 'text-gray-400 cursor-not-allowed'} transition-colors`}
-                              title={pdfMappings[productName] && approval.file === pdfMappings[productName] ? "Download PDF" : "PDF not available"}
+                              disabled={approval.isAvailable === false}
+                              className={`${approval.isAvailable ? 'text-green-600 hover:text-green-800 cursor-pointer' : 'text-gray-400 cursor-not-allowed opacity-50'} transition-colors`}
+                              title={approval.isAvailable ? "Download PDF" : "PDF not available"}
                             >
                               <Download className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => {
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                
+                                // Check if certificate is available (not disabled)
+                                const isCertificateAvailable = approval.isAvailable || false;
+                                
+                                if (!isCertificateAvailable) {
+                                  return; // Button is disabled, do nothing
+                                }
+                                
                                 // Check if PDF exists for this product
                                 if (pdfMappings[productName] && approval.file === pdfMappings[productName]) {
                                   const pdfUrl = `${window.location.origin}/pdf/${approval.file}`;
-                                  console.log('Opening PDF:', pdfUrl);
                                   
-                                  const newWindow = window.open(pdfUrl, '_blank');
-                                  if (!newWindow) {
-                                    alert('Please allow pop-ups for this site to view the PDF');
+                                  // Verify PDF exists before opening
+                                  try {
+                                    const response = await fetch(pdfUrl, { method: 'HEAD' });
+                                    if (response.ok) {
+                                      console.log('Opening PDF:', pdfUrl);
+                                      const newWindow = window.open(pdfUrl, '_blank');
+                                      if (!newWindow) {
+                                        alert('Please allow pop-ups for this site to view the PDF');
+                                      }
+                                    } else {
+                                      alert('Certificate not available for viewing. The file does not exist.');
+                                    }
+                                  } catch (error) {
+                                    console.error('Error checking PDF:', error);
+                                    alert('Certificate not available for viewing. The file does not exist.');
                                   }
                                 } else if (approval.type.includes('ISO') || approval.type.includes('CE')) {
                                   // For general certifications, show placeholder message
                                   alert('Certificate not available for viewing');
-                                } else {
-                                  // For products without PDFs, do nothing
-                                  return;
                                 }
                               }}
-                              className={`${pdfMappings[productName] && approval.file === pdfMappings[productName] ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 cursor-not-allowed'} transition-colors`}
-                              title={pdfMappings[productName] && approval.file === pdfMappings[productName] ? "View Document" : "PDF not available"}
+                              disabled={approval.isAvailable === false}
+                              className={`${approval.isAvailable ? 'text-blue-600 hover:text-blue-800 cursor-pointer' : 'text-gray-400 cursor-not-allowed opacity-50'} transition-colors`}
+                              title={approval.isAvailable ? "View Document" : "PDF not available"}
                             >
                               <Eye className="h-4 w-4" />
                             </button>
