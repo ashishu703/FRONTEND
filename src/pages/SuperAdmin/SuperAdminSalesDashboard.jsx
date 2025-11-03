@@ -22,10 +22,90 @@ import {
 import MarketingSalespersonDashboard from './MarketingSalespersonDashboard';
 import TeleSalesDashboard from './TeleSalesDashboard';
 import OfficeSalesPersonDashboard from './OfficeSalesPersonDashboard';
+import HRDepartmentDashboard from './HRDepartmentDashboard';
 
 const SalesDashboard = ({ setActiveView }) => {
   const [selectedSalesperson, setSelectedSalesperson] = useState('All Salespersons');
   const [dateRange, setDateRange] = useState('Select date range');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const formatDisplayRange = (start, end) => {
+    if (!start && !end) return 'Select date range';
+    if (start && end) return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`;
+    if (start) return `${new Date(start).toLocaleDateString()} - ...`;
+    return `... - ${new Date(end).toLocaleDateString()}`;
+  };
+
+  const applyDateRange = () => {
+    setDateRange(formatDisplayRange(startDate, endDate));
+    setShowDatePicker(false);
+    // Hook to refetch data based on date range can be placed here
+    // fetchDashboardData({ startDate, endDate })
+  };
+
+  // Generate dynamic revenue data based on date range
+  const generateRevenueData = () => {
+    if (!startDate || !endDate) {
+      // Default 12 months data
+      return [
+        { month: 'Jan', revenue: 50000, x: 20, y: 180 },
+        { month: 'Feb', revenue: 80000, x: 60, y: 160 },
+        { month: 'Mar', revenue: 120000, x: 100, y: 140 },
+        { month: 'Apr', revenue: 150000, x: 140, y: 120 },
+        { month: 'May', revenue: 200000, x: 180, y: 100 },
+        { month: 'Jun', revenue: 250000, x: 220, y: 80 },
+        { month: 'Jul', revenue: 300000, x: 260, y: 60 },
+        { month: 'Aug', revenue: 350000, x: 300, y: 40 },
+        { month: 'Sep', revenue: 400000, x: 340, y: 20 },
+        { month: 'Oct', revenue: 450000, x: 380, y: 10 }
+      ];
+    }
+
+    // Calculate date range
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    
+    // Generate data points based on date range
+    const dataPoints = Math.min(Math.max(Math.ceil(daysDiff / 30), 3), 12); // 3-12 data points
+    const data = [];
+    
+    for (let i = 0; i < dataPoints; i++) {
+      const monthDate = new Date(start);
+      monthDate.setMonth(start.getMonth() + i);
+      const monthName = monthDate.toLocaleDateString('en-US', { month: 'short' });
+      
+      // Generate revenue based on position in range (simulate growth)
+      const baseRevenue = 50000 + (i * 50000);
+      const randomFactor = 0.8 + Math.random() * 0.4; // 80-120% variation
+      const revenue = Math.round(baseRevenue * randomFactor);
+      
+      // Calculate position for chart
+      const x = 20 + (i * (360 / (dataPoints - 1)));
+      const y = 180 - (revenue / 500000) * 170; // Scale to chart height
+      
+      data.push({
+        month: monthName,
+        revenue: revenue,
+        x: x,
+        y: y
+      });
+    }
+    
+    return data;
+  };
+
+  const revenueData = generateRevenueData();
+
+  const clearDateRange = () => {
+    setStartDate('');
+    setEndDate('');
+    setDateRange('Select date range');
+    setShowDatePicker(false);
+    // Optionally refetch without filters
+  };
 
   const leadCards = [
     {
@@ -90,10 +170,57 @@ const SalesDashboard = ({ setActiveView }) => {
     }
   ];
 
+  // Calculate revenue metrics based on date range and current data
+  const calculateRevenueMetrics = () => {
+    // Sample revenue data - in a real app, this would come from API
+    const totalRevenue = 15328246; // ₹1,53,28,246 (all time)
+    
+    // Calculate current month revenue based on date range
+    let currentMonthRevenue = 992583; // ₹9,92,583 (September)
+    let targetRevenue = 2000000; // ₹20,00,000 target for current month
+    
+    // If date range is selected, calculate filtered revenue
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      
+      // Simulate revenue calculation based on date range
+      // In real app, this would be actual data from API
+      const dailyRevenue = currentMonthRevenue / 30; // Average daily revenue
+      currentMonthRevenue = Math.round(dailyRevenue * daysDiff);
+      
+      // Adjust target based on date range
+      const monthlyTarget = 2000000;
+      const dailyTarget = monthlyTarget / 30;
+      targetRevenue = Math.round(dailyTarget * daysDiff);
+    }
+    
+    const achievedRevenue = currentMonthRevenue;
+    const pendingRevenue = Math.max(targetRevenue - achievedRevenue, 0);
+    const achievementPercentage = targetRevenue > 0 ? (achievedRevenue / targetRevenue) * 100 : 0;
+    
+    // Calculate month-over-month growth
+    const previousMonthRevenue = 3500000; // August revenue
+    const monthOverMonthGrowth = previousMonthRevenue > 0 
+      ? ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100 
+      : 0;
+    
+    return {
+      totalRevenue,
+      achievedRevenue,
+      pendingRevenue,
+      achievementPercentage,
+      monthOverMonthGrowth
+    };
+  };
+
+  const revenueMetrics = calculateRevenueMetrics();
+
   const revenueCards = [
     {
       title: 'Overall Revenue',
-      value: '₹1,53,28,246',
+      value: `₹${revenueMetrics.totalRevenue.toLocaleString()}`,
       description: 'Total Revenue (All Time)',
       bgColor: 'bg-blue-50',
       textColor: 'text-blue-600',
@@ -101,33 +228,41 @@ const SalesDashboard = ({ setActiveView }) => {
       valueColor: 'text-blue-600'
     },
     {
-      title: 'Total Revenue',
-      value: '₹0',
-      description: 'Filtered Revenue',
-      bgColor: 'bg-gray-100',
-      textColor: 'text-gray-600',
-      borderColor: 'border-gray-200',
-      valueColor: 'text-gray-800'
+      title: 'Achieved Revenue',
+      value: `₹${revenueMetrics.achievedRevenue.toLocaleString()}`,
+      description: `Current month achieved (${revenueMetrics.achievementPercentage.toFixed(1)}% of target)`,
+      bgColor: 'bg-green-50',
+      textColor: 'text-green-600',
+      borderColor: 'border-green-200',
+      valueColor: 'text-green-600',
+      hasIcon: true,
+      icon: <CheckCircle className="w-4 h-4 text-green-600" />
     },
     {
-      title: 'Current month earnings',
-      value: '₹9,92,583',
-      description: 'September Revenue',
-      bgColor: 'bg-gray-100',
-      textColor: 'text-gray-600',
-      borderColor: 'border-gray-200',
-      valueColor: 'text-gray-800'
+      title: 'Pending Revenue',
+      value: `₹${revenueMetrics.pendingRevenue.toLocaleString()}`,
+      description: 'Remaining to achieve target',
+      bgColor: 'bg-orange-50',
+      textColor: 'text-orange-600',
+      borderColor: 'border-orange-200',
+      valueColor: 'text-orange-600',
+      hasIcon: true,
+      icon: <AlertCircle className="w-4 h-4 text-orange-600" />
     },
     {
       title: 'Month-over-Month Growth',
-      value: '-71.8%',
-      description: 'Revenue decreased compared to August',
-      bgColor: 'bg-red-50',
-      textColor: 'text-red-600',
-      borderColor: 'border-red-200',
-      valueColor: 'text-red-600',
+      value: `${revenueMetrics.monthOverMonthGrowth >= 0 ? '+' : ''}${revenueMetrics.monthOverMonthGrowth.toFixed(1)}%`,
+      description: revenueMetrics.monthOverMonthGrowth >= 0 
+        ? 'Revenue increased compared to previous month' 
+        : 'Revenue decreased compared to previous month',
+      bgColor: revenueMetrics.monthOverMonthGrowth >= 0 ? 'bg-green-50' : 'bg-red-50',
+      textColor: revenueMetrics.monthOverMonthGrowth >= 0 ? 'text-green-600' : 'text-red-600',
+      borderColor: revenueMetrics.monthOverMonthGrowth >= 0 ? 'border-green-200' : 'border-red-200',
+      valueColor: revenueMetrics.monthOverMonthGrowth >= 0 ? 'text-green-600' : 'text-red-600',
       hasIcon: true,
-      icon: <TrendingDown className="w-4 h-4 text-red-600" />
+      icon: revenueMetrics.monthOverMonthGrowth >= 0 
+        ? <TrendingUp className="w-4 h-4 text-green-600" />
+        : <TrendingDown className="w-4 h-4 text-red-600" />
     }
   ];
 
@@ -164,6 +299,18 @@ const SalesDashboard = ({ setActiveView }) => {
     }
   ];
 
+  // Centralized department performance data to compute targets and reuse in UI
+  const departmentPerformanceData = [
+    { department: 'Sales Department', leads: 350, target: 400, percentage: 87.5, color: 'bg-blue-500' },
+    { department: 'Marketing Department', leads: 280, target: 300, percentage: 93.3, color: 'bg-green-500' },
+    { department: 'Support Department', leads: 120, target: 150, percentage: 80.0, color: 'bg-yellow-500' },
+    { department: 'Development Department', leads: 90, target: 100, percentage: 90.0, color: 'bg-purple-500' }
+  ];
+
+  const totalTarget = departmentPerformanceData.reduce((sum, d) => sum + (d.target || 0), 0);
+  const achievedLeads = departmentPerformanceData.reduce((sum, d) => sum + (d.leads || 0), 0);
+  const pendingTarget = Math.max(totalTarget - achievedLeads, 0);
+
   // Function to render content based on selected salesperson
   const renderSalespersonContent = () => {
     switch (selectedSalesperson) {
@@ -171,6 +318,8 @@ const SalesDashboard = ({ setActiveView }) => {
         return <MarketingSalespersonDashboard />;
       case 'Office Sales Department':
         return <OfficeSalesPersonDashboard />;
+      case 'HR Department':
+        return <HRDepartmentDashboard />;
       default:
         return null;
     }
@@ -186,32 +335,17 @@ const SalesDashboard = ({ setActiveView }) => {
               {selectedSalesperson === 'All Salespersons' ? 'Sales Dashboard' : selectedSalesperson + ' Dashboard'}
             </h1>
             <p className="text-gray-600">
-              {selectedSalesperson === 'All Salespersons' ? 'Sales Department Performance Overview' : selectedSalesperson + ' Performance Overview'}
+              {selectedSalesperson === 'All Salespersons' ? 'Sales Department Performance Overview' : 
+               selectedSalesperson === 'HR Department' ? 'Human Resources Management Overview' : 
+               selectedSalesperson + ' Performance Overview'}
             </p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-gray-600">Live Updates</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-gray-600">Connected</span>
-            </div>
-            <button className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium flex items-center space-x-2 hover:bg-green-200 transition-colors">
-              <BarChart3 className="w-4 h-4" />
-              <span>Complete Counts</span>
-            </button>
-            <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
-              <RefreshCw className="w-4 h-4 text-gray-600" />
-            </button>
           </div>
         </div>
 
         {/* Filters */}
         <div className="flex items-center justify-between">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Sales Department</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
             <div className="relative">
               <select 
                 value={selectedSalesperson}
@@ -224,27 +358,57 @@ const SalesDashboard = ({ setActiveView }) => {
                 <option>All Salespersons</option>
                 <option>Marketing Salesperson</option>
                 <option>Office Sales Department</option>
+                <option>HR Department</option>
               </select>
               <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
           </div>
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-            <div className="relative">
-              <input 
-                type="text"
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                placeholder="Select date range"
-                className="bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-48"
-              />
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowDatePicker((v) => !v)}
+              className="bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-60 text-left"
+            >
+              {dateRange}
+            </button>
+            {showDatePicker && (
+              <div className="absolute z-20 mt-2 right-0 bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-64">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Start</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">End</label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-end space-x-2 mt-4">
+                  <button onClick={clearDateRange} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800">Clear</button>
+                  <button onClick={() => setShowDatePicker(false)} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+                  <button onClick={applyDateRange} className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Apply</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Salesperson Specific Content */}
-      {renderSalespersonContent()}
+      <div key={selectedSalesperson} className="animate-fade-up">
+        {renderSalespersonContent()}
+      </div>
 
       {/* Default Content - Only show when All Salespersons is selected */}
       {selectedSalesperson === 'All Salespersons' && (
@@ -252,7 +416,7 @@ const SalesDashboard = ({ setActiveView }) => {
           {/* Lead Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
         {leadCards.map((card, index) => (
-          <div key={index} className={`${card.bgColor} ${card.borderColor} border rounded-xl p-4 hover:shadow-md transition-shadow`}>
+          <div key={index} className={`${card.bgColor} ${card.borderColor} border rounded-xl p-2 hover:shadow-md transition-shadow`}>
             <div className="flex items-center justify-between mb-3">
               <h3 className={`text-sm font-medium ${card.textColor}`}>{card.title}</h3>
               <div className={card.textColor}>
@@ -275,7 +439,7 @@ const SalesDashboard = ({ setActiveView }) => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {revenueCards.map((card, index) => (
-            <div key={index} className={`${card.bgColor} ${card.borderColor} border rounded-xl p-6 hover:shadow-md transition-shadow`}>
+            <div key={index} className={`${card.bgColor} ${card.borderColor} border rounded-xl p-3 hover:shadow-md transition-shadow`}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className={`text-sm font-medium ${card.textColor}`}>{card.title}</h3>
                 {card.hasIcon && card.icon}
@@ -292,7 +456,7 @@ const SalesDashboard = ({ setActiveView }) => {
       {/* Conversion Rate Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         {conversionCards.map((card, index) => (
-          <div key={index} className={`${card.bgColor} ${card.borderColor} border rounded-xl p-6 hover:shadow-md transition-shadow`}>
+          <div key={index} className={`${card.bgColor} ${card.borderColor} border rounded-xl p-3 hover:shadow-md transition-shadow`}>
             <div className="flex items-center justify-between mb-3">
               <h3 className={`text-sm font-medium ${card.textColor}`}>{card.title}</h3>
               <div className={card.textColor}>
@@ -307,6 +471,53 @@ const SalesDashboard = ({ setActiveView }) => {
         ))}
       </div>
 
+      {/* Target Overview */
+      }
+      <div className="mb-8">
+        <div className="flex items-center space-x-2 mb-4">
+          <Target className="w-5 h-5 text-purple-600" />
+          <h2 className="text-xl font-semibold text-purple-600">Target Overview</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className={`bg-blue-50 border border-blue-200 rounded-xl p-2 hover:shadow-md transition-shadow`}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className={`text-sm font-medium text-blue-600`}>Total Target</h3>
+              <div className="text-blue-600">
+                <Target className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`text-2xl font-bold text-blue-600 mb-1`}>
+              {totalTarget.toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-500">Sum of targets across departments</p>
+          </div>
+          <div className={`bg-green-50 border border-green-200 rounded-xl p-2 hover:shadow-md transition-shadow`}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className={`text-sm font-medium text-green-600`}>Target Achieved</h3>
+              <div className="text-green-600">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`text-2xl font-bold text-green-600 mb-1`}>
+              {achievedLeads.toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-500">Total completed towards target</p>
+          </div>
+          <div className={`bg-red-50 border border-red-200 rounded-xl p-2 hover:shadow-md transition-shadow`}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className={`text-sm font-medium text-red-600`}>Pending Target</h3>
+              <div className="text-red-600">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+            </div>
+            <div className={`text-2xl font-bold text-red-600 mb-1`}>
+              {pendingTarget.toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-500">Remaining vs. achieved leads</p>
+          </div>
+        </div>
+      </div>
+
       {/* Sales Analytics Section */}
       <div className="mb-8">
         <div className="flex items-center space-x-2 mb-6">
@@ -316,7 +527,7 @@ const SalesDashboard = ({ setActiveView }) => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Lead Status Pie Chart */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Lead Status Distribution</h3>
               <PieChart className="w-5 h-5 text-blue-600" />
@@ -399,7 +610,7 @@ const SalesDashboard = ({ setActiveView }) => {
           </div>
 
           {/* Monthly Sales Bar Chart */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Monthly Sales Performance</h3>
               <BarChart3 className="w-5 h-5 text-green-600" />
@@ -434,9 +645,11 @@ const SalesDashboard = ({ setActiveView }) => {
         </div>
 
         {/* Revenue Trend Line Chart */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Revenue Trend (Last 12 Months)</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Revenue Trend {startDate && endDate ? `(${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()})` : '(Last 12 Months)'}
+            </h3>
             <TrendingUp className="w-5 h-5 text-green-600" />
           </div>
           <div className="h-64 flex items-center justify-center">
@@ -450,27 +663,16 @@ const SalesDashboard = ({ setActiveView }) => {
                 </defs>
                 <rect width="100%" height="100%" fill="url(#grid)" />
                 
-                {/* Revenue trend line */}
+                {/* Dynamic Revenue trend line */}
                 <polyline
                   fill="none"
                   stroke="#3B82F6"
                   strokeWidth="3"
-                  points="20,180 60,160 100,140 140,120 180,100 220,80 260,60 300,40 340,20 380,10"
+                  points={revenueData.map(point => `${point.x},${point.y}`).join(' ')}
                 />
                 
-                {/* Data points */}
-                {[
-                  { x: 20, y: 180, value: 50 },
-                  { x: 60, y: 160, value: 80 },
-                  { x: 100, y: 140, value: 120 },
-                  { x: 140, y: 120, value: 150 },
-                  { x: 180, y: 100, value: 200 },
-                  { x: 220, y: 80, value: 250 },
-                  { x: 260, y: 60, value: 300 },
-                  { x: 300, y: 40, value: 350 },
-                  { x: 340, y: 20, value: 400 },
-                  { x: 380, y: 10, value: 450 }
-                ].map((point, index) => (
+                {/* Dynamic Data points */}
+                {revenueData.map((point, index) => (
                   <circle
                     key={index}
                     cx={point.x}
@@ -478,6 +680,7 @@ const SalesDashboard = ({ setActiveView }) => {
                     r="4"
                     fill="#3B82F6"
                     className="hover:r-6 transition-all duration-200"
+                    title={`${point.month}: ₹${point.revenue.toLocaleString()}`}
                   />
                 ))}
               </svg>
@@ -492,56 +695,25 @@ const SalesDashboard = ({ setActiveView }) => {
                 <span>₹0</span>
               </div>
               
-              {/* X-axis labels */}
+              {/* Dynamic X-axis labels */}
               <div className="absolute bottom-0 left-0 w-full flex justify-between text-xs text-gray-500">
-                <span>Jan</span>
-                <span>Mar</span>
-                <span>May</span>
-                <span>Jul</span>
-                <span>Sep</span>
-                <span>Nov</span>
+                {revenueData.map((point, index) => (
+                  <span key={index} style={{ left: `${point.x - 10}px`, position: 'absolute' }}>
+                    {point.month}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Department Performance Comparison */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Department Performance Comparison</h3>
-            <Target className="w-5 h-5 text-purple-600" />
-          </div>
-          <div className="space-y-4">
-            {[
-              { department: 'Sales Department', leads: 350, target: 400, percentage: 87.5, color: 'bg-blue-500' },
-              { department: 'Marketing Department', leads: 280, target: 300, percentage: 93.3, color: 'bg-green-500' },
-              { department: 'Support Department', leads: 120, target: 150, percentage: 80.0, color: 'bg-yellow-500' },
-              { department: 'Development Department', leads: 90, target: 100, percentage: 90.0, color: 'bg-purple-500' }
-            ].map((dept, index) => (
-              <div key={index} className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-700">{dept.department}</span>
-                  <span className="text-sm text-gray-600">{dept.leads}/{dept.target} leads</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full ${dept.color} transition-all duration-300`}
-                    style={{ width: `${dept.percentage}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>{dept.percentage}% completed</span>
-                  <span>{dept.target - dept.leads} remaining</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
         </>
       )}
     </div>
   );
 };
+
+
 
 export default SalesDashboard;

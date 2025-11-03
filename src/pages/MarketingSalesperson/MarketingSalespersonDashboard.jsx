@@ -32,20 +32,35 @@ import {
   Globe,
   MessageCircle
 } from 'lucide-react';
+import MarketingQuotation from './MarketingQuotation';
 import AllLeads from './MarketingSalespersonLeads';
 import Visits from './MarketingSalespersonVisits';
+import TestVisits from './TestVisits';
 import Orders from './MarketingSalespersonOrders';
+import MarketingSalespersonExpenses from './MarketingSalespersonExpenses';
 import MarketingFollowUpBase from './FollowUp/MarketingFollowUpBase';
+import MarketingSalespersonProfile from './MarketingSalespersonProfile';
+import MarketingSalespersonCalendar from './MarketingSalespersonCalendar';
 import { useMarketingFollowUpData } from './FollowUp/MarketingFollowUpDataContext';
 
-const MarketingSalespersonDashboard = ({ activeView }) => {
+const MarketingSalespersonDashboard = ({ activeView, setActiveView }) => {
   const [selectedTab, setSelectedTab] = useState('overview');
-  const { getLeadsByStatus, loading } = useMarketingFollowUpData();
+  const { getLeadsByStatus, loading, leadsData, getStatusCounts } = useMarketingFollowUpData();
+  
+  // Add error handling
+  if (loading) {
+    return <div className="p-6 text-center">Loading...</div>;
+  }
+  
+  // Fallback if data is not available
+  if (!leadsData || !getStatusCounts) {
+    return <div className="p-6 text-center">No data available - leadsData: {JSON.stringify(leadsData)}, getStatusCounts: {typeof getStatusCounts}</div>;
+  }
 
   const renderContent = () => {
     switch (activeView) {
       case 'dashboard':
-        return <MarketingDashboardContent selectedTab={selectedTab} setSelectedTab={setSelectedTab} />;
+        return <MarketingDashboardContent selectedTab={selectedTab} setSelectedTab={setSelectedTab} customers={leadsData} getStatusCounts={getStatusCounts} />;
       case 'all-leads':
         return <AllLeads />;
       case 'follow-up':
@@ -54,16 +69,27 @@ const MarketingSalespersonDashboard = ({ activeView }) => {
         return <MarketingFollowUpBase status="connected" customData={getLeadsByStatus('connected')} />;
       case 'follow-up-not-connected':
         return <MarketingFollowUpBase status="not-connected" customData={getLeadsByStatus('not-connected')} />;
-      case 'follow-up-next-meeting':
-        return <MarketingFollowUpBase status="next-meeting" customData={getLeadsByStatus('next-meeting')} />;
+      case 'follow-up-todays-meeting':
+        return <MarketingFollowUpBase status="todays-meeting" customData={getLeadsByStatus('todays-meeting')} />;
+      case 'follow-up-converted':
+        return <MarketingFollowUpBase status="converted" customData={getLeadsByStatus('converted')} />;
       case 'follow-up-closed':
         return <MarketingFollowUpBase status="closed" customData={getLeadsByStatus('closed')} />;
       case 'visits':
+        console.log('Rendering Visits component - DEBUGGING');
+        console.log('Active view is:', activeView);
         return <Visits />;
       case 'orders':
         return <Orders />;
+      // Expenses moved under Profile tab
+      case 'calendar':
+        return <MarketingSalespersonCalendar />;
+      case 'profile':
+        return <MarketingSalespersonProfile />;
       case 'toolbox':
         return <ToolboxContent />;
+      case 'doc-style':
+        return <DocStyleDashboard />;
       default:
         return <MarketingDashboardContent selectedTab={selectedTab} setSelectedTab={setSelectedTab} />;
     }
@@ -77,9 +103,9 @@ const MarketingSalespersonDashboard = ({ activeView }) => {
 };
 
 // Marketing Dashboard Content
-const MarketingDashboardContent = ({ selectedTab, setSelectedTab }) => {
+const MarketingDashboardContent = ({ selectedTab, setSelectedTab, customers, getStatusCounts }) => {
   return (
-    <div className="p-6 bg-gray-50 min-h-screen overflow-y-auto max-h-screen">
+    <div className="p-6 bg-gray-50 min-h-full scroll-smooth">
         {/* Tab Navigation */}
         <div className="mb-6">
           <nav className="flex space-x-8 border-b border-gray-200">
@@ -105,18 +131,42 @@ const MarketingDashboardContent = ({ selectedTab, setSelectedTab }) => {
               <BarChart3 className="w-4 h-4" />
               <span>Performance</span>
             </button>
+            
           </nav>
         </div>
 
       {/* Tab Content */}
-      {selectedTab === 'overview' && <OverviewContent />}
-      {selectedTab === 'performance' && <PerformanceContent />}
+      {selectedTab === 'overview' && <OverviewContent customers={customers} getStatusCounts={getStatusCounts} />}
+      {selectedTab === 'performance' && <PerformanceContent customers={customers} getStatusCounts={getStatusCounts} />}
     </div>
   );
 };
 
 // Overview Content
-const OverviewContent = () => {
+const OverviewContent = ({ customers, getStatusCounts }) => {
+  // Add error handling
+  if (!customers || !getStatusCounts) {
+    return <div className="p-6 text-center">Loading...</div>;
+  }
+  
+  // Calculate real metrics from data
+  const statusCounts = getStatusCounts();
+  const totalLeads = statusCounts.total;
+  const closedLeads = statusCounts.closed;
+  
+  // Calculate target data dynamically
+  const currentDate = new Date();
+  const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  const daysLeft = lastDayOfMonth.getDate() - currentDate.getDate();
+  
+  // Dynamic target data
+  const targetData = {
+    monthlyTarget: 100, // This could be loaded from user settings or API
+    targetAchieved: closedLeads,
+    daysLeft: daysLeft,
+    achievementPercentage: totalLeads > 0 ? Math.round((closedLeads / 100) * 100) : 0
+  };
+  
   // Overview Data - same structure as salesperson dashboard
   const overviewData = {
     metrics: [
@@ -160,122 +210,232 @@ const OverviewContent = () => {
     leadStatuses: [
       {
         title: "Pending",
-        count: "0",
-        subtitle: "No pending leads",
+        count: "7",
+        subtitle: "Leads awaiting response",
         icon: Clock,
-        color: "bg-orange-50 text-orange-600 border-orange-200"
+        color: "border-l-orange-500 bg-orange-50 border-orange-200"
       },
       {
         title: "Meeting scheduled",
         count: "0",
-        subtitle: "No meetings scheduled",
+        subtitle: "Upcoming meetings",
         icon: Calendar,
-        color: "bg-purple-50 text-purple-600 border-purple-200"
+        color: "border-l-purple-500 bg-purple-50 border-purple-200"
       },
       {
         title: "Follow Up",
         count: "0",
-        subtitle: "No follow-ups required",
+        subtitle: "Requires follow-up",
         icon: TrendingUp,
-        color: "bg-blue-50 text-blue-600 border-blue-200"
+        color: "border-l-blue-500 bg-blue-50 border-blue-200"
       },
       {
         title: "Win Leads",
         count: "0",
-        subtitle: "No successful conversions",
+        subtitle: "Successful conversions",
         icon: CheckCircle,
-        color: "bg-green-50 text-green-600 border-green-200"
+        color: "border-l-green-500 bg-green-50 border-green-200"
       },
       {
         title: "Not Interested",
         count: "0",
-        subtitle: "No declined leads",
+        subtitle: "Declined leads",
         icon: XCircle,
-        color: "bg-red-50 text-red-600 border-red-200"
+        color: "border-l-red-500 bg-red-50 border-red-200"
       },
       {
         title: "Loose Leads",
         count: "0",
-        subtitle: "No unreachable leads",
+        subtitle: "Unreachable leads",
         icon: AlertCircle,
-        color: "bg-gray-50 text-gray-600 border-gray-200"
-      }
+        color: "border-l-gray-500 bg-gray-50 border-gray-200"
+      },
     ]
   }
 
   return (
     <div className="space-y-6 pb-16">
-      {/* Key Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {overviewData.metrics.map((metric, index) => (
-          <div key={index} className={`bg-white rounded-lg shadow-sm border p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1 ${metric.color}`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">{metric.title}</p>
-                <p className="text-2xl font-bold text-gray-900">{metric.value}</p>
-                <p className="text-xs text-gray-500 mt-1">{metric.subtitle}</p>
+
+      {/* Lead Status Summary */}
+      <div className="mb-4">
+        <div className="flex items-center mb-2">
+          <Clock className="w-5 h-5 text-gray-600 mr-2" />
+          <h3 className="text-lg font-semibold text-gray-800">Lead Status Summary</h3>
+        </div>
+        <p className="text-sm text-gray-500">Overview of your leads by status</p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {overviewData.leadStatuses.map((status, index) => (
+          <div key={index} className={`bg-white rounded-lg border-l-4 border h-24 w-full px-3 pt-2 pb-0 shadow-sm transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1 ${status.color}`}>
+            <div className="flex items-start justify-between h-full">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-600 mb-0">{status.title}</p>
+                <p className="text-2xl font-bold text-gray-900 mb-0">{status.count}</p>
+                <p className="text-xs text-gray-500">{status.subtitle}</p>
               </div>
-              <div className="w-12 h-12 bg-white/50 rounded-lg flex items-center justify-center">
-                <metric.icon className="w-6 h-6" />
+              <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center ml-2 flex-shrink-0">
+                <status.icon className="w-4 h-4 text-gray-600" />
               </div>
-            </div>
-            <div className="mt-4 flex items-center">
-              {metric.trendUp ? (
-                <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-              ) : (
-                <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
-              )}
-              <span className={`text-sm ${metric.trendUp ? 'text-green-600' : 'text-red-600'}`}>
-                {metric.trend}
-              </span>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Lead Status Summary */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="mb-4">
-          <div className="flex items-center mb-2">
-            <Clock className="w-5 h-5 text-gray-600 mr-2" />
-            <h3 className="text-lg font-semibold text-gray-800">Lead Status Summary</h3>
-          </div>
-          <p className="text-sm text-gray-500">Overview of your leads by status</p>
+      {/* Target & Timeline */}
+      <div className="mb-4">
+        <div className="flex items-center mb-2">
+          <Target className="w-5 h-5 text-gray-600 mr-2" />
+          <h3 className="text-lg font-semibold text-gray-800">Target & Timeline</h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {overviewData.leadStatuses.map((status, index) => (
-            <div key={index} className={`flex items-center p-4 rounded-lg border transition-all duration-300 hover:scale-105 hover:shadow-md hover:-translate-y-1 ${status.color}`}>
-              <div className="w-10 h-10 bg-white/50 rounded-lg flex items-center justify-center mr-3">
-                <status.icon className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">{status.title}</p>
-                <p className="text-xl font-bold text-gray-900">{status.count}</p>
-                <p className="text-xs text-gray-500">{status.subtitle}</p>
-              </div>
+        <p className="text-sm text-gray-500">Track your monthly targets and progress</p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Monthly Target Card */}
+        <div className="bg-white rounded-lg border border-purple-200 p-4 shadow-sm">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-600 mb-1">Monthly Target</p>
+              <p className="text-2xl font-bold text-blue-600 mb-1">{targetData.monthlyTarget}</p>
+              <p className="text-xs text-gray-500">Leads target this month</p>
             </div>
-          ))}
+            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center ml-2 flex-shrink-0">
+              <Target className="w-4 h-4 text-purple-600" />
+            </div>
+          </div>
+          <div className="w-full h-2 bg-gradient-to-r from-purple-200 to-white rounded-full"></div>
+        </div>
+
+        {/* Target Achieved Card */}
+        <div className="bg-white rounded-lg border border-green-200 p-4 shadow-sm">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-600 mb-1">Target Achieved</p>
+              <p className="text-2xl font-bold text-gray-900 mb-1">{targetData.targetAchieved}</p>
+              <p className="text-xs text-gray-500">Leads achieved this month</p>
+            </div>
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center ml-2 flex-shrink-0">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+            </div>
+          </div>
+          <div className="w-full h-2 bg-gradient-to-r from-green-200 to-white rounded-full"></div>
+        </div>
+
+        {/* Days Left Card */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-600 mb-1">Days Left</p>
+              <p className="text-2xl font-bold text-gray-900 mb-1">{targetData.daysLeft}</p>
+              <p className="text-xs text-gray-500">Remaining days in current month</p>
+            </div>
+            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center ml-2 flex-shrink-0">
+              <Calendar className="w-4 h-4 text-gray-600" />
+            </div>
+          </div>
+          <div className="w-full h-2 bg-gray-200 rounded-full"></div>
         </div>
       </div>
 
-
-      {/* Bottom Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Transfer Leads Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-indigo-200 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-indigo-800">Transfer Leads</h3>
-            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-indigo-600" />
+      {/* Key Performance Metrics */}
+      <div className="mb-4">
+        <div className="flex items-center mb-2">
+          <TrendingUp className="w-5 h-5 text-blue-600 mr-2" />
+          <h3 className="text-lg font-semibold text-gray-800">Key Performance Metrics</h3>
+        </div>
+        <p className="text-sm text-gray-500">Critical business indicators and trends</p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Total Leads Card */}
+        <div className="bg-white rounded-lg border-l-4 border border-blue-200 p-4 shadow-sm">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-600 mb-1">Total Leads</p>
+              <p className="text-2xl font-bold text-gray-900 mb-1">{totalLeads}</p>
+              <p className="text-xs text-gray-500">Active leads this month</p>
+            </div>
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center ml-2 flex-shrink-0">
+              <UserPlus className="w-4 h-4 text-blue-600" />
             </div>
           </div>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-indigo-600 mb-2">0</p>
-            <p className="text-sm text-gray-500">No transferred leads</p>
+          <div className="flex items-center justify-between">
+            <div className="w-full h-2 bg-blue-200 rounded-full"></div>
+            <span className="ml-2 text-xs bg-green-100 text-green-600 px-2 py-1 rounded-full flex items-center">
+              <TrendingUp className="w-3 h-3 mr-1" />
+              +12%
+            </span>
           </div>
         </div>
 
-        {/* Weekly Leads Activity Card */}
+        {/* Conversion Rate Card */}
+        <div className="bg-white rounded-lg border-l-4 border border-green-200 p-4 shadow-sm">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-600 mb-1">Conversion Rate</p>
+              <p className="text-2xl font-bold text-gray-900 mb-1">{totalLeads > 0 ? Math.round((closedLeads / totalLeads) * 100) : 0}%</p>
+              <p className="text-xs text-gray-500">Above target of 20%</p>
+            </div>
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center ml-2 flex-shrink-0">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="w-full h-2 bg-green-200 rounded-full"></div>
+            <span className="ml-2 text-xs bg-green-100 text-green-600 px-2 py-1 rounded-full flex items-center">
+              <TrendingUp className="w-3 h-3 mr-1" />
+              +3.2%
+            </span>
+          </div>
+        </div>
+
+        {/* Pending Rate Card */}
+        <div className="bg-white rounded-lg border-l-4 border border-orange-200 p-4 shadow-sm">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-600 mb-1">Pending Rate</p>
+              <p className="text-2xl font-bold text-gray-900 mb-1">{totalLeads > 0 ? Math.round(((statusCounts['not-connected'] + statusCounts['todays-meeting']) / totalLeads) * 100) : 0}%</p>
+              <p className="text-xs text-gray-500">Leads requiring follow-up</p>
+            </div>
+            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center ml-2 flex-shrink-0">
+              <Clock className="w-4 h-4 text-orange-600" />
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="w-full h-2 bg-orange-200 rounded-full"></div>
+            <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full flex items-center">
+              <TrendingDown className="w-3 h-3 mr-1" />
+              -2.1%
+            </span>
+          </div>
+        </div>
+
+        {/* Total Revenue Card */}
+        <div className="bg-white rounded-lg border-l-4 border border-purple-200 p-4 shadow-sm">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-600 mb-1">Total Revenue</p>
+              <p className="text-2xl font-bold text-gray-900 mb-1">₹{customers.filter(c => c.connectedStatus === 'closed').reduce((sum, c) => sum + (Number(c.expectedValue) || 0), 0).toLocaleString()}</p>
+              <p className="text-xs text-gray-500">Revenue generated this month</p>
+            </div>
+            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center ml-2 flex-shrink-0">
+              <IndianRupee className="w-4 h-4 text-purple-600" />
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="w-full h-2 bg-purple-200 rounded-full"></div>
+            <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full flex items-center">
+              <TrendingDown className="w-3 h-3 mr-1" />
+              0%
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Weekly Leads Activity Card - Expanded */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1">
           <div className="flex items-center mb-4">
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
@@ -332,6 +492,7 @@ const OverviewContent = () => {
         </div>
       </div>
 
+
       {/* Monthly Revenue Trend Chart */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1">
         <div className="flex items-center mb-6">
@@ -365,31 +526,142 @@ const OverviewContent = () => {
     </div>
   );
 };
+// Quotation-style Dashboard View
+const DocStyleDashboard = () => {
+  // Use the existing MarketingQuotation component as the centerpiece inside a clean container,
+  // with the same margins/fonts/borders as the print template so the dashboard view matches.
+  const sampleQuotation = {
+    quotationDate: new Date().toISOString().split('T')[0],
+    quotationNumber: `ANQ${Date.now().toString().slice(-6)}`,
+    validUpto: new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0],
+    billTo: { business: '—', address: '—', phone: '—', gstNo: '', state: '—' },
+    items: [],
+    subtotal: 0,
+    taxAmount: 0,
+    total: 0
+  };
+
+  return (
+    <div className="bg-white min-h-[85vh] px-6 py-6">
+      <div className="max-w-4xl mx-auto">
+        <MarketingQuotation quotationData={sampleQuotation} selectedBranch="ANODE" />
+      </div>
+    </div>
+  );
+};
 
 // Performance Content
-const PerformanceContent = () => {
-  // Performance data structure matching salesperson dashboard
+const PerformanceContent = ({ customers, getStatusCounts }) => {
+  const leadsData = customers || [];
+
+  // Specific single date filter
+  const [specificDate, setSpecificDate] = React.useState('');
+
+  // Helper: parse date safely
+  const parseDate = (d) => {
+    if (!d) return null;
+    const dt = new Date(d);
+    return isNaN(dt.getTime()) ? null : dt;
+  };
+
+  // Pick best date field for filtering
+  const getLeadDate = (lead) => {
+    return lead.connectedStatusDate || lead.finalStatusDate || lead.createdAt || lead.date || null;
+  };
+
+  // Apply date filter to leads (single specific date)
+  const filteredLeads = React.useMemo(() => {
+    const only = parseDate(specificDate);
+    if (only) {
+      const dayStart = new Date(only);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(only);
+      dayEnd.setHours(23, 59, 59, 999);
+      return leadsData.filter(l => {
+        const dateStr = getLeadDate(l);
+        const dt = parseDate(dateStr);
+        if (!dt) return false;
+        return dt >= dayStart && dt <= dayEnd;
+      });
+    }
+    return leadsData;
+  }, [leadsData, specificDate]);
+
+  // Build status counts from filtered leads
+  const filteredStatusCounts = React.useMemo(() => {
+    const counts = { connected: 0, 'not-connected': 0, 'todays-meeting': 0, converted: 0, closed: 0, total: 0 };
+    filteredLeads.forEach(l => {
+      const status = (l.connectedStatus || l.followUpStatus || '').toLowerCase();
+      if (status.includes('connected') && !status.includes('not')) counts.connected += 1;
+      if (status.includes('not') && status.includes('connected')) counts['not-connected'] += 1;
+      if (status.includes('todays') && status.includes('meeting')) counts['todays-meeting'] += 1;
+      if (status.includes('converted')) counts.converted += 1;
+      if ((l.finalStatus || '').toLowerCase() === 'closed') counts.closed += 1;
+      counts.total += 1;
+    });
+    return counts;
+  }, [filteredLeads]);
+
+  // Status counts derived from shared context
+  const statusCounts = filteredStatusCounts;
+
+  const totalLeads = statusCounts.total || 0;
+  const closedLeads = statusCounts.closed || 0;
+  const conversionRateCurrent = totalLeads > 0 ? Math.round((closedLeads / totalLeads) * 100) : 0;
+
+  // Revenue derived from closed leads expectedValue sum
+  const revenueCurrent = (filteredLeads || [])
+    .filter(l => (l.finalStatus || '').toLowerCase() === 'closed')
+    .reduce((sum, l) => sum + (Number(l.expectedValue) || 0), 0);
+
+  // Use interaction counts as proxy for calls (connected + not-connected)
+  const callsCurrent = (statusCounts.connected || 0) + (statusCounts['not-connected'] || 0);
+
+  // Load configurable targets from localStorage; fall back to current values (no hardcoding)
+  const targetsFromStorage = (() => {
+    try { return JSON.parse(localStorage.getItem('marketingPerformanceTargets') || '{}'); } catch { return {}; }
+  })();
+
+  const resolvedTargets = {
+    monthlyLeads: Number(targetsFromStorage.monthlyLeads) || totalLeads,
+    conversionRate: Number(targetsFromStorage.conversionRate) || conversionRateCurrent,
+    revenue: Number(targetsFromStorage.revenue) || revenueCurrent,
+    calls: Number(targetsFromStorage.calls) || callsCurrent
+  };
+
+  // Build performance data dynamically
   const performanceData = {
     targets: {
-      monthlyLeads: { current: 0, target: 100, label: "Monthly Leads" },
-      conversionRate: { current: 0, target: 25, label: "Conversion Rate (%)" },
-      revenue: { current: 0, target: 300000, label: "Monthly Revenue (₹)" },
-      calls: { current: 0, target: 300, label: "Daily Calls" }
+      monthlyLeads: { current: totalLeads, target: resolvedTargets.monthlyLeads, label: "Monthly Leads" },
+      conversionRate: { current: conversionRateCurrent, target: resolvedTargets.conversionRate, label: "Conversion Rate (%)" },
+      revenue: { current: revenueCurrent, target: resolvedTargets.revenue, label: "Quarterly Revenue (₹)" },
+      calls: { current: callsCurrent, target: resolvedTargets.calls, label: "Daily Calls" }
     },
     leadStatusData: [
-      { label: "Hot", value: 0, color: "#ef4444" },
-      { label: "Warm", value: 0, color: "#f97316" },
-      { label: "Cold", value: 0, color: "#6b7280" },
-      { label: "Converted", value: 0, color: "#22c55e" }
+      { label: "Connected", value: statusCounts.connected || 0, color: "#3b82f6" },
+      { label: "Not Connected", value: statusCounts['not-connected'] || 0, color: "#ef4444" },
+      { label: "Todays Meeting", value: statusCounts['todays-meeting'] || 0, color: "#8b5cf6" },
+      { label: "Converted", value: statusCounts.converted || 0, color: "#a855f7" },
+      { label: "Closed", value: statusCounts.closed || 0, color: "#10b981" }
     ],
-    monthlyPerformance: [
-      { label: "Jan", value: 0, color: "#3b82f6" },
-      { label: "Feb", value: 0, color: "#3b82f6" },
-      { label: "Mar", value: 0, color: "#3b82f6" },
-      { label: "Apr", value: 0, color: "#3b82f6" },
-      { label: "May", value: 0, color: "#3b82f6" },
-      { label: "Jun", value: 0, color: "#3b82f6" }
-    ],
+    monthlyPerformance: (() => {
+      // Simple last-6-months leads-per-month metric from connectedStatusDate
+      const now = new Date();
+      const months = Array.from({ length: 6 }).map((_, idx) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - (5 - idx), 1);
+        const label = d.toLocaleString('en-US', { month: 'short' });
+        const value = (filteredLeads || []).filter(l => {
+          const dateStr = l.connectedStatusDate || l.finalStatusDate;
+          if (!dateStr) return false;
+          const dt = new Date(dateStr);
+          return dt.getFullYear() === d.getFullYear() && dt.getMonth() === d.getMonth();
+        }).length;
+        return { label, value, color: '#3b82f6' };
+      });
+      // Highlight latest month if it's the max
+      const max = Math.max(0, ...months.map(m => m.value));
+      return months.map((m, i) => ({ ...m, color: i === months.length - 1 && m.value === max ? '#10b981' : '#3b82f6' }));
+    })(),
     kpis: [
       {
         title: "Lead Response Time",
@@ -401,7 +673,7 @@ const PerformanceContent = () => {
       },
       {
         title: "Follow-up Rate",
-        value: "0%",
+        value: `${totalLeads > 0 ? Math.round(((statusCounts.connected || 0) / totalLeads) * 100) : 0}%`,
         target: "> 85%",
         status: "warning",
         icon: TrendingUp,
@@ -417,26 +689,76 @@ const PerformanceContent = () => {
       },
       {
         title: "Quotation Success",
-        value: "0%",
+        value: `${totalLeads > 0 ? Math.round((closedLeads / totalLeads) * 100) : 0}%`,
         target: "> 70%",
         status: "warning",
         icon: CheckCircle,
         color: "bg-orange-50 text-orange-600 border-orange-200"
       },
-      {
-        title: "Transfer Leads",
-        value: "0",
-        target: "< 20",
-        status: "success",
-        icon: TrendingUp,
-        color: "bg-indigo-50 text-indigo-600 border-indigo-200"
-      }
     ]
   }
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-6 pb-16 min-h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Performance Dashboard</h1>
+          <p className="text-sm text-gray-500">Track your targets and performance metrics</p>
+        </div>
+            <div className="flex items-center gap-2">
+              <input
+            type="date"
+            value={specificDate}
+            onChange={(e) => setSpecificDate(e.target.value)}
+            className="px-3 py-2 border rounded-md text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {specificDate && (
+            <button
+              onClick={() => setSpecificDate('')}
+              className="px-2 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-50"
+              title="Clear specific date"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Target Cards (top row) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {Object.entries(performanceData.targets).map(([key, target]) => {
+          const progress = target.target > 0 ? (target.current / target.target) * 100 : 0;
+          const progressPct = Math.max(0, Math.min(100, Math.ceil(progress)));
+          const remaining = Math.max(0, target.target - target.current);
+          return (
+            <div key={key} className="relative bg-white border rounded-lg p-4 shadow-sm">
+              {remaining > 0 && (
+                <div className="absolute top-0 right-0 text-xs font-semibold px-2 py-1 rounded-bl-lg bg-red-100 text-red-700">{remaining.toLocaleString()} to go</div>
+              )}
+              <div className="text-sm font-medium text-gray-700 mb-2">{target.label}</div>
+              <div className="flex items-baseline gap-1 mb-2">
+                <span className="text-2xl font-bold text-gray-900">{key === 'conversionRate' ? `${target.current}` : `${target.current}`}</span>
+                <span className="text-sm text-gray-500">{key === 'conversionRate' ? '/ ' + target.target : '/ ' + target.target}</span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
+                <div className="h-full bg-red-500" style={{ width: `${progressPct}%` }}></div>
+              </div>
+              <div className="mt-1 text-xs text-red-600 font-medium">{progressPct}% achieved</div>
+              <div className="text-xs text-red-600">{key === 'revenue' ? `${(remaining).toLocaleString()} more needed to hit target` : `${remaining} more needed to hit target`}</div>
+            </div>
+          );
+        })}
+      </div>
+
       {/* KPI Cards */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <svg className="h-5 w-5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+          <h2 className="text-lg font-semibold text-gray-900">Key Performance Indicators</h2>
+        </div>
+        <p className="text-sm mb-2 text-gray-500">Track important metrics that impact your success</p>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {performanceData.kpis.map((kpi, index) => (
           <div key={index} className={`bg-white rounded-lg shadow-sm border p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:-translate-y-1 ${kpi.color}`}>
@@ -454,109 +776,82 @@ const PerformanceContent = () => {
         ))}
       </div>
 
-      {/* Performance Targets */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6">Performance Targets</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="transition-all duration-300 hover:scale-105 hover:shadow-md hover:-translate-y-1 p-4 rounded-lg bg-gray-50">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600">{performanceData.targets.monthlyLeads.label}</span>
-              <span className="text-sm text-gray-900">{performanceData.targets.monthlyLeads.current}/{performanceData.targets.monthlyLeads.target}</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min((performanceData.targets.monthlyLeads.current / performanceData.targets.monthlyLeads.target) * 100, 100)}%` }}
-              ></div>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {((performanceData.targets.monthlyLeads.current / performanceData.targets.monthlyLeads.target) * 100).toFixed(1)}%
-            </div>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Lead Status Distribution */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-4 h-4 inline-block rounded-full bg-purple-500"></span>
+            <h3 className="text-lg font-semibold text-gray-800">Lead Status Distribution</h3>
           </div>
-          
-          <div className="transition-all duration-300 hover:scale-105 hover:shadow-md hover:-translate-y-1 p-4 rounded-lg bg-gray-50">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600">{performanceData.targets.conversionRate.label}</span>
-              <span className="text-sm text-gray-900">{performanceData.targets.conversionRate.current}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-green-600 h-2 rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min((performanceData.targets.conversionRate.current / performanceData.targets.conversionRate.target) * 100, 100)}%` }}
-              ></div>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {((performanceData.targets.conversionRate.current / performanceData.targets.conversionRate.target) * 100).toFixed(1)}%
-            </div>
-          </div>
-          
-          <div className="transition-all duration-300 hover:scale-105 hover:shadow-md hover:-translate-y-1 p-4 rounded-lg bg-gray-50">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600">{performanceData.targets.revenue.label}</span>
-              <span className="text-sm text-gray-900">₹{performanceData.targets.revenue.current.toLocaleString()}</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-purple-600 h-2 rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min((performanceData.targets.revenue.current / performanceData.targets.revenue.target) * 100, 100)}%` }}
-              ></div>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {((performanceData.targets.revenue.current / performanceData.targets.revenue.target) * 100).toFixed(1)}%
-            </div>
-          </div>
-          
-          <div className="transition-all duration-300 hover:scale-105 hover:shadow-md hover:-translate-y-1 p-4 rounded-lg bg-gray-50">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600">{performanceData.targets.calls.label}</span>
-              <span className="text-sm text-gray-900">{performanceData.targets.calls.current}/{performanceData.targets.calls.target}</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-orange-600 h-2 rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min((performanceData.targets.calls.current / performanceData.targets.calls.target) * 100, 100)}%` }}
-              ></div>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {((performanceData.targets.calls.current / performanceData.targets.calls.target) * 100).toFixed(1)}%
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Lead Status Distribution */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6">Lead Status Distribution</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {performanceData.leadStatusData.map((status, index) => (
-            <div key={index} className="text-center transition-all duration-300 hover:scale-110 hover:shadow-md hover:-translate-y-1 p-4 rounded-lg bg-gray-50">
-              <div className="w-16 h-16 mx-auto mb-2 rounded-full flex items-center justify-center text-white font-bold text-lg transition-all duration-300 hover:scale-110" 
-                   style={{ backgroundColor: status.color }}>
-                {status.value}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+            {/* Center total as donut substitute */}
+            <div className="flex items-center justify-center">
+              <div className="relative w-48 h-48 rounded-full bg-gray-100 flex items-center justify-center shadow-inner">
+                <span className="text-3xl font-bold text-gray-800">{performanceData.leadStatusData.reduce((a,b)=>a + (b.value||0),0)}</span>
+                <span className="absolute bottom-4 text-xs text-gray-500">Total</span>
               </div>
-              <p className="text-sm font-medium text-gray-700">{status.label}</p>
             </div>
-          ))}
+            {/* Legend */}
+            <div className="grid grid-cols-1 gap-3">
+              {performanceData.leadStatusData.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></span>
+                  <span className="text-sm text-gray-700 flex-1">{item.label}:</span>
+                  <span className="text-sm font-medium text-gray-900">{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Monthly Performance */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-4 h-4 inline-block rounded-sm bg-green-500"></span>
+            <h3 className="text-lg font-semibold text-gray-800">Monthly Performance</h3>
+          </div>
+          <div className="flex items-end justify-between min-h-48 space-x-2">
+            {performanceData.monthlyPerformance.map((month, index) => (
+              <div key={index} className="flex-1 flex flex-col items-center">
+                <span className="text-xs text-gray-600 mb-1">{month.value}</span>
+                <div 
+                  className="w-full rounded-t"
+                  style={{ 
+                    height: `${Math.max((month.value / 110) * 100, 8)}%`,
+                    backgroundColor: month.color
+                  }}
+                  title={`${month.label}: ${month.value}`}
+                ></div>
+                <span className="text-xs text-gray-600 mt-2">{month.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 text-center">
+            <span className="text-sm text-gray-500">Performance Score (0-100)</span>
+          </div>
         </div>
       </div>
 
-      {/* Monthly Performance Chart */}
+      {/* Performance Summary */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6">Monthly Performance</h3>
-        <div className="flex items-end justify-between h-48 space-x-2">
-          {performanceData.monthlyPerformance.map((month, index) => (
-            <div key={index} className="flex-1 flex flex-col items-center transition-all duration-300 hover:scale-105 hover:shadow-md hover:-translate-y-1 p-2 rounded-lg bg-gray-50">
-              <div 
-                className="w-full rounded-t transition-all duration-500 hover:opacity-80 hover:scale-110"
-                style={{ 
-                  height: `${Math.max((month.value / 100) * 100, 10)}px`,
-                  backgroundColor: month.color
-                }}
-                title={`${month.label}: ${month.value}`}
-              ></div>
-              <span className="text-xs text-gray-600 mt-2">{month.label}</span>
-            </div>
-          ))}
+        <div className="flex items-center gap-2 mb-6">
+          <span className="w-4 h-4 inline-block rounded-full bg-yellow-500"></span>
+          <h3 className="text-lg font-semibold text-gray-800">Performance Summary</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-blue-600 mb-1">87%</div>
+            <div className="text-sm text-gray-600">Overall Target Achievement</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-orange-600 mb-1">2</div>
+            <div className="text-sm text-gray-600">Areas Need Improvement</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-green-600 mb-1">3</div>
+            <div className="text-sm text-gray-600">Area Exceeding Target</div>
+          </div>
         </div>
       </div>
     </div>

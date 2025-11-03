@@ -7,6 +7,8 @@ import { MarketingFollowUpDataProvider } from './FollowUp/MarketingFollowUpDataC
 
 const MarketingSalespersonLayout = () => {
   const [activeView, setActiveView] = useState('dashboard');
+  
+  console.log('MarketingSalespersonLayout - activeView:', activeView);
 
   return (
     <MarketingSharedDataProvider>
@@ -16,9 +18,15 @@ const MarketingSalespersonLayout = () => {
             activeView={activeView} 
             setActiveView={setActiveView}
           />
-          <div className="flex-1 overflow-hidden">
-            <FixedHeader userType="marketing-salesperson" currentPage={activeView} />
-            <MarketingSalespersonDashboard activeView={activeView} />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <FixedHeader 
+              userType="marketing-salesperson" 
+              currentPage={activeView}
+              onProfileClick={() => setActiveView('profile')}
+            />
+            <div className="flex-1 overflow-y-auto">
+              <MarketingSalespersonDashboard activeView={activeView} setActiveView={setActiveView} />
+            </div>
           </div>
         </div>
       </MarketingFollowUpDataProvider>

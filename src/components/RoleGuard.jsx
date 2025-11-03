@@ -1,10 +1,12 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 
-const RoleGuard = ({ allow = [], children, fallback = null }) => {
+const RoleGuard = ({ allow = [], allowDepartmentTypes = [], children, fallback = null }) => {
   const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated || !user) return fallback;
-  if (allow.length === 0 || allow.includes(user.role)) return children;
+  const roleAllowed = allow.length === 0 || allow.includes(user.role);
+  const deptAllowed = allowDepartmentTypes.length === 0 || allowDepartmentTypes.includes(user.departmentType);
+  if (roleAllowed && deptAllowed) return children;
   return fallback;
 };
 

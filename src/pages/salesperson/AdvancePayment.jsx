@@ -1,0 +1,1533 @@
+"use client"
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Package, Eye, X, Edit, Clock, CheckCircle, MessageCircle, Mail, DollarSign, CreditCard } from 'lucide-react';
+import Toolbar, { ProductPagination } from './PaymentTracking';
+import apiClient from '../../utils/apiClient';
+import quotationService from '../../api/admin_api/quotationService';
+import paymentService from '../../api/admin_api/paymentService';
+import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
+import { API_ENDPOINTS } from '../../api/admin_api/api';
+
+// Timeline Sidebar component for viewing payment tracking details
+const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
+  const [customerQuotations, setCustomerQuotations] = useState([]);
+  const [loadingQuotations, setLoadingQuotations] = useState(false);
+  const [quotationError, setQuotationError] = useState(null);
+  const [quotationSummary, setQuotationSummary] = useState(null);
+  const [paymentsForQuotation, setPaymentsForQuotation] = useState([]);
+
+  if (!item) return null;
+
+  // Fetch quotation summary + payments (avoid listing all quotations if we already have one)
+  const fetchedKeyRef = useRef('');
+  useEffect(() => {
+    const fetchKey = `${item.leadData?.id || ''}-${item.quotationData?.id || ''}-${refreshKey}`;
+    if (fetchedKeyRef.current === fetchKey) {
+      return; // avoid duplicate fetch in React StrictMode
+    }
+    fetchedKeyRef.current = fetchKey;
+    const fetchCustomerQuotations = async () => {
+      if (!item.leadData?.id) return;
+
+      try {
+        setLoadingQuotations(true);
+        setQuotationError(null);
+        
+        // If we already have a quotation ID, only fetch its summary and payments
+        const chosenQuotationId = item.quotationData?.id;
+        if (chosenQuotationId) {
+          try {
+            const [sRes, pRes] = await Promise.all([
+              quotationService.getSummary(chosenQuotationId),
+              paymentService.getPaymentsByQuotation(chosenQuotationId)
+            ]);
+            setCustomerQuotations([item.quotationData]);
+            setQuotationSummary(sRes?.data || null);
+            setPaymentsForQuotation(pRes?.data || []);
+            return;
+          } catch (innerErr) {
+            console.warn('Failed to load quotation summary/payments', innerErr);
+          }
+        }
+
+        // Fallback: fetch quotations for this customer/lead and then pick latest approved
+        const quotationsResponse = await quotationService.getQuotationsByCustomer(item.leadData.id);
+        const qList = quotationsResponse?.data || [];
+        setCustomerQuotations(qList);
+        const latestApproved = qList.filter(q => q.status === 'approved').slice(-1)[0];
+        if (latestApproved?.id) {
+          const [sRes, pRes] = await Promise.all([
+            quotationService.getSummary(latestApproved.id),
+            paymentService.getPaymentsByQuotation(latestApproved.id)
+          ]);
+          setQuotationSummary(sRes?.data || null);
+          setPaymentsForQuotation(pRes?.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching customer quotations:', error);
+        setQuotationError('Failed to load quotations');
+      } finally {
+        setLoadingQuotations(false);
+      }
+    };
+
+    fetchCustomerQuotations();
+  }, [item.leadData?.id, item.quotationData?.id, refreshKey]);
+
+  // Handle view quotation - show in modal using QuotationPreview format
+  const handleViewQuotation = async (quotationId) => {
+    try {
+      const response = await quotationService.getQuotation(quotationId);
+      
+      if (response.success) {
+        // Open quotation in new tab/window for viewing
+        const quotationWindow = window.open('', '_blank', 'width=1000,height=800,scrollbars=yes,resizable=yes');
+        
+        if (quotationWindow) {
+          const quotation = response.data;
+          
+          // Company branches data (same as in quotation creation)
+          const companyBranches = {
+            ANODE: {
+              name: 'ANODE ELECTRIC PRIVATE LIMITED',
+              gstNumber: '(23AANCA7455R1ZX)',
+              description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
+              address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
+              tel: '6262002116, 6262002113',
+              web: 'www.anocab.com',
+              email: 'info@anocab.com',
+              logo: 'Anocab - A Positive Connection.....'
+            }
+          };
+          
+          // Mock user data
+          const user = {
+            name: 'Salesperson',
+            email: 'salesperson@anocab.com'
+          };
+          
+          // Format quotation data to match QuotationPreview component
+          const quotationData = {
+            quotationNumber: quotation.quotation_number || `QT-${quotation.id}`,
+            quotationDate: quotation.quotation_date || quotation.created_at?.split('T')[0],
+            validUpto: quotation.valid_until,
+            voucherNumber: `VOUCH-${quotation.id?.slice(-4) || '0000'}`,
+            billTo: {
+              business: quotation.customer_name,
+              address: quotation.customer_address,
+              phone: quotation.customer_phone,
+              gstNo: quotation.customer_gst_no,
+              state: quotation.customer_state
+            },
+            items: quotation.items?.map(item => ({
+              productName: item.description || item.product_name,
+              description: item.description || item.product_name,
+              quantity: item.quantity,
+              unit: item.unit || 'Nos',
+              buyerRate: item.rate || item.unit_price,
+              unitPrice: item.rate || item.unit_price,
+              amount: item.amount || item.taxable_amount,
+              total: item.total_amount || item.amount,
+              hsn: item.hsn_code || '85446090',
+              gstRate: item.gst_rate || quotation.tax_rate || 18
+            })) || [],
+            subtotal: parseFloat(quotation.subtotal || 0),
+            taxAmount: parseFloat(quotation.tax_amount || 0),
+            total: parseFloat(quotation.total_amount || 0),
+            discountRate: parseFloat(quotation.discount_rate || 0),
+            discountAmount: parseFloat(quotation.discount_amount || 0),
+            taxRate: parseFloat(quotation.tax_rate || 18),
+            selectedBranch: 'ANODE'
+          };
+          
+          // Create HTML content using the exact same format as QuotationPreview
+          const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Quotation ${quotationData.quotationNumber}</title>
+              <script src="https://cdn.tailwindcss.com"></script>
+              <style>
+                @media print {
+                  .no-print { display: none !important; }
+                }
+              </style>
+            </head>
+            <body class="bg-gray-100">
+              <div class="max-w-4xl mx-auto bg-white font-sans text-sm" id="quotation-content">
+                <div class="p-6">
+                  <div class="border-2 border-black mb-4">
+                    <div class="p-2 flex justify-between items-center">
+                      <div>
+                        <h1 class="text-xl font-bold">${companyBranches.ANODE.name}</h1>
+                        <p class="text-xs font-semibold text-gray-700">${companyBranches.ANODE.gstNumber}</p>
+                        <p class="text-xs">${companyBranches.ANODE.description}</p>
+                      </div>
+                      <div class="text-right">
+                        <img
+                          src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
+                          alt="Company Logo"
+                          class="h-12 w-auto bg-white p-1 rounded"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="p-3 bg-gray-50">
+                      <div class="grid grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <p><strong>${companyBranches.ANODE.address}</strong></p>
+                        </div>
+                        <div class="text-right">
+                          <p>Tel: ${companyBranches.ANODE.tel}</p>
+                          <p>Web: ${companyBranches.ANODE.web}</p>
+                          <p>Email: ${companyBranches.ANODE.email}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="border border-black mb-4">
+                    <div class="bg-gray-100 p-2 text-center font-bold">
+                      <h2>Quotation Details</h2>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 p-2 text-xs border-b">
+                      <div><strong>Quotation Date</strong></div>
+                      <div><strong>Quotation Number</strong></div>
+                      <div><strong>Valid Upto</strong></div>
+                      <div><strong>Voucher Number</strong></div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 p-2 text-xs">
+                      <div>${quotationData.quotationDate}</div>
+                      <div>${quotationData.quotationNumber}</div>
+                      <div>${quotationData.validUpto}</div>
+                      <div>${quotationData.voucherNumber}</div>
+                    </div>
+                  </div>
+
+                  <div class="border border-black mb-4">
+                    <div class="grid grid-cols-2 gap-4 p-3 text-xs">
+                      <div>
+                        <h3 class="font-bold mb-2">BILL TO:</h3>
+                        <p><strong>${quotationData.billTo.business || 'Customer'}</strong></p>
+                        ${quotationData.billTo.address ? `<p>${quotationData.billTo.address}</p>` : ''}
+                        ${quotationData.billTo.phone ? `<p><strong>PHONE:</strong> ${quotationData.billTo.phone}</p>` : ''}
+                        ${quotationData.billTo.gstNo ? `<p><strong>GSTIN:</strong> ${quotationData.billTo.gstNo}</p>` : ''}
+                        ${quotationData.billTo.state ? `<p><strong>State:</strong> ${quotationData.billTo.state}</p>` : ''}
+                      </div>
+                      <div>
+                        <p><strong>L.R. No:</strong> -</p>
+                        <p><strong>Transport:</strong> STAR TRANSPORTS</p>
+                        <p><strong>Transport ID:</strong> 562345</p>
+                        <p><strong>Vehicle Number:</strong> GJ01HJ2520</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="border border-black mb-4">
+                    <table class="w-full text-xs">
+                      <thead>
+                        <tr class="bg-gray-100">
+                          <th class="border border-gray-300 p-1 text-center w-10">Sr.</th>
+                          <th class="border border-gray-300 p-2 text-left">Name of Product / Service</th>
+                          <th class="border border-gray-300 p-1 text-center w-16">HSN / SAC</th>
+                          <th class="border border-gray-300 p-1 text-center w-12">Qty</th>
+                          <th class="border border-gray-300 p-1 text-center w-12">Unit</th>
+                          <th class="border border-gray-300 p-1 text-right w-20">Buyer Rate</th>
+                          <th class="border border-gray-300 p-1 text-right w-20">Taxable Value</th>
+                          <th class="border border-gray-300 p-0.5 text-center w-8 text-[10px] whitespace-nowrap">GST%</th>
+                          <th class="border border-gray-300 p-1 text-right w-24">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${quotationData.items && quotationData.items.length > 0 ? 
+                          quotationData.items.map((item, index) => `
+                            <tr>
+                              <td class="border border-gray-300 p-1 text-center">${index + 1}</td>
+                              <td class="border border-gray-300 p-2">${item.productName || item.description}</td>
+                              <td class="border border-gray-300 p-1 text-center">${item.hsn || '85446090'}</td>
+                              <td class="border border-gray-300 p-1 text-center">${item.quantity}</td>
+                              <td class="border border-gray-300 p-1 text-center">${item.unit || 'Nos'}</td>
+                              <td class="border border-gray-300 p-1 text-right">${parseFloat(item.buyerRate || item.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                              <td class="border border-gray-300 p-1 text-right">${parseFloat(item.amount || item.taxable || item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                              <td class="border border-gray-300 p-0 text-center text-xs">${item.gstRate ? `${item.gstRate}%` : '18%'}</td>
+                              <td class="border border-gray-300 p-1 text-right">${parseFloat((item.amount ?? item.total ?? 0) * (item.gstMultiplier ?? 1.18)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            </tr>
+                          `).join('') : 
+                          '<tr><td colspan="9" class="border border-gray-300 p-2 text-center">No items</td></tr>'
+                        }
+
+                        ${Array.from({ length: 8 }).map((_, i) => `
+                          <tr class="h-8">
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                          </tr>
+                        `).join('')}
+
+                        <tr class="bg-gray-100 font-bold">
+                          <td class="border border-gray-300 p-2 text-left">Total</td>
+                          <td class="border border-gray-300 p-2"></td>
+                          <td class="border border-gray-300 p-2"></td>
+                          <td class="border border-gray-300 p-2"></td>
+                          <td class="border border-gray-300 p-2"></td>
+                          <td class="border border-gray-300 p-2"></td>
+                          <td class="border border-gray-300 p-2">${quotationData.subtotal?.toFixed ? quotationData.subtotal.toFixed(2) : (quotationData.subtotal || '').toString()}</td>
+                          <td class="border border-gray-300 p-2">${quotationData.taxAmount?.toFixed ? quotationData.taxAmount.toFixed(2) : (quotationData.taxAmount || '').toString()}</td>
+                          <td class="border border-gray-300 p-2">${quotationData.total?.toFixed ? quotationData.total.toFixed(2) : (quotationData.total || '').toString()}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="border border-black p-3">
+                      <h3 class="font-bold text-xs mb-2">Bank Details</h3>
+                      <div class="text-xs space-y-1">
+                        <p><strong>Bank Name:</strong> ICICI Bank</p>
+                        <p><strong>Branch Name:</strong> WRIGHT TOWN JABALPUR</p>
+                        <p><strong>Bank Account Number:</strong> 657605601783</p>
+                        <p><strong>Bank Branch IFSC:</strong> ICIC0006576</p>
+                      </div>
+                    </div>
+                    <div class="border border-black p-3">
+                      <div class="text-xs space-y-1">
+                        <div class="flex justify-between">
+                          <span>Subtotal</span>
+                          <span>${quotationData.subtotal?.toFixed ? quotationData.subtotal.toFixed(2) : (quotationData.subtotal || '0.00')}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span>Less: Discount (${quotationData.discountRate || 0}%)</span>
+                          <span>${quotationData.discountAmount?.toFixed ? quotationData.discountAmount.toFixed(2) : (quotationData.discountAmount || '0.00')}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span>Taxable Amount</span>
+                          <span>${(typeof quotationData.subtotal === 'number' ? (quotationData.subtotal - (quotationData.discountAmount || 0)).toFixed(2) : (quotationData.taxable || '')).toString()}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span>Add: Total GST (${quotationData.taxRate || 18}%)</span>
+                          <span>${quotationData.taxAmount?.toFixed ? quotationData.taxAmount.toFixed(2) : (quotationData.taxAmount || '0.00')}</span>
+                        </div>
+                        <div class="flex justify-between font-bold border-t pt-1">
+                          <span>Total Amount After Tax</span>
+                          <span>₹ ${quotationData.total?.toFixed ? quotationData.total.toFixed(2) : (quotationData.total || '0.00')}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="border border-black mb-4">
+                    <div class="bg-gray-100 p-2 font-bold text-xs">
+                      <h3>Terms and Conditions</h3>
+                    </div>
+                    <div class="p-3 text-xs space-y-2">
+                      <div>
+                        <h4 class="font-bold">PRICING & VALIDITY</h4>
+                        <p>• Prices are valid for 3 days only from the date of the final quotation/PI unless otherwise specified terms.</p>
+                        <p>• The order will be considered confirmed only upon receipt of the advance payment.</p>
+                      </div>
+                      <div>
+                        <h4 class="font-bold">PAYMENT TERMS</h4>
+                        <p>• 30% advance payment upon order confirmation</p>
+                        <p>• Remaining Balance at time of final dispatch / against LC / Bank Guarantee (if applicable).</p>
+                        <p>• Liquidated Damages @ 0.5% to 1% per WEEK will be charged on delayed payments beyond the agreed terms.</p>
+                      </div>
+                      <div>
+                        <h4 class="font-bold">DELIVERY & DISPATCH</h4>
+                        <p>• Standard delivery period as per the telecommunication with customer.</p>
+                        <p>• Any delays due to unforeseen circumstances (force majeure, strikes, and transportation issues) will be communicated.</p>
+                      </div>
+                      <div>
+                        <h4 class="font-bold">QUALITY & WARRANTY</h4>
+                        <p>• Cables will be supplied as per IS and other applicable BIS standards/or as per the agreed specifications mentioned/special demand by the customer.</p>
+                        <p>• Any manufacturing defects should be reported immediately, within 3 working days of receipt.</p>
+                        <p>• Warranty: 12 months from the date of dispatch for manufacturing defects only in ISI mark products.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="text-right text-xs">
+                    <p class="mb-4">For <strong>${companyBranches.ANODE.name}</strong></p>
+                    <p class="mb-8">This is computer generated invoice no signature required.</p>
+                    <p class="font-bold">Authorized Signatory</p>
+                    <p class="mt-2 text-sm font-semibold text-gray-800">${user.name || user.email || 'User'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="fixed bottom-0 left-0 right-0 bg-white p-4 border-t border-gray-300 flex justify-between no-print">
+                <button onclick="window.close()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Close</button>
+                <button onclick="window.print()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">Print PDF</button>
+              </div>
+            </body>
+            </html>
+          `;
+          
+          quotationWindow.document.write(htmlContent);
+          quotationWindow.document.close();
+        }
+      }
+    } catch (error) {
+      console.error('Error viewing quotation:', error);
+      alert('Failed to load quotation');
+    }
+  };
+
+  // Format date to Indian format (DD/MM/YYYY)
+  const formatIndianDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  // Format date and time to Indian format
+  const formatIndianDateTime = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  // Get status badge component
+  const getStatusBadge = (status, type = 'default') => {
+    const statusConfig = {
+      'completed': { bg: 'bg-green-100', text: 'text-green-800', label: 'COMPLETED' },
+      'approved': { bg: 'bg-green-100', text: 'text-green-800', label: 'APPROVED' },
+      'pending': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' },
+      'rejected': { bg: 'bg-red-100', text: 'text-red-800', label: 'REJECTED' },
+      'paid': { bg: 'bg-green-100', text: 'text-green-800', label: 'PAID' },
+      'partial': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'PARTIAL' },
+      'overdue': { bg: 'bg-red-100', text: 'text-red-800', label: 'OVERDUE' },
+      'due': { bg: 'bg-red-100', text: 'text-red-800', label: 'PENDING' },
+      'deal-closed': { bg: 'bg-green-100', text: 'text-green-800', label: 'DEAL CLOSED' }
+    };
+
+    const config = statusConfig[status] || statusConfig['pending'];
+    
+    return (
+      <span className={`px-2 py-1 text-xs font-semibold rounded ${config.bg} ${config.text}`}>
+        {config.label}
+      </span>
+    );
+  };
+
+  // Calculate payment summary from approved quotations
+  const calculatePaymentSummary = () => {
+    const approvedQuotations = customerQuotations.filter(q => q.status === 'approved');
+    
+    if (approvedQuotations.length === 0) {
+      return {
+        totalAmount: 0,
+        paidAmount: 0,
+        remainingAmount: 0,
+        advanceAmount: 0,
+        partialAmount: 0,
+        dueAmount: 0,
+        paymentStatus: 'pending'
+      };
+    }
+
+    // Get the latest approved quotation amount
+    const latestApprovedQuotation = approvedQuotations[approvedQuotations.length - 1];
+    // Prefer backend summary if available for accuracy
+    const totalAmount = (quotationSummary?.total_amount ?? latestApprovedQuotation.total_amount) || 0;
+    const paidAmount = typeof quotationSummary?.total_paid === 'number'
+      ? quotationSummary.total_paid
+      : (typeof quotationSummary?.paid === 'number'
+        ? quotationSummary.paid
+        : (Array.isArray(paymentsForQuotation)
+            ? paymentsForQuotation.filter(p => (p.payment_status || p.status || '').toLowerCase() === 'completed')
+                .reduce((sum, p) => sum + (Number((p.paid_amount ?? p.installment_amount ?? p.amount) || 0)), 0)
+            : 0));
+    const remainingAmount = typeof quotationSummary?.current_remaining === 'number'
+      ? quotationSummary.current_remaining
+      : (typeof quotationSummary?.remaining === 'number'
+        ? quotationSummary.remaining
+        : Math.max(0, Number(totalAmount) - Number(paidAmount)));
+    
+    // Calculate advance (first payment), partial (subsequent payments), due (remaining)
+    let advanceAmount = 0;
+    let partialAmount = 0;
+    
+    const pmts = Array.isArray(paymentsForQuotation) ? paymentsForQuotation.slice().sort((a,b)=> new Date(a.payment_date) - new Date(b.payment_date)) : [];
+    if (pmts.length > 0) {
+      advanceAmount = Number((pmts[0]?.paid_amount ?? pmts[0]?.installment_amount ?? pmts[0]?.amount) || 0);
+      if (pmts.length > 1) {
+        partialAmount = pmts.slice(1).reduce((sum, p) => sum + (Number((p.paid_amount ?? p.installment_amount ?? p.amount) || 0)), 0);
+      }
+    }
+    
+    const dueAmount = remainingAmount;
+    
+    let paymentStatus = 'pending';
+    if (paidAmount >= totalAmount) {
+      paymentStatus = 'paid';
+    } else if (paidAmount > 0) {
+      paymentStatus = 'partial';
+    }
+
+    return {
+      totalAmount,
+      paidAmount,
+      remainingAmount,
+      advanceAmount,
+      partialAmount,
+      dueAmount,
+      paymentStatus
+    };
+  };
+
+  const dataReady = !loadingQuotations && (
+    quotationSummary !== null || (Array.isArray(paymentsForQuotation) && paymentsForQuotation.length > 0)
+  );
+  const paymentSummary = dataReady ? calculatePaymentSummary() : null;
+
+  // Build chronological payment timeline with running remaining balance
+  const buildPaymentTimeline = () => {
+    const approvedQuotations = customerQuotations.filter(q => q.status === 'approved');
+    if (approvedQuotations.length === 0) return [];
+    const latestApprovedQuotation = approvedQuotations[approvedQuotations.length - 1];
+    const totalAmount = (quotationSummary?.total_amount ?? latestApprovedQuotation.total_amount) || 0;
+    const pmts = Array.isArray(paymentsForQuotation)
+      ? paymentsForQuotation.slice().sort((a, b) => new Date(a.payment_date) - new Date(b.payment_date))
+      : [];
+    let cumulativePaid = 0;
+    return pmts.map((p, idx) => {
+      const amountNum = Number(p.paid_amount ?? p.installment_amount ?? p.amount ?? 0);
+      cumulativePaid += amountNum;
+      const remaining = Math.max(0, Number(totalAmount) - cumulativePaid);
+      // Label logic: If cumulative paid >= total amount, it's "Full Payment", otherwise "Advance Payment"
+      const isFullPayment = cumulativePaid >= totalAmount && totalAmount > 0;
+      const label = isFullPayment ? 'Full Payment' : 'Advance Payment';
+      return { ...p, amount: amountNum, label, remainingAfter: remaining };
+    });
+  };
+  const paymentTimeline = buildPaymentTimeline();
+
+  // Get due date from payments (delivery_date or revised_delivery_date)
+  const getDueDate = () => {
+    const paymentsWithDates = Array.isArray(paymentsForQuotation) 
+      ? paymentsForQuotation.filter(p => p.revised_delivery_date || p.delivery_date) 
+      : [];
+    if (paymentsWithDates.length > 0) {
+      const latestPayment = paymentsWithDates[paymentsWithDates.length - 1];
+      return latestPayment.revised_delivery_date || latestPayment.delivery_date;
+    }
+    return null;
+  };
+
+  const dueDate = getDueDate();
+  const hasPendingAmount = dataReady && paymentSummary?.dueAmount > 0;
+
+  // Timeline events data - complete sequence (include payments inline)
+  const timelineEvents = [
+    {
+      id: 'customer-created',
+      title: 'Customer Created',
+      date: formatIndianDate(item.leadData?.created_at),
+      status: 'completed',
+      icon: '✓',
+      description: `Lead ID: ${item.leadId}`
+    },
+    ...customerQuotations.map((quotation, index) => ({
+      id: `quotation-${quotation.id}`,
+      title: `Quotation ${index + 1}`,
+      date: formatIndianDateTime(quotation.created_at),
+      status: quotation.status === 'approved' ? 'approved' : 'pending',
+      icon: quotation.status === 'approved' ? '✓' : '⏳',
+      description: `ID: ${quotation.quotation_number || `QT-${quotation.id}`} | Purchase Order: ${quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'}`,
+      amount: quotation.total_amount || 0,
+      quotationId: quotation.id,
+      quotationStatus: quotation.status
+    })),
+    ...paymentTimeline.map((payment, index) => ({
+      id: `payment-${index + 1}`,
+      title: `${payment.label} Payment #${index + 1}`,
+      date: formatIndianDateTime(payment.payment_date),
+      status: (payment.status || 'completed').toLowerCase(),
+      icon: '₹',
+      description: `Method: ${payment.payment_method || 'N/A'}`,
+      amount: payment.amount ?? payment.installment_amount,
+      remainingAmount: payment.remainingAfter
+    })),
+    ...(hasPendingAmount ? [{
+      id: 'due-payment',
+      title: 'DUE',
+      date: dueDate ? formatIndianDate(dueDate) : 'N/A',
+      status: 'due',
+      icon: '⚠',
+      description: dueDate ? `Due Date: ${formatIndianDate(dueDate)}` : 'Payment pending',
+      amount: paymentSummary.dueAmount,
+      isDue: true
+    }] : []),
+    ...((paymentSummary && paymentSummary.paymentStatus === 'paid') ? [{
+      id: 'deal-closed',
+      title: 'Deal Closed',
+      date: Array.isArray(item.paymentsData) && item.paymentsData.length > 0 ? formatIndianDateTime(item.paymentsData[item.paymentsData.length - 1]?.payment_date) : 'N/A',
+      status: 'completed',
+      icon: '✓',
+      description: 'Full and final payment received'
+    }] : [])
+  ];
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end">
+      <div className="bg-white w-96 h-full overflow-y-auto shadow-xl">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-gray-900">Customer Timeline</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+            </div>
+
+        {/* Customer Details */}
+        <div className="p-4 border-b border-gray-200">
+          <h3 className="text-md font-semibold text-gray-900 mb-3">Customer Details</h3>
+          <div className="space-y-2">
+            <div>
+              <span className="text-sm font-medium text-gray-600">Customer Name:</span>
+              <span className="ml-2 text-sm text-gray-900">{item.customerName}</span>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-600">Lead ID:</span>
+              <span className="ml-2 text-sm text-gray-900">{item.leadId}</span>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-600">Product Name:</span>
+              <span className="ml-2 text-sm text-gray-900">{item.productName}</span>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-600">Address:</span>
+              <span className="ml-2 text-sm text-gray-900">{item.address}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Timeline */}
+        <div className="p-4">
+          <div className="relative">
+            {/* Timeline line */}
+            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300"></div>
+            
+            {timelineEvents.map((event, index) => (
+              <div key={event.id} className="relative flex items-start mb-6">
+                {/* Timeline icon */}
+                <div className={`relative z-10 flex items-center justify-center w-8 h-8 rounded-full ${
+                  event.isDue
+                    ? 'bg-red-500'
+                    : event.id?.startsWith('payment-')
+                    ? 'bg-yellow-500'
+                    : event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
+                    ? 'bg-green-500'
+                    : 'bg-gray-400'
+                }`}>
+                  <span className="text-white text-sm font-bold">{event.icon}</span>
+                </div>
+                
+                {/* Event card */}
+                <div className={`ml-4 flex-1 p-3 rounded-lg ${
+                  event.isDue
+                    ? 'bg-red-50 border border-red-300'
+                    : event.id?.startsWith('payment-')
+                    ? 'bg-yellow-50'
+                    : event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
+                    ? 'bg-green-50'
+                    : 'bg-gray-50'
+                }`}>
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className={`text-sm font-semibold ${event.isDue ? 'text-red-700' : 'text-gray-900'}`}>{event.title}</h4>
+                        {!event.id?.startsWith('payment-') && event.amount && (
+                          <span className={`text-sm font-bold ${event.isDue ? 'text-red-700' : 'text-gray-900'}`}>₹{Number(event.amount).toLocaleString('en-IN')}</span>
+                        )}
+                      </div>
+                      <p className={`text-xs mt-1 ${event.isDue ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>{event.date}</p>
+                      <p className={`text-xs mt-1 ${event.isDue ? 'text-red-600' : 'text-gray-500'}`}>{event.description}</p>
+                      {/* PI number intentionally hidden per requirement */}
+                      {!event.isDue && event.remainingAmount !== undefined && (
+                        <p className="text-xs text-red-600 mt-1 font-medium">Remaining: ₹{Number(event.remainingAmount).toLocaleString('en-IN')}</p>
+                      )}
+                      
+                      {/* View button for quotations */}
+                      {event.quotationId && (
+                        <div className="mt-2 flex items-center space-x-2">
+                          <button
+                            onClick={() => handleViewQuotation(event.quotationId)}
+                            className="text-blue-600 hover:text-blue-800 text-xs flex items-center space-x-1"
+                          >
+                            <Eye className="h-3 w-3" />
+                            <span>View</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="ml-2">
+                      {event.id?.startsWith('payment-') ? (
+                        <span className="px-2 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800">
+                          ₹{Number(event.amount || 0).toLocaleString('en-IN')}
+                        </span>
+                      ) : (
+                        getStatusBadge(event.status)
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Payment Modal component for adding payments
+const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
+  const [paymentData, setPaymentData] = useState({
+    installment_amount: '',
+    payment_method: 'cash',
+    payment_reference: '',
+    delivery_note: '',
+    payment_remark: '',
+    payment_status: 'advance',
+    payment_receipt_url: '',
+    purchase_order_id: '',
+    delivery_date: '',
+    delivery_status: 'pending'
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [approvedQuotations, setApprovedQuotations] = useState([]);
+  const [selectedQuotationId, setSelectedQuotationId] = useState(item.quotationData?.id || '');
+  const [proformaInvoices, setProformaInvoices] = useState([]);
+  const [selectedPIId, setSelectedPIId] = useState('');
+  const [summary, setSummary] = useState({ total: 0, paid: 0, remaining: 0 });
+  const [credit, setCredit] = useState(0);
+  const [installments, setInstallments] = useState([]);
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        if (!item?.leadData?.id) return;
+        const [qRes, cRes] = await Promise.all([
+          quotationService.getApproved(item.leadData.id),
+          paymentService.getCustomerCredit(item.leadData.id)
+        ]);
+        setApprovedQuotations(qRes?.data || []);
+        setCredit(cRes?.data?.balance || 0);
+        const qid = item.quotationData?.id || (qRes?.data?.[0]?.id || '');
+        if (qid) {
+          setSelectedQuotationId(qid);
+          const [sRes, pRes, piRes] = await Promise.all([
+            quotationService.getSummary(qid),
+            paymentService.getPaymentsByQuotation(qid),
+            proformaInvoiceService.getPIsByQuotation(qid)
+          ]);
+          const s = sRes?.data || { total: 0, paid: 0, remaining: 0 };
+          setSummary(s);
+          setInstallments(pRes?.data || []);
+          const pis = piRes?.data || [];
+          setProformaInvoices(pis);
+          setPaymentData((p) => ({ 
+            ...p, 
+            installment_amount: String(s.remaining || ''),
+            purchase_order_id: item.quotationData?.work_order_id || ''
+          }));
+        }
+      } catch (e) {
+        setError('Failed to initialize payment modal');
+      }
+    };
+    init();
+  }, [item?.leadData?.id, item.quotationData?.id]);
+
+  const handleSelectQuotation = async (qid) => {
+    setSelectedQuotationId(qid);
+    setSelectedPIId('');
+    setProformaInvoices([]);
+    if (!qid) return;
+    try {
+      const [sRes, pRes, piRes] = await Promise.all([
+        quotationService.getSummary(qid),
+        paymentService.getPaymentsByQuotation(qid),
+        proformaInvoiceService.getPIsByQuotation(qid)
+      ]);
+      const s = sRes?.data || { total: 0, paid: 0, remaining: 0 };
+      setSummary(s);
+      setInstallments(pRes?.data || []);
+      const pis = piRes?.data || [];
+      setProformaInvoices(pis);
+      setPaymentData((p) => ({ ...p, installment_amount: String(s.remaining || '') }));
+    } catch (e) {
+      setProformaInvoices([]);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const paymentPayload = {
+        lead_id: item.leadData?.id,
+        quotation_id: selectedQuotationId || null,
+        pi_id: selectedPIId || null,
+        installment_amount: parseFloat(paymentData.installment_amount),
+        payment_method: paymentData.payment_method,
+        payment_reference: paymentData.payment_reference,
+        payment_status: paymentData.payment_status,
+        payment_receipt_url: paymentData.payment_receipt_url || undefined,
+        payment_date: new Date().toISOString(),
+        notes: paymentData.delivery_note,
+        remarks: paymentData.payment_remark,
+        purchase_order_id: paymentData.purchase_order_id,
+        delivery_date: paymentData.delivery_date || null,
+        delivery_status: paymentData.delivery_status
+      };
+
+      const response = await paymentService.createPayment(paymentPayload);
+      if (response.success) {
+        const { summary: responseSummary } = response.data;
+        onClose();
+        onPaymentAdded({ leadId: item.leadData?.id, quotationId: selectedQuotationId || null });
+        alert(`Payment installment #${responseSummary.installment_number} added successfully!\nPaid: ₹${responseSummary.total_paid.toLocaleString('en-IN')}\nRemaining: ₹${responseSummary.remaining.toLocaleString('en-IN')}`);
+      } else {
+        setError('Failed to add payment');
+      }
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to add payment. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!item) return null;
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
+      <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl flex flex-col">
+        <div className="flex justify-between items-center px-6 py-4 border-b">
+          <h3 className="text-lg font-semibold text-gray-900">Add Payment</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-gray-900">{item.customerName}</h4>
+            <p className="text-sm text-gray-600">Lead ID: {item.leadId}</p>
+            <div className="mt-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Quotation (approved only)</label>
+              <select
+                value={selectedQuotationId}
+                onChange={(e) => handleSelectQuotation(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">-- Select Approved Quotation --</option>
+                {approvedQuotations.map((q) => (
+                  <option key={q.id} value={q.id}>{q.quotation_number || q.id} - ₹{Number(q.total_amount || q.totalAmount || 0).toLocaleString()}</option>
+                ))}
+              </select>
+              <div className="text-xs text-gray-600 mt-2 grid grid-cols-2 gap-2">
+                <div>Total: ₹{Number(summary.total ?? 0).toLocaleString()}</div>
+                <div>Paid: ₹{Number(summary.paid ?? 0).toLocaleString()}</div>
+                <div>Remaining: ₹{Number(summary.remaining ?? 0).toLocaleString()}</div>
+                <div>Available credit: ₹{Number(credit ?? 0).toLocaleString()}</div>
+              </div>
+            </div>
+
+            {selectedQuotationId && proformaInvoices.length > 0 && (
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Proforma Invoice (PI) - Optional</label>
+                <select
+                  value={selectedPIId}
+                  onChange={(e) => setSelectedPIId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">-- Select PI (Optional) --</option>
+                  {proformaInvoices.map((pi) => (
+                    <option key={pi.id} value={pi.id}>
+                      {pi.pi_number} - ₹{Number(pi.total_amount || 0).toLocaleString()} 
+                      {pi.status && ` (${pi.status})`}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Select a PI if this payment is against a specific Proforma Invoice</p>
+              </div>
+            )}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Installment Amount *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                required
+                value={paymentData.installment_amount}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, installment_amount: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter installment amount"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Payment Method *
+              </label>
+              <select
+                required
+                value={paymentData.payment_method}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, payment_method: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="cash">Cash</option>
+                <option value="upi">UPI</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="cheque">Cheque</option>
+                <option value="credit">Credit</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
+              <select
+                value={paymentData.payment_status}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, payment_status: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="advance">Advance</option>
+                <option value="full">Full Payment</option>
+                <option value="completed">Completed</option>
+                <option value="due">Due</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Payment Reference
+              </label>
+              <input
+                type="text"
+                value={paymentData.payment_reference}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, payment_reference: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="UTR/Ref No, UPI Txn ID, Cheque No, Bank Ref No"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Upload Payment Receipt (URL)</label>
+              <input
+                type="url"
+                value={paymentData.payment_receipt_url}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, payment_receipt_url: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="https://..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Purchase Order ID
+              </label>
+              <input
+                type="text"
+                value={paymentData.purchase_order_id}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, purchase_order_id: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Purchase order reference"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Delivery Date
+                </label>
+                <input
+                  type="date"
+                  value={paymentData.delivery_date}
+                  onChange={(e) => setPaymentData(prev => ({ ...prev, delivery_date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Delivery Status
+                </label>
+                <select
+                  value={paymentData.delivery_status}
+                  onChange={(e) => setPaymentData(prev => ({ ...prev, delivery_status: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="in_transit">In Transit</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Payment Remark</label>
+              <textarea
+                value={paymentData.payment_remark}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, payment_remark: e.target.value }))}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Payment remarks"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Note</label>
+              <textarea
+                value={paymentData.delivery_note}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, delivery_note: e.target.value }))}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Delivery note (optional)"
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                {loading ? 'Processing...' : 'Add Payment Installment'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Tooltip component
+const Tooltip = ({ children, text }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  return (
+    <div className="relative inline-block">
+      <div
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+      >
+        {children}
+      </div>
+      {showTooltip && (
+        <div className="absolute z-10 px-2 py-1 text-xs text-white bg-gray-900 rounded shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-1">
+          {text}
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default function AdvancePaymentPage({ isDarkMode = false }) {
+  const [paymentTracking, setPaymentTracking] = useState([]);
+  const [filteredPaymentTracking, setFilteredPaymentTracking] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPaymentItem, setSelectedPaymentItem] = useState(null);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredPaymentTracking.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedPaymentTracking = filteredPaymentTracking.slice(startIndex, endIndex);
+
+  // Fetch payment tracking data
+  useEffect(() => {
+    const fetchPaymentTracking = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch assigned leads for the salesperson
+        const leadsResponse = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
+        const leads = leadsResponse?.data || [];
+        
+        // Create a map of customer ID to lead data for quick lookup
+        const leadsMap = {};
+        leads.forEach(lead => {
+          leadsMap[lead.id] = lead;
+        });
+        
+        // Fetch all quotations with payments in a single optimized API call
+        const bulkResponse = await quotationService.getBulkWithPayments();
+        const { quotations = [], payments = [] } = bulkResponse?.data || {};
+        
+        // Create a map of quotation ID to payments for quick lookup
+        const paymentsMap = {};
+        payments.forEach(payment => {
+          if (!paymentsMap[payment.quotation_id]) {
+            paymentsMap[payment.quotation_id] = [];
+          }
+          paymentsMap[payment.quotation_id].push(payment);
+        });
+        
+        // Build payment tracking data from the bulk response
+        const paymentTrackingData = quotations.map(quotation => {
+          const lead = leadsMap[quotation.customer_id] || {};
+          const quotationPayments = paymentsMap[quotation.id] || [];
+          
+          const totalAmount = Number(quotation.total_amount || 0);
+          // Calculate paid_amount from actual payment records if API doesn't provide it correctly
+          let paidAmount = Number(quotation.paid_amount || 0);
+          if (paidAmount === 0 && quotationPayments.length > 0) {
+            paidAmount = quotationPayments
+              .filter(p => (p.payment_status || '').toLowerCase() === 'completed')
+              .reduce((sum, p) => sum + (Number(p.paid_amount ?? p.installment_amount ?? 0)), 0);
+          }
+          const remainingAmount = Number(quotation.remaining_amount || totalAmount - paidAmount);
+          
+          // Get due date and purchase order from payments (delivery_date or revised_delivery_date)
+          const paymentsWithDates = quotationPayments.filter(p => p.revised_delivery_date || p.delivery_date);
+          let dueDate = null;
+          let deliveryStatus = 'pending';
+          let purchaseOrderId = null;
+          
+          if (paymentsWithDates.length > 0) {
+            const latestPayment = paymentsWithDates[paymentsWithDates.length - 1];
+            dueDate = latestPayment.revised_delivery_date || latestPayment.delivery_date;
+            deliveryStatus = latestPayment.delivery_status || 'pending';
+          }
+          
+          if (quotationPayments.length > 0) {
+            const latestPayment = quotationPayments[quotationPayments.length - 1];
+            purchaseOrderId = latestPayment.purchase_order_id || quotation.work_order_id;
+          }
+          
+          // Get advance date from first payment
+          const advanceDate = quotationPayments.length > 0 
+            ? quotationPayments[0]?.payment_date || quotationPayments[0]?.created_at?.split('T')[0] 
+            : null;
+          
+          let paymentStatus = 'pending';
+          if (paidAmount >= totalAmount && totalAmount > 0) {
+            paymentStatus = 'paid';
+          } else if (paidAmount > 0) {
+            paymentStatus = 'partial';
+          }
+          
+          return {
+            id: `${quotation.customer_id}-${quotation.id}`,
+            leadId: `LD-${quotation.customer_id}`,
+            customerName: quotation.customer_name || lead.name || 'N/A',
+            productName: lead.product_type || quotation.items?.[0]?.description || 'N/A',
+            address: quotation.customer_address || lead.address || 'N/A',
+            quotationId: quotation.quotation_number || `QT-${quotation.id}`,
+            paymentStatus: paymentStatus,
+            workOrderId: purchaseOrderId ? `PO-${purchaseOrderId}` : (quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'),
+            advanceAmount: paidAmount,
+            advanceDate: advanceDate,
+            dueDate: dueDate,
+            deliveryStatus: deliveryStatus,
+            remainingAmount: remainingAmount,
+            totalAmount: totalAmount,
+            paidAmount: paidAmount,
+            leadData: lead,
+            quotationData: {
+              ...quotation,
+              paid_amount: paidAmount,
+              remaining_amount: remainingAmount
+            },
+            paymentsData: quotationPayments
+          };
+        });
+        
+        // Filter only items with advance payments (paid_amount > 0)
+        const advancePayments = paymentTrackingData.filter(item => item.paidAmount > 0);
+        
+        setPaymentTracking(advancePayments);
+        setFilteredPaymentTracking(advancePayments);
+      } catch (error) {
+        console.error('Error fetching payment tracking data:', error);
+        setError('Failed to load payment tracking data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPaymentTracking();
+  }, []);
+
+  // Handle search and filtering
+  const handleSearch = (searchQuery) => {
+    if (!searchQuery.trim()) {
+      setFilteredPaymentTracking(paymentTracking);
+      return;
+    }
+
+    const filtered = paymentTracking.filter(item => 
+      item.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.leadId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.quotationId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.productName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.leadData?.phone?.includes(searchQuery) ||
+      item.leadData?.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    setFilteredPaymentTracking(filtered);
+    setCurrentPage(1);
+  };
+
+  const handleFilterChange = (filters) => {
+    let filtered = [...paymentTracking];
+
+    // Apply quotation ID filter
+    if (filters.quotationId) {
+      filtered = filtered.filter(item => 
+        item.quotationId?.toLowerCase().includes(filters.quotationId.toLowerCase())
+      );
+    }
+
+    // Apply payment type filter
+    if (filters.paymentType) {
+      filtered = filtered.filter(item => {
+        switch (filters.paymentType) {
+          case 'advance':
+            return item.paymentStatus === 'advance';
+          case 'partial':
+            return item.remainingAmount > 0;
+          default:
+            return true;
+        }
+      });
+    }
+
+    setFilteredPaymentTracking(filtered);
+    setCurrentPage(1);
+  };
+
+  const handleAddProduct = (paymentData, editingItem) => {
+    if (editingItem) {
+      setPaymentTracking(prev => 
+        prev.map(item => item.id === editingItem.id ? { ...item, ...paymentData } : item)
+      );
+      setFilteredPaymentTracking(prev => 
+        prev.map(item => item.id === editingItem.id ? { ...item, ...paymentData } : item)
+      );
+    } else {
+      const newItem = { ...paymentData, id: Date.now() };
+      setPaymentTracking(prev => [...prev, newItem]);
+      setFilteredPaymentTracking(prev => [...prev, newItem]);
+    }
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
+  const handleViewPayment = (item) => {
+    setSelectedProduct(item);
+  };
+
+  const handleAddPayment = (item) => {
+    if (!item) {
+      alert('Please select a payment record from the table to add payment');
+      return;
+    }
+    setSelectedPaymentItem(item);
+    setShowPaymentModal(true);
+  };
+
+  const getPaymentStatusBadge = (status, item) => {
+    const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium";
+    
+    // Always show "Advance" for items in this page since they have paid amount
+    return (
+      <span className={`${baseClasses} ${
+        item.remainingAmount > 0 
+          ? 'bg-purple-100 text-purple-800' 
+          : 'bg-green-100 text-green-800'
+      }`}>
+        {item.remainingAmount > 0 ? 'Advance' : 'Paid'}
+      </span>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
+      {/* Toolbar */}
+      <Toolbar
+        onSearch={handleSearch}
+        onAddProduct={handleAddProduct}
+        onFilterChange={handleFilterChange}
+        onRefresh={() => window.location.reload()}
+        products={paymentTracking}
+        loading={loading}
+      />
+
+      {/* Table */}
+      {filteredPaymentTracking.length === 0 ? (
+        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+          <div className="px-6 py-4 text-center">
+            <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No advance payments found</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              There are currently no advance payments for tracking.
+            </p>
+          </div>
+        </div>
+      ) : (
+      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Lead ID
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer Name
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Product Name
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Address
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Quotation ID
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Payment Status
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Advance Amount
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Remaining Amount
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Delivery Date
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Action
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+                {paginatedPaymentTracking.length > 0 ? (
+                  paginatedPaymentTracking.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {item.leadId}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="font-medium text-sm text-gray-900">{item.customerName}</div>
+                        <div className="text-xs text-gray-500">{item.leadData?.phone || 'N/A'}</div>
+                        {item.leadData?.whatsapp && (
+                          <div className="text-xs mt-1 text-green-600">
+                            <a href={`https://wa.me/${item.leadData.whatsapp.replace(/[^\d]/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1">
+                              <MessageCircle className="h-3 w-3" /> WhatsApp
+                            </a>
+                          </div>
+                        )}
+                        {item.leadData?.email && item.leadData.email !== "N/A" && (
+                          <div className="text-xs mt-1 text-cyan-600">
+                            <button 
+                              onClick={() => window.open(`mailto:${item.leadData.email}?subject=Advance Payment Follow up from ANOCAB&body=Dear ${item.customerName},%0D%0A%0D%0AThank you for your advance payment.%0D%0A%0D%0ABest regards,%0D%0AANOCAB Team`, '_blank')}
+                              className="inline-flex items-center gap-1 transition-colors hover:text-cyan-700"
+                              title="Send Email"
+                            >
+                              <Mail className="h-3 w-3" /> {item.leadData.email}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.productName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.address}
+                    </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.quotationId}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {getPaymentStatusBadge(item.paymentStatus, item)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">
+                        ₹{item.advanceAmount?.toFixed(2) || '0'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-semibold">
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium">
+                          ₹{item.remainingAmount?.toFixed(2) || '0'}
+                        </div>
+                        {item.remainingAmount > 0 && (
+                          <div className="text-xs text-gray-600">
+                            {((item.remainingAmount / item.totalAmount) * 100).toFixed(1)}% remaining
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium">
+                          {item.dueDate ? 
+                            new Date(item.dueDate).toLocaleDateString('en-GB') : 
+                            'N/A'
+                          }
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {item.deliveryStatus || 'Pending'}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-2">
+                        <Tooltip text="View Details">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                                handleViewPayment(item);
+                            }}
+                            className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        </Tooltip>
+                          <Tooltip text="Add Payment">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddPayment(item);
+                              }}
+                              className="text-purple-600 hover:text-purple-900 p-1 rounded-full hover:bg-purple-50"
+                            >
+                              <CreditCard className="h-4 w-4" />
+                          </button>
+                        </Tooltip>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                    <td colSpan="9" className="px-6 py-4 text-center text-sm text-gray-500">
+                      No advance payment records found matching your criteria
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      )}
+
+      {/* Pagination */}
+      <ProductPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        itemsPerPage={itemsPerPage}
+        totalItems={filteredPaymentTracking.length}
+        onPageChange={handlePageChange}
+        onItemsPerPageChange={handleItemsPerPageChange}
+      />
+      
+      {/* Payment Tracking Timeline Sidebar */}
+      {selectedProduct && (
+        <PaymentTimelineSidebar 
+          item={selectedProduct} 
+          onClose={() => setSelectedProduct(null)} 
+        />
+      )}
+      
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <PaymentModal 
+          item={selectedPaymentItem} 
+          onClose={() => {
+            setShowPaymentModal(false);
+            setSelectedPaymentItem(null);
+          }}
+          onPaymentAdded={async () => {
+            setShowPaymentModal(false);
+            setSelectedPaymentItem(null);
+            await fetchPaymentTracking();
+          }}
+        />
+      )}
+      
+    </div>
+  );
+}

@@ -109,16 +109,16 @@ const MarketingFollowUpBase = ({ status, customData = [] }) => {
   const statusColors = {
     'connected': 'bg-green-100 text-green-800',
     'not-connected': 'bg-red-100 text-red-800',
-    'pending': 'bg-yellow-100 text-yellow-800',
-    'next-meeting': 'bg-blue-100 text-blue-800',
+    'todays-meeting': 'bg-blue-100 text-blue-800',
+    'converted': 'bg-purple-100 text-purple-800',
     'closed': 'bg-gray-100 text-gray-800'
   };
 
   const statusLabels = {
     'connected': 'Connected',
     'not-connected': 'Not Connected',
-    'pending': 'Pending',
-    'next-meeting': 'Next Meeting',
+    'todays-meeting': 'Todays Meeting',
+    'converted': 'Converted',
     'closed': 'Closed'
   };
 

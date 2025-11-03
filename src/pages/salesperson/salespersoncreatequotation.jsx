@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { X, FileText, Calendar, User, Package, DollarSign, Plus, Minus, Eye, Edit, Building2 } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { X, FileText, Calendar, User, Package, DollarSign, Plus, Minus, Eye, Edit, Building2, FileCheck } from "lucide-react"
+import QuotationPreview from "../../components/QuotationPreview"
+import { CorporateStandardInvoice } from './salespersonpi'
 
 function Card({ className, children }) {
   return <div className={`rounded-lg border bg-white shadow-sm ${className || ''}`}>{children}</div>
@@ -45,337 +47,7 @@ function Button({ children, onClick, type = "button", variant = "default", size 
   )
 }
 
-// Preview Component
-function QuotationPreview({ data, onEdit, companyBranches, user }) {
-  // Debug: Log user data
-  console.log('QuotationPreview received user:', user);
-  
-  const selectedBranch = companyBranches[data?.selectedBranch] || companyBranches.ANODE;
-  
-  return (
-    <div className="max-w-4xl mx-auto bg-white font-sans text-sm">        
-      {/* Quotation Content */}
-      <div className="p-6">
-        {/* Header */}
-        <div className="border-2 border-black mb-4">
-          <div className="p-2 flex justify-between items-center">
-            <div>
-              <h1 className="text-xl font-bold">{selectedBranch.name}</h1>
-              <p className="text-xs">{selectedBranch.description}</p>
-            </div>
-            <div className="text-right">
-              <img
-                src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
-                alt="Company Logo"
-                className="h-12 w-auto bg-white p-1 rounded"
-              />
-            </div>
-          </div>
-    
-          <div className="p-3 bg-gray-50">
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div>
-                <p>
-                  <strong>{selectedBranch.address}</strong>
-                </p>
-              </div>
-              <div className="text-right">
-                <p>Tel: {selectedBranch.tel}</p>
-                <p>Web: {selectedBranch.web}</p>
-                <p>Email: {selectedBranch.email}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-    
-        {/* Quotation Details */}
-        <div className="border border-black mb-4">
-          <div className="bg-gray-100 p-2 text-center font-bold">
-            <h2>Quotation Details</h2>
-          </div>
-          <div className="grid grid-cols-4 gap-2 p-2 text-xs border-b">
-            <div>
-              <strong>Quotation Date</strong>
-            </div>
-            <div>
-              <strong>Quotation Number</strong>
-            </div>
-            <div>
-              <strong>Valid Upto</strong>
-            </div>
-            <div>
-              <strong>Voucher Number</strong>
-            </div>
-          </div>
-          <div className="grid grid-cols-4 gap-2 p-2 text-xs">
-            <div>{data?.quotationDate || new Date().toLocaleDateString()}</div>
-            <div>{data?.quotationNumber || `ANO/${new Date().getFullYear().toString().slice(-2)}-${(new Date().getFullYear() + 1).toString().slice(-2)}/${Math.floor(1000 + Math.random() * 9000)}`}</div>
-            <div>{data?.validUpto || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
-            <div>{`VOUCH-${Math.floor(1000 + Math.random() * 9000)}`}</div>
-          </div>
-        </div>
-    
-        {/* Customer Information */}
-        <div className="border border-black mb-4">
-          <div className="grid grid-cols-2 gap-4 p-3 text-xs">
-            <div>
-              <h3 className="font-bold mb-2">BILL TO:</h3>
-              <p>
-                <strong>{data?.billTo?.business || 'Das Industrial Controls'}</strong>
-              </p>
-              <p>{data?.billTo?.address || 'Panvel, Maharashtra, India'}</p>
-              <p>
-                <strong>PHONE:</strong> {data?.billTo?.phone || '7039542259'}
-              </p>
-              <p>
-                <strong>GSTIN:</strong> {data?.billTo?.gstNo || '27DVTPS2973B1Z0'}
-              </p>
-              <p>
-                <strong>State:</strong> {data?.billTo?.state || 'Maharashtra'}
-              </p>
-            </div>
-            <div>
-              <p>
-                <strong>L.R. No:</strong> -
-              </p>
-              <p>
-                <strong>Transport:</strong> STAR TRANSPORTS
-              </p>
-              <p>
-                <strong>Transport ID:</strong> 562345
-              </p>
-              <p>
-                <strong>Vehicle Number:</strong> GJ01HJ2520
-              </p>
-            </div>
-          </div>
-        </div>
-    
-        {/* Product Details Table */}
-        <div className="border border-black mb-4">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-300 p-1 text-center w-10">Sr.</th>
-                <th className="border border-gray-300 p-2 text-left w-2/3">Name of Product / Service</th>
-                <th className="border border-gray-300 p-1 text-center w-16">HSN / SAC</th>
-                <th className="border border-gray-300 p-1 text-center w-12">Qty</th>
-                <th className="border border-gray-300 p-1 text-center w-12">Unit</th>
-                <th className="border border-gray-300 p-1 text-right w-20">Taxable Value</th>
-                <th className="border border-gray-300 p-0.5 text-center w-8 text-[10px] whitespace-nowrap">GST%</th>
-                <th className="border border-gray-300 p-1 text-right w-24">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data?.items?.length > 0 ? (
-                data.items.map((item, index) => (
-                  <tr key={index}>
-                    <td className="border border-gray-300 p-1 text-center">{index + 1}</td>
-                    <td className="border border-gray-300 p-2">{item.productName}</td>
-                    <td className="border border-gray-300 p-1 text-center">85446090</td>
-                    <td className="border border-gray-300 p-1 text-center">{item.quantity}</td>
-                    <td className="border border-gray-300 p-1 text-center">{item.unit}</td>
-                    <td className="border border-gray-300 p-1 text-right">{parseFloat(item.amount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                    <td className="border border-gray-300 p-0 text-center text-xs">18%</td>
-                    <td className="border border-gray-300 p-1 text-right">{parseFloat(item.amount * 1.18).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                  </tr>
-                ))
-              ) : (
-                <>
-                  <tr>
-                    <td className="border border-gray-300 p-1 text-center">1</td>
-                    <td className="border border-gray-300 p-2">ACSR Dog Conductor</td>
-                    <td className="border border-gray-300 p-1 text-center">76042910</td>
-                    <td className="border border-gray-300 p-1 text-center">120,000</td>
-                    <td className="border border-gray-300 p-1 text-center">MTR</td>
-                    <td className="border border-gray-300 p-1 text-right">9,840,000.00</td>
-                    <td className="border border-gray-300 p-0 text-center text-xs">18%</td>
-                    <td className="border border-gray-300 p-1 text-right">11,612,400.00</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-gray-300 p-1 text-center">2</td>
-                    <td className="border border-gray-300 p-2">AAAC Panther 232 SQMM</td>
-                    <td className="border border-gray-300 p-1 text-center">85446090</td>
-                    <td className="border border-gray-300 p-1 text-center">120,000</td>
-                    <td className="border border-gray-300 p-1 text-center">MTR</td>
-                    <td className="border border-gray-300 p-1 text-right">24,600,000.00</td>
-                    <td className="border border-gray-300 p-0 text-center text-xs">18%</td>
-                    <td className="border border-gray-300 p-1 text-right">29,028,000.00</td>
-                  </tr>
-                </>
-              )}
-              {/* Empty rows for spacing */}
-              {[...Array(8)].map((_, i) => (
-                <tr key={i} className="h-8">
-                  <td className="border border-gray-300 p-2"></td>
-                  <td className="border border-gray-300 p-2"></td>
-                  <td className="border border-gray-300 p-2"></td>
-                  <td className="border border-gray-300 p-2"></td>
-                  <td className="border border-gray-300 p-2"></td>
-                  <td className="border border-gray-300 p-2"></td>
-                  <td className="border border-gray-300 p-2"></td>
-                  <td className="border border-gray-300 p-2"></td>
-                </tr>
-              ))}
-              <tr className="bg-gray-100 font-bold">
-                <td className="border border-gray-300 p-2" colSpan="5">
-                  Total
-                </td>
-                <td className="border border-gray-300 p-2">{data?.subtotal?.toFixed(2) || '34,440,000'}</td>
-                <td className="border border-gray-300 p-2">{data?.taxAmount?.toFixed(2) || '6,200,400'}</td>
-                <td className="border border-gray-300 p-2">{data?.total?.toFixed(2) || '40,640,400'}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-    
-        {/* Amount Summary */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="border border-black p-3">
-            <h3 className="font-bold text-xs mb-2">Bank Details</h3>
-            <div className="text-xs space-y-1">
-              <p>
-                <strong>Bank Name:</strong> ICICI Bank
-              </p>
-              <p>
-                <strong>Branch Name:</strong> WRIGHT TOWN JABALPUR
-              </p>
-              <p>
-                <strong>Bank Account Number:</strong> 657605601783
-              </p>
-              <p>
-                <strong>Bank Branch IFSC:</strong> ICIC0006576
-              </p>
-            </div>
-          </div>
-          <div className="border border-black p-3">
-            <div className="text-xs space-y-1">
-              <div className="flex justify-between">
-                <span>Taxable Amount</span>
-                <span>{data?.subtotal?.toFixed(2) || '34,440,000'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Add: Total GST (18%)</span>
-                <span>{data?.taxAmount?.toFixed(2) || '6,200,400'}</span>
-              </div>
-              <div className="flex justify-between font-bold border-t pt-1">
-                <span>Total Amount After Tax</span>
-                <span>₹ {data?.total?.toFixed(2) || '40,640,400'}</span>
-              </div>
-              <div className="text-center mt-2">
-                <span className="text-xs">(Rupees Four Crore Six Lakh Forty Thousand Four Hundred Only)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-    
-        {/* Terms and Conditions */}
-        <div className="border border-black mb-4">
-          <div className="bg-gray-100 p-2 font-bold text-xs">
-            <h3>Terms and Conditions</h3>
-          </div>
-          <div className="p-3 text-xs space-y-2">
-            <div>
-              <h4 className="font-bold">PRICING & VALIDITY</h4>
-              <p>
-                • Prices are valid for 3 days only from the date of the final quotation/PI unless otherwise specified
-                terms.
-              </p>
-              <p>• The order will be considered confirmed only upon receipt of the advance payment.</p>
-            </div>
-            <div>
-              <h4 className="font-bold">PAYMENT TERMS</h4>
-              <p>• 30% advance payment upon order confirmation</p>
-              <p>• Remaining Balance at time of final dispatch / against LC / Bank Guarantee (if applicable).</p>
-              <p>
-                • Liquidated Damages @ 0.5% to 1% per WEEK will be charged on delayed payments beyond the agreed terms.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-bold">DELIVERY & DISPATCH</h4>
-              <p>• Standard delivery period as per the telecommunication with customer.</p>
-              <p>
-                • Any delays due to unforeseen circumstances (force majeure, strikes, and transportation issues) will be
-                communicated.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-bold">QUALITY & WARRANTY</h4>
-              <p>
-                • Cables will be supplied as per IS and other applicable BIS standards/or as per the agreed specifications
-                mentioned/special demand by the customer.
-              </p>
-              <p>• Any manufacturing defects should be reported immediately, within 3 working days of receipt.</p>
-              <p>• Warranty: 12 months from the date of dispatch for manufacturing defects only in ISI mark products.</p>
-            </div>
-          </div>
-        </div>
-    
-        {/* Footer */}
-        <div className="text-right text-xs">
-          <p className="mb-4">
-            For <strong>{selectedBranch.name}</strong>
-          </p>
-          <p className="mb-8">This is computer generated invoice no signature required.</p>
-          <p className="font-bold">Authorized Signatory</p>
-          {user && (
-            <p className="mt-2 text-sm font-semibold text-gray-800">
-              {user.username || user.email || 'User'}
-            </p>
-          )}
-        </div>
-      </div>
-      
-      {/* Action Buttons */}
-      <div className="flex justify-end mt-4 space-x-3">
-        <button
-          onClick={async () => {
-            try {
-              // Import html2pdf dynamically
-              const html2pdf = (await import('html2pdf.js')).default;
-              
-              // Create a temporary div with the quotation content
-              const tempDiv = document.createElement('div');
-              tempDiv.style.position = 'absolute';
-              tempDiv.style.left = '-9999px';
-              tempDiv.innerHTML = document.querySelector('.max-w-4xl').innerHTML;
-              document.body.appendChild(tempDiv);
-              
-              // Generate PDF
-              const opt = {
-                margin: 0.5,
-                filename: `quotation-${data?.quotationNumber || 'quotation'}-${new Date().toISOString().split('T')[0]}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { 
-                  scale: 2,
-                  useCORS: true,
-                  logging: false,
-                  letterRendering: true
-                },
-                jsPDF: { 
-                  unit: 'in', 
-                  format: 'letter', 
-                  orientation: 'portrait' 
-                }
-              };
-              
-              await html2pdf().set(opt).from(tempDiv).save();
-              
-              // Clean up
-              document.body.removeChild(tempDiv);
-            } catch (error) {
-              console.error('Error generating PDF:', error);
-              alert('Failed to generate PDF. Please try again.');
-            }
-          }}
-          className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700"
-        >
-          Print / Save as PDF
-        </button>
-      </div>
-    </div>
-  );
-}
+// removed local QuotationPreview; using shared component
 
 export default function CreateQuotationForm({ customer, user, onClose, onSave }) {
   // Debug: Log user data
@@ -438,19 +110,35 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
       }
     ],
     subtotal: 0,
+    discountRate: 0,
+    discountAmount: 0,
     taxRate: 18,
     taxAmount: 0,
     total: 0,
     terms: "1. Payment terms: 30 days from invoice date\n2. Delivery: 15-20 working days\n3. Prices are subject to change without notice\n4. All disputes subject to Jabalpur jurisdiction",
-    // Editable bill-to information
+    // Editable bill-to information (auto-filled from lead)
     billTo: {
-      business: customer?.business || "",
-      address: customer?.address || "",
+      business: (customer?.business && customer.business !== 'N/A') ? customer.business : (customer?.name || ""),
+      address: (customer?.address && customer.address !== 'N/A') ? customer.address : "",
       phone: customer?.phone || "",
-      gstNo: customer?.gstNo || "",
+      gstNo: (customer?.gstNo && customer.gstNo !== 'N/A') ? customer.gstNo : "",
       state: customer?.state || ""
     }
   })
+
+  // If the customer prop changes while modal is open, keep bill-to in sync
+  useEffect(() => {
+    setQuotationData(prev => ({
+      ...prev,
+      billTo: {
+        business: (customer?.business && customer.business !== 'N/A') ? customer.business : (customer?.name || prev.billTo.business),
+        address: (customer?.address && customer.address !== 'N/A') ? customer.address : prev.billTo.address,
+        phone: customer?.phone || prev.billTo.phone,
+        gstNo: (customer?.gstNo && customer.gstNo !== 'N/A') ? customer.gstNo : prev.billTo.gstNo,
+        state: customer?.state || prev.billTo.state
+      }
+    }))
+  }, [customer])
 
   const handleInputChange = (field, value) => {
     const newData = {
@@ -461,6 +149,21 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
     // If quotationDate changes, update validUpto to be 7 days later
     if (field === 'quotationDate') {
       newData.validUpto = getSevenDaysLater(value);
+    }
+
+    // Recalculate totals when discount or tax changes
+    if (field === 'discountRate' || field === 'taxRate') {
+      const subtotal = newData.items.reduce((sum, item) => sum + item.amount, 0)
+      const discountRateNum = parseFloat(newData.discountRate) || 0
+      const taxRateNum = parseFloat(newData.taxRate) || 0
+      const discountAmount = (subtotal * discountRateNum) / 100
+      const taxable = Math.max(0, subtotal - discountAmount)
+      const taxAmount = (taxable * taxRateNum) / 100
+      const total = taxable + taxAmount
+      newData.subtotal = subtotal
+      newData.discountAmount = discountAmount
+      newData.taxAmount = taxAmount
+      newData.total = total
     }
 
     setQuotationData(newData);
@@ -479,15 +182,18 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
       updatedItems[index].amount = updatedItems[index].quantity * updatedItems[index].buyerRate;
     }
     
-    // Calculate totals
+    // Calculate totals with discount before tax
     const subtotal = updatedItems.reduce((sum, item) => sum + item.amount, 0)
-    const taxAmount = (subtotal * quotationData.taxRate) / 100
-    const total = subtotal + taxAmount
+    const discountAmount = (subtotal * (quotationData.discountRate || 0)) / 100
+    const taxable = Math.max(0, subtotal - discountAmount)
+    const taxAmount = (taxable * quotationData.taxRate) / 100
+    const total = taxable + taxAmount
     
     setQuotationData(prev => ({
       ...prev,
       items: updatedItems,
       subtotal,
+      discountAmount,
       taxAmount,
       total
     }))
@@ -512,13 +218,16 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
     if (quotationData.items.length > 1) {
       const updatedItems = quotationData.items.filter((_, i) => i !== index)
       const subtotal = updatedItems.reduce((sum, item) => sum + item.amount, 0)
-      const taxAmount = (subtotal * quotationData.taxRate) / 100
-      const total = subtotal + taxAmount
+      const discountAmount = (subtotal * (quotationData.discountRate || 0)) / 100
+      const taxable = Math.max(0, subtotal - discountAmount)
+      const taxAmount = (taxable * quotationData.taxRate) / 100
+      const total = taxable + taxAmount
       
       setQuotationData(prev => ({
         ...prev,
         items: updatedItems,
         subtotal,
+        discountAmount,
         taxAmount,
         total
       }))
@@ -537,6 +246,8 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
 
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState({});
+  const [showPIPreview, setShowPIPreview] = useState(false);
+  const [piPreviewData, setPiPreviewData] = useState({});
 
   // Update preview data when form data changes
   useEffect(() => {
@@ -545,6 +256,76 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
 
   const togglePreview = () => {
     setShowPreview(!showPreview);
+  };
+
+  // Check if all required fields are filled
+  const isFormValid = () => {
+    const { billTo, items } = quotationData;
+    
+    // Check bill-to information
+    if (!billTo.business || !billTo.phone || !billTo.address || !billTo.state) {
+      return false;
+    }
+    
+    // Check items
+    if (items.length === 0) return false;
+    
+    return items.every(item => 
+      item.productName && 
+      item.quantity > 0 && 
+      item.buyerRate > 0
+    );
+  };
+
+  const handlePIClick = () => {
+    if (isFormValid()) {
+      // Convert quotation data to PI format
+      const piData = {
+        invoiceNumber: `PI-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
+        invoiceDate: quotationData.quotationDate,
+        dueDate: quotationData.validUpto,
+        poNumber: `PO-${Math.floor(1000 + Math.random() * 9000)}`,
+        billTo: {
+          business: quotationData.billTo.business,
+          address: quotationData.billTo.address,
+          phone: quotationData.billTo.phone,
+          gstNo: quotationData.billTo.gstNo || '',
+          state: quotationData.billTo.state
+        },
+        shipTo: {
+          business: quotationData.billTo.business,
+          address: quotationData.billTo.address,
+          phone: quotationData.billTo.phone,
+          gstNo: quotationData.billTo.gstNo || ''
+        },
+        items: quotationData.items.map(item => ({
+          productName: item.productName,
+          description: item.productName,
+          quantity: item.quantity,
+          unit: item.unit,
+          rate: item.buyerRate,
+          amount: item.amount,
+          hsn: '85446090' // Default HSN code
+        })),
+        subtotal: quotationData.subtotal,
+        discountRate: quotationData.discountRate,
+        discountAmount: quotationData.discountAmount,
+        taxableAmount: quotationData.subtotal - quotationData.discountAmount,
+        taxRate: 18,
+        taxAmount: quotationData.taxAmount,
+        total: quotationData.total,
+        deliveryTerms: 'FOR upto Destination',
+        paymentTerms: 'ADVANCE',
+        otherReferences: 'DIRECT SALE',
+        dispatchedThrough: 'BY TRANSPORT',
+        destination: 'Destination Transport'
+      };
+      
+      setPiPreviewData(piData);
+      setShowPIPreview(true);
+    } else {
+      alert('Please fill all required fields before generating PI');
+    }
   };
 
   if (showPreview) {
@@ -574,6 +355,73 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
             >
               Save Quotation
             </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (showPIPreview) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="w-full max-w-6xl max-h-[90vh] overflow-y-auto relative">
+          {/* Close button */}
+          <button
+            onClick={() => setShowPIPreview(false)}
+            className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+            title="Close PI Preview"
+          >
+            <X className="h-5 w-5 text-gray-600" />
+          </button>
+          
+          <div className="bg-white rounded-lg shadow-xl">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Proforma Invoice Preview</h2>
+              <CorporateStandardInvoice 
+                selectedBranch={quotationData.selectedBranch}
+                companyBranches={companyBranches}
+                quotations={[piPreviewData]}
+              />
+            </div>
+            <div className="flex justify-end gap-3 p-6 border-t">
+              <Button 
+                type="button" 
+                onClick={() => setShowPIPreview(false)}
+                className="bg-gray-600 hover:bg-gray-700"
+              >
+                Close
+              </Button>
+              <Button 
+                type="button" 
+                onClick={() => {
+                  try {
+                    const event = new CustomEvent('pi-saved', {
+                      detail: {
+                        customerId: customer?.id,
+                        quotationNumber: previewData?.quotationNumber,
+                        selectedBranch: quotationData.selectedBranch,
+                        piData: piPreviewData
+                      }
+                    })
+                    window.dispatchEvent(event)
+                    setShowPIPreview(false)
+                    alert('PI saved successfully!')
+                  } catch (e) {
+                    console.error('Failed to save PI', e)
+                  }
+                }}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                Save PI
+              </Button>
+              <Button 
+                type="button" 
+                onClick={() => window.print()}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Print PI
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -714,10 +562,9 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">GST Number *</label>
+                  <label className="text-sm font-medium text-gray-700">GST Number</label>
                   <input
                     type="text"
-                    required
                     value={quotationData.billTo.gstNo}
                     onChange={(e) => setQuotationData(prev => ({
                       ...prev,
@@ -859,10 +706,25 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
                     <span>Subtotal:</span>
                     <span>₹{quotationData.subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span>GST ({quotationData.taxRate}%):</span>
-                    <span>₹{quotationData.taxAmount.toFixed(2)}</span>
-                  </div>
+              <div className="flex justify-between text-sm items-center gap-2">
+                <span>Discount (%):</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={quotationData.discountRate}
+                    onChange={(e) => handleInputChange('discountRate', e.target.value)}
+                    className="w-20 px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-right"
+                  />
+                  <span className="text-gray-600">₹{quotationData.discountAmount.toFixed(2)}</span>
+                </div>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>GST (18%):</span>
+                <span>₹{quotationData.taxAmount.toFixed(2)}</span>
+              </div>
                   <div className="flex justify-between text-lg font-semibold border-t pt-2">
                     <span>Total:</span>
                     <span>₹{quotationData.total.toFixed(2)}</span>
@@ -894,6 +756,19 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
                   onClick={onClose}
                 >
                   Cancel
+                </Button>
+                <Button 
+                  type="button" 
+                  className={`flex items-center gap-2 ${
+                    isFormValid() 
+                      ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                  onClick={handlePIClick}
+                  disabled={!isFormValid()}
+                >
+                  <FileCheck className="w-4 h-4" />
+                  PI
                 </Button>
                 <Button 
                   type="button" 

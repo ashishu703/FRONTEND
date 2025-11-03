@@ -5,6 +5,7 @@ import { API_ENDPOINTS } from './api';
 export const DepartmentType = {
   MARKETING_SALES: 'marketing_sales',
   OFFICE_SALES: 'office_sales',
+  HR: 'hr',
 };
 
 export const CompanyName = {
@@ -17,6 +18,7 @@ export const uiToApiDepartment = (uiValue) => {
   const map = {
     'Sales Department': DepartmentType.OFFICE_SALES,
     'Marketing Department': DepartmentType.MARKETING_SALES,
+    'HR Department': DepartmentType.HR,
   };
   return map[uiValue] || uiValue;
 };
@@ -25,6 +27,7 @@ export const apiToUiDepartment = (apiValue) => {
   const map = {
     [DepartmentType.OFFICE_SALES]: 'Sales Department',
     [DepartmentType.MARKETING_SALES]: 'Marketing Department',
+    [DepartmentType.HR]: 'HR Department',
   };
   return map[apiValue] || apiValue;
 };

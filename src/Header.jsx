@@ -1,230 +1,65 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Users, X, Phone, Mail, MapPin, MessageCircle, TrendingUp, Award, Calendar, CheckCircle, DollarSign, Package } from 'lucide-react';
+import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun, BarChart3, Clock, User, Factory, Wrench } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
+import { useCompany } from './context/CompanyContext';
 
-const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => {
+const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onToggleMobileView, isMobileView = false, isDarkMode = false, onToggleDarkMode, onProfileClick }) => {
   const { user, logout } = useAuth();
+  const { selectedCompany, setSelectedCompany } = useCompany();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [showNotificationHistory, setShowNotificationHistory] = useState(false);
   const notificationRef = useRef(null);
-  const profileRef = useRef(null);
   const notificationHistoryRef = useRef(null);
 
-  // Sample notification data
-  const notifications = [
-    {
-      id: 1,
-      title: "New Lead Assigned",
-      message: "You have been assigned a new lead from Mumbai region",
-      time: "2 minutes ago",
-      type: "lead",
-      unread: true
-    },
-    {
-      id: 2,
-      title: "Follow-up Reminder",
-      message: "Follow up with John Doe scheduled for today at 3:00 PM",
-      time: "1 hour ago",
-      type: "reminder",
-      unread: true
-    },
-    {
-      id: 3,
-      title: "Quotation Approved",
-      message: "Your quotation #QT-2024-001 has been approved by the client",
-      time: "3 hours ago",
-      type: "success",
-      unread: false
-    },
-    {
-      id: 4,
-      title: "Monthly Target Update",
-      message: "You have achieved 75% of your monthly target",
-      time: "1 day ago",
-      type: "info",
-      unread: false
-    }
-  ];
+  const [notifications, setNotifications] = useState([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [notificationsError, setNotificationsError] = useState(null);
 
-  // Comprehensive notification history data
-  const notificationHistory = [
-    {
-      id: 1,
-      title: "New Lead Assigned",
-      message: "You have been assigned a new lead from Mumbai region",
-      time: "2 minutes ago",
-      type: "lead",
-      unread: true
-    },
-    {
-      id: 2,
-      title: "Follow-up Reminder",
-      message: "Follow up with John Doe scheduled for today at 3:00 PM",
-      time: "1 hour ago",
-      type: "reminder",
-      unread: true
-    },
-    {
-      id: 3,
-      title: "Quotation Approved",
-      message: "Your quotation #QT-2024-001 has been approved by the client",
-      time: "3 hours ago",
-      type: "success",
-      unread: false
-    },
-    {
-      id: 4,
-      title: "Monthly Target Update",
-      message: "You have achieved 75% of your monthly target",
-      time: "1 day ago",
-      type: "info",
-      unread: false
-    },
-    {
-      id: 5,
-      title: "Payment Received",
-      message: "Payment of ₹45,000 received from ABC Corporation",
-      time: "2 days ago",
-      type: "success",
-      unread: false
-    },
-    {
-      id: 6,
-      title: "Meeting Scheduled",
-      message: "Meeting with XYZ Ltd scheduled for tomorrow at 2:00 PM",
-      time: "3 days ago",
-      type: "reminder",
-      unread: false
-    },
-    {
-      id: 7,
-      title: "Lead Converted",
-      message: "Lead from Tech Solutions has been successfully converted",
-      time: "4 days ago",
-      type: "success",
-      unread: false
-    },
-    {
-      id: 8,
-      title: "Quotation Sent",
-      message: "Quotation #QT-2024-002 sent to Global Industries",
-      time: "5 days ago",
-      type: "info",
-      unread: false
-    },
-    {
-      id: 9,
-      title: "Follow-up Completed",
-      message: "Follow-up with Sarah Wilson completed successfully",
-      time: "1 week ago",
-      type: "success",
-      unread: false
-    },
-    {
-      id: 10,
-      title: "New Product Launch",
-      message: "New product catalog has been added to your dashboard",
-      time: "1 week ago",
-      type: "info",
-      unread: false
-    },
-    {
-      id: 11,
-      title: "Target Achievement",
-      message: "Congratulations! You have achieved 90% of your monthly target",
-      time: "2 weeks ago",
-      type: "success",
-      unread: false
-    },
-    {
-      id: 12,
-      title: "Training Reminder",
-      message: "Sales training session scheduled for next Monday",
-      time: "2 weeks ago",
-      type: "reminder",
-      unread: false
-    },
-    {
-      id: 13,
-      title: "Lead Assignment",
-      message: "5 new leads assigned to your territory",
-      time: "3 weeks ago",
-      type: "lead",
-      unread: false
-    },
-    {
-      id: 14,
-      title: "Performance Review",
-      message: "Your monthly performance review is now available",
-      time: "1 month ago",
-      type: "info",
-      unread: false
-    },
-    {
-      id: 15,
-      title: "System Update",
-      message: "CRM system has been updated with new features",
-      time: "1 month ago",
-      type: "info",
-      unread: false
-    }
-  ];
+  const [notificationHistory, setNotificationHistory] = useState([]);
 
-  // Get user profile data from auth context
-  const userProfile = user ? {
-    name: user.username || 'Abhay Kumar',
-    email: user.email || 'abhay.kumar@anocab.com',
-    phone: user.phone || '+91 98765 43210',
-    whatsapp: user.whatsapp || '+91 98765 43210',
-    state: user.state || 'Maharashtra',
-    city: user.city || 'Mumbai',
-    designation: user.role === 'superadmin' ? 'Super Administrator' : 
-                 user.role === 'salesperson' ? 'Sales Executive' :
-                 user.role === 'sales_head' ? 'Sales Department Head' :
-                 user.role === 'marketing_department_head' ? 'Marketing Department Head' :
-                 user.role === 'marketing_salesperson' ? 'Marketing Salesperson' :
-                 user.role === 'office_salesperson' ? 'Office Sales Executive' : 'Sales Department Head',
-    department: user.departmentType || user.role || 'Sales Department',
-    companyName: user.companyName || 'Anode Electric Pvt. Ltd.',
-    joinDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '17/09/2024',
-    totalLeads: user.totalLeads || 127,
-    convertedLeads: user.convertedLeads || 30,
-    conversionRate: user.conversionRate || "23.6%",
-    totalRevenue: user.totalRevenue || "₹2,547,727",
-    monthlyTarget: user.monthlyTarget || "₹3,000,000",
-    targetAchievement: user.targetAchievement || "84.9%",
-    performanceRating: user.performanceRating || "Excellent",
-    lastLogin: user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Today at 9:30 AM'
-  } : {
-    name: 'Abhay Kumar',
-    email: 'abhay.kumar@anocab.com',
-    phone: '+91 98765 43210',
-    whatsapp: '+91 98765 43210',
-    state: 'Maharashtra',
-    city: 'Mumbai',
-    designation: 'Sales Department Head',
-    department: 'Sales Department',
-    companyName: 'Anode Electric Pvt. Ltd.',
-    joinDate: '17/09/2024',
-    totalLeads: 127,
-    convertedLeads: 30,
-    conversionRate: "23.6%",
-    totalRevenue: "₹2,547,727",
-    monthlyTarget: "₹3,000,000",
-    targetAchievement: "84.9%",
-    performanceRating: "Excellent",
-    lastLogin: 'Today at 9:30 AM'
-  };
+  // Fetch notifications periodically
+  useEffect(() => {
+    let isMounted = true;
+    let intervalId = null;
+
+    const fetchNotifications = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        // Skip polling when not authenticated to avoid 401 spam in dev
+        return;
+      }
+      try {
+        setLoadingNotifications(true);
+        setNotificationsError(null);
+        const res = await fetch('/api/notifications', { headers: { 'Authorization': `Bearer ${token}` } });
+        const json = await res.json();
+        if (!json?.success) throw new Error(json?.message || 'Failed');
+        if (!isMounted) return;
+        setNotifications(json.data.slice(0, 6));
+        setNotificationHistory(json.data);
+      } catch (e) {
+        if (!isMounted) return;
+        setNotificationsError(e.message);
+      } finally {
+        if (isMounted) setLoadingNotifications(false);
+      }
+    };
+
+    fetchNotifications();
+    intervalId = setInterval(fetchNotifications, 30000); // 30s polling
+
+    return () => {
+      isMounted = false;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, []);
+
 
   // Close popups when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target)) {
         setShowNotifications(false);
-      }
-      if (profileRef.current && !profileRef.current.contains(event.target)) {
-        setShowProfile(false);
       }
       if (notificationHistoryRef.current && !notificationHistoryRef.current.contains(event.target)) {
         setShowNotificationHistory(false);
@@ -236,6 +71,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => 
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -263,6 +99,12 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => 
           title: "Sales Overview",
           subtitle: "Monitor sales performance and metrics"
         };
+      case 'profile':
+        return {
+          icon: <Users className="w-6 h-6 text-white" />,
+          title: "Profile & Attendance",
+          subtitle: "Manage your profile information and track attendance"
+        };
       case 'stock':
         return {
           icon: <Users className="w-6 h-6 text-white" />,
@@ -272,9 +114,39 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => 
       case 'products':
         return {
           icon: <Users className="w-6 h-6 text-white" />,
-          title: "Toolbar",
-          subtitle: "Browse and manage product catalog"
+          title: "Payment Tracking",
+          subtitle: "Browse and manage all payment tracking"
         };
+      case 'due-payment':
+        return {
+          icon: <Clock className="w-6 h-6 text-white" />,
+          title: "Due Payment",
+          subtitle: "Track and manage due payments"
+        };
+      case 'advance-payment':
+        return {
+          icon: <DollarSign className="w-6 h-6 text-white" />,
+          title: "Advance Payment",
+          subtitle: "Track and manage advance payments"
+        };
+        case 'lead-status':
+          return {
+            icon: <BarChart3 className="w-6 h-6 text-white" />,
+            title: "Lead Status",
+            subtitle: "Manage and track lead status updates"
+          };
+        case 'scheduled-call':
+          return {
+            icon: <Calendar className="w-6 h-6 text-white" />,
+            title: "Scheduled Calls",
+            subtitle: "Manage and track scheduled call appointments"
+          };
+        case 'last-call':
+          return {
+            icon: <Clock className="w-6 h-6 text-white" />,
+            title: "Last Call Activity",
+            subtitle: "Track recent call activities and follow-ups"
+          };
       
       // Follow-up pages with specific titles
       case 'followup-connected':
@@ -371,6 +243,18 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => 
           title: "Customer Visits",
           subtitle: "Plan and track customer visits"
         };
+      case 'calendar':
+        return {
+          icon: <Calendar className="w-6 h-6 text-white" />,
+          title: "Lead Calendar",
+          subtitle: "View your assigned leads day-wise"
+        };
+      case 'expenses':
+        return {
+          icon: <DollarSign className="w-6 h-6 text-white" />,
+          title: "Expenses",
+          subtitle: "Track your marketing expenses"
+        };
       case 'orders':
         return {
           icon: <TrendingUp className="w-6 h-6 text-white" />,
@@ -440,6 +324,76 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => 
           subtitle: "Update and manage inventory stock levels"
         };
       
+      // Production Department Head pages
+      case 'production-dashboard':
+        return {
+          icon: <Factory className="w-6 h-6 text-white" />,
+          title: "Production Dashboard",
+          subtitle: "Production department performance overview"
+        };
+      case 'production-planning':
+      case 'production-schedule':
+      case 'design-cost':
+      case 'work-orders':
+      case 'capacity-planning':
+      case 'backload-planning':
+        return {
+          icon: <Calendar className="w-6 h-6 text-white" />,
+          title: "Production Planning",
+          subtitle: "Manage schedules, work orders, and capacity"
+        };
+      case 'quality-control':
+      case 'inspection-lots':
+      case 'quality-metrics':
+      case 'non-conformance':
+        return {
+          icon: <CheckCircle className="w-6 h-6 text-white" />,
+          title: "Quality Control",
+          subtitle: "Inspections, metrics, and non-conformance"
+        };
+      case 'production-execution':
+      case 'execution-console':
+      case 'machine-status':
+      case 'operator-performance':
+        return {
+          icon: <Factory className="w-6 h-6 text-white" />,
+          title: "Production Execution",
+          subtitle: "Shop-floor execution and machine status"
+        };
+      case 'maintenance':
+      case 'maintenance-orders':
+      case 'preventive-maintenance':
+      case 'equipment-status':
+        return {
+          icon: <Wrench className="w-6 h-6 text-white" />,
+          title: "Maintenance",
+          subtitle: "Orders, preventive plans, equipment status"
+        };
+      case 'inventory':
+      case 'raw-materials':
+      case 'finished-goods':
+      case 'stock-alerts':
+        return {
+          icon: <Package className="w-6 h-6 text-white" />,
+          title: "Inventory",
+          subtitle: "Materials, finished goods, and alerts"
+        };
+      case 'production-users':
+        return {
+          icon: <Users className="w-6 h-6 text-white" />,
+          title: "Production Staff",
+          subtitle: "Manage production users and roles"
+        };
+      case 'reports':
+      case 'production-reports':
+      case 'efficiency-metrics':
+      case 'cost-analysis':
+        return {
+          icon: <BarChart3 className="w-6 h-6 text-white" />,
+          title: "Reports & Analytics",
+          subtitle: "Production KPIs and cost analysis"
+        };
+
       // Marketing Department Head pages
       case 'marketing-dashboard':
         return {
@@ -472,7 +426,11 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => 
   const pageContent = getPageHeaderContent();
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+    <header className={`sticky top-0 z-50 border-b shadow-sm transition-colors ${
+      isDarkMode 
+        ? 'bg-gray-900 border-gray-700' 
+        : 'bg-white border-gray-200'
+    }`}>
       <div className="flex items-center justify-between px-6 py-4">
         {/* Left Section - Dynamic Page Header */}
         <div className="flex items-center space-x-4">
@@ -480,34 +438,92 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => 
             {pageContent.icon}
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">{pageContent.title}</h1>
-            <p className="text-sm text-gray-500">{pageContent.subtitle}</p>
+            <h1 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{pageContent.title}</h1>
+            <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>{pageContent.subtitle}</p>
           </div>
         </div>
 
-        {/* Right Section - Notifications and User */}
+        {/* Right Section - Company switcher (SuperAdmin), Notifications and User */}
         <div className="flex items-center space-x-4">
+          {userType === 'superadmin' && (
+            <div className="">
+              <select
+                value={selectedCompany}
+                onChange={(e) => setSelectedCompany(e.target.value)}
+                className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                title="Select Company"
+              >
+                <option value="Anode Electric Pvt.">Anode Electric Pvt.</option>
+                <option value="Samriddhi Industries Pvt.">Samriddhi Industries Pvt.</option>
+                <option value="Samriddhi Cables Pvt.">Samriddhi Cables Pvt.</option>
+              </select>
+            </div>
+          )}
+          {/* Mobile Toggle Button - Only for salesperson */}
+          {/* Mobile toggle removed; mobile layout auto-detected via viewport */}
+          
+          {/* Dark Mode Toggle Button - Only for salesperson */}
+          {userType === "salesperson" && onToggleDarkMode && (
+            <button
+              onClick={onToggleDarkMode}
+              className={`p-2 rounded-lg transition-colors ${
+                isDarkMode 
+                  ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' 
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
+              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+          )}
+          {/* Profile Icon - Only for marketing salesperson */}
+          {userType === "marketing-salesperson" && onProfileClick && (
+            <button
+              onClick={onProfileClick}
+              className={`p-2 rounded-lg transition-colors ${
+                currentPage === 'profile' 
+                  ? (isDarkMode ? 'bg-blue-700 text-blue-200' : 'bg-blue-100 text-blue-700')
+                  : (isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100')
+              }`}
+              title="Profile & Attendance"
+            >
+              <User className={`w-5 h-5 ${currentPage === 'profile' ? (isDarkMode ? 'text-blue-200' : 'text-blue-700') : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} />
+            </button>
+          )}
+          
           {/* Notification Bell */}
           <div className="relative" ref={notificationRef}>
             <button 
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className={`relative p-2 rounded-lg transition-colors ${
+                isDarkMode 
+                  ? 'hover:bg-gray-700' 
+                  : 'hover:bg-gray-100'
+              }`}
             >
-              <Bell className="w-5 h-5 text-gray-600" />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"></div>
+              <Bell className={`w-5 h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
+              {notifications?.length > 0 && (
+                <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-600 text-white text-[10px] leading-[18px] rounded-full text-center">
+                  {Math.min(99, notifications.length)}
+                </div>
+              )}
             </button>
 
             {/* Notification Panel */}
             {showNotifications && (
-              <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="p-4 border-b border-gray-200">
+              <div className={`absolute right-0 top-full mt-2 w-80 rounded-lg shadow-lg border z-50 ${
+                isDarkMode 
+                  ? 'bg-gray-800 border-gray-700' 
+                  : 'bg-white border-gray-200'
+              }`}>
+                <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+                    <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Notifications</h3>
                     <button 
                       onClick={() => setShowNotifications(false)}
-                      className="p-1 hover:bg-gray-100 rounded"
+                      className={`p-1 rounded ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
                     >
-                      <X className="w-4 h-4 text-gray-500" />
+                      <X className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                     </button>
                   </div>
                 </div>
@@ -556,160 +572,26 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard" }) => 
             )}
           </div>
 
-          {/* User Profile */}
-          <div className="relative" ref={profileRef}>
-            <button 
-              onClick={() => setShowProfile(!showProfile)}
-              className="flex items-center space-x-3 hover:bg-gray-50 rounded-lg p-2 transition-colors"
-            >
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-medium text-sm">{userProfile.name.split(' ').map(n => n[0]).join('').toUpperCase()}</span>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">
-                  {userProfile.email.includes('@') ? 
-                    `${userProfile.email.split('@')[0]}@${userProfile.email.split('@')[1].substring(0, 3)}...` : 
-                    userProfile.email
-                  }
-                </p>
-                <p className="text-xs text-gray-500">
-                  {user?.role ? user.role.toUpperCase().replace('_', ' ') : userType.toUpperCase()}
-                </p>
-              </div>
-            </button>
-
-            {/* Profile Panel */}
-            {showProfile && (
-              <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-[80vh] overflow-y-auto">
-                <div className="p-3 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-900">User Profile</h3>
-                    <button 
-                      onClick={() => setShowProfile(false)}
-                      className="p-1 hover:bg-gray-100 rounded"
-                    >
-                      <X className="w-4 h-4 text-gray-500" />
-                    </button>
-                  </div>
-                </div>
-                <div className="p-3 space-y-3">
-                  {/* Profile Header */}
-                  <div className="flex items-center space-x-3">
-                    <div className="relative">
-                      <img 
-                        src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=64&h=64&fit=crop&crop=face" 
-                        alt="Profile" 
-                        className="w-12 h-12 rounded-full object-cover border-2 border-blue-200"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'flex';
-                        }}
-                      />
-                      <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center border-2 border-blue-200" style={{display: 'none'}}>
-                        <span className="text-white font-bold text-sm">{userProfile.name.split(' ').map(n => n[0]).join('').toUpperCase()}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="text-base font-semibold text-gray-900">{userProfile.name}</h4>
-                      <p className="text-sm text-gray-600">{userProfile.designation}</p>
-                      <p className="text-xs text-gray-500">{userProfile.department}</p>
-                    </div>
-                  </div>
-
-                  {/* Contact Information */}
-                  <div className="space-y-2">
-                    <h5 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-1">Contact Information</h5>
-                    <div className="grid grid-cols-1 gap-1">
-                      <div className="flex items-center space-x-2">
-                        <Mail className="w-3 h-3 text-gray-500" />
-                        <span className="text-xs text-gray-700">{userProfile.email}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Phone className="w-3 h-3 text-gray-500" />
-                        <span className="text-xs text-gray-700">{userProfile.phone}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <MessageCircle className="w-3 h-3 text-gray-500" />
-                        <span className="text-xs text-gray-700">{userProfile.whatsapp}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <MapPin className="w-3 h-3 text-gray-500" />
-                        <span className="text-xs text-gray-700">{userProfile.city}, {userProfile.state}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Performance Metrics */}
-                  <div className="space-y-2">
-                    <h5 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-1">Performance Metrics</h5>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-blue-50 p-2 rounded-lg">
-                        <div className="text-xs text-blue-600 font-medium">Total Leads</div>
-                        <div className="text-sm font-bold text-blue-800">{userProfile.totalLeads}</div>
-                      </div>
-                      <div className="bg-green-50 p-2 rounded-lg">
-                        <div className="text-xs text-green-600 font-medium">Converted</div>
-                        <div className="text-sm font-bold text-green-800">{userProfile.convertedLeads}</div>
-                      </div>
-                      <div className="bg-purple-50 p-2 rounded-lg">
-                        <div className="text-xs text-purple-600 font-medium">Conversion Rate</div>
-                        <div className="text-sm font-bold text-purple-800">{userProfile.conversionRate}</div>
-                      </div>
-                      <div className="bg-orange-50 p-2 rounded-lg">
-                        <div className="text-xs text-orange-600 font-medium">Target Achievement</div>
-                        <div className="text-sm font-bold text-orange-800">{userProfile.targetAchievement}</div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-2 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-600">Total Revenue:</span>
-                        <span className="text-xs font-bold text-gray-900">{userProfile.totalRevenue}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-600">Monthly Target:</span>
-                        <span className="text-xs font-bold text-gray-900">{userProfile.monthlyTarget}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Additional Info */}
-                  <div className="space-y-1 pt-2 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-600">Join Date:</span>
-                      <span className="text-xs text-gray-900">{userProfile.joinDate}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-600">Last Login:</span>
-                      <span className="text-xs text-gray-900">{userProfile.lastLogin}</span>
-                    </div>
-                    {userProfile.companyName !== 'N/A' && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-600">Company:</span>
-                        <span className="text-xs text-gray-900">{userProfile.companyName}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Logout Button */}
-                  <div className="pt-2 border-t border-gray-200">
-                    <button
-                      onClick={async () => {
-                        try {
-                          await logout();
-                          window.location.href = '/login';
-                        } catch (error) {
-                          console.error('Logout error:', error);
-                        }
-                      }}
-                      className="w-full px-3 py-2 text-xs font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                    >
-                      Logout
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+          {/* User Button (without profile panel) */}
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+              <span className="text-white font-medium text-sm">
+                {user?.username ? user.username.split(' ').map(n => n[0]).join('').toUpperCase() : 'T'}
+              </span>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-medium text-gray-900">
+                {user?.email ? 
+                  `${user.email.split('@')[0]}@${user.email.split('@')[1].substring(0, 3)}...` : 
+                  'testuser@gma...'
+                }
+              </p>
+              <p className="text-xs text-gray-500">
+                {user?.role ? user.role.toUpperCase().replace('_', ' ') : userType.toUpperCase()}
+              </p>
+            </div>
           </div>
+
         </div>
       </div>
 

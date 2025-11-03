@@ -52,6 +52,10 @@ const DepartmentManagement = () => {
         return 'bg-green-50 text-green-600 border border-green-200';
       case 'Marketing Department':
         return 'bg-purple-50 text-purple-600 border border-purple-200';
+      case 'HR Department':
+        return 'bg-blue-50 text-blue-600 border border-blue-200';
+      case 'Production Department':
+        return 'bg-orange-50 text-orange-600 border border-orange-200';
       case 'Telesales Department':
         return 'bg-gray-50 text-gray-600 border border-gray-200';
       default:
@@ -280,6 +284,8 @@ const DepartmentManagement = () => {
                 <option>All Departments</option>
                 <option>Sales Department</option>
                 <option>Marketing Department</option>
+                <option>HR Department</option>
+                <option>Production Department</option>
                 <option>Telesales Department</option>
               </select>
 
@@ -584,13 +590,19 @@ const DepartmentManagement = () => {
                       role: newDept.role,
                       monthlyTarget: newDept.monthlyTarget,
                     };
-                    const result = await register(payload);
-                    if (result.success) {
-                      await fetchUsers();
-                      setShowAddModal(false);
-                      setNewDept({ username: '', email: '', password: '', departmentType: 'office_sales', companyName: 'Anode Electric Pvt. Ltd.', role: 'department_head', monthlyTarget: '' });
-                    } else {
-                      alert(result.error || 'Failed to create user');
+                    // Use admin department heads endpoint instead of auth/register
+                    try {
+                      await departmentHeadService.createHead(payload);
+                      const result = { success: true };
+                      if (result.success) {
+                        await fetchUsers();
+                        setShowAddModal(false);
+                        setNewDept({ username: '', email: '', password: '', departmentType: 'office_sales', companyName: 'Anode Electric Pvt. Ltd.', role: 'department_head', monthlyTarget: '' });
+                      } else {
+                        alert('Failed to create user');
+                      }
+                    } catch (e) {
+                      alert(e.message || 'Failed to create user');
                     }
                   } catch (err) {
                     alert(err.message || 'Failed to create user');
@@ -651,6 +663,8 @@ const DepartmentManagement = () => {
                     >
                       <option value="office_sales">Sales Department</option>
                       <option value="marketing_sales">Marketing Department</option>
+                      <option value="hr">HR Department</option>
+                      <option value="production">Production Department</option>
                       <option value="telesales">Telesales Department</option>
                     </select>
                   </div>
@@ -779,6 +793,7 @@ const DepartmentManagement = () => {
                     >
                       <option>Sales Department</option>
                       <option>Marketing Department</option>
+                      <option>Production Department</option>
                       <option>Telesales Department</option>
                     </select>
                   </div>

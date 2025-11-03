@@ -6,7 +6,15 @@ import { API_ENDPOINTS } from '../api/admin_api/api';
  */
 class ApiClient {
   constructor() {
-    this.baseURL = API_ENDPOINTS.LOGIN.split('/api')[0];
+    // Use empty string for relative URLs to work with Vite proxy
+    // The proxy will forward /api requests to the backend
+    this.baseURL = '';
+    
+    // Only use full URL if explicitly provided via env variable (for production)
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+    if (apiBaseUrl && apiBaseUrl.includes('http')) {
+      this.baseURL = apiBaseUrl.replace(/\/api.*$/, '');
+    }
   }
 
   /**
@@ -49,7 +57,26 @@ class ApiClient {
    * Handle API response and errors
    */
   async handleResponse(response) {
-    const data = await response.json();
+    // Gracefully handle empty bodies and non-JSON
+    const contentType = response.headers.get('content-type') || '';
+    const contentLength = response.headers.get('content-length');
+    let data = null;
+    if (response.status === 204 || contentLength === '0') {
+      data = {};
+    } else if (contentType.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch (_) {
+        data = {};
+      }
+    } else {
+      try {
+        const text = await response.text();
+        data = text ? { message: text } : {};
+      } catch (_) {
+        data = {};
+      }
+    }
     
     if (!response.ok) {
       const error = new Error(data.error || 'An error occurred');
@@ -66,12 +93,19 @@ class ApiClient {
    */
   async request(url, options = {}) {
     try {
+      // Validate URL parameter
+      if (!url || typeof url !== 'string') {
+        throw new Error('Invalid URL provided to API request');
+      }
+
       const config = {
         headers: this.getHeaders(),
         ...options,
       };
 
-      const response = await fetch(url, config);
+      // Use relative URLs for proxy, or full URLs if baseURL is set
+      const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
+      const response = await fetch(fullUrl, config);
       return await this.handleResponse(response);
     } catch (error) {
       console.error('API Request Error:', error);
@@ -106,10 +140,23 @@ class ApiClient {
     });
   }
 
+  /**
+   * DELETE request
+   */
+  async delete(url) {
+    return this.request(url, { method: 'DELETE' });
+  }
+
   async putFormData(url, formData) {
     try {
+      // Validate URL parameter
+      if (!url || typeof url !== 'string') {
+        throw new Error('Invalid URL provided to putFormData request');
+      }
+
       const token = sessionStorage.getItem('authToken') || this.getAuthToken();
-      const response = await fetch(url, {
+      const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
+      const response = await fetch(fullUrl, {
         method: 'PUT',
         headers: {
           ...(token && { Authorization: `Bearer ${token}` }),

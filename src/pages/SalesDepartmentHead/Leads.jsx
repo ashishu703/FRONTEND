@@ -4,9 +4,14 @@ import {
   Hash, User, Mail, Building, Shield, Tag, Clock, Settings,
   Calendar, CheckCircle, XCircle, Download, FileText, Phone
 } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 import AddCustomerModal from './AddCustomerModal';
+import QuotationPreview from '../../components/QuotationPreview';
+import PIPreviewModal from '../salesperson/PIPreviewModal';
 import departmentHeadService from '../../api/admin_api/departmentHeadService';
 import departmentUserService from '../../api/admin_api/departmentUserService';
+import quotationService from '../../api/admin_api/quotationService';
+import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import apiErrorHandler from '../../utils/ApiErrorHandler';
 import toastManager from '../../utils/ToastManager';
 
@@ -27,10 +32,37 @@ const LeadsSimplified = () => {
   const [previewLead, setPreviewLead] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assigningLead, setAssigningLead] = useState(null);
+  const [assignForm, setAssignForm] = useState({ salesperson: '', telecaller: '' });
+  const [selectedLeadIds, setSelectedLeadIds] = useState([]);
+  const [isAllSelected, setIsAllSelected] = useState(false);
+  const [showColumnFilter, setShowColumnFilter] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState({
+    customerId: false,
+    customer: true,
+    business: true,
+    address: true,
+    state: true,
+    followUpStatus: true,
+    salesStatus: true,
+    assignedSalesperson: true,
+    assignedTelecaller: true,
+    gstNo: false,
+    leadSource: false,
+    productNames: false,
+    category: false,
+    createdAt: false,
+    telecallerStatus: false,
+    paymentStatus: false,
+    updatedAt: false
+  });
   const [editFormData, setEditFormData] = useState({
     customer: '',
     email: '',
     business: '',
+    address: '',
+    state: '',
     leadSource: '',
     category: '',
     salesStatus: '',
@@ -46,8 +78,372 @@ const LeadsSimplified = () => {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [usersError, setUsersError] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const [quotations, setQuotations] = useState([]);
+  const [loadingQuotations, setLoadingQuotations] = useState(false);
+  const [showQuotationModal, setShowQuotationModal] = useState(false);
+  const [selectedQuotation, setSelectedQuotation] = useState(null);
+  const [proformaInvoices, setProformaInvoices] = useState([]);
+  const [loadingPIs, setLoadingPIs] = useState(false);
+  const [showPIPreview, setShowPIPreview] = useState(false);
+  const [piPreviewData, setPiPreviewData] = useState(null);
+  const [selectedPIBranch, setSelectedPIBranch] = useState('ANODE');
+
+  // Company branches configuration (same as salesperson)
+  const companyBranches = {
+    ANODE: {
+      name: 'ANODE ELECTRIC PVT. LTD.',
+      gstNumber: '22ABCDE1234F1Z5',
+      description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES',
+      address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA',
+      tel: '6262002116, 6262002113',
+      web: 'www.anocab.com',
+      email: 'info@anocab.com'
+    }
+  };
+
+  // Mock user data for QuotationPreview
+  const user = {
+    name: 'Department Head',
+    email: 'department.head@anocab.com'
+  };
 
   const importFileInputRef = useRef(null);
+
+  // Fetch quotations for a specific lead
+  const fetchQuotations = async (leadId) => {
+    try {
+      setLoadingQuotations(true);
+      const response = await quotationService.getQuotationsByCustomer(leadId);
+      if (response && response.success) {
+        setQuotations(response.data || []);
+      } else {
+        setQuotations([]);
+      }
+    } catch (error) {
+      console.error('Error fetching quotations:', error);
+      setQuotations([]);
+    } finally {
+      setLoadingQuotations(false);
+    }
+  };
+
+  // Handle quotation approval
+  const handleApproveQuotation = async (quotationId) => {
+    try {
+      const response = await quotationService.approveQuotation(quotationId, 'Approved by department head');
+      if (response && response.success) {
+        toastManager.success('Quotation approved successfully');
+        // Refresh quotations for the current lead
+        if (previewLead && previewLead.id) {
+          await fetchQuotations(previewLead.id);
+        }
+      }
+    } catch (error) {
+      apiErrorHandler.handleError(error, 'approve quotation');
+    }
+  };
+
+  // Handle quotation rejection
+  const handleRejectQuotation = async (quotationId) => {
+    try {
+      const response = await quotationService.rejectQuotation(quotationId, 'Rejected by department head');
+      if (response && response.success) {
+        toastManager.success('Quotation rejected successfully');
+        // Refresh quotations for the current lead
+        if (previewLead && previewLead.id) {
+          await fetchQuotations(previewLead.id);
+        }
+      }
+    } catch (error) {
+      apiErrorHandler.handleError(error, 'reject quotation');
+    }
+  };
+
+  // Handle view quotation
+  const handleViewQuotation = async (quotationId) => {
+    try {
+      const response = await quotationService.getQuotation(quotationId);
+      if (response && response.success) {
+        setSelectedQuotation(response.data);
+        setShowQuotationModal(true);
+      }
+    } catch (error) {
+      apiErrorHandler.handleError(error, 'view quotation');
+    }
+  };
+
+  // Handle download PDF
+  const handleDownloadPDF = async (quotationId) => {
+    try {
+      const response = await quotationService.getQuotation(quotationId);
+      if (response && response.success) {
+        const quotationData = response.data;
+        
+        // Use the same approach as salesperson - create a temporary modal
+        const tempDiv = document.createElement('div');
+        tempDiv.id = 'quotation-pdf-content';
+        tempDiv.style.position = 'fixed';
+        tempDiv.style.left = '0';
+        tempDiv.style.top = '0';
+        tempDiv.style.width = '750px';
+        tempDiv.style.maxWidth = '750px';
+        tempDiv.style.backgroundColor = 'white';
+        tempDiv.style.padding = '20px';
+        tempDiv.style.fontFamily = 'Arial, sans-serif';
+        tempDiv.style.fontSize = '12px';
+        tempDiv.style.color = 'black';
+        tempDiv.style.zIndex = '9999';
+        tempDiv.style.visibility = 'visible';
+        tempDiv.style.opacity = '1';
+        
+        // Create a simpler HTML structure that's more compatible with html2pdf
+        tempDiv.innerHTML = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { 
+                font-family: Arial, sans-serif; 
+                font-size: 11px; 
+                line-height: 1.3; 
+                margin: 0; 
+                padding: 15px; 
+                background: white; 
+                color: black;
+                width: 100%;
+                max-width: 750px;
+                box-sizing: border-box;
+              }
+              .header { border: 2px solid black; margin-bottom: 20px; padding: 15px; }
+              .company-name { font-size: 20px; font-weight: bold; margin: 0; }
+              .gst-number { font-size: 10px; font-weight: bold; margin: 5px 0; }
+              .company-desc { font-size: 10px; margin: 5px 0; }
+              .address-section { padding: 10px; background-color: #f5f5f5; margin-top: 10px; }
+              .address-grid { display: table; width: 100%; }
+              .address-left, .address-right { display: table-cell; width: 50%; }
+              .address-right { text-align: right; }
+              .section { border: 1px solid black; margin-bottom: 20px; }
+              .section-header { padding: 10px; background-color: #f5f5f5; font-weight: bold; }
+              .section-content { padding: 10px; }
+              .quotation-grid { display: table; width: 100%; }
+              .quotation-cell { display: table-cell; width: 25%; padding: 5px; }
+              .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 9px; table-layout: fixed; }
+              .table th, .table td { border: 1px solid black; padding: 4px; word-wrap: break-word; }
+              .table th { background-color: #f5f5f5; text-align: center; font-weight: bold; }
+              .table td { text-align: center; }
+              .table td:first-child { text-align: left; width: 5%; }
+              .table td:nth-child(2) { text-align: left; width: 25%; }
+              .table td:nth-child(3) { width: 12%; }
+              .table td:nth-child(4), .table td:nth-child(5) { width: 8%; }
+              .table td:nth-child(6), .table td:nth-child(7), .table td:nth-child(9) { text-align: right; width: 12%; }
+              .table td:nth-child(8) { width: 8%; }
+              .totals-grid { display: table; width: 100%; }
+              .bank-details, .totals { display: table-cell; width: 50%; padding: 15px; border: 1px solid black; }
+              .totals-row { display: table; width: 100%; margin-bottom: 5px; }
+              .totals-label, .totals-value { display: table-cell; width: 50%; }
+              .totals-value { text-align: right; }
+              .total-row { font-weight: bold; border-top: 1px solid black; padding-top: 5px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div style="display: table; width: 100%;">
+                <div style="display: table-cell; width: 70%;">
+                  <div class="company-name">ANODE ELECTRIC PVT. LTD.</div>
+                  <div class="gst-number">22ABCDE1234F1Z5</div>
+                  <div class="company-desc">MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES</div>
+                </div>
+                <div style="display: table-cell; width: 30%; text-align: right;">
+                  <img src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png" alt="Company Logo" style="height: 40px; width: auto; background: white; padding: 5px; border-radius: 4px;" />
+                </div>
+              </div>
+              <div class="address-section">
+                <div class="address-grid">
+                  <div class="address-left">
+                    <div style="font-weight: bold;">KHASRA NO. 805/5, PLOT NO. 10, IT PARK</div>
+                    <div>BARGI HILLS, JABALPUR - 482003</div>
+                    <div>MADHYA PRADESH, INDIA</div>
+                  </div>
+                  <div class="address-right">
+                    <div>Tel: 6262002116, 6262002113</div>
+                    <div>Web: www.anocab.com</div>
+                    <div>Email: info@anocab.com</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-header">Quotation Details</div>
+              <div class="section-content">
+                <div class="quotation-grid">
+                  <div class="quotation-cell">
+                    <strong>Quotation Date</strong><br/>
+                    ${new Date(quotationData.quotation_date).toLocaleDateString()}
+                  </div>
+                  <div class="quotation-cell">
+                    <strong>Quotation Number</strong><br/>
+                    ${quotationData.quotation_number}
+                  </div>
+                  <div class="quotation-cell">
+                    <strong>Valid Upto</strong><br/>
+                    ${new Date(quotationData.valid_until).toLocaleDateString()}
+                  </div>
+                  <div class="quotation-cell">
+                    <strong>Voucher Number</strong><br/>
+                    VOUCH-${Math.floor(1000 + Math.random() * 9000)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="section-header">Bill To:</div>
+              <div class="section-content">
+                <div style="font-weight: bold;">${quotationData.customer_name}</div>
+                <div>${quotationData.customer_address || 'N/A'}</div>
+                <div><strong>Phone:</strong> ${quotationData.customer_phone}</div>
+                <div><strong>GST:</strong> ${quotationData.customer_gst_no || 'N/A'}</div>
+              </div>
+            </div>
+
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>S.No</th>
+                  <th>Description</th>
+                  <th>HSN Code</th>
+                  <th>Qty</th>
+                  <th>Unit</th>
+                  <th>Rate</th>
+                  <th>Amount</th>
+                  <th>GST %</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${quotationData.items ? quotationData.items.map((item, index) => `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${item.product_name}</td>
+                    <td>${item.hsn_code}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.unit}</td>
+                    <td>₹${parseFloat(item.unit_price).toFixed(2)}</td>
+                    <td>₹${parseFloat(item.taxable_amount).toFixed(2)}</td>
+                    <td>${item.gst_rate}%</td>
+                    <td>₹${parseFloat(item.total_amount).toFixed(2)}</td>
+                  </tr>
+                `).join('') : '<tr><td colspan="9" style="text-align: center;">No items found</td></tr>'}
+              </tbody>
+            </table>
+
+            <div class="totals-grid">
+              <div class="bank-details">
+                <h3 style="font-weight: bold; font-size: 12px; margin-bottom: 10px;">Bank Details</h3>
+                <div style="font-size: 10px;">
+                  <div><strong>Bank Name:</strong> ICICI Bank</div>
+                  <div><strong>Branch Name:</strong> WRIGHT TOWN JABALPUR</div>
+                  <div><strong>Bank Account Number:</strong> 657605601783</div>
+                  <div><strong>Bank Branch IFSC:</strong> ICIC0006576</div>
+                </div>
+              </div>
+              <div class="totals">
+                <div class="totals-row">
+                  <div class="totals-label">Subtotal</div>
+                  <div class="totals-value">₹${parseFloat(quotationData.subtotal).toFixed(2)}</div>
+                </div>
+                <div class="totals-row">
+                  <div class="totals-label">Less: Discount (0%)</div>
+                  <div class="totals-value">₹0.00</div>
+                </div>
+                <div class="totals-row">
+                  <div class="totals-label">Taxable Amount</div>
+                  <div class="totals-value">₹${parseFloat(quotationData.subtotal).toFixed(2)}</div>
+                </div>
+                <div class="totals-row">
+                  <div class="totals-label">Add: Total GST (${quotationData.tax_rate || 18}%)</div>
+                  <div class="totals-value">₹${parseFloat(quotationData.tax_amount).toFixed(2)}</div>
+                </div>
+                <div class="totals-row total-row">
+                  <div class="totals-label">Total Amount</div>
+                  <div class="totals-value">₹${parseFloat(quotationData.total_amount).toFixed(2)}</div>
+                </div>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+        
+        document.body.appendChild(tempDiv);
+        
+        // Wait for the content to be fully rendered and make sure it's visible
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Force a reflow to ensure content is rendered
+        tempDiv.offsetHeight;
+        
+        // Use html2pdf to generate PDF with better settings
+        try {
+          const opt = {
+            margin: [0.2, 0.2, 0.2, 0.2],
+            filename: `Quotation-${quotationData.quotation_number}-${quotationData.customer_name.replace(/\s+/g, '-')}.pdf`,
+            image: { type: 'jpeg', quality: 1.0 },
+            html2canvas: { 
+              scale: 1.5,
+              useCORS: true,
+              letterRendering: true,
+              allowTaint: true,
+              backgroundColor: '#ffffff',
+              logging: true,
+              width: 750,
+              height: tempDiv.scrollHeight,
+              scrollX: 0,
+              scrollY: 0,
+              windowWidth: 750,
+              windowHeight: tempDiv.scrollHeight
+            },
+            jsPDF: { 
+              unit: 'in', 
+              format: 'a4', 
+              orientation: 'portrait',
+              compress: false,
+              putOnlyUsedFonts: false
+            }
+          };
+          
+          await html2pdf().set(opt).from(tempDiv).save();
+          toastManager.success('PDF downloaded successfully');
+        } catch (error) {
+          console.error('PDF generation error:', error);
+          // Fallback: open in new tab
+          const newWindow = window.open('', '_blank');
+          newWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Quotation - ${quotationData.quotation_number}</title>
+              <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                @media print { body { margin: 0; } }
+              </style>
+            </head>
+            <body>
+              ${tempDiv.innerHTML}
+            </body>
+            </html>
+          `);
+          newWindow.document.close();
+          toastManager.success('Quotation opened in new tab');
+        }
+        
+        document.body.removeChild(tempDiv);
+      }
+    } catch (error) {
+      apiErrorHandler.handleError(error, 'download PDF');
+    }
+  };
 
   const downloadCSVTemplate = () => {
     const headers = [
@@ -55,6 +451,7 @@ const LeadsSimplified = () => {
       'Mobile Number', 
       'WhatsApp Number',
       'Email',
+      'Address',
       'GST Number',
       'Business Name',
       'Business Category',
@@ -62,14 +459,13 @@ const LeadsSimplified = () => {
       'Product Names (comma separated)',
       'Assigned Salesperson',
       'Assigned Telecaller',
-      'Address',
       'State',
       'Date (YYYY-MM-DD)'
     ];
     
     const csvContent = headers.join(',') + '\n' + 
-      'Sample Customer,9876543210,9876543210,sample@email.com,22ABCDE1234F1Z5,Sample Business,dealer,instagram,ACSR AAAC,John Doe,Jane Smith,123 Main St,Delhi,2024-01-15\n' +
-      'Another Customer,9876543211,9876543211,another@email.com,22ABCDE1234F1Z6,Another Business,contractor,facebook,AB CABLE AAAC,Jane Doe,John Smith,456 Main St,Mumbai,2024-01-16';
+      'Sample Customer,9876543210,9876543210,sample@email.com,123 Main St,22ABCDE1234F1Z5,Sample Business,dealer,instagram,ACSR AAAC,John Doe,Jane Smith,Delhi,2024-01-15\n' +
+      'Another Customer,9876543211,9876543211,another@email.com,456 Main St,22ABCDE1234F1Z6,Another Business,contractor,facebook,AB CABLE AAAC,Jane Doe,John Smith,Mumbai,2024-01-16';
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -171,13 +567,13 @@ const LeadsSimplified = () => {
             customer: row['Customer Name'] || null,
             phone: row['Mobile Number'] || null,
             email: row['Email'] || null,
+            address: row['Address'] || null,
             business: row['Business Name'] || null,
             leadSource: row['Lead Source'] || null,
             category: row['Business Category'] || 'N/A',
             salesStatus: 'PENDING',
             gstNo: row['GST Number'] || null,
             productNames: row['Product Names (comma separated)'] || 'N/A',
-            address: row['Address'] || null,
             state: row['State'] || null,
             assignedSalesperson: row['Assigned Salesperson'] || null,
             assignedTelecaller: row['Assigned Telecaller'] || null,
@@ -296,6 +692,118 @@ const LeadsSimplified = () => {
     fetchUsers();
   }, [showEditModal]);
 
+  // Load department usernames when assign modal opens
+  useEffect(() => {
+    if (!showAssignModal) return;
+    const fetchUsers = async () => {
+      try {
+        setLoadingUsers(true);
+        setUsersError('');
+        const res = await departmentUserService.listUsers({ page: 1, limit: 100 });
+        const payload = res.data || res;
+        const names = (payload.users || []).map(u => u.username).filter(Boolean);
+        setUsernames(names);
+      } catch (err) {
+        setUsersError(err?.message || 'Failed to load users');
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+    fetchUsers();
+  }, [showAssignModal]);
+
+  // Fetch quotations when preview modal opens
+  useEffect(() => {
+    if (showPreviewModal && previewLead && previewLead.id) {
+      fetchQuotations(previewLead.id);
+    }
+  }, [showPreviewModal, previewLead]);
+
+  const openAssignModal = (lead) => {
+    setAssigningLead(lead);
+    setAssignForm({
+      salesperson: lead.assignedSalesperson || '',
+      telecaller: lead.assignedTelecaller || ''
+    });
+    setShowAssignModal(true);
+  };
+
+  // Column filter handlers
+  const toggleColumn = (columnKey) => {
+    setVisibleColumns(prev => ({
+      ...prev,
+      [columnKey]: !prev[columnKey]
+    }));
+  };
+
+  // Treat literal strings like 'Unassigned' or 'N/A' as not assigned
+  const isValueAssigned = (val) => {
+    if (!val) return false;
+    const s = String(val).trim().toLowerCase();
+    return s !== 'unassigned' && s !== 'n/a' && s !== 'na' && s !== '-';
+  };
+
+  const isLeadAssigned = (lead) =>
+    isValueAssigned(lead.assignedSalesperson) || isValueAssigned(lead.assignedTelecaller);
+
+  const resetColumns = () => {
+    setVisibleColumns({
+      customerId: false,
+      customer: true,
+      business: true,
+      address: true,
+      state: true,
+      followUpStatus: true,
+      salesStatus: true,
+      assignedSalesperson: true,
+      assignedTelecaller: true,
+      gstNo: false,
+      leadSource: false,
+      productNames: false,
+      category: false,
+      createdAt: false,
+      telecallerStatus: false,
+      paymentStatus: false,
+      updatedAt: false
+    });
+  };
+
+  const showAllColumns = () => {
+    setVisibleColumns(prev => {
+      const allTrue = {};
+      Object.keys(prev).forEach(key => {
+        allTrue[key] = true;
+      });
+      return allTrue;
+    });
+  };
+
+  // Selection handlers
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedLeadIds([]);
+      setIsAllSelected(false);
+      return;
+    }
+    // Only select leads that are not already assigned
+    const ids = filteredLeads
+      .filter(l => !isLeadAssigned(l))
+      .map(l => l.id);
+    setSelectedLeadIds(ids);
+    setIsAllSelected(ids.length > 0 && ids.length === filteredLeads.filter(l => !isLeadAssigned(l)).length);
+  };
+
+  const toggleSelectOne = (id) => {
+    const lead = filteredLeads.find(l => l.id === id);
+    if (lead && isLeadAssigned(lead)) return; // prevent selecting assigned
+    setSelectedLeadIds((prev) => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      const totalUnassigned = filteredLeads.filter(l => !isLeadAssigned(l)).length;
+      setIsAllSelected(next.length > 0 && next.length === totalUnassigned);
+      return next;
+    });
+  };
+
   // Filter leads based on search
   const filteredLeads = leadsData.filter(lead => {
     const matchesSearch = !searchTerm || 
@@ -379,6 +887,164 @@ const LeadsSimplified = () => {
   };
 
 
+  // Fetch all PIs (not just pending)
+  const fetchPIsForLead = async (lead) => {
+    try {
+      setLoadingPIs(true);
+      const response = await departmentHeadService.getAllPIs();
+      
+      if (response && response.success) {
+        // Show all PIs (pending, approved, rejected)
+        setProformaInvoices(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching PIs:', error);
+      setProformaInvoices([]);
+    } finally {
+      setLoadingPIs(false);
+    }
+  };
+
+  // Handle PI approval
+  const handleApprovePI = async (piId) => {
+    if (!confirm('Are you sure you want to approve this PI?')) return;
+    try {
+      await proformaInvoiceService.updatePI(piId, { status: 'approved' });
+      toastManager.success('PI approved successfully!');
+      // Refresh PIs
+      if (previewLead) {
+        await fetchPIsForLead(previewLead);
+      }
+    } catch (error) {
+      console.error('Error approving PI:', error);
+      toastManager.error('Failed to approve PI');
+    }
+  };
+
+  // Handle PI rejection
+  const handleRejectPI = async (piId) => {
+    const reason = prompt('Please enter rejection reason:');
+    if (!reason) return;
+    try {
+      await proformaInvoiceService.updatePI(piId, { 
+        status: 'rejected',
+        rejection_reason: reason 
+      });
+      toastManager.success('PI rejected');
+      // Refresh PIs
+      if (previewLead) {
+        await fetchPIsForLead(previewLead);
+      }
+    } catch (error) {
+      console.error('Error rejecting PI:', error);
+      toastManager.error('Failed to reject PI');
+    }
+  };
+
+  // Handle PI view
+  const handleViewPI = async (piId) => {
+    try {
+      // Fetch PI details
+      const piResponse = await proformaInvoiceService.getPI(piId);
+      if (!piResponse || !piResponse.success) {
+        alert('Failed to fetch PI details');
+        return;
+      }
+
+      const pi = piResponse.data;
+
+      // Fetch complete quotation data
+      const quotationResponse = await quotationService.getCompleteData(pi.quotation_id);
+      
+      if (!quotationResponse || !quotationResponse.success) {
+        alert('Failed to fetch quotation details');
+        return;
+      }
+
+      const completeQuotation = quotationResponse.data?.quotation || quotationResponse.data || {};
+      const quotationItems = completeQuotation.items || [];
+
+      // If no items, show error
+      if (!quotationItems || quotationItems.length === 0) {
+        alert(`No items found in quotation!\n\nQuotation ID: ${pi.quotation_id}`);
+        return;
+      }
+
+      // Map quotation items to PI format
+      const mappedItems = quotationItems.map((item) => {
+        const mapped = {
+          id: item.id || Math.random(),
+          description: item.product_name || item.productName || item.description || 'Product',
+          subDescription: item.description || '',
+          hsn: item.hsn_code || item.hsn || item.hsnCode || '85446090',
+          dueOn: new Date().toISOString().split('T')[0],
+          quantity: Number(item.quantity) || 1,
+          unit: item.unit || 'Nos',
+          rate: Number(item.unit_price || item.buyer_rate || item.unitPrice || 0),
+          buyerRate: Number(item.unit_price || item.buyer_rate || item.unitPrice || 0),
+          amount: Number(item.taxable_amount ?? item.amount ?? item.taxable ?? item.total_amount ?? item.total ?? 0),
+          gstRate: Number(item.gst_rate ?? item.gstRate ?? 18),
+          gstMultiplier: 1 + Number(item.gst_rate ?? item.gstRate ?? 18) / 100
+        };
+        return mapped;
+      });
+
+      const subtotal = mappedItems.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+      const discountRate = Number(completeQuotation.discount_rate ?? completeQuotation.discountRate ?? 0);
+      const discountAmount = Number(completeQuotation.discount_amount ?? completeQuotation.discountAmount ?? (subtotal * discountRate) / 100);
+      const taxableAmount = Math.max(0, subtotal - discountAmount);
+      const taxRate = Number(completeQuotation.tax_rate ?? completeQuotation.taxRate ?? 18);
+      const taxAmount = Number(completeQuotation.tax_amount ?? completeQuotation.taxAmount ?? (taxableAmount * taxRate) / 100);
+      const total = Number(completeQuotation.total_amount ?? completeQuotation.total ?? taxableAmount + taxAmount);
+
+      const billTo = {
+        business: completeQuotation.customer_business || completeQuotation.billTo?.business || pi.customer_business || '',
+        address: completeQuotation.customer_address || completeQuotation.billTo?.address || '',
+        phone: completeQuotation.customer_phone || completeQuotation.billTo?.phone || '',
+        gstNo: completeQuotation.customer_gst_no || completeQuotation.billTo?.gstNo || '',
+        state: completeQuotation.customer_state || completeQuotation.billTo?.state || ''
+      };
+
+      // Build PI preview data with dispatch details
+      const previewData = {
+        quotationNumber: completeQuotation.quotation_number || pi.pi_number,
+        items: mappedItems,
+        subtotal,
+        discountRate,
+        discountAmount,
+        taxableAmount,
+        taxRate,
+        taxAmount,
+        total,
+        billTo,
+        dispatchMode: pi.dispatch_mode,
+        shippingDetails: {
+          transportName: pi.transport_name,
+          vehicleNumber: pi.vehicle_number,
+          transportId: pi.transport_id,
+          lrNo: pi.lr_no,
+          courierName: pi.courier_name,
+          consignmentNo: pi.consignment_no,
+          byHand: pi.by_hand,
+          postService: pi.post_service,
+          carrierName: pi.carrier_name,
+          carrierNumber: pi.carrier_number
+        }
+      };
+
+      // Wrap in the format expected by PIPreviewModal
+      setPiPreviewData({
+        data: previewData,
+        selectedBranch: completeQuotation.branch || 'ANODE'
+      });
+      setSelectedPIBranch(completeQuotation.branch || 'ANODE');
+      setShowPIPreview(true);
+    } catch (error) {
+      console.error('Error viewing PI:', error);
+      toastManager.error('Failed to load PI details');
+    }
+  };
+
   // Handle edit
   const handleEdit = (lead) => {
     setEditingLead(lead);
@@ -386,6 +1052,8 @@ const LeadsSimplified = () => {
       customer: lead.customer || '',
       email: lead.email || '',
       business: lead.business || '',
+      address: lead.address || '',
+      state: lead.state || '',
       leadSource: lead.leadSource || '',
       category: lead.category || '',
       salesStatus: lead.salesStatus || '',
@@ -408,6 +1076,8 @@ const LeadsSimplified = () => {
           customer: editFormData.customer,
           email: editFormData.email,
           business: editFormData.business,
+          address: editFormData.address,
+          state: editFormData.state,
           leadSource: editFormData.leadSource,
           category: editFormData.category,
           salesStatus: editFormData.salesStatus,
@@ -500,6 +1170,17 @@ const LeadsSimplified = () => {
               <Plus className="w-4 h-4" />
               <span>Add Customer</span>
               </button>
+            <button
+              onClick={() => {
+                setAssigningLead(null);
+                setAssignForm({ salesperson: '', telecaller: '' });
+                setShowAssignModal(true);
+              }}
+              disabled={selectedLeadIds.length === 0}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${selectedLeadIds.length === 0 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+            >
+              <span>Assign Selected{selectedLeadIds.length ? ` (${selectedLeadIds.length})` : ''}</span>
+            </button>
               
             <button
             onClick={async () => {
@@ -532,110 +1213,169 @@ const LeadsSimplified = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[130px]">
-                  <div className="flex items-center space-x-2">
-                    <Hash className="w-4 h-4 text-purple-600" />
-                    <span>Customer ID</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[220px]">
-                  <div className="flex items-center space-x-2">
-                    <User className="w-4 h-4 text-blue-600" />
-                    <span>Customer</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">
-                  <div className="flex items-center space-x-2">
-                    <Building className="w-4 h-4 text-indigo-600" />
-                    <span>Business</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
-                  <div className="flex items-center space-x-2">
-                    <Hash className="w-4 h-4 text-indigo-600" />
-                    <span>GST No</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">
-                  <div className="flex items-center space-x-2">
-                    <Shield className="w-4 h-4 text-orange-600" />
-                    <span>Lead Source</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[220px]">
-                  <div className="flex items-center space-x-2">
-                    <Tag className="w-4 h-4 text-pink-600" />
-                    <span>Product Name</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
-                  <div className="flex items-center space-x-2">
-                    <Tag className="w-4 h-4 text-pink-600" />
-                    <span>Category</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
-                  <div className="flex items-center space-x-2">
-                    <Building className="w-4 h-4 text-green-600" />
-                    <span>State</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4 text-amber-600" />
-                    <span>Sales Status</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="w-4 h-4 text-purple-600" />
-                    <span>Created</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
-                  <div className="flex items-center space-x-2">
-                    <User className="w-4 h-4 text-sky-600" />
-                    <span>Assigned Salesperson</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
-                  <div className="flex items-center space-x-2">
-                    <Phone className="w-4 h-4 text-cyan-600" />
-                    <span>Assigned Telecaller</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span>Telecaller Status</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
-                  <div className="flex items-center space-x-2">
-                    <XCircle className="w-4 h-4 text-rose-600" />
-                    <span>Payment Status</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="w-4 h-4 text-purple-600" />
-                    <span>Updated At</span>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
-                  <div className="flex items-center justify-end space-x-2">
-                    <Settings className="w-4 h-4 text-gray-600" />
-                    <span>Actions</span>
-                  </div>
-                  </th>
-                </tr>
-            </thead>
+             <thead className="bg-gray-50 border-b border-gray-200">
+               <tr>
+                 <th className="px-4 py-3">
+                   <input
+                     type="checkbox"
+                     checked={isAllSelected && filteredLeads.length > 0}
+                     onChange={toggleSelectAll}
+                   />
+                 </th>
+                 {visibleColumns.customerId && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[130px]">
+                     <div className="flex items-center space-x-2">
+                       <Hash className="w-4 h-4 text-purple-600" />
+                       <span>Customer ID</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.customer && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[220px]">
+                     <div className="flex items-center space-x-2">
+                       <User className="w-4 h-4 text-blue-600" />
+                       <span>Customer</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.business && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">
+                     <div className="flex items-center space-x-2">
+                       <Building className="w-4 h-4 text-indigo-600" />
+                       <span>Business</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.address && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">
+                     <div className="flex items-center space-x-2">
+                       <Building className="w-4 h-4 text-indigo-600" />
+                       <span>Address</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.state && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
+                     <div className="flex items-center space-x-2">
+                       <Building className="w-4 h-4 text-green-600" />
+                       <span>State</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.followUpStatus && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
+                     <div className="flex items-center space-x-2">
+                       <Clock className="w-4 h-4 text-amber-600" />
+                       <span>Follow Up Status</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.salesStatus && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
+                     <div className="flex items-center space-x-2">
+                       <Clock className="w-4 h-4 text-amber-600" />
+                       <span>Sales Status</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.assignedSalesperson && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
+                     <div className="flex items-center space-x-2">
+                       <User className="w-4 h-4 text-sky-600" />
+                       <span>Assigned Salesperson</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.assignedTelecaller && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
+                     <div className="flex items-center space-x-2">
+                       <Phone className="w-4 h-4 text-cyan-600" />
+                       <span>Assigned Telecaller</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.gstNo && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
+                     <div className="flex items-center space-x-2">
+                       <Hash className="w-4 h-4 text-indigo-600" />
+                       <span>GST No</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.leadSource && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">
+                     <div className="flex items-center space-x-2">
+                       <Shield className="w-4 h-4 text-orange-600" />
+                       <span>Lead Source</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.productNames && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[220px]">
+                     <div className="flex items-center space-x-2">
+                       <Tag className="w-4 h-4 text-pink-600" />
+                       <span>Product Name</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.category && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
+                     <div className="flex items-center space-x-2">
+                       <Tag className="w-4 h-4 text-pink-600" />
+                       <span>Category</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.createdAt && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
+                     <div className="flex items-center space-x-2">
+                       <Calendar className="w-4 h-4 text-purple-600" />
+                       <span>Created</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.telecallerStatus && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
+                     <div className="flex items-center space-x-2">
+                       <CheckCircle className="w-4 h-4 text-green-600" />
+                       <span>Telecaller Status</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.paymentStatus && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
+                     <div className="flex items-center space-x-2">
+                       <XCircle className="w-4 h-4 text-rose-600" />
+                       <span>Payment Status</span>
+                     </div>
+                   </th>
+                 )}
+                 {visibleColumns.updatedAt && (
+                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
+                     <div className="flex items-center space-x-2">
+                       <Calendar className="w-4 h-4 text-purple-600" />
+                       <span>Updated At</span>
+                     </div>
+                   </th>
+                 )}
+                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
+                   <div className="flex items-center justify-end space-x-2">
+                     <button
+                       onClick={() => setShowColumnFilter(!showColumnFilter)}
+                       className="text-gray-600 hover:text-gray-900"
+                       title="Column Filter"
+                     >
+                       <Settings className="w-4 h-4" />
+                     </button>
+                     <span>Actions</span>
+                   </div>
+                 </th>
+               </tr>
+             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan="16" className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} className="px-4 py-8 text-center text-gray-500">
                     <div className="flex items-center justify-center space-x-2">
                       <RefreshCw className="w-4 h-4 animate-spin" />
                       <span>Loading leads...</span>
@@ -644,57 +1384,104 @@ const LeadsSimplified = () => {
                 </tr>
               ) : filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan="16" className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} className="px-4 py-8 text-center text-gray-500">
                     No leads found. Add a new customer to get started.
                   </td>
                 </tr>
               ) : (
                 filteredLeads.map((lead) => (
                 <tr key={lead.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-4 text-sm text-gray-700">{lead.customerId}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">
-                    <div>
-                      <div className="font-medium">{lead.customer}</div>
-                      <div className="text-gray-600">{lead.phone}</div>
-                      {lead.whatsapp && (
-                        <a 
-                          href={`https://wa.me/91${lead.whatsapp}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-green-600 hover:text-green-800 text-xs flex items-center gap-1"
-                        >
-                          💬 WhatsApp
-                        </a>
-                      )}
-                      {lead.email && (
-                        <a 
-                          href={`mailto:${lead.email}`}
-                          className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
-                        >
-                          📧 Email
-                        </a>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.business}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.gstNo}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.leadSource}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.productNamesText}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.category}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.state}</td>
                   <td className="px-4 py-4">
-                    {getStatusBadge(lead.salesStatus, 'sales')}
+                    <input
+                      type="checkbox"
+                      checked={selectedLeadIds.includes(lead.id)}
+                      onChange={() => toggleSelectOne(lead.id)}
+                      disabled={isLeadAssigned(lead)}
+                      title={isLeadAssigned(lead) ? 'Already assigned' : ''}
+                    />
                   </td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.createdAt}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.assignedSalesperson}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.assignedTelecaller}</td>
-                  <td className="px-4 py-4">
-                    {getStatusBadge(lead.telecallerStatus, 'telecaller')}
-                  </td>
-                  <td className="px-4 py-4">
-                    {getStatusBadge(lead.paymentStatus, 'payment')}
-                  </td>
-                  <td className="px-4 py-4 text-sm text-gray-900">{lead.updated_at || lead.createdAt}</td>
+                  {visibleColumns.customerId && (
+                    <td className="px-4 py-4 text-sm text-gray-700">{lead.customerId}</td>
+                  )}
+                  {visibleColumns.customer && (
+                    <td className="px-4 py-4 text-sm text-gray-900">
+                      <div>
+                        <div className="font-medium">{lead.customer}</div>
+                        <div className="text-gray-600">{lead.phone}</div>
+                        {lead.whatsapp && (
+                          <a 
+                            href={`https://wa.me/91${lead.whatsapp}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-green-600 hover:text-green-800 text-xs flex items-center gap-1"
+                          >
+                            💬 WhatsApp
+                          </a>
+                        )}
+                        {lead.email && (
+                          <a 
+                            href={`mailto:${lead.email}`}
+                            className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
+                          >
+                            📧 Email
+                          </a>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                  {visibleColumns.business && (
+                    <td className="px-4 py-4 text-sm text-gray-900">{lead.business}</td>
+                  )}
+                  {visibleColumns.address && (
+                    <td className="px-4 py-4 text-sm text-gray-900">{lead.address}</td>
+                  )}
+                  {visibleColumns.state && (
+                    <td className="px-4 py-4 text-sm text-gray-900">{lead.state}</td>
+                  )}
+                  {visibleColumns.followUpStatus && (
+                    <td className="px-4 py-4">
+                      {getStatusBadge(lead.connectedStatus || lead.telecallerStatus, 'telecaller')}
+                    </td>
+                  )}
+                  {visibleColumns.salesStatus && (
+                    <td className="px-4 py-4">
+                      {getStatusBadge(lead.salesStatus, 'sales')}
+                    </td>
+                  )}
+                  {visibleColumns.assignedSalesperson && (
+                    <td className="px-4 py-4 text-sm text-gray-900">{isValueAssigned(lead.assignedSalesperson) ? lead.assignedSalesperson : 'Unassigned'}</td>
+                  )}
+                  {visibleColumns.assignedTelecaller && (
+                    <td className="px-4 py-4 text-sm text-gray-900">{isValueAssigned(lead.assignedTelecaller) ? lead.assignedTelecaller : 'Unassigned'}</td>
+                  )}
+                  {visibleColumns.gstNo && (
+                    <td className="px-4 py-4 text-sm text-gray-900">{lead.gstNo}</td>
+                  )}
+                  {visibleColumns.leadSource && (
+                    <td className="px-4 py-4 text-sm text-gray-900">{lead.leadSource}</td>
+                  )}
+                  {visibleColumns.productNames && (
+                    <td className="px-4 py-4 text-sm text-gray-900">{lead.productNamesText}</td>
+                  )}
+                  {visibleColumns.category && (
+                    <td className="px-4 py-4 text-sm text-gray-900">{lead.category}</td>
+                  )}
+                  {visibleColumns.createdAt && (
+                    <td className="px-4 py-4 text-sm text-gray-900">{lead.createdAt}</td>
+                  )}
+                  {visibleColumns.telecallerStatus && (
+                    <td className="px-4 py-4">
+                      {getStatusBadge(lead.telecallerStatus, 'telecaller')}
+                    </td>
+                  )}
+                  {visibleColumns.paymentStatus && (
+                    <td className="px-4 py-4">
+                      {getStatusBadge(lead.paymentStatus, 'payment')}
+                    </td>
+                  )}
+                  {visibleColumns.updatedAt && (
+                    <td className="px-4 py-4 text-sm text-gray-900">{lead.updated_at || lead.createdAt}</td>
+                  )}
                   <td className="px-4 py-4 text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
                       <button
@@ -705,16 +1492,31 @@ const LeadsSimplified = () => {
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           setPreviewLead(lead);
                           setActiveTab('overview');
                           setShowPreviewModal(true);
+                          // Fetch PIs for quotations of this lead
+                          await fetchPIsForLead(lead);
                         }}
                         className="text-green-600 hover:text-green-900"
                         title="View Lead"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
+                      {isLeadAssigned(lead) ? (
+                        <span className="px-2 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded" title="Already assigned">
+                          Assigned
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => openAssignModal(lead)}
+                          className="text-indigo-600 hover:text-indigo-900"
+                          title="Assign Lead"
+                        >
+                          Assign
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -762,6 +1564,85 @@ const LeadsSimplified = () => {
           </div>
         </div>
       </div>
+
+      {/* Column Filter Modal */}
+      {showColumnFilter && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Column Filter</h2>
+              <button onClick={() => setShowColumnFilter(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">Show/Hide Columns</span>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={resetColumns}
+                      className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      onClick={showAllColumns}
+                      className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                    >
+                      Show All
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {Object.entries(visibleColumns).map(([key, value]) => {
+                    const columnLabels = {
+                      customerId: 'Customer ID',
+                      customer: 'Customer',
+                      business: 'Business',
+                      address: 'Address',
+                      state: 'State',
+                      followUpStatus: 'Follow Up Status',
+                      salesStatus: 'Sales Status',
+                      assignedSalesperson: 'Assigned Salesperson',
+                      assignedTelecaller: 'Assigned Telecaller',
+                      gstNo: 'GST No',
+                      leadSource: 'Lead Source',
+                      productNames: 'Product Name',
+                      category: 'Category',
+                      createdAt: 'Created',
+                      telecallerStatus: 'Telecaller Status',
+                      paymentStatus: 'Payment Status',
+                      updatedAt: 'Updated At'
+                    };
+                    
+                    return (
+                      <div key={key} className="flex items-center justify-between">
+                        <label className="text-sm text-gray-700">{columnLabels[key]}</label>
+                        <input
+                          type="checkbox"
+                          checked={value}
+                          onChange={() => toggleColumn(key)}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setShowColumnFilter(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hidden file input for CSV import */}
       <input
@@ -816,238 +1697,252 @@ const LeadsSimplified = () => {
         </div>
       )}
 
-      {/* Preview Modal */}
+      {/* Preview Drawer (Right Sidebar) */}
       {showPreviewModal && previewLead && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="fixed inset-0 bg-black/50 flex z-50">
+          <div className="bg-white h-full w-full max-w-md ml-auto shadow-xl overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
               <h2 className="text-xl font-semibold text-gray-900">Lead Details - {previewLead.customerId}</h2>
               <button onClick={() => setShowPreviewModal(false)} className="text-gray-400 hover:text-gray-600">✕</button>
             </div>
-            
-            {/* Tabs */}
-            <div className="px-6 md:px-8 pt-4">
-              <div className="flex items-center gap-3">
-                {[
-                  { key: 'overview', label: 'Overview' },
-                  { key: 'paymentQuotation', label: 'Payment & Quotation' },
-                  { key: 'proformaInvoice', label: 'Proforma Invoice' }
-                ].map(tab => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium ${activeTab === tab.key ? 'bg-blue-100 text-blue-900' : 'text-gray-600 hover:bg-gray-50'}`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+
+            {/* Drawer Content - show all sections stacked */}
+            <div className="px-4 md:px-5 py-4 space-y-6">
+              {/* Overview */}
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 mb-2">Customer Details</h3>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-0.5">Customer Name</label>
+                    <p className="text-gray-900 font-semibold">{previewLead.customer}</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-0.5">Business</label>
+                    <p className="text-gray-900 font-semibold">{previewLead.business || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-0.5">Address</label>
+                    <p className="text-gray-900 font-semibold">{previewLead.address || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-0.5">State</label>
+                    <p className="text-gray-900 font-semibold">{previewLead.state || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-0.5">Sales Status</label>
+                    <p className="text-gray-900 font-semibold">{previewLead.salesStatus}</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-0.5">Follow Up Status</label>
+                    <p className="text-gray-900 font-semibold">{previewLead.connectedStatus || previewLead.telecallerStatus || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-0.5">Assigned Salesperson</label>
+                    <p className="text-gray-900 font-semibold">{isValueAssigned(previewLead.assignedSalesperson) ? previewLead.assignedSalesperson : 'Unassigned'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-0.5">Assigned Telecaller</label>
+                    <p className="text-gray-900 font-semibold">{isValueAssigned(previewLead.assignedTelecaller) ? previewLead.assignedTelecaller : 'Unassigned'}</p>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            {/* Tab Content */}
-            <div className="px-6 md:px-8 py-5">
-              {activeTab === 'overview' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
-                    <p className="text-gray-900">{previewLead.customer}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                    <p className="text-gray-900">{previewLead.phone}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <p className="text-gray-900">{previewLead.email}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Business</label>
-                    <p className="text-gray-900">{previewLead.business}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Lead Source</label>
-                    <p className="text-gray-900">{previewLead.leadSource}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <p className="text-gray-900">{previewLead.category}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Sales Status</label>
-                    <p className="text-gray-900">{previewLead.salesStatus}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Salesperson</label>
-                    <p className="text-gray-900">{previewLead.assignedSalesperson}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Telecaller</label>
-                    <p className="text-gray-900">{previewLead.assignedTelecaller}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Telecaller Status</label>
-                    <p className="text-gray-900">{previewLead.telecallerStatus}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
-                    <p className="text-gray-900">{previewLead.paymentStatus}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">GST Number</label>
-                    <p className="text-gray-900">{previewLead.gstNo}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                    <p className="text-gray-900">{previewLead.address}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                    <p className="text-gray-900">{previewLead.state}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Created At</label>
-                    <p className="text-gray-900">{previewLead.createdAt}</p>
-                  </div>
-                </div>
-              )}
+              {/* Payment & Quotation */}
+              <div className="space-y-4">
+                <h3 className="text-base font-semibold text-gray-900">Payment & Quotation</h3>
+                  {loadingQuotations ? (
+                    <div className="flex items-center justify-center py-8">
+                      <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+                      <span className="ml-2 text-gray-600">Loading quotations...</span>
+                        </div>
+                  ) : quotations.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                      <p className="text-sm">No quotations found for this lead</p>
+                      <p className="text-xs text-gray-400 mt-1">Quotations will appear here once created</p>
+                        </div>
+                  ) : (
+                    quotations.map((quotation) => {
+                      const getStatusColor = (status) => {
+                        switch (status) {
+                          case 'pending_verification':
+                          case 'pending':
+                            return 'text-yellow-600';
+                          case 'approved':
+                            return 'text-green-600';
+                          case 'rejected':
+                            return 'text-red-600';
+                          case 'sent':
+                            return 'text-blue-600';
+                          case 'accepted':
+                            return 'text-green-600';
+                          default:
+                            return 'text-gray-600';
+                        }
+                      };
 
-              {activeTab === 'paymentQuotation' && (
-                <div className="space-y-6">
-                  {/* Active Quotation */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Quotation</h3>
-                    <div className="space-y-4">
+                      const getStatusLabel = (status) => {
+                        switch (status) {
+                          case 'pending_verification':
+                          case 'pending':
+                            return 'Pending Verification';
+                          case 'approved':
+                            return 'Approved';
+                          case 'rejected':
+                            return 'Rejected';
+                          case 'sent':
+                            return 'Sent';
+                          case 'accepted':
+                            return 'Accepted';
+                          default:
+                            return status;
+                        }
+                      };
+
+                      const formatDate = (dateString) => {
+                        if (!dateString) return 'N/A';
+                        return new Date(dateString).toLocaleDateString();
+                      };
+
+                      const formatCurrency = (amount) => {
+                        return new Intl.NumberFormat('en-IN', {
+                          style: 'currency',
+                          currency: 'INR',
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        }).format(amount);
+                      };
+
+                      return (
+                        <div key={quotation.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                          <h3 className="text-base font-semibold text-gray-900 mb-2">
+                            {getStatusLabel(quotation.status)} Quotation
+                          </h3>
+                    <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-gray-900">Quotation #QT-2024-001</p>
-                          <p className="text-sm text-gray-600">Digital Marketing Package - Premium Plan</p>
+                                <p className="font-medium text-gray-900">Quotation #{quotation.quotation_number}</p>
+                                <p className="text-xs text-gray-600">
+                                  {quotation.customer_name} - {quotation.customer_business}
+                                </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-lg font-semibold text-green-600">₹23,600 - Active</p>
-                          <p className="text-sm text-gray-500">Valid Until: 2024-02-20</p>
+                                <p className={`text-sm font-semibold ${getStatusColor(quotation.status)}`}>
+                                  {formatCurrency(quotation.total_amount)} - {getStatusLabel(quotation.status)}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Valid Until: {formatDate(quotation.valid_until)}
+                                </p>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                        <p className="text-sm text-gray-600">Prepared by: Sarah Johnson</p>
+                      <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                              <p className="text-xs text-gray-600">
+                                Prepared by: {quotation.created_by}
+                              </p>
                         <div className="flex space-x-2">
-                          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                                <button 
+                                  onClick={() => handleViewQuotation(quotation.id)}
+                                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs"
+                                >
                             View Quotation
                           </button>
-                          <button className="px-4 py-2 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 text-sm">
+                                <button 
+                                  onClick={() => handleDownloadPDF(quotation.id)}
+                                  className="px-3 py-1.5 text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 text-xs"
+                                >
                             Download PDF
                           </button>
+                                {(['pending_verification', 'pending'].includes(quotation.status)) && (
+                                  <>
+                                    <button 
+                                      onClick={() => handleApproveQuotation(quotation.id)}
+                                      className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button 
+                                      onClick={() => handleRejectQuotation(quotation.id)}
+                                      className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs"
+                                    >
+                                      Reject
+                                    </button>
+                                  </>
+                                )}
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Rejected Quotation */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Rejected Quotation</h3>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-gray-900">Quotation #QT-2024-002</p>
-                          <p className="text-sm text-gray-600">Basic Marketing Package - Standard Plan</p>
+                    {/* PIs for this quotation */}
+                    {(() => {
+                      const quotationPIs = proformaInvoices.filter(pi => pi.quotation_id === quotation.id);
+                      if (quotationPIs.length === 0) return null;
+
+                      return (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <p className="text-xs font-semibold text-gray-700 mb-2">Proforma Invoices:</p>
+                          <div className="space-y-2">
+                            {quotationPIs.map((pi) => (
+                              <div key={pi.id} className="bg-gray-50 border border-gray-200 rounded-md p-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-purple-600" />
+                                    <div>
+                                      <p className="text-xs font-semibold text-gray-900">{pi.pi_number}</p>
+                                      <p className="text-xs text-gray-500">
+                                        {new Date(pi.created_at).toLocaleDateString()} • ₹{Number(pi.total_amount || 0).toLocaleString()}
+                                      </p>
+                                    </div>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                      pi.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                      pi.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                      pi.status === 'pending_approval' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-blue-100 text-blue-800'
+                                    }`}>
+                                      {pi.status === 'approved' ? '✅ Approved' :
+                                       pi.status === 'rejected' ? '❌ Rejected' :
+                                       pi.status === 'pending_approval' ? '⏳ Pending' :
+                                       '📄 ' + (pi.status || 'Draft')}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => handleViewPI(pi.id)}
+                                      className="text-blue-600 text-xs hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50"
+                                    >
+                                      View
+                                    </button>
+                                    {pi.status === 'pending_approval' && (
+                                      <>
+                                        <button
+                                          onClick={() => handleApprovePI(pi.id)}
+                                          className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs"
+                                        >
+                                          Approve
+                                        </button>
+                                        <button
+                                          onClick={() => handleRejectPI(pi.id)}
+                                          className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs"
+                                        >
+                                          Reject
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-lg font-semibold text-red-600">₹15,000 - Rejected</p>
-                          <p className="text-sm text-gray-500">Rejected on: 2024-01-15</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                        <p className="text-sm text-gray-600">Prepared by: Mike Wilson</p>
-                        <div className="flex space-x-2">
-                          <button className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">
-                            View Quotation
-                          </button>
-                          <button className="px-4 py-2 text-gray-600 border border-gray-600 rounded-lg hover:bg-gray-50 text-sm">
-                            Download PDF
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                      );
+                    })()}
                   </div>
+                      );
+                    })
+                  )}
                 </div>
-              )}
-
-              {activeTab === 'proformaInvoice' && (
-                <div className="space-y-6">
-                  {/* Payment Summary */}
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Summary</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Advance Payment</label>
-                        <p className="text-green-600 font-semibold text-lg">₹10,000</p>
-                        <p className="text-sm text-gray-500">Received on: 2024-01-10</p>
-                        <p className="text-sm text-gray-600">Receiver: John Smith</p>
-                        <p className="text-sm text-gray-600">Account ID: ACC-2024-001</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Pending Payment</label>
-                        <p className="text-yellow-600 font-semibold text-lg">₹15,000</p>
-                        <p className="text-sm text-gray-500">Due on: 2024-02-15</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
-                        <p className="text-gray-900 font-semibold text-lg">₹25,000</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Balance</label>
-                        <p className="text-red-600 font-semibold text-lg">₹15,000</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Voucher Details */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Voucher Details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Number</label>
-                        <p className="text-gray-900 font-mono">VCH-2024-001</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Date</label>
-                        <p className="text-gray-900">{new Date().toLocaleDateString()}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Quotation Reference</label>
-                        <p className="text-gray-900">#QT-2024-001</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Lead ID</label>
-                        <p className="text-gray-900">{previewLead.customerId}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
-                        <p className="text-gray-900">{previewLead.customer}</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-                        <p className="text-gray-900 font-semibold">₹25,000</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center justify-end space-x-3">
-                    <button className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
-                      Preview Voucher
-                    </button>
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                      Generate Voucher
-                    </button>
-                    <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                      Download PDF
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
-            
-            <div className="flex items-center justify-end gap-3 px-6 md:px-8 py-4 border-t border-gray-200">
+
+            <div className="flex items-center justify-end gap-3 px-6 md:px-8 py-4 border-t border-gray-200 sticky bottom-0 bg-white">
               <button
                 onClick={() => setShowPreviewModal(false)}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
@@ -1085,6 +1980,7 @@ const LeadsSimplified = () => {
                       <th className="px-3 py-2 text-left">Customer Name</th>
                       <th className="px-3 py-2 text-left">Mobile</th>
                       <th className="px-3 py-2 text-left">Email</th>
+                      <th className="px-3 py-2 text-left">Address</th>
                       <th className="px-3 py-2 text-left">Business</th>
                       <th className="px-3 py-2 text-left">Lead Source</th>
                       <th className="px-3 py-2 text-left">Category</th>
@@ -1096,6 +1992,7 @@ const LeadsSimplified = () => {
                         <td className="px-3 py-2">{row['Customer Name'] || '-'}</td>
                         <td className="px-3 py-2">{row['Mobile Number'] || '-'}</td>
                         <td className="px-3 py-2">{row['Email'] || '-'}</td>
+                        <td className="px-3 py-2">{row['Address'] || '-'}</td>
                         <td className="px-3 py-2">{row['Business Name'] || '-'}</td>
                         <td className="px-3 py-2">{row['Lead Source'] || '-'}</td>
                         <td className="px-3 py-2">{row['Business Category'] || '-'}</td>
@@ -1177,17 +2074,26 @@ const LeadsSimplified = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Business</label>
-                  <input
-                    type="text"
-                    value={editFormData.business}
-                    onChange={(e) => setEditFormData({...editFormData, business: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">GST No</label>
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Business</label>
+                   <input
+                     type="text"
+                     value={editFormData.business}
+                     onChange={(e) => setEditFormData({...editFormData, business: e.target.value})}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                   />
+                 </div>
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                   <input
+                     type="text"
+                     value={editFormData.address}
+                     onChange={(e) => setEditFormData({...editFormData, address: e.target.value})}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                   />
+                 </div>
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">GST No</label>
                   <input
                     type="text"
                     value={editFormData.gstNo}
@@ -1294,6 +2200,15 @@ const LeadsSimplified = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                  <input
+                    type="text"
+                    value={editFormData.state}
+                    onChange={(e) => setEditFormData({...editFormData, state: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
               </div>
               
               <div className="flex items-center justify-end gap-3 mt-6">
@@ -1314,6 +2229,192 @@ const LeadsSimplified = () => {
           </div>
         </div>
       )}
+
+      {/* Assign Modal (supports single or bulk) */}
+      {showAssignModal && (assigningLead || selectedLeadIds.length > 0) && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {assigningLead ? `Assign Lead - ${assigningLead.customer}` : `Assign ${selectedLeadIds.length} Selected Leads`}
+              </h2>
+              <button onClick={() => setShowAssignModal(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Salesperson (username)</label>
+                <select
+                  value={assignForm.salesperson}
+                  onChange={(e) => setAssignForm({ ...assignForm, salesperson: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="">{loadingUsers ? 'Loading...' : 'Unassigned'}</option>
+                  {usersError && <option value="" disabled>{usersError}</option>}
+                  {usernames.map((name) => (
+                    <option key={`sp-${name}`} value={name}>{name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telecaller (optional)</label>
+                <select
+                  value={assignForm.telecaller}
+                  onChange={(e) => setAssignForm({ ...assignForm, telecaller: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="">{loadingUsers ? 'Loading...' : 'Unassigned'}</option>
+                  {usersError && <option value="" disabled>{usersError}</option>}
+                  {usernames.map((name) => (
+                    <option key={`tc-${name}`} value={name}>{name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+              <button onClick={() => setShowAssignModal(false)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+              <button
+                onClick={async () => {
+                  try {
+                    const payload = {
+                      assignedSalesperson: assignForm.salesperson || null,
+                      assignedTelecaller: assignForm.telecaller || null,
+                    };
+                    // Single lead assignment
+                    if (assigningLead) {
+                      const leadId = assigningLead.id;
+                      await departmentHeadService.updateLead(leadId, payload);
+                      // Update UI optimistically
+                      setLeadsData(prev => prev.map(l =>
+                        l.id === leadId
+                          ? { ...l, assignedSalesperson: payload.assignedSalesperson || '', assignedTelecaller: payload.assignedTelecaller || '' }
+                          : l
+                      ));
+                      toastManager.success('Lead assigned successfully');
+                      setAssigningLead(null);
+                    } else {
+                      // Batch update multiple leads - single API call to avoid rate limiting
+                      await departmentHeadService.batchUpdateLeads(selectedLeadIds, payload);
+                      // Update UI optimistically
+                      setLeadsData(prev => prev.map(l => selectedLeadIds.includes(l.id)
+                        ? { ...l, assignedSalesperson: payload.assignedSalesperson || '', assignedTelecaller: payload.assignedTelecaller || '' }
+                        : l
+                      ));
+                      toastManager.success(`Assigned ${selectedLeadIds.length} leads successfully`);
+                      setSelectedLeadIds([]);
+                      setIsAllSelected(false);
+                    }
+
+                    // Refresh from server to ensure latest values
+                    try {
+                      const params = { page, limit };
+                      if (searchTerm && searchTerm.trim() !== '') params.search = searchTerm.trim();
+                      const response = await departmentHeadService.getAllLeads(params);
+                      if (response && response.data) {
+                        const transformedData = transformApiData(response.data);
+                        setLeadsData(transformedData);
+                        if (response.pagination) setTotal(Number(response.pagination.total) || 0);
+                      }
+                    } catch (e) {}
+                    setShowAssignModal(false);
+                  } catch (err) {
+                    apiErrorHandler.handleError(err, 'assign lead');
+                  }
+                }}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                Assign
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quotation Details Modal */}
+      {showQuotationModal && selectedQuotation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Quotation Details - {selectedQuotation.quotation_number}
+              </h2>
+              <button 
+                onClick={() => setShowQuotationModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {/* Use the exact same QuotationPreview component as salesperson */}
+              <QuotationPreview
+                data={{
+                  quotationNumber: selectedQuotation.quotation_number,
+                  quotationDate: selectedQuotation.quotation_date,
+                  validUpto: selectedQuotation.valid_until,
+                  voucherNumber: `VOUCH-${Math.floor(1000 + Math.random() * 9000)}`,
+                  billTo: {
+                    business: selectedQuotation.customer_name,
+                    address: selectedQuotation.customer_address,
+                    phone: selectedQuotation.customer_phone,
+                    gstNo: selectedQuotation.customer_gst_no,
+                    state: selectedQuotation.customer_state
+                  },
+                  items: selectedQuotation.items?.map(item => ({
+                    productName: item.product_name,
+                    description: item.description,
+                    quantity: item.quantity,
+                    unit: item.unit || 'Nos',
+                    buyerRate: item.unit_price,
+                    unitPrice: item.unit_price,
+                    amount: item.taxable_amount,
+                    total: item.total_amount,
+                    hsn: item.hsn_code,
+                    gstRate: item.gst_rate
+                  })),
+                  subtotal: parseFloat(selectedQuotation.subtotal),
+                  taxAmount: parseFloat(selectedQuotation.tax_amount),
+                  total: parseFloat(selectedQuotation.total_amount),
+                  selectedBranch: 'ANODE'
+                }}
+                companyBranches={companyBranches}
+                user={user}
+              />
+            </div>
+            
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
+              <button
+                onClick={() => setShowQuotationModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => handleDownloadPDF(selectedQuotation.id)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PI Preview Modal */}
+      <PIPreviewModal
+        open={showPIPreview}
+        onClose={() => {
+          setShowPIPreview(false);
+          setPiPreviewData(null);
+        }}
+        piPreviewData={piPreviewData}
+        selectedBranch={selectedPIBranch}
+        companyBranches={companyBranches}
+        approvedQuotationId={null}
+        viewingCustomerId={null}
+        onPICreated={null}
+      />
 
     </div>
   );

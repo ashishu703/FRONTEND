@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { X, Plus, DollarSign } from 'lucide-react';
+import { X, Plus, DollarSign, Eye, Download } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
+import MarketingQuotationPreview from "./MarketingQuotationPreview.jsx"
+// Removed PI template import; PI functionality is limited to salesperson module
 
 // CreateQuotationForm Component for Marketing Salesperson
 const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
@@ -42,6 +45,8 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
       logo: 'Samriddhi Industries - Innovation & Trust.....'
     }
   };
+
+  const [showPreview, setShowPreview] = useState(false);
 
   const [quotationData, setQuotationData] = useState({
     quotationNumber: `ANQ${Date.now().toString().slice(-6)}`,
@@ -147,6 +152,63 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
     }
   };
 
+  // Check if all required fields are filled
+  const isFormValid = () => {
+    const { billTo, items } = quotationData;
+    
+    // Check bill-to information
+    if (!billTo.business || !billTo.phone || !billTo.address || !billTo.state) {
+      return false;
+    }
+    
+    // Check items
+    if (items.length === 0) return false;
+    
+    return items.every(item => 
+      item.productName && 
+      item.quantity > 0 && 
+      item.buyerRate > 0
+    );
+  };
+
+  const handlePreview = () => {
+    if (isFormValid()) {
+      setShowPreview(true);
+    } else {
+      alert('Please fill all required fields before previewing');
+    }
+  };
+
+  const handleDownload = () => {
+    if (isFormValid()) {
+      const element = document.getElementById('quotation-preview-content');
+      if (element) {
+        const opt = {
+          margin: [0.4, 0.4, 0.4, 0.4],
+          filename: `Quotation-${quotationData.quotationNumber}-${quotationData.billTo.business.replace(/\s+/g, '-')}.pdf`,
+          image: { type: 'jpeg', quality: 0.8 },
+          html2canvas: { 
+            scale: 1.1,
+            useCORS: true,
+            letterRendering: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff'
+          },
+          jsPDF: { 
+            unit: 'in', 
+            format: 'a4', 
+            orientation: 'portrait',
+            compress: true,
+            putOnlyUsedFonts: true
+          }
+        };
+        html2pdf().set(opt).from(element).save();
+      }
+    } else {
+      alert('Please fill all required fields before downloading');
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave({
@@ -156,6 +218,8 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
     });
     onClose();
   };
+
+  // Removed PI click handler; PI functionality belongs to salesperson module
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -263,10 +327,9 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">GST Number *</label>
+                  <label className="text-sm font-medium text-gray-700">GST Number</label>
                   <input
                     type="text"
-                    required
                     value={quotationData.billTo.gstNo}
                     onChange={(e) => setQuotationData(prev => ({
                       ...prev,
@@ -427,7 +490,36 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
             </div>
 
             {/* Form Actions */}
-            <div className="flex items-center justify-end pt-6 border-t">
+            <div className="flex items-center justify-between pt-6 border-t">
+              <div className="flex gap-3">
+                <button 
+                  type="button" 
+                  onClick={handlePreview}
+                  disabled={!isFormValid()}
+                  className={`px-4 py-2 rounded-md transition-colors flex items-center gap-2 ${
+                    isFormValid() 
+                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  <Eye className="w-4 h-4" />
+                  Preview
+                </button>
+                <button 
+                  type="button" 
+                  onClick={handleDownload}
+                  disabled={!isFormValid()}
+                  className={`px-4 py-2 rounded-md transition-colors flex items-center gap-2 ${
+                    isFormValid() 
+                      ? 'bg-green-600 text-white hover:bg-green-700' 
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </button>
+                {/* PI button removed for Marketing form */}
+              </div>
               <div className="flex gap-3">
                 <button 
                   type="button" 
@@ -447,6 +539,50 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
           </form>
         </div>
       </div>
+
+      {/* Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="p-4 flex-1 overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Quotation Preview - {quotationData.billTo.business}</h3>
+                <button 
+                  onClick={() => setShowPreview(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                  aria-label="Close preview"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              {/* Quotation Preview Content */}
+              <div id="quotation-preview-content">
+                <MarketingQuotationPreview data={quotationData} companyBranches={companyBranches} user={user} />
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowPreview(false)}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 border border-transparent rounded shadow-sm hover:bg-green-700"
+                onClick={handleDownload}
+              >
+                Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PI Preview removed for Marketing form */}
     </div>
   );
 };

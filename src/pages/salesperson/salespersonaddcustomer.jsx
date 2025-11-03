@@ -57,16 +57,16 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     state: editingCustomer?.state || "",
     customerType: editingCustomer?.customerType || "",
     leadSource: editingCustomer?.enquiryBy || "",
-    connectedStatus: editingCustomer?.connectedStatus || 'pending',
-    connectedStatusRemark: editingCustomer?.connectedStatusRemark || '',
-    finalStatus: editingCustomer?.finalStatus || 'open',
-    finalStatusRemark: editingCustomer?.finalStatusRemark || '',
+    salesStatus: editingCustomer?.salesStatus || 'follow up',
+    salesStatusRemark: editingCustomer?.salesStatusRemark || '',
+    followUpStatus: editingCustomer?.followUpStatus || '',
+    followUpRemark: editingCustomer?.followUpRemark || '',
+    followUpDate: editingCustomer?.followUpDate || '',
+    followUpTime: editingCustomer?.followUpTime || '',
     callDurationSeconds: editingCustomer?.callDurationSeconds || '',
     callRecordingFile: null,
     transferredTo: editingCustomer?.transferredTo || '',
     date: new Date().toISOString().split('T')[0],
-    meetingDate: editingCustomer?.meetingDate || '',
-    meetingTime: editingCustomer?.meetingTime || '',
   })
 
   const handleInputChange = (field, value) => {
@@ -327,125 +327,63 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
               </div>
             </div>
 
-            {/* Connected Status */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <User className="h-4 w-4 text-green-600" />
-                Connected Status
-              </label>
-              <select
-                value={formData.connectedStatus}
-                onChange={(e) => handleInputChange("connectedStatus", e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="pending">Pending</option>
-                <option value="connected">Connected</option>
-                <option value="running">Running</option>
-                <option value="converted">Converted</option>
-                <option value="lost_closed">Lost/Closed</option>
-                <option value="interested">Interested</option>
-                <option value="win_converted">Win - CONVERTED</option>
-                <option value="closed">CLOSED</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            {/* Call Details - Only show when connected/next_meeting/other */}
-            {(formData.connectedStatus === 'connected' || formData.connectedStatus === 'next_meeting' || formData.connectedStatus === 'other') && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Call Duration (seconds)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.callDurationSeconds}
-                    onChange={(e) => handleInputChange("callDurationSeconds", e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., 120"
-                  />
-                </div> */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    {formData.connectedStatus === 'other' ? 'Please specify' : 'Remark'}
-                  </label>
-                  <textarea
-                    value={formData.connectedStatusRemark}
-                    onChange={(e) => handleInputChange("connectedStatusRemark", e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    placeholder={formData.connectedStatus === 'other' ? 'Please specify connected status' : 'Remark for connected status'}
-                  />
-                </div>
-                {/* <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Call Recording</label>
-                  <input
-                    type="file"
-                    accept="audio/*"
-                    onChange={(e) => handleFileChange("callRecordingFile", e.target.files[0])}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div> */}
-              </div>
-            )}
-
-            {/* Final Status block */}
+            {/* Follow Up + Sales Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <User className="h-4 w-4 text-blue-600" />
-                  Final Status
+                  <User className="h-4 w-4 text-amber-600" />
+                  Follow Up Status
                 </label>
                 <select
-                  value={formData.finalStatus}
-                  onChange={(e) => handleInputChange("finalStatus", e.target.value)}
+                  value={formData.followUpStatus}
+                  onChange={(e) => handleInputChange('followUpStatus', e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="next_meeting">Next Meeting</option>
-                  <option value="open">Open</option>
-                  <option value="not_connected">Not Connected</option>
-                  <option value="order_confirmed">Order Confirmed</option>
-                  <option value="closed">Closed</option>
-                  <option value="other">Other</option>
+                  <option value="">Select Follow Up Status</option>
+                  <option value="Appointment Scheduled">Appointment Scheduled</option>
+                  <option value="Next Meeting">Next Meeting</option>
+                  <option value="Not Interested">Not Interested</option>
+                  <option value="Interested">Interested</option>
+                  <option value="Quotation Sent">Quotation Sent</option>
+                  <option value="Negotiation">Negotiation</option>
+                  <option value="Close Order">Close Order</option>
+                  <option value="Closed/Lost">Closed/Lost</option>
+                  <option value="Call Back Request">Call Back Request</option>
+                  <option value="Unreachable/Call Not Connected">Unreachable/Call Not Connected</option>
+                  <option value="Currently Not Required">Currently Not Required</option>
+                  <option value="Not Relevant">Not Relevant</option>
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  {formData.finalStatus === 'other' ? 'Please specify final status' : 
-                   formData.finalStatus === 'next_meeting' ? 'Meeting Date & Time' : 
-                   'Remark for final status'}
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <User className="h-4 w-4 text-blue-600" />
+                  Sales Status
                 </label>
-                {formData.finalStatus === 'next_meeting' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Date</label>
-                      <input
-                        type="date"
-                        value={formData.meetingDate || ''}
-                        onChange={(e) => handleInputChange("meetingDate", e.target.value)}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Time</label>
-                      <input
-                        type="time"
-                        value={formData.meetingTime || ''}
-                        onChange={(e) => handleInputChange("meetingTime", e.target.value)}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <textarea
-                    value={formData.finalStatusRemark}
-                    onChange={(e) => handleInputChange("finalStatusRemark", e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    placeholder={formData.finalStatus === 'other' ? 'Please specify final status' : 'Remark for final status'}
-                  />
-                )}
+                <select
+                  value={formData.salesStatus}
+                  onChange={(e) => handleInputChange("salesStatus", e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="win">Win</option>
+                  <option value="closed">Closed</option>
+                  <option value="not interested">Not Interested</option>
+                  <option value="follow up">Follow Up</option>
+                </select>
+              </div>
+
+              {/* Sales Status Remark */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Sales Status Remark</label>
+                <textarea
+                  value={formData.salesStatusRemark}
+                  onChange={(e) => handleInputChange("salesStatusRemark", e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  placeholder="Enter remark for sales status"
+                />
               </div>
             </div>
+
 
             {/* Transfer Lead field */}
             <div className="space-y-2">
@@ -462,6 +400,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
               />
             </div>
 
+            
 
             {/* Form Actions */}
             <div className="flex items-center justify-end gap-3 pt-6 border-t">

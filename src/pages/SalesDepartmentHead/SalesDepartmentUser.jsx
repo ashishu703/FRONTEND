@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, UserPlus, Upload, Edit, LogOut, Trash2, Hash, User, Mail, Shield, Building, Target, Calendar, MoreHorizontal, TrendingUp, AlertTriangle, LogIn } from 'lucide-react';
-import departmentUsersService, { apiToUiDepartment } from '../../api/admin_api/departmentUsersService';
+import departmentUserService, { apiToUiDepartment } from '../../api/admin_api/departmentUserService';
 import { useAuth } from '../../context/AuthContext';
 
-const UserManagementTable = ({ setActiveView }) => {
+const SalesDepartmentUser = ({ setActiveView }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
@@ -30,7 +30,10 @@ const UserManagementTable = ({ setActiveView }) => {
     username: '',
     email: '',
     password: '',
-    target: ''
+    target: '',
+    targetStartDate: '',
+    targetDurationDays: '30',
+    customDays: '' // Separate field for custom days input
   });
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -40,14 +43,36 @@ const UserManagementTable = ({ setActiveView }) => {
   const handleEdit = (userId) => {
     const u = users.find(x => x.id === userId);
     if (!u) return;
-    setEditingUser({ ...u });
+    // Initialize customDays if current duration is not in standard options
+    const currentDuration = String(u.targetDurationDays || u.target_duration_days || '30');
+    const isCustom = !['15', '30', '60', '90'].includes(currentDuration);
+    
+    // Format date for input field (YYYY-MM-DD format) - use already formatted input date if available
+    const formatDateForInput = (dateString) => {
+      if (!dateString) return '';
+      try {
+        const date = new Date(dateString + 'T00:00:00');
+        if (isNaN(date.getTime())) return '';
+        return date.toISOString().split('T')[0];
+      } catch {
+        return '';
+      }
+    };
+    
+    setEditingUser({ 
+      ...u, 
+      targetDurationDays: isCustom ? 'custom' : currentDuration,
+      customDays: isCustom ? currentDuration : '',
+      targetStartDateInput: u.targetStartDateInput || formatDateForInput(u.targetStartDate || u.target_start_date),
+      targetEndDateInput: u.targetEndDateInput || formatDateForInput(u.targetEndDate || u.target_end_date)
+    });
     setShowEditModal(true);
   };
   const handleLogout = () => {};
   const { impersonate } = useAuth();
   const handleDelete = async (userId) => {
     try {
-      await departmentUsersService.deleteUser(userId);
+      await departmentUserService.deleteUser(userId);
       setUsers(prev => prev.filter(u => u.id !== userId));
     } catch (err) {
       setError(err.message || 'Failed to delete user');
@@ -97,19 +122,64 @@ const UserManagementTable = ({ setActiveView }) => {
       setError(null);
       const params = { page, limit };
       if (searchTerm.trim()) params.search = searchTerm.trim();
-      const res = await departmentUsersService.listUsers(params);
+      const res = await departmentUserService.listUsers(params);
       const payload = res.data || res;
-      const items = (payload.users || []).map(u => ({
-        id: u.id,
-        username: u.username,
-        email: u.email,
-        role: 'DEPARTMENT USER',
-        department: apiToUiDepartment(u.departmentType || u.department_type),
-        target: typeof u.target === 'number' ? String(u.target) : (u.target || ''),
-        achievedTarget: typeof u.achievedTarget === 'number' ? String(u.achievedTarget) : (u.achievedTarget || '0'),
-        remainingTarget: (u.remainingTarget ?? u.remaining_target) !== undefined ? String(u.remainingTarget ?? u.remaining_target) : (u.target && u.achievedTarget ? String((+u.target) - (+u.achievedTarget)) : ''),
-        createdAt: u.createdAt || u.created_at ? new Date(u.createdAt || u.created_at).toDateString() : ''
-      }));
+      const items = (payload.users || []).map(u => {
+        const target = parseFloat(u.target || 0);
+        const achievedTarget = parseFloat(u.achievedTarget || u.achieved_target || 0);
+        const remainingTarget = target - achievedTarget;
+        
+        // Format dates properly for display
+        const formatDateForDisplay = (dateString) => {
+          if (!dateString) return null;
+          try {
+            // Handle ISO date string (YYYY-MM-DD)
+            const date = new Date(dateString + 'T00:00:00'); // Add time to avoid timezone issues
+            if (isNaN(date.getTime())) return null;
+            // Format as MM/DD/YYYY consistently
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${month}/${day}/${year}`;
+          } catch {
+            return null;
+          }
+        };
+
+        const formatDateForInput = (dateString) => {
+          if (!dateString) return '';
+          try {
+            // Convert ISO date (YYYY-MM-DD) or any valid date string to YYYY-MM-DD for input field
+            const date = new Date(dateString + 'T00:00:00');
+            if (isNaN(date.getTime())) return '';
+            return date.toISOString().split('T')[0];
+          } catch {
+            return '';
+          }
+        };
+        
+        return {
+          id: u.id,
+          username: u.username,
+          email: u.email,
+          role: 'DEPARTMENT USER',
+          department: apiToUiDepartment(u.departmentType || u.department_type),
+          target: String(target),
+          achievedTarget: String(achievedTarget),
+          remainingTarget: String(remainingTarget),
+          targetStartDate: u.targetStartDate || u.target_start_date || null,
+          targetEndDate: u.targetEndDate || u.target_end_date || null,
+          targetDurationDays: u.targetDurationDays || u.target_duration_days || null,
+          targetStatus: u.targetStatus || u.target_status || 'active',
+          createdAt: u.createdAt || u.created_at ? new Date(u.createdAt || u.created_at).toDateString() : '',
+          // Add formatted dates for display
+          targetStartDateDisplay: formatDateForDisplay(u.targetStartDate || u.target_start_date),
+          targetEndDateDisplay: formatDateForDisplay(u.targetEndDate || u.target_end_date),
+          // Add formatted dates for input fields
+          targetStartDateInput: formatDateForInput(u.targetStartDate || u.target_start_date),
+          targetEndDateInput: formatDateForInput(u.targetEndDate || u.target_end_date)
+        };
+      });
       setUsers(items);
       const pagination = payload.pagination || {};
       setTotal(pagination.total || 0);
@@ -231,6 +301,18 @@ const UserManagementTable = ({ setActiveView }) => {
                 <th className="text-left py-3 px-4">
                   <div className="flex items-center gap-2 text-gray-600 font-medium">
                     <Calendar className="w-4 h-4 text-teal-600" />
+                    Target Period
+                  </div>
+                </th>
+                <th className="text-left py-3 px-4">
+                  <div className="flex items-center gap-2 text-gray-600 font-medium">
+                    <Shield className="w-4 h-4 text-blue-600" />
+                    Status
+                  </div>
+                </th>
+                <th className="text-left py-3 px-4">
+                  <div className="flex items-center gap-2 text-gray-600 font-medium">
+                    <Calendar className="w-4 h-4 text-gray-600" />
                     Created At
                   </div>
                 </th>
@@ -244,10 +326,10 @@ const UserManagementTable = ({ setActiveView }) => {
             </thead>
             <tbody>
               {loading && (
-                <tr><td className="py-8 px-4 text-center text-gray-500" colSpan={10}>Loading...</td></tr>
+                <tr><td className="py-8 px-4 text-center text-gray-500" colSpan={12}>Loading...</td></tr>
               )}
               {!loading && filteredUsers.length === 0 && (
-                <tr><td className="py-8 px-4 text-center text-gray-500" colSpan={10}>{error || 'No users found'}</td></tr>
+                <tr><td className="py-8 px-4 text-center text-gray-500" colSpan={12}>{error || 'No users found'}</td></tr>
               )}
               {!loading && filteredUsers.map((user) => (
                 <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
@@ -283,6 +365,30 @@ const UserManagementTable = ({ setActiveView }) => {
                     <span className="text-red-600 font-medium bg-red-50 px-2 py-1 rounded-md">{user.remainingTarget}</span>
                   </td>
                   <td className="py-4 px-4">
+                    <div className="text-xs text-gray-600">
+                      {user.targetStartDateDisplay ? (
+                        <>
+                          <div>From: {user.targetStartDateDisplay}</div>
+                          <div>To: {user.targetEndDateDisplay || 'N/A'}</div>
+                          {user.targetDurationDays && <div className="text-gray-500">({user.targetDurationDays} days)</div>}
+                        </>
+                      ) : (
+                        <span className="text-gray-400">Not set</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className={`inline-block px-2 py-1 rounded-md text-xs font-semibold ${
+                      user.targetStatus === 'achieved' ? 'bg-green-100 text-green-800' :
+                      user.targetStatus === 'overachieved' ? 'bg-blue-100 text-blue-800' :
+                      user.targetStatus === 'unachieved' ? 'bg-red-100 text-red-800' :
+                      user.targetStatus === 'expired' ? 'bg-gray-100 text-gray-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {user.targetStatus?.toUpperCase() || 'ACTIVE'}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4">
                     <span className="text-gray-700">{user.createdAt}</span>
                   </td>
                   <td className="py-4 px-4">
@@ -290,12 +396,13 @@ const UserManagementTable = ({ setActiveView }) => {
                       <button
                         onClick={() => handleEdit(user.id)}
                         className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Edit"
+                        title={user.targetStatus === 'achieved' || user.targetStatus === 'unachieved' || user.targetStatus === 'overachieved' ? 'Set New Target' : 'Edit Target'}
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={async () => {
+                          // Login as this specific user
                           try {
                             const result = await impersonate(user.email);
                             if (result.success) {
@@ -303,10 +410,10 @@ const UserManagementTable = ({ setActiveView }) => {
                               const url = `${window.location.origin}/?impersonateToken=${encodeURIComponent(token)}`;
                               window.open(url, '_blank');
                             } else {
-                              alert(result.error || 'Failed to switch user');
+                              alert(result.error || 'Failed to login as user');
                             }
                           } catch (err) {
-                            alert('Failed to switch user');
+                            alert('Failed to login as user: ' + (err.message || 'Unknown error'));
                           }
                         }}
                         className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
@@ -365,6 +472,7 @@ const UserManagementTable = ({ setActiveView }) => {
                 e.preventDefault();
                 setSaving(true);
                 try {
+                  // Only set dates if explicitly provided - no auto-selection
                   const payload = {
                     username: newUser.username,
                     email: newUser.email,
@@ -372,10 +480,28 @@ const UserManagementTable = ({ setActiveView }) => {
                     headUserEmail: currentUser?.email,
                     target: Number(newUser.target || 0)
                   };
-                  await departmentUsersService.createUser(payload);
+                  
+                  // Only add target dates if both start date and duration are provided
+                  if (newUser.targetStartDate && newUser.targetStartDate.trim() !== '' && 
+                      newUser.targetDurationDays && newUser.targetDurationDays !== '') {
+                    const targetStartDate = new Date(newUser.targetStartDate);
+                    if (!isNaN(targetStartDate.getTime())) {
+                      const targetDurationDays = newUser.targetDurationDays === 'custom' 
+                        ? parseInt(newUser.customDays || 0)
+                        : parseInt(newUser.targetDurationDays || 0);
+                      
+                      if (targetDurationDays > 0) {
+                        const targetEndDate = new Date(targetStartDate);
+                        targetEndDate.setDate(targetEndDate.getDate() + targetDurationDays);
+                        payload.targetStartDate = targetStartDate.toISOString().split('T')[0];
+                        payload.targetDurationDays = targetDurationDays;
+                      }
+                    }
+                  }
+                  await departmentUserService.createUser(payload);
                   await fetchUsers();
                   setShowAddModal(false);
-                  setNewUser({ username: '', email: '', password: '', target: '' });
+                  setNewUser({ username: '', email: '', password: '', target: '', targetStartDate: '', targetDurationDays: '30', customDays: '' });
                 } catch (err) {
                   setError(err.message || 'Failed to create user');
                 } finally {
@@ -418,17 +544,52 @@ const UserManagementTable = ({ setActiveView }) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Target (Rs)</label>
+                  <label className="block text-xs text-gray-600 mb-1">Payment Target (Rs)</label>
                   <input
                     type="number"
                     min="0"
                     value={newUser.target}
                     onChange={(e) => setNewUser({ ...newUser, target: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter target to assign"
+                    placeholder="Enter payment target"
                   />
                 </div>
-                
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Target Start Date</label>
+                  <input
+                    type="date"
+                    value={newUser.targetStartDate}
+                    onChange={(e) => setNewUser({ ...newUser, targetStartDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Target Duration (Days)</label>
+                  <select
+                    value={newUser.targetDurationDays}
+                    onChange={(e) => setNewUser({ ...newUser, targetDurationDays: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="15">15 Days</option>
+                    <option value="30">30 Days (Monthly)</option>
+                    <option value="60">60 Days (2 Months)</option>
+                    <option value="90">90 Days (Quarterly)</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                {newUser.targetDurationDays === 'custom' && (
+                  <div className="md:col-span-2">
+                    <label className="block text-xs text-gray-600 mb-1">Custom Duration (Days)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newUser.customDays || ''}
+                      onChange={(e) => setNewUser({ ...newUser, customDays: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter number of days"
+                    />
+                  </div>
+                )}
               </div>
               <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
                 <button
@@ -450,8 +611,216 @@ const UserManagementTable = ({ setActiveView }) => {
           </div>
         </div>
       )}
+
+      {showEditModal && editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white w-full max-w-lg rounded-xl shadow-xl border border-gray-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="text-base font-semibold text-gray-900">Edit User</h3>
+              <button
+                className="p-2 text-gray-500 hover:text-gray-700"
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingUser(null);
+                }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setSavingEdit(true);
+                try {
+                  // Build base payload
+                  const payload = {
+                    username: editingUser.username,
+                    email: editingUser.email,
+                    target: Number(editingUser.target || 0)
+                  };
+                  
+                  // Handle target date updates - only if explicitly set
+                  const hasTargetStartDate = editingUser.targetStartDate && 
+                                           editingUser.targetStartDate.trim() !== '';
+                  const hasTargetDuration = editingUser.targetDurationDays && 
+                                          editingUser.targetDurationDays !== '';
+                  
+                  // Only update target dates if explicitly provided - no auto-selection
+                  if (hasTargetStartDate || hasTargetDuration) {
+                    let targetStartDate = null;
+                    let targetDurationDays = null;
+                    
+                    // Determine targetStartDate - use provided value or existing, NO auto-defaults
+                    if (hasTargetStartDate) {
+                      targetStartDate = new Date(editingUser.targetStartDate);
+                      if (isNaN(targetStartDate.getTime())) {
+                        targetStartDate = null; // Invalid date, don't proceed
+                      }
+                    } else if (editingUser.target_start_date) {
+                      targetStartDate = new Date(editingUser.target_start_date);
+                    }
+                    // No else - if not provided and no existing, leave as null
+                    
+                    // Determine targetDurationDays - use provided value or existing, NO auto-defaults
+                    if (hasTargetDuration) {
+                      if (editingUser.targetDurationDays === 'custom') {
+                        targetDurationDays = editingUser.customDays ? parseInt(editingUser.customDays) : null;
+                      } else {
+                        targetDurationDays = parseInt(editingUser.targetDurationDays);
+                      }
+                      if (isNaN(targetDurationDays) || targetDurationDays <= 0) {
+                        targetDurationDays = null; // Invalid duration, don't proceed
+                      }
+                    } else if (editingUser.target_duration_days) {
+                      targetDurationDays = parseInt(editingUser.target_duration_days);
+                    }
+                    // No else - if not provided and no existing, leave as null
+                    
+                    // Only calculate and add to payload if we have valid start date AND duration
+                    if (targetStartDate && !isNaN(targetStartDate.getTime()) && targetDurationDays && targetDurationDays > 0) {
+                      const targetEndDate = new Date(targetStartDate);
+                      targetEndDate.setDate(targetEndDate.getDate() + targetDurationDays);
+                      
+                      // Add to payload as ISO date strings (YYYY-MM-DD)
+                      payload.targetStartDate = targetStartDate.toISOString().split('T')[0];
+                      payload.targetEndDate = targetEndDate.toISOString().split('T')[0];
+                      payload.targetDurationDays = targetDurationDays;
+                    }
+                    // If invalid combination, don't add dates to payload (keeps existing or null)
+                  }
+                  
+                  await departmentUserService.updateUser(editingUser.id, payload);
+                  await fetchUsers();
+                  setShowEditModal(false);
+                  setEditingUser(null);
+                } catch (err) {
+                  setError(err.message || 'Failed to update user');
+                } finally {
+                  setSavingEdit(false);
+                }
+              }}
+            >
+              <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Username</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingUser.username || ''}
+                    onChange={(e) => setEditingUser({ ...editingUser, username: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g. John Doe"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={editingUser.email || ''}
+                    onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="name@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Payment Target (Rs)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingUser.target || ''}
+                    onChange={(e) => setEditingUser({ ...editingUser, target: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter payment target"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Target Start Date</label>
+                  <input
+                    type="date"
+                    value={editingUser.targetStartDateInput || editingUser.targetStartDate || 
+                          (editingUser.target_start_date ? new Date(editingUser.target_start_date + 'T00:00:00').toISOString().split('T')[0] : '')}
+                    onChange={(e) => {
+                      const dateValue = e.target.value;
+                      setEditingUser({ 
+                        ...editingUser, 
+                        targetStartDate: dateValue,
+                        targetStartDateInput: dateValue
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Target Duration (Days)</label>
+                  <select
+                    value={editingUser.targetDurationDays || (editingUser.target_duration_days && !['15', '30', '60', '90'].includes(String(editingUser.target_duration_days)) ? 'custom' : String(editingUser.target_duration_days)) || '30'}
+                    onChange={(e) => {
+                      const newState = { ...editingUser, targetDurationDays: e.target.value };
+                      // If switching away from custom, clear customDays
+                      if (e.target.value !== 'custom') {
+                        newState.customDays = '';
+                      }
+                      setEditingUser(newState);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="15">15 Days</option>
+                    <option value="30">30 Days (Monthly)</option>
+                    <option value="60">60 Days (2 Months)</option>
+                    <option value="90">90 Days (Quarterly)</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                {(editingUser.targetDurationDays === 'custom' || (editingUser.target_duration_days && !['15', '30', '60', '90'].includes(String(editingUser.target_duration_days)))) && (
+                  <div className="md:col-span-2">
+                    <label className="block text-xs text-gray-600 mb-1">Custom Duration (Days)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={editingUser.customDays || editingUser.target_duration_days || ''}
+                      onChange={(e) => setEditingUser({ ...editingUser, customDays: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter number of days"
+                    />
+                  </div>
+                )}
+                {editingUser.targetStatus && editingUser.targetStatus !== 'active' && (
+                  <div className="md:col-span-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs text-blue-800">
+                      <strong>Current Status:</strong> {editingUser.targetStatus.toUpperCase()}
+                      <br />
+                      Setting a new target will reset status to ACTIVE.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingUser(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {savingEdit ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default UserManagementTable;
+export default SalesDepartmentUser;

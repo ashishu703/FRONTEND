@@ -5,6 +5,8 @@ import { API_ENDPOINTS } from './api';
 export const DepartmentType = {
   MARKETING_SALES: 'marketing_sales',
   OFFICE_SALES: 'office_sales',
+  HR: 'hr',
+  PRODUCTION: 'production',
 };
 
 export const CompanyName = {
@@ -17,6 +19,8 @@ export const uiToApiDepartment = (uiValue) => {
   const map = {
     'Sales Department': DepartmentType.OFFICE_SALES,
     'Marketing Department': DepartmentType.MARKETING_SALES,
+    'HR Department': DepartmentType.HR,
+    'Production Department': DepartmentType.PRODUCTION,
   };
   return map[uiValue] || uiValue;
 };
@@ -25,6 +29,8 @@ export const apiToUiDepartment = (apiValue) => {
   const map = {
     [DepartmentType.OFFICE_SALES]: 'Sales Department',
     [DepartmentType.MARKETING_SALES]: 'Marketing Department',
+    [DepartmentType.HR]: 'HR Department',
+    [DepartmentType.PRODUCTION]: 'Production Department',
   };
   return map[apiValue] || apiValue;
 };
@@ -90,6 +96,19 @@ class DepartmentHeadService {
 
   async updateLead(id, payload) {
     return apiClient.put(API_ENDPOINTS.LEAD_BY_ID(id), payload);
+  }
+
+  async batchUpdateLeads(ids, payload) {
+    return apiClient.put(API_ENDPOINTS.LEADS_BATCH_UPDATE(), { ids, updateData: payload });
+  }
+
+  // Proforma Invoices
+  async getAllPendingPIs() {
+    return apiClient.get('/api/proforma-invoices/pending');
+  }
+
+  async getAllPIs() {
+    return apiClient.get('/api/proforma-invoices/all');
   }
 }
 

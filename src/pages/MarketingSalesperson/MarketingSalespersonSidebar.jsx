@@ -12,7 +12,9 @@ import {
   UserCheck,
   MapPin,
   ShoppingCart,
-  Clock
+  Clock,
+  IndianRupee,
+  User
 } from 'lucide-react';
 
 const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
@@ -54,9 +56,15 @@ const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
     },
     {
       id: 'follow-up',
-      label: 'Follow Up',
+      label: 'Lead Status',
       icon: <Clock className="w-5 h-5" />,
       hasDropdown: true
+    },
+    {
+      id: 'calendar',
+      label: 'Calendar',
+      icon: <Calendar className="w-5 h-5" />,
+      hasDropdown: false
     },
     {
       id: 'toolbox',
@@ -81,7 +89,8 @@ const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
   const followUpStatuses = [
     { id: 'connected', label: 'Connected', color: 'text-green-500' },
     { id: 'not-connected', label: 'Not Connected', color: 'text-red-500' },
-    { id: 'next-meeting', label: 'Next Meeting', color: 'text-blue-500' },
+    { id: 'todays-meeting', label: 'Todays Meeting', color: 'text-blue-500' },
+    { id: 'converted', label: 'Converted', color: 'text-purple-500' },
     { id: 'closed', label: 'Closed', color: 'text-gray-500' },
   ];
 
