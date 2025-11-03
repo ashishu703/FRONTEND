@@ -167,10 +167,13 @@ const LeadStatusPreview = ({ lead, onClose }) => {
               {/* Lead Status */}
               <div className="relative flex items-start">
                 <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center z-10 ${
-                  lead.sales_status?.toLowerCase() === 'win' ? 'bg-green-500' :
-                  lead.sales_status?.toLowerCase() === 'loose' ? 'bg-red-500' :
-                  lead.sales_status?.toLowerCase() === 'follow up' ? 'bg-yellow-500' :
-                  lead.sales_status?.toLowerCase() === 'not interested' ? 'bg-gray-500' :
+                  (lead.sales_status || '').toLowerCase() === 'pending' ? 'bg-yellow-500' :
+                  (lead.sales_status || '').toLowerCase() === 'running' ? 'bg-blue-500' :
+                  (lead.sales_status || '').toLowerCase() === 'converted' ? 'bg-green-500' :
+                  (lead.sales_status || '').toLowerCase() === 'interested' ? 'bg-purple-500' :
+                  (lead.sales_status || '').toLowerCase() === 'loose' ? 'bg-red-500' :
+                  (lead.sales_status || '').toLowerCase() === 'win/closed' || (lead.sales_status || '').toLowerCase() === 'win lead' ? 'bg-emerald-500' :
+                  ['lost', 'closed', 'lost/closed'].includes((lead.sales_status || '').toLowerCase()) ? 'bg-red-500' :
                   'bg-gray-500'
                 }`}>
                   <Clock className="h-4 w-4 text-white" />
@@ -180,13 +183,16 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                     <div className="flex items-center justify-between mb-2">
                       <h5 className="font-medium text-gray-900">Lead Status</h5>
                       <span className={`px-2 py-1 text-xs font-medium rounded ${
-                        lead.sales_status?.toLowerCase() === 'win' ? 'bg-green-100 text-green-800' :
-                        lead.sales_status?.toLowerCase() === 'loose' ? 'bg-red-100 text-red-800' :
-                        lead.sales_status?.toLowerCase() === 'follow up' ? 'bg-yellow-100 text-yellow-800' :
-                        lead.sales_status?.toLowerCase() === 'not interested' ? 'bg-gray-100 text-gray-800' :
+                        (lead.sales_status || '').toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        (lead.sales_status || '').toLowerCase() === 'running' ? 'bg-blue-100 text-blue-800' :
+                        (lead.sales_status || '').toLowerCase() === 'converted' ? 'bg-green-100 text-green-800' :
+                        (lead.sales_status || '').toLowerCase() === 'interested' ? 'bg-purple-100 text-purple-800' :
+                        (lead.sales_status || '').toLowerCase() === 'loose' ? 'bg-red-100 text-red-800' :
+                        ((lead.sales_status || '').toLowerCase() === 'win/closed' || (lead.sales_status || '').toLowerCase() === 'win lead') ? 'bg-emerald-100 text-emerald-800' :
+                        ['lost', 'closed', 'lost/closed'].includes((lead.sales_status || '').toLowerCase()) ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {lead.sales_status?.toUpperCase() || 'PENDING'}
+                        {(lead.sales_status || 'pending').toUpperCase()}
                       </span>
                     </div>
                     <div className="text-sm text-gray-600">
@@ -343,10 +349,14 @@ const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   };
 
   const statusOptions = [
-    { value: 'win', label: 'Win' },
-    { value: 'closed', label: 'Closed' },
-    { value: 'not interested', label: 'Not Interested' },
-    { value: 'follow up', label: 'Follow Up' }
+    { value: 'pending', label: 'Pending' },
+    { value: 'running', label: 'Running' },
+    { value: 'converted', label: 'Converted' },
+    { value: 'interested', label: 'Interested' },
+    { value: 'loose', label: 'Loose' },
+    { value: 'win/closed', label: 'Win/Closed' },
+    { value: 'lost', label: 'Lost' },
+    { value: 'closed', label: 'Closed' }
   ];
 
   const followUpOptions = [

@@ -57,7 +57,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     state: editingCustomer?.state || "",
     customerType: editingCustomer?.customerType || "",
     leadSource: editingCustomer?.enquiryBy || "",
-    salesStatus: editingCustomer?.salesStatus || 'follow up',
+    salesStatus: editingCustomer?.salesStatus || 'pending',
     salesStatusRemark: editingCustomer?.salesStatusRemark || '',
     followUpStatus: editingCustomer?.followUpStatus || '',
     followUpRemark: editingCustomer?.followUpRemark || '',
@@ -364,10 +364,14 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                   onChange={(e) => handleInputChange("salesStatus", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="win">Win</option>
+                  <option value="pending">Pending</option>
+                  <option value="running">Running</option>
+                  <option value="converted">Converted</option>
+                  <option value="interested">Interested</option>
+                  <option value="loose">Loose</option>
+                  <option value="win/closed">Win/Closed</option>
+                  <option value="lost">Lost</option>
                   <option value="closed">Closed</option>
-                  <option value="not interested">Not Interested</option>
-                  <option value="follow up">Follow Up</option>
                 </select>
               </div>
 
