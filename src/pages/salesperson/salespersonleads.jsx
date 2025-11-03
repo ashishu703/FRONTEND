@@ -1996,36 +1996,6 @@ export default function CustomerListContent({ isDarkMode = false }) {
     
     if (advancedFilters.dateFrom) {
       result = result.filter(customer => {
-<<<<<<< HEAD
-        return activeFilters.every(([key, filterValue]) => {
-          const value = filterValue.toString().toLowerCase().trim();
-          if (!value) return true;
-          
-          // Special handling for sales status to match exactly
-          if (key === 'salesStatus') {
-            // Map old status values to new ones for compatibility
-            const statusMapping = {
-              'connected': 'win',
-              'not connected': 'loose'
-            };
-            
-            const customerStatus = customer.salesStatus?.toLowerCase() || '';
-            const mappedStatus = statusMapping[customerStatus] || customerStatus;
-            const filterValue = statusMapping[value.toLowerCase()] || value.toLowerCase();
-            
-            // For sales status, do an exact match (case-insensitive)
-            return mappedStatus === filterValue;
-          }
-          
-          // For other fields, do a partial match
-          const customerValue = key === 'customer' ? customer.name || '' : customer[key] || '';
-          return customerValue.toString().toLowerCase().includes(value);
-        });
-      });
-    }
-    
-    if (advancedFilters.dateFrom) {
-      result = result.filter(customer => {
         const customerDate = new Date(customer.date);
         const filterDate = new Date(advancedFilters.dateFrom);
         return customerDate >= filterDate;
@@ -2516,24 +2486,6 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       <BadgeCheck className={`h-4 w-4 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
                       Sales Status
                     </div>
-<<<<<<< HEAD
-                    {showFilters && (
-                      <select
-                        value={filters.salesStatus}
-                        onChange={(e) => handleFilterChange('salesStatus', e.target.value)}
-                        className={`mt-1 w-full text-xs p-1 border rounded ${
-                          isDarkMode 
-                            ? 'bg-gray-700 border-gray-600 text-white' 
-                            : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                      >
-                        <option value="">All Statuses</option>
-                        <option value="win">Win Leads</option>
-                        <option value="loose">Loose Leads</option>
-                        <option value="follow up">Follow Up</option>
-                        <option value="not interested">Not Interested</option>
-                      </select>
-                    )}
                   </th>
                   )}
                   {columnVisibility.followUp && (
