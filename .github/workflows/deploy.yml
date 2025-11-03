@@ -12,6 +12,13 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      # THIS STEP IS ESSENTIAL - it loads the key to log in to your server
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+
+      # This step includes the fix to create the .ssh directory
       - name: Add remote server to known_hosts
         run: |
           mkdir -p ~/.ssh
@@ -20,28 +27,19 @@ jobs:
       - name: Deploy on VPS
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_KEY }}
         run: |
-          # We use a standard ssh login, no -A (agent forwarding) needed
-          ssh deploy@62.72.12.249 "
-            echo '>>> Writing temporary deploy key...'
-            # Create a temporary key file
-            echo \"${SSH_PRIVATE_KEY}\" > /home/deploy/deploy_key.pem
+          # Use -A to forward the SSH agent
+          ssh -A deploy@62.72.12.249 "
+            echo '>>> Successfully logged into VPS.'
             
-            # Set strict permissions
-            chmod 600 /home/deploy/deploy_key.pem
-
-            echo '>>> Setting GIT_SSH_COMMAND to use the key file...'
-            # Tell git to use this specific key file
-            export GIT_SSH_COMMAND=\"ssh -i /home/deploy/deploy_key.pem -o IdentitiesOnly=yes -o StrictHostKeyChecking=no\"
-
-            echo '>>> Running git fetch...'
+            echo '>>> Now attempting git fetch, ignoring server .ssh/config...'
             cd /home/deploy/app && \
+            
+            # This is the most robust command to force git to use the forwarded key
+            export GIT_SSH_COMMAND=\"ssh -F /dev/null -o IdentitiesOnly=yes\" && \
+            
             git fetch origin main && \
             git reset --hard origin/main && \
-            
-            echo '>>> Cleaning up temporary key...'
-            rm -f /home/deploy/deploy_key.pem
             
             echo '>>> Building and starting Docker containers...'
             docker compose build --build-arg VITE_API_BASE_URL=${VITE_API_BASE_URL} && \
