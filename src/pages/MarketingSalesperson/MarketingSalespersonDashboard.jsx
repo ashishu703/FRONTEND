@@ -69,8 +69,10 @@ const MarketingSalespersonDashboard = ({ activeView, setActiveView }) => {
         return <MarketingFollowUpBase status="connected" customData={getLeadsByStatus('connected')} />;
       case 'follow-up-not-connected':
         return <MarketingFollowUpBase status="not-connected" customData={getLeadsByStatus('not-connected')} />;
-      case 'follow-up-next-meeting':
-        return <MarketingFollowUpBase status="next-meeting" customData={getLeadsByStatus('next-meeting')} />;
+      case 'follow-up-todays-meeting':
+        return <MarketingFollowUpBase status="todays-meeting" customData={getLeadsByStatus('todays-meeting')} />;
+      case 'follow-up-converted':
+        return <MarketingFollowUpBase status="converted" customData={getLeadsByStatus('converted')} />;
       case 'follow-up-closed':
         return <MarketingFollowUpBase status="closed" customData={getLeadsByStatus('closed')} />;
       case 'visits':
@@ -393,7 +395,7 @@ const OverviewContent = ({ customers, getStatusCounts }) => {
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-600 mb-1">Pending Rate</p>
-              <p className="text-2xl font-bold text-gray-900 mb-1">{totalLeads > 0 ? Math.round(((statusCounts['not-connected'] + statusCounts['next-meeting']) / totalLeads) * 100) : 0}%</p>
+              <p className="text-2xl font-bold text-gray-900 mb-1">{totalLeads > 0 ? Math.round(((statusCounts['not-connected'] + statusCounts['todays-meeting']) / totalLeads) * 100) : 0}%</p>
               <p className="text-xs text-gray-500">Leads requiring follow-up</p>
             </div>
             <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center ml-2 flex-shrink-0">
@@ -552,15 +554,63 @@ const DocStyleDashboard = () => {
 const PerformanceContent = ({ customers, getStatusCounts }) => {
   const leadsData = customers || [];
 
+  // Specific single date filter
+  const [specificDate, setSpecificDate] = React.useState('');
+
+  // Helper: parse date safely
+  const parseDate = (d) => {
+    if (!d) return null;
+    const dt = new Date(d);
+    return isNaN(dt.getTime()) ? null : dt;
+  };
+
+  // Pick best date field for filtering
+  const getLeadDate = (lead) => {
+    return lead.connectedStatusDate || lead.finalStatusDate || lead.createdAt || lead.date || null;
+  };
+
+  // Apply date filter to leads (single specific date)
+  const filteredLeads = React.useMemo(() => {
+    const only = parseDate(specificDate);
+    if (only) {
+      const dayStart = new Date(only);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(only);
+      dayEnd.setHours(23, 59, 59, 999);
+      return leadsData.filter(l => {
+        const dateStr = getLeadDate(l);
+        const dt = parseDate(dateStr);
+        if (!dt) return false;
+        return dt >= dayStart && dt <= dayEnd;
+      });
+    }
+    return leadsData;
+  }, [leadsData, specificDate]);
+
+  // Build status counts from filtered leads
+  const filteredStatusCounts = React.useMemo(() => {
+    const counts = { connected: 0, 'not-connected': 0, 'todays-meeting': 0, converted: 0, closed: 0, total: 0 };
+    filteredLeads.forEach(l => {
+      const status = (l.connectedStatus || l.followUpStatus || '').toLowerCase();
+      if (status.includes('connected') && !status.includes('not')) counts.connected += 1;
+      if (status.includes('not') && status.includes('connected')) counts['not-connected'] += 1;
+      if (status.includes('todays') && status.includes('meeting')) counts['todays-meeting'] += 1;
+      if (status.includes('converted')) counts.converted += 1;
+      if ((l.finalStatus || '').toLowerCase() === 'closed') counts.closed += 1;
+      counts.total += 1;
+    });
+    return counts;
+  }, [filteredLeads]);
+
   // Status counts derived from shared context
-  const statusCounts = getStatusCounts ? getStatusCounts() : { connected: 0, 'not-connected': 0, 'next-meeting': 0, closed: 0, total: 0 };
+  const statusCounts = filteredStatusCounts;
 
   const totalLeads = statusCounts.total || 0;
   const closedLeads = statusCounts.closed || 0;
   const conversionRateCurrent = totalLeads > 0 ? Math.round((closedLeads / totalLeads) * 100) : 0;
 
   // Revenue derived from closed leads expectedValue sum
-  const revenueCurrent = (leadsData || [])
+  const revenueCurrent = (filteredLeads || [])
     .filter(l => (l.finalStatus || '').toLowerCase() === 'closed')
     .reduce((sum, l) => sum + (Number(l.expectedValue) || 0), 0);
 
@@ -590,7 +640,8 @@ const PerformanceContent = ({ customers, getStatusCounts }) => {
     leadStatusData: [
       { label: "Connected", value: statusCounts.connected || 0, color: "#3b82f6" },
       { label: "Not Connected", value: statusCounts['not-connected'] || 0, color: "#ef4444" },
-      { label: "Next Meeting", value: statusCounts['next-meeting'] || 0, color: "#8b5cf6" },
+      { label: "Todays Meeting", value: statusCounts['todays-meeting'] || 0, color: "#8b5cf6" },
+      { label: "Converted", value: statusCounts.converted || 0, color: "#a855f7" },
       { label: "Closed", value: statusCounts.closed || 0, color: "#10b981" }
     ],
     monthlyPerformance: (() => {
@@ -599,7 +650,7 @@ const PerformanceContent = ({ customers, getStatusCounts }) => {
       const months = Array.from({ length: 6 }).map((_, idx) => {
         const d = new Date(now.getFullYear(), now.getMonth() - (5 - idx), 1);
         const label = d.toLocaleString('en-US', { month: 'short' });
-        const value = (leadsData || []).filter(l => {
+        const value = (filteredLeads || []).filter(l => {
           const dateStr = l.connectedStatusDate || l.finalStatusDate;
           if (!dateStr) return false;
           const dt = new Date(dateStr);
@@ -655,19 +706,31 @@ const PerformanceContent = ({ customers, getStatusCounts }) => {
           <h1 className="text-2xl font-semibold text-gray-900">Performance Dashboard</h1>
           <p className="text-sm text-gray-500">Track your targets and performance metrics</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <input type="text" placeholder="dd-mm-yyyy" className="px-3 py-2 border rounded-md text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
+            <div className="flex items-center gap-2">
+              <input
+            type="date"
+            value={specificDate}
+            onChange={(e) => setSpecificDate(e.target.value)}
+            className="px-3 py-2 border rounded-md text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {specificDate && (
+            <button
+              onClick={() => setSpecificDate('')}
+              className="px-2 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-50"
+              title="Clear specific date"
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
       {/* Target Cards (top row) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {Object.entries(performanceData.targets).map(([key, target]) => {
-          const progress = (target.current / target.target) * 100;
-          const remaining = target.target - target.current;
-          const remainingPct = Math.max(0, Math.ceil(100 - progress));
+          const progress = target.target > 0 ? (target.current / target.target) * 100 : 0;
+          const progressPct = Math.max(0, Math.min(100, Math.ceil(progress)));
+          const remaining = Math.max(0, target.target - target.current);
           return (
             <div key={key} className="relative bg-white border rounded-lg p-4 shadow-sm">
               {remaining > 0 && (
@@ -679,9 +742,9 @@ const PerformanceContent = ({ customers, getStatusCounts }) => {
                 <span className="text-sm text-gray-500">{key === 'conversionRate' ? '/ ' + target.target : '/ ' + target.target}</span>
               </div>
               <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
-                <div className="h-full bg-red-500" style={{ width: `${Math.min(progress, 100)}%` }}></div>
+                <div className="h-full bg-red-500" style={{ width: `${progressPct}%` }}></div>
               </div>
-              <div className="mt-1 text-xs text-red-600 font-medium">{remainingPct}% remaining</div>
+              <div className="mt-1 text-xs text-red-600 font-medium">{progressPct}% achieved</div>
               <div className="text-xs text-red-600">{key === 'revenue' ? `${(remaining).toLocaleString()} more needed to hit target` : `${remaining} more needed to hit target`}</div>
             </div>
           );

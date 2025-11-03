@@ -51,6 +51,7 @@ const MarketingSalespersonToolbox = ({
   const [importSearchTerm, setImportSearchTerm] = useState('');
   const [capturedImage, setCapturedImage] = useState(null);
   const [stream, setStream] = useState(null);
+  const [galleryVisit, setGalleryVisit] = useState(null);
   const videoRef = useRef(null);
 
   const handleLivePhoto = (visit) => {
@@ -68,6 +69,7 @@ const MarketingSalespersonToolbox = ({
 
     const handleOpenGallery = (event) => {
       console.log('Opening gallery for:', event.detail);
+      setGalleryVisit(event.detail);
       setShowPhotoGallery(true);
     };
 
@@ -410,10 +412,13 @@ const MarketingSalespersonToolbox = ({
           <div className="bg-white rounded-lg shadow-xl w-[1000px] h-[650px] mx-4 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-6 border-b">
               <h2 className="text-xl font-semibold text-gray-900">
-                Captured Photos - {selectedLead?.name}
+                Captured Photos - {galleryVisit?.name || selectedLead?.name || 'Visit'}
               </h2>
               <button 
-                onClick={() => setShowPhotoGallery(false)}
+                onClick={() => {
+                  setShowPhotoGallery(false);
+                  setGalleryVisit(null);
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-6 h-6" />
@@ -421,17 +426,75 @@ const MarketingSalespersonToolbox = ({
             </div>
             
             <div className="flex-1 p-6 overflow-y-auto">
-              {selectedLead && capturedPhotos[selectedLead.id] && capturedPhotos[selectedLead.id].length > 0 ? (
+              {(galleryVisit || selectedLead) && (
+                (capturedPhotos[(galleryVisit || selectedLead)?.id]?.length > 0) || 
+                ((galleryVisit || selectedLead)?.visitPhotos?.length > 0)
+              ) ? (
                 <div className="space-y-4">
                   <div className="text-center">
                     <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
                       <Camera className="w-4 h-4 mr-2" />
-                      {capturedPhotos[selectedLead.id].length} Photo{capturedPhotos[selectedLead.id].length > 1 ? 's' : ''} Captured
+                      {((capturedPhotos[(galleryVisit || selectedLead)?.id]?.length || 0) + ((galleryVisit || selectedLead)?.visitPhotos?.length || 0))} Photo{((capturedPhotos[(galleryVisit || selectedLead)?.id]?.length || 0) + ((galleryVisit || selectedLead)?.visitPhotos?.length || 0)) > 1 ? 's' : ''} Captured
                     </div>
                   </div>
                   
                   <div className="space-y-6">
-                    {capturedPhotos[selectedLead.id].map((photo, index) => (
+                    {/* Show photos from visitPhotos array (from leads) */}
+                    {(galleryVisit || selectedLead)?.visitPhotos && (galleryVisit || selectedLead).visitPhotos.map((photo, index) => (
+                      <div key={photo.id || index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                        <div className="flex items-start space-x-6">
+                          {/* Photo Section */}
+                          <div className="flex-shrink-0">
+                            <div className="w-32 h-32 rounded-lg overflow-hidden bg-gray-100">
+                              <img
+                                src={photo.image}
+                                alt={`Photo ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          </div>
+                          
+                          {/* Info Section */}
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <h3 className="text-lg font-semibold text-gray-900">Photo {index + 1}</h3>
+                                <p className="text-sm text-gray-500">{photo.date} at {photo.time}</p>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => {
+                                    const link = document.createElement('a');
+                                    link.href = photo.image;
+                                    link.download = `visit-photo-${photo.id || index}.png`;
+                                    link.click();
+                                  }}
+                                  className="flex items-center space-x-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  <span>Download</span>
+                                </button>
+                              </div>
+                            </div>
+                            
+                            {/* Info Cards */}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="bg-gray-50 rounded-lg p-3">
+                                <p className="text-xs text-gray-500 mb-1">Visit Name</p>
+                                <p className="text-sm font-medium text-gray-900">{photo.visitName || (galleryVisit || selectedLead)?.name}</p>
+                              </div>
+                              <div className="bg-gray-50 rounded-lg p-3">
+                                <p className="text-xs text-gray-500 mb-1">Captured At</p>
+                                <p className="text-sm font-medium text-gray-900">{photo.timestamp ? new Date(photo.timestamp).toLocaleString() : `${photo.date} ${photo.time}`}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Show photos from capturedPhotos state */}
+                    {capturedPhotos[(galleryVisit || selectedLead)?.id] && capturedPhotos[(galleryVisit || selectedLead).id].map((photo, index) => (
                       <div key={photo.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                         <div className="flex items-start space-x-6">
                           {/* Photo Section */}

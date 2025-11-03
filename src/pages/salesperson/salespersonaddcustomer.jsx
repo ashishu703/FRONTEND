@@ -57,7 +57,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     state: editingCustomer?.state || "",
     customerType: editingCustomer?.customerType || "",
     leadSource: editingCustomer?.enquiryBy || "",
-    salesStatus: editingCustomer?.salesStatus || 'pending',
+    salesStatus: editingCustomer?.salesStatus || 'follow up',
     salesStatusRemark: editingCustomer?.salesStatusRemark || '',
     followUpStatus: editingCustomer?.followUpStatus || '',
     followUpRemark: editingCustomer?.followUpRemark || '',
@@ -364,53 +364,11 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                   onChange={(e) => handleInputChange("salesStatus", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="pending">Pending</option>
-                  <option value="connected">Connected</option>
-                  <option value="not_connected">Not Connected</option>
-                  <option value="follow_up">Follow Up</option>
-                  <option value="not_interested">Not Interested</option>
-                  <option value="next_meeting">Next Meeting</option>
+                  <option value="win">Win</option>
                   <option value="closed">Closed</option>
+                  <option value="not interested">Not Interested</option>
+                  <option value="follow up">Follow Up</option>
                 </select>
-              </div>
-
-              {/* Follow Up Date & Time - Shows for specific statuses */}
-              {formData.followUpStatus && ['Appointment Scheduled', 'Next Meeting', 'Interested', 'Quotation Sent', 'Negotiation', 'Call Back Request'].includes(formData.followUpStatus) && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Follow Up Date & Time</label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Date</label>
-                      <input
-                        type="date"
-                        value={formData.followUpDate || ''}
-                        onChange={(e) => handleInputChange("followUpDate", e.target.value)}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Time</label>
-                      <input
-                        type="time"
-                        value={formData.followUpTime || ''}
-                        onChange={(e) => handleInputChange("followUpTime", e.target.value)}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Follow Up Remark */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Follow Up Remark</label>
-                <textarea
-                  value={formData.followUpRemark}
-                  onChange={(e) => handleInputChange("followUpRemark", e.target.value)}
-                  rows={2}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  placeholder="Enter remark for follow up status"
-                />
               </div>
 
               {/* Sales Status Remark */}

@@ -272,7 +272,8 @@ export const MarketingSharedDataProvider = ({ children }) => {
     const counts = {
       connected: customers.filter(c => c.connectedStatus === 'connected').length,
       'not-connected': customers.filter(c => c.connectedStatus === 'not-connected').length,
-      'next-meeting': customers.filter(c => c.connectedStatus === 'next-meeting').length,
+      'todays-meeting': customers.filter(c => c.connectedStatus === 'todays-meeting').length,
+      converted: customers.filter(c => c.connectedStatus === 'converted').length,
       closed: customers.filter(c => c.connectedStatus === 'closed').length,
       total: customers.length
     };

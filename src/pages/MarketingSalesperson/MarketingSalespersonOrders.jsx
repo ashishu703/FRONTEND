@@ -58,6 +58,7 @@ const AddOrderModal = ({ onSave, onClose }) => {
     expectedDeliveryDate: '',
     deliveredDate: '',
     orderStatus: 'Pending',
+    dispatchFrom: 'Plant',
     paymentStatus: 'Not Started',
     paidAmount: 0,
     pendingAmount: 0,
@@ -367,6 +368,21 @@ const AddOrderModal = ({ onSave, onClose }) => {
             </div>
             
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Dispatch From *</label>
+              <select
+                name="dispatchFrom"
+                value={formData.dispatchFrom}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="Plant">Plant</option>
+                <option value="CNF">CNF</option>
+                <option value="Dealer">Dealer</option>
+              </select>
+            </div>
+            
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Order Status</label>
               <select
                 name="orderStatus"
@@ -500,6 +516,7 @@ const EditOrderModal = ({ order, onSave, onClose }) => {
     expectedDeliveryDate: order.expectedDeliveryDate,
     deliveredDate: order.deliveredDate,
     orderStatus: order.orderStatus,
+    dispatchFrom: order.dispatchFrom || 'Plant',
     paymentStatus: order.paymentStatus,
     paidAmount: order.paidAmount || 0,
     pendingAmount: order.pendingAmount || 0,
@@ -634,6 +651,21 @@ const EditOrderModal = ({ order, onSave, onClose }) => {
             </div>
             
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Dispatch From *</label>
+              <select
+                name="dispatchFrom"
+                value={formData.dispatchFrom}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="Plant">Plant</option>
+                <option value="CNF">CNF</option>
+                <option value="Dealer">Dealer</option>
+              </select>
+            </div>
+            
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
               <select
                 name="paymentStatus"
@@ -737,6 +769,7 @@ const Orders = () => {
       customerPhone: '+91 98765 43210',
       customerAddress: '123 MG Road, Indore, MP',
       customerGst: '23ABCDE1234F1Z5',
+      dispatchFrom: 'Plant',
       productName: 'Industrial Motor 5HP',
       productType: 'Industrial Equipment',
       quantity: 2,
@@ -764,6 +797,7 @@ const Orders = () => {
       customerPhone: '+91 87654 32109',
       customerAddress: '456 Business Park, Bhopal, MP',
       customerGst: '23FGHIJ5678K2L6',
+      dispatchFrom: 'CNF',
       productName: 'LED Street Light 100W',
       productType: 'Commercial Lighting',
       quantity: 50,
@@ -791,6 +825,7 @@ const Orders = () => {
       customerPhone: '+91 76543 21098',
       customerAddress: '789 Industrial Area, Jabalpur, MP',
       customerGst: '23KLMNO9012P3M7',
+      dispatchFrom: 'Dealer',
       productName: 'Power Distribution Panel',
       productType: 'Power Solutions',
       quantity: 1,
@@ -818,6 +853,7 @@ const Orders = () => {
       customerPhone: '+91 65432 10987',
       customerAddress: '321 Tech Hub, Gwalior, MP',
       customerGst: '23PQRST3456U4V8',
+      dispatchFrom: 'Plant',
       productName: 'Electrical Control Cabinet',
       productType: 'Industrial Equipment',
       quantity: 3,
@@ -845,6 +881,7 @@ const Orders = () => {
       customerPhone: '+91 54321 09876',
       customerAddress: '654 Corporate Plaza, Ujjain, MP',
       customerGst: '23WXYZ7890A5B9',
+      dispatchFrom: 'CNF',
       productName: 'Office LED Panels',
       productType: 'Commercial Lighting',
       quantity: 25,
@@ -1106,12 +1143,7 @@ const Orders = () => {
                     <span>CUSTOMER</span>
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="flex items-center space-x-2">
-                    <Phone className="w-4 h-4 text-green-600" />
-                    <span>PHONE</span>
-                  </div>
-                </th>
+                
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-2">
                     <Package className="w-4 h-4 text-purple-600" />
@@ -1134,6 +1166,12 @@ const Orders = () => {
                   <div className="flex items-center space-x-2">
                     <FileText className="w-4 h-4 text-indigo-600" />
                     <span>WORK ORDER</span>
+                  </div>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <div className="flex items-center space-x-2">
+                    <Building className="w-4 h-4 text-gray-600" />
+                    <span>DISPATCH FROM</span>
                   </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1179,10 +1217,8 @@ const Orders = () => {
                       <div>
                         <div className="text-sm font-medium text-gray-900">{order.customerName}</div>
                         <div className="text-sm text-gray-500 truncate max-w-xs">{order.customerAddress}</div>
+                        <div className="text-sm text-gray-700 mt-1 flex items-center"><Phone className="w-3 h-3 mr-1 text-green-600" />{order.customerPhone}</div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order.customerPhone}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
@@ -1201,6 +1237,9 @@ const Orders = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
                       {order.workOrder}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {order.dispatchFrom || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full items-center space-x-1 ${getOrderStatusColor(order.orderStatus)}`}>
@@ -1315,12 +1354,12 @@ const Orders = () => {
                       <p className="text-gray-900 mt-1">{selectedOrder.customerName}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Phone</label>
-                      <p className="text-gray-900 mt-1">{selectedOrder.customerPhone}</p>
-                    </div>
-                    <div>
                       <label className="text-sm font-medium text-gray-500">Address</label>
                       <p className="text-gray-900 mt-1">{selectedOrder.customerAddress}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Phone</label>
+                      <p className="text-gray-900 mt-1">{selectedOrder.customerPhone}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">GST No.</label>
@@ -1354,6 +1393,10 @@ const Orders = () => {
                     <div>
                       <label className="text-sm font-medium text-gray-500">Order ID</label>
                       <p className="text-gray-900 mt-1 font-medium">ORD-{selectedOrder.id.toString().padStart(4, '0')}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Dispatch From</label>
+                      <p className="text-gray-900 mt-1">{selectedOrder.dispatchFrom || '-'}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Work Order No.</label>

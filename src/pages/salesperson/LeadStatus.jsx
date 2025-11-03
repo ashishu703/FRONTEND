@@ -167,12 +167,10 @@ const LeadStatusPreview = ({ lead, onClose }) => {
               {/* Lead Status */}
               <div className="relative flex items-start">
                 <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center z-10 ${
-                  lead.sales_status === 'pending' ? 'bg-yellow-500' :
-                  lead.sales_status === 'running' ? 'bg-blue-500' :
-                  lead.sales_status === 'converted' ? 'bg-green-500' :
-                  lead.sales_status === 'lost/closed' ? 'bg-red-500' :
-                  lead.sales_status === 'interested' ? 'bg-purple-500' :
-                  lead.sales_status === 'win lead' ? 'bg-emerald-500' :
+                  lead.sales_status?.toLowerCase() === 'win' ? 'bg-green-500' :
+                  lead.sales_status?.toLowerCase() === 'loose' ? 'bg-red-500' :
+                  lead.sales_status?.toLowerCase() === 'follow up' ? 'bg-yellow-500' :
+                  lead.sales_status?.toLowerCase() === 'not interested' ? 'bg-gray-500' :
                   'bg-gray-500'
                 }`}>
                   <Clock className="h-4 w-4 text-white" />
@@ -182,12 +180,10 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                     <div className="flex items-center justify-between mb-2">
                       <h5 className="font-medium text-gray-900">Lead Status</h5>
                       <span className={`px-2 py-1 text-xs font-medium rounded ${
-                        lead.sales_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        lead.sales_status === 'running' ? 'bg-blue-100 text-blue-800' :
-                        lead.sales_status === 'converted' ? 'bg-green-100 text-green-800' :
-                        lead.sales_status === 'lost/closed' ? 'bg-red-100 text-red-800' :
-                        lead.sales_status === 'interested' ? 'bg-purple-100 text-purple-800' :
-                        lead.sales_status === 'win lead' ? 'bg-emerald-100 text-emerald-800' :
+                        lead.sales_status?.toLowerCase() === 'win' ? 'bg-green-100 text-green-800' :
+                        lead.sales_status?.toLowerCase() === 'loose' ? 'bg-red-100 text-red-800' :
+                        lead.sales_status?.toLowerCase() === 'follow up' ? 'bg-yellow-100 text-yellow-800' :
+                        lead.sales_status?.toLowerCase() === 'not interested' ? 'bg-gray-100 text-gray-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {lead.sales_status?.toUpperCase() || 'PENDING'}
@@ -320,7 +316,7 @@ const LeadStatusPreview = ({ lead, onClose }) => {
 // Edit Lead Status Modal Component
 const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   const [formData, setFormData] = useState({
-    sales_status: lead?.sales_status || 'pending',
+    sales_status: lead?.sales_status || 'follow up',
     sales_status_remark: lead?.sales_status_remark || '',
     follow_up_status: lead?.follow_up_status || '',
     follow_up_remark: lead?.follow_up_remark || '',
@@ -347,12 +343,10 @@ const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   };
 
   const statusOptions = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'running', label: 'Running' },
-    { value: 'converted', label: 'Converted' },
-    { value: 'lost/closed', label: 'Lost/Closed' },
-    { value: 'interested', label: 'Interested' },
-    { value: 'win lead', label: 'Win Lead' }
+    { value: 'win', label: 'Win' },
+    { value: 'closed', label: 'Closed' },
+    { value: 'not interested', label: 'Not Interested' },
+    { value: 'follow up', label: 'Follow Up' }
   ];
 
   const followUpOptions = [
@@ -709,29 +703,26 @@ export default function LeadStatusPage() {
 
   // Get status badge
   const getStatusBadge = (status) => {
+    const statusLower = status?.toLowerCase() || '';
     const statusClasses = {
-      'pending': 'bg-yellow-100 text-yellow-800 border border-yellow-200',
-      'running': 'bg-blue-100 text-blue-800 border border-blue-200',
-      'converted': 'bg-green-100 text-green-800 border border-green-200',
-      'lost/closed': 'bg-red-100 text-red-800 border border-red-200',
-      'interested': 'bg-purple-100 text-purple-800 border border-purple-200',
-      'win lead': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+      'win': 'bg-green-100 text-green-800 border border-green-200',
+      'loose': 'bg-red-100 text-red-800 border border-red-200',
+      'follow up': 'bg-yellow-100 text-yellow-800 border border-yellow-200',
+      'not interested': 'bg-gray-100 text-gray-800 border border-gray-200',
     };
 
     const statusText = {
-      'pending': 'Pending',
-      'running': 'Running',
-      'converted': 'Converted',
-      'lost/closed': 'Lost/Closed',
-      'interested': 'Interested',
-      'win lead': 'Win Lead',
+      'win': 'Win',
+      'loose': 'Loose',
+      'follow up': 'Follow Up',
+      'not interested': 'Not Interested',
     };
 
     return (
       <span
-        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClasses[status] || 'bg-gray-100 text-gray-800 border border-gray-200'}`}
+        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClasses[statusLower] || 'bg-gray-100 text-gray-800 border border-gray-200'}`}
       >
-        {statusText[status] || status}
+        {statusText[statusLower] || status || 'Unknown'}
       </span>
     );
   };
@@ -862,13 +853,11 @@ export default function LeadStatusPage() {
                       onChange={(e) => handleStatusFilter(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
-                      <option value="">All Lead Status</option>
-                      <option value="pending">Pending</option>
-                      <option value="running">Running</option>
-                      <option value="converted">Converted</option>
-                      <option value="lost/closed">Lost/Closed</option>
-                      <option value="interested">Interested</option>
-                      <option value="win lead">Win Lead</option>
+                      <option value="">All Status</option>
+                      <option value="win">Win</option>
+                      <option value="closed">Closed</option>
+                      <option value="follow up">Follow Up</option>
+                      <option value="not interested">Not Interested</option>
                     </select>
                   </div>
 
@@ -909,6 +898,7 @@ export default function LeadStatusPage() {
                 </div>
               </div>
             )}
+>>>>>>> 12e8eb3b5139bf5cef35d624eb9085182d2dd5e5
           </div>
         </div>
       </div>

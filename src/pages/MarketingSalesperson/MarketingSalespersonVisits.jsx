@@ -73,7 +73,10 @@ const Visits = () => {
     const [filterStatus, setFilterStatus] = useState('all');
     const [showAddVisitModal, setShowAddVisitModal] = useState(false);
     const [showEditVisitModal, setShowEditVisitModal] = useState(false);
+    const [showViewModal, setShowViewModal] = useState(false);
+    const [showTimelineModal, setShowTimelineModal] = useState(false);
     const [selectedLead, setSelectedLead] = useState(null);
+    const [timelineEvents, setTimelineEvents] = useState([]);
     const [visitForm, setVisitForm] = useState({
       leadId: '',
       name: '',
@@ -142,8 +145,41 @@ const Visits = () => {
     console.log('Filtering customers with visits:', customersWithVisits);
     console.log('Customers with visitingStatus:', customers.map(c => ({ name: c.name, visitingStatus: c.visitingStatus })));
     
-    // Use dummy data if no real visits exist
-    const visitsToShow = customersWithVisits.length > 0 ? customersWithVisits : dummyVisits;
+    // Merge visits coming from calendar/localStorage
+    let externalVisits = [];
+    try {
+      const raw = JSON.parse(localStorage.getItem('marketingVisits') || '[]');
+      externalVisits = Array.isArray(raw) ? raw : [];
+    } catch {}
+
+    // Normalize fields to match table
+    const normalizedExternal = externalVisits.map(v => ({
+      id: v.id || Date.now(),
+      leadId: v.leadId,
+      name: v.name,
+      phone: v.phone,
+      address: v.address,
+      gstNo: v.gstNo,
+      productType: v.productType,
+      state: v.state,
+      leadSource: v.leadSource,
+      visitingStatus: v.visitingStatus || 'scheduled',
+      visitDate: v.visitDate || ''
+    }));
+
+    // Use combined list: real customers with visits + externally moved visits; fallback to dummy
+    const combinedVisits = (customersWithVisits.length > 0 || normalizedExternal.length > 0)
+      ? [...normalizedExternal, ...customersWithVisits]
+      : dummyVisits;
+
+    // Deduplicate by (leadId + visitDate) or fallback (name+phone)
+    const seenVisits = new Set();
+    const visitsToShow = combinedVisits.filter(v => {
+      const key = `${String(v.leadId || v.id)}|${v.visitDate || ''}|${(v.name || '').toLowerCase()}|${(v.phone || '').toLowerCase()}`;
+      if (seenVisits.has(key)) return false;
+      seenVisits.add(key);
+      return true;
+    });
     
     console.log('All customers:', customers);
     console.log('Customers with visits:', customersWithVisits);
@@ -235,10 +271,100 @@ const Visits = () => {
   };
 
   const handleViewPhotos = (visit) => {
-    setSelectedLead(visit);
+    // Find the latest customer data from shared context to ensure we have visitPhotos
+    const latestCustomer = customers.find(c => c.id === visit.id);
+    const visitToShow = latestCustomer || visit;
+    setSelectedLead(visitToShow);
     // Trigger photo gallery modal
-    const event = new CustomEvent('openGallery', { detail: visit });
+    const event = new CustomEvent('openGallery', { detail: visitToShow });
     window.dispatchEvent(event);
+  };
+
+  const handleViewVisit = (visit) => {
+    // Find the latest customer data from shared context
+    const latestCustomer = customers.find(c => c.id === visit.id);
+    const visitToShow = latestCustomer || visit;
+    setSelectedLead(visitToShow);
+    setShowViewModal(true);
+  };
+
+  const handleViewTimeline = (visit) => {
+    try {
+      // Base identity for matching across stores
+      const leadId = String(visit.leadId || visit.id);
+
+      // 1) Assignment history
+      let assignmentEvents = [];
+      try {
+        const rawAssign = JSON.parse(localStorage.getItem('marketingAssignments') || '[]');
+        const items = Array.isArray(rawAssign) ? rawAssign.filter(a => String(a.leadId || a.id) === leadId) : [];
+        assignmentEvents = items.map(a => ({
+          type: 'assigned',
+          date: a.assignedDate || a.date || '',
+          title: 'Lead Assigned',
+          description: `Assigned to ${(a.assignedToName || a.assignedToEmail || 'Salesperson')}`,
+          remark: a.remark || a.notes || '',
+          meta: { assignedToName: a.assignedToName || '', assignedToEmail: a.assignedToEmail || '' }
+        }));
+      } catch {}
+
+      // 2) Visit history
+      let visitEvents = [];
+      try {
+        const rawVisits = JSON.parse(localStorage.getItem('marketingVisits') || '[]');
+        const items = Array.isArray(rawVisits) ? rawVisits.filter(v => String(v.leadId || v.id) === leadId) : [];
+        visitEvents = items.map(v => ({
+          type: 'visit',
+          date: v.visitDate || v.date || '',
+          title: 'Visit Scheduled',
+          description: v.purpose || 'Scheduled visit',
+          remark: v.notes || '',
+          status: v.visitingStatus || 'scheduled',
+        }));
+      } catch {}
+
+      // 3) Status changes from latest customer record
+      const latest = customers.find(c => String(c.id) === leadId) || visit;
+      const statusEvents = [];
+      if (latest.connectedStatus) {
+        statusEvents.push({
+          type: 'status',
+          date: latest.connectedStatusDate || latest.connectedDate || latest.updatedAt || '',
+          title: `Connected Status: ${latest.connectedStatus}`,
+          description: '',
+          remark: latest.connectedStatusRemark || ''
+        });
+      }
+      if (latest.finalStatus) {
+        statusEvents.push({
+          type: 'status',
+          date: latest.finalStatusDate || latest.updatedAt || '',
+          title: `Lead Status: ${latest.finalStatus}`,
+          description: '',
+          remark: latest.finalStatusRemark || latest.notes || ''
+        });
+      }
+
+      // 4) Photos (visitPhotos + runtime capturedPhotos)
+      const photos = (latest.visitPhotos || []).map(p => ({ url: p, date: latest.visitDate || '' }));
+      const runtimePhotos = (capturedPhotos[latest.id] || []).map(p => ({ url: p, date: latest.visitDate || '' }));
+      const photoEvents = [...photos, ...runtimePhotos].map(p => ({
+        type: 'photo',
+        date: p.date || latest.visitDate || latest.updatedAt || '',
+        title: 'Photo Captured',
+        photoUrl: p.url,
+        description: 'Visit photo'
+      }));
+
+      // Merge and sort by date desc
+      const merged = [...assignmentEvents, ...visitEvents, ...statusEvents, ...photoEvents]
+        .filter(e => e.date)
+        .sort((a, b) => (new Date(b.date)).getTime() - (new Date(a.date)).getTime());
+
+      setSelectedLead(latest);
+      setTimelineEvents(merged);
+      setShowTimelineModal(true);
+    } catch (e) { console.error('handleViewTimeline error', e); }
   };
 
 
@@ -388,31 +514,31 @@ const Visits = () => {
                       <div className="flex items-center space-x-2">
                         <button 
                           onClick={() => handleLivePhoto(visit)}
-                          className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                          className="w-9 h-9 rounded-full border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-300 shadow-sm transition-all flex items-center justify-center"
                           title="Live Photo"
                         >
                           <Camera className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => handleViewPhotos(visit)}
-                          className="p-2 text-gray-400 hover:text-green-600 transition-colors"
-                          title="View Photos"
+                          onClick={() => handleViewVisit(visit)}
+                          className="w-9 h-9 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:border-indigo-300 shadow-sm transition-all flex items-center justify-center"
+                          title="View Details"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => console.log('Location Capture clicked for', visit.name)}
-                          className="p-2 text-gray-400 hover:text-purple-600 transition-colors"
-                          title="Location Capture"
+                          onClick={() => handleViewPhotos(visit)}
+                          className="w-9 h-9 rounded-full border border-green-200 bg-green-50 text-green-600 hover:bg-green-100 hover:border-green-300 shadow-sm transition-all flex items-center justify-center"
+                          title="View Photos"
                         >
-                          <Navigation className="w-4 h-4" />
+                          <Camera className="w-4 h-4" />
                         </button>
                         <button 
-                          onClick={() => console.log('Video clicked for', visit.name)}
-                          className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                          title="Record Video"
+                          onClick={() => handleViewTimeline(visit)}
+                          className="w-9 h-9 rounded-full border border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 hover:border-purple-300 shadow-sm transition-all flex items-center justify-center"
+                          title="View Timeline"
                         >
-                          <Video className="w-4 h-4" />
+                          <Navigation className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -715,6 +841,191 @@ const Visits = () => {
               </div>
             </form>
             </div>
+        </div>
+      )}
+
+      {/* View Visit Details - Right Sidebar */}
+      {showViewModal && selectedLead && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="flex-1 bg-black/40" onClick={() => { setShowViewModal(false); setSelectedLead(null); }}></div>
+          <aside className="w-full max-w-lg bg-white h-full shadow-xl overflow-y-auto">
+            <div className="p-5 border-b flex items-center justify-between sticky top-0 bg-white z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-semibold">
+                  {(selectedLead.name || '?').split(' ').map(w=>w[0]).slice(0,2).join('')}
+                </div>
+                <div>
+                  <div className="text-base font-semibold text-gray-900">Visit Details</div>
+                  <div className="text-xs text-gray-500">{selectedLead.name} • {selectedLead.phone}</div>
+                </div>
+              </div>
+              <button onClick={() => { setShowViewModal(false); setSelectedLead(null); }} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Summary badges */}
+            <div className="px-5 pt-4">
+              <div className="flex flex-wrap gap-2">
+                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                  selectedLead.visitingStatus === 'completed' ? 'bg-green-100 text-green-800' :
+                  selectedLead.visitingStatus === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                  selectedLead.visitingStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                  selectedLead.visitingStatus === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>{selectedLead.visitingStatus || 'N/A'}</span>
+                {selectedLead.finalStatus && (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">{selectedLead.finalStatus}</span>
+                )}
+                {selectedLead.visitDate && (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {selectedLead.visitDate}</span>
+                )}
+              </div>
+              {selectedLead.address && (
+                <div className="mt-2 text-xs text-gray-600 flex items-start gap-2"><MapPin className="w-3.5 h-3.5 mt-0.5" /> <span>{selectedLead.address}</span></div>
+              )}
+            </div>
+
+            {/* Details sections */}
+            <div className="p-5 space-y-5">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-xs text-gray-500">Lead ID</div>
+                  <div className="text-gray-900">{selectedLead.leadId || `LD-2025-${selectedLead.id.toString().padStart(3, '0')}`}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Email</div>
+                  <div className="text-gray-900">{selectedLead.email || 'N/A'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Product Type</div>
+                  <div className="text-gray-900">{selectedLead.productType || 'N/A'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">State</div>
+                  <div className="text-gray-900">{selectedLead.state || 'N/A'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">GST No.</div>
+                  <div className="text-gray-900">{selectedLead.gstNo || 'N/A'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Lead Source</div>
+                  <div className="text-gray-900">{selectedLead.leadSource || 'N/A'}</div>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs text-gray-500 mb-1">Purpose</div>
+                <div className="text-sm text-gray-900">{selectedLead.purpose || 'N/A'}</div>
+              </div>
+
+              <div>
+                <div className="text-xs text-gray-500 mb-1">Remark</div>
+                <div className="p-3 bg-gray-50 rounded-md border text-sm text-gray-900 whitespace-pre-wrap">{selectedLead.finalStatusRemark || selectedLead.connectedStatusRemark || selectedLead.notes || 'No remark available'}</div>
+              </div>
+
+              {Array.isArray(selectedLead.visitPhotos) && selectedLead.visitPhotos.length > 0 && (
+                <div>
+                  <div className="text-xs text-gray-500 mb-2">Photos</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {selectedLead.visitPhotos.map((p, i) => (
+                      <img key={i} src={p} alt={`Visit ${i+1}`} className="w-full h-24 object-cover rounded border" />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* Timeline Slide-Over (Right Sidebar) */}
+      {showTimelineModal && selectedLead && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="flex-1 bg-black/40" onClick={() => { setShowTimelineModal(false); setSelectedLead(null); }}></div>
+          <aside className="w-full max-w-lg bg-white h-full shadow-xl overflow-y-auto">
+            <div className="p-5 border-b flex items-center justify-between sticky top-0 bg-white z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-semibold">
+                  {(selectedLead.name || '?').split(' ').map(w=>w[0]).slice(0,2).join('')}
+                </div>
+                <div>
+                  <div className="text-base font-semibold text-gray-900">Lead Timeline</div>
+                  <div className="text-xs text-gray-500">{selectedLead.name} • {selectedLead.phone}</div>
+                </div>
+              </div>
+              <button onClick={() => { setShowTimelineModal(false); setSelectedLead(null); }} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Lead summary badges */}
+            <div className="px-5 pt-4">
+              <div className="flex flex-wrap gap-2">
+                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                  selectedLead.visitingStatus === 'completed' ? 'bg-green-100 text-green-800' :
+                  selectedLead.visitingStatus === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                  selectedLead.visitingStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                  selectedLead.visitingStatus === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>{selectedLead.visitingStatus || 'N/A'}</span>
+                {selectedLead.finalStatus && (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">{selectedLead.finalStatus}</span>
+                )}
+                {selectedLead.visitDate && (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> {selectedLead.visitDate}</span>
+                )}
+              </div>
+              {selectedLead.address && (
+                <div className="mt-2 text-xs text-gray-600 flex items-start gap-2"><MapPin className="w-3.5 h-3.5 mt-0.5" /> <span>{selectedLead.address}</span></div>
+              )}
+            </div>
+
+            {/* Timeline list */}
+            <div className="p-5">
+              {timelineEvents.length === 0 ? (
+                <div className="text-center text-gray-500 text-sm">No timeline events available</div>
+              ) : (
+                <div className="space-y-5">
+                  {timelineEvents.map((ev, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      {/* Icon */}
+                      <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center border ${
+                        ev.type === 'assigned' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                        ev.type === 'visit' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                        ev.type === 'status' ? 'bg-green-50 text-green-700 border-green-200' :
+                        ev.type === 'photo' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-gray-50 text-gray-700 border-gray-200'
+                      }`}>
+                        {ev.type === 'assigned' && <User className="w-4 h-4" />}
+                        {ev.type === 'visit' && <Calendar className="w-4 h-4" />}
+                        {ev.type === 'status' && <CheckCircle className="w-4 h-4" />}
+                        {ev.type === 'photo' && <Camera className="w-4 h-4" />}
+                      </div>
+                      {/* Content */}
+                      <div className="flex-1 border-l border-gray-200 pl-4">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-semibold text-gray-900">{ev.title}</div>
+                          <time className="text-[11px] text-gray-500">{ev.date}</time>
+                        </div>
+                        {ev.status && (
+                          <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full ${
+                            ev.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            ev.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                            ev.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            ev.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+                          }`}>{ev.status}</span>
+                        )}
+                        {ev.description && <p className="mt-1 text-sm text-gray-700">{ev.description}</p>}
+                        {ev.remark && (
+                          <div className="mt-2 text-xs text-gray-900 bg-gray-50 border rounded p-2 whitespace-pre-wrap">{ev.remark}</div>
+                        )}
+                        {ev.photoUrl && (
+                          <img src={ev.photoUrl} alt="Visit" className="mt-2 w-full max-w-xs h-32 object-cover rounded border" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </aside>
         </div>
       )}
 

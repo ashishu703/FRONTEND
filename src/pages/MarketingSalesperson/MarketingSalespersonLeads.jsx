@@ -34,8 +34,7 @@ import html2pdf from 'html2pdf.js';
 import MarketingQuotationForm from './MarketingCreateQuotationForm';
 import MarketingQuotation from './MarketingQuotation';
 import { MarketingCorporateStandardInvoice } from './MarketingProformaInvoice';
-import MarketingFollowUpBase from './FollowUp/MarketingFollowUpBase';
-import MarketingQuotationPreview from "./MarketingQuotationPreview"
+import { useMarketingSharedData } from './MarketingSharedDataContext';
 
 // Edit Lead Modal Component
 const EditLeadModal = ({ lead, onSave, onClose }) => {
@@ -933,6 +932,7 @@ const LeadImportModal = ({ onImport, onClose }) => {
 };
 
 const MarketingSalespersonLeads = () => {
+  const { customers, updateCustomer } = useMarketingSharedData();
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -942,8 +942,10 @@ const MarketingSalespersonLeads = () => {
   const [showQuotationModal, setShowQuotationModal] = useState(false);
   const [showPIModal, setShowPIModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const [statusForm, setStatusForm] = useState({ finalStatus: 'Interested', remark: '' });
+  const [statusForm, setStatusForm] = useState({ finalStatus: 'Connected', remark: '' });
   const [selectedLead, setSelectedLead] = useState(null);
+  const [statusPhoto, setStatusPhoto] = useState(null);
+  const [statusPhotoCapturedAt, setStatusPhotoCapturedAt] = useState(null);
   const [activeTab, setActiveTab] = useState('Details');
   const [showPIPreview, setShowPIPreview] = useState(false);
   const [showPIPopup, setShowPIPopup] = useState(false);
@@ -1286,9 +1288,11 @@ const MarketingSalespersonLeads = () => {
 
   const getFinalStatusColor = (status) => {
     switch (status) {
-      case 'Interested': return 'bg-green-100 text-green-800';
-      case 'Not Interested': return 'bg-red-100 text-red-800';
-      case 'Pending': return 'bg-yellow-100 text-yellow-800';
+      case 'Connected': return 'bg-green-100 text-green-800';
+      case 'Not Connected': return 'bg-red-100 text-red-800';
+      case 'Todays Meeting': return 'bg-blue-100 text-blue-800';
+      case 'Converted': return 'bg-purple-100 text-purple-800';
+      case 'Closed': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -1304,19 +1308,103 @@ const MarketingSalespersonLeads = () => {
     }
   };
 
-  const handleSaveLeadStatus = () => {
+  // Live photo capture for status updates
+  const [isCapturingPhoto, setIsCapturingPhoto] = useState(false);
+  const captureStatusPhoto = async () => {
+    setIsCapturingPhoto(true);
+    let stream;
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        return null;
+      }
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      const video = document.createElement('video');
+      video.autoplay = true;
+      video.playsInline = true;
+      video.srcObject = stream;
+      await new Promise((resolve) => {
+        video.onloadedmetadata = resolve;
+      });
+
+      const width = 320;
+      const height = Math.floor((video.videoHeight / video.videoWidth) * width) || 240;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      return dataUrl;
+    } catch (e) {
+      return null;
+    } finally {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+      }
+      setIsCapturingPhoto(false);
+    }
+  };
+
+  const handleSaveLeadStatus = async () => {
     if (!selectedLead) return;
-    setLeads(leads.map(l => l.id === selectedLead.id 
-      ? { 
-          ...l, 
+    
+    const updatedLead = {
+      ...selectedLead,
+      finalStatus: statusForm.finalStatus,
+      finalStatusRemark: statusForm.remark,
+      finalStatusUpdated: new Date().toISOString(),
+      finalStatusPhoto: statusPhoto || selectedLead.finalStatusPhoto || null,
+      finalStatusPhotoCapturedAt: statusPhoto ? (statusPhotoCapturedAt || new Date().toISOString()) : (selectedLead.finalStatusPhotoCapturedAt || null)
+    };
+    
+    // Update local leads state
+    setLeads(leads.map(l => l.id === selectedLead.id ? updatedLead : l));
+    
+    // If photo is captured, create a visit entry in the shared context
+    if (statusPhoto && selectedLead.id) {
+      const now = new Date();
+      const visitPhoto = {
+        id: Date.now(),
+        image: statusPhoto,
+        timestamp: statusPhotoCapturedAt || now.toISOString(),
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString(),
+        visitId: selectedLead.id,
+        visitName: selectedLead.name
+      };
+      
+      // Find the customer in shared context and update it
+      const customer = customers.find(c => c.id === selectedLead.id);
+      if (customer) {
+        const existingVisitPhotos = customer.visitPhotos || [];
+        updateCustomer(selectedLead.id, {
+          visitingStatus: 'completed',
+          visitDate: now.toISOString().split('T')[0],
+          visitTime: now.toTimeString().split(' ')[0].substring(0, 5),
+          visitPhotos: [...existingVisitPhotos, visitPhoto],
+          finalStatus: statusForm.finalStatus,
+          finalStatusRemark: statusForm.remark,
+          finalStatusUpdated: now.toISOString(),
+          finalStatusPhoto: statusPhoto,
+          finalStatusPhotoCapturedAt: statusPhotoCapturedAt || now.toISOString()
+        });
+      }
+    } else if (selectedLead.id) {
+      // Update customer even without photo (status update)
+      const customer = customers.find(c => c.id === selectedLead.id);
+      if (customer) {
+        updateCustomer(selectedLead.id, {
           finalStatus: statusForm.finalStatus,
           finalStatusRemark: statusForm.remark,
           finalStatusUpdated: new Date().toISOString()
-        } 
-      : l
-    ));
+        });
+      }
+    }
+    
     setShowStatusModal(false);
     setSelectedLead(null);
+    setStatusPhoto(null);
+    setStatusPhotoCapturedAt(null);
   };
 
   const handleViewLead = (lead) => {
@@ -2061,8 +2149,10 @@ const MarketingSalespersonLeads = () => {
                         </button>
                         <button 
                           onClick={() => {
-                            setSelectedLead(lead);
-                            setStatusForm({ finalStatus: lead.finalStatus || 'Interested', remark: '' });
+                          setSelectedLead(lead);
+                          setStatusForm({ finalStatus: lead.finalStatus || 'Connected', remark: '' });
+                          setStatusPhoto(null);
+                          setStatusPhotoCapturedAt(null);
                             setShowStatusModal(true);
                           }}
                           className="w-8 h-8 rounded-full border-2 border-green-500 bg-white hover:bg-green-50 transition-colors flex items-center justify-center"
@@ -2714,9 +2804,11 @@ const MarketingSalespersonLeads = () => {
                   value={statusForm.finalStatus}
                   onChange={(e) => setStatusForm({ ...statusForm, finalStatus: e.target.value })}
                 >
-                  <option value="Interested">Interested</option>
-                  <option value="Not Interested">Not Interested</option>
-                  <option value="Pending">Pending</option>
+                  <option value="Connected">Connected</option>
+                  <option value="Not Connected">Not Connected</option>
+                  <option value="Todays Meeting">Todays Meeting</option>
+                  <option value="Converted">Converted</option>
+                  <option value="Closed">Closed</option>
                 </select>
               </div>
               <div>
@@ -2727,6 +2819,46 @@ const MarketingSalespersonLeads = () => {
                   value={statusForm.remark}
                   onChange={(e) => setStatusForm({ ...statusForm, remark: e.target.value })}
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Live Photo (optional)</label>
+                {statusPhoto ? (
+                  <div className="space-y-2">
+                    <img src={statusPhoto} alt="Status" className="w-full h-40 object-cover rounded-md border" />
+                    <div className="flex items-center justify-between text-xs text-gray-600">
+                      <span>Captured {statusPhotoCapturedAt ? new Date(statusPhotoCapturedAt).toLocaleString() : 'now'}</span>
+                      <button
+                        onClick={async () => {
+                          const photo = await captureStatusPhoto();
+                          if (photo) {
+                            setStatusPhoto(photo);
+                            setStatusPhotoCapturedAt(new Date().toISOString());
+                          }
+                        }}
+                        className="px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded"
+                      >
+                        Retake
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      const photo = await captureStatusPhoto();
+                      if (photo) {
+                        setStatusPhoto(photo);
+                        setStatusPhotoCapturedAt(new Date().toISOString());
+                      } else {
+                        alert('Could not access camera. You can still save without a photo.');
+                      }
+                    }}
+                    disabled={isCapturingPhoto}
+                    className={`w-full px-3 py-2 rounded-md border ${isCapturingPhoto ? 'bg-gray-100 text-gray-500' : 'bg-white hover:bg-gray-50'}`}
+                  >
+                    {isCapturingPhoto ? 'Capturing...' : 'Capture Live Photo'}
+                  </button>
+                )}
+                <p className="text-xs text-gray-500 mt-1">This photo will be attached with the status update.</p>
               </div>
             </div>
             <div className="p-4 border-t flex justify-end gap-2">
