@@ -1,10 +1,9 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, Download, ChevronDown, X, Save, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
-import html2pdf from 'html2pdf.js';
+import { Search, Filter, Plus, RotateCw, ChevronDown, X, Save, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
-export default function ProductToolbar({ onSearch, onAddProduct, onExport, onFilterChange, onRefresh, products = [], loading = false }) {
+export default function ProductToolbar({ onSearch, onAddProduct, onFilterChange, onRefresh, products = [], loading = false }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     paymentType: '', // 'advance', 'due', or ''
@@ -84,118 +83,7 @@ export default function ProductToolbar({ onSearch, onAddProduct, onExport, onFil
     });
   };
 
-  const handleExport = async () => {
-    try {
-      const tempDiv = document.createElement('div');
-      tempDiv.style.cssText = `
-        font-family: Arial, sans-serif;
-        font-size: 12px;
-        line-height: 1.4;
-        color: #333;
-        max-width: 100%;
-        margin: 0;
-        padding: 20px;
-        background: white;
-      `;
-
-      const filteredProducts = products.filter(item => {
-        const matchesSearch = !searchQuery || 
-          item.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.productName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.leadId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.quotationId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.workOrderId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          // Search in customer contact information
-          (item.leadData?.phone && item.leadData.phone.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (item.leadData?.email && item.leadData.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (item.leadData?.whatsapp && item.leadData.whatsapp.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          // Special handling for quotation ID search (QT prefix)
-          (searchQuery.toLowerCase().startsWith('qt') && item.quotationId?.toLowerCase().includes(searchQuery.toLowerCase()));
-        
-        const matchesPaymentStatus = !filters.paymentStatus || item.paymentStatus === filters.paymentStatus;
-        const matchesQuotationId = !filters.quotationId || 
-          item.quotationId?.toLowerCase().includes(filters.quotationId.toLowerCase()) ||
-          item.quotationData?.quotation_number?.toLowerCase().includes(filters.quotationId.toLowerCase());
-        
-        return matchesSearch && matchesPaymentStatus && matchesQuotationId;
-      });
-
-      tempDiv.innerHTML = `
-        <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px;">
-          <h1 style="margin: 0; font-size: 24px; color: #1f2937;">ANOCAB PAYMENT TRACKING REPORT</h1>
-          <p style="margin: 5px 0 0 0; color: #6b7280;">Generated on: ${new Date().toLocaleDateString()}</p>
-        </div>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-          <thead>
-            <tr style="background-color: #f3f4f6;">
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">#</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Lead ID</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Customer Name</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Product Name</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Address</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Quotation ID</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Payment Status</th>
-              <th style="border: 1px solid #d1d5db; padding: 8px; text-align: left; font-weight: bold;">Work Order ID</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${filteredProducts.map((item, index) => `
-              <tr>
-                <td style="border: 1px solid #d1d5db; padding: 8px;">${index + 1}</td>
-                <td style="border: 1px solid #d1d5db; padding: 8px; font-weight: bold;">${item.leadId || 'N/A'}</td>
-                <td style="border: 1px solid #d1d5db; padding: 8px;">
-                  <div style="font-weight: bold;">${item.customerName || 'N/A'}</div>
-                  <div style="color: #6b7280; font-size: 11px;">${item.leadData?.phone || 'N/A'}</div>
-                  ${item.leadData?.email && item.leadData.email !== 'N/A' ? `<div style="color: #0891b2; font-size: 11px;">Email: ${item.leadData.email}</div>` : ''}
-                  ${item.leadData?.whatsapp ? `<div style="color: #059669; font-size: 11px;">WhatsApp: ${item.leadData.whatsapp}</div>` : ''}
-                </td>
-                <td style="border: 1px solid #d1d5db; padding: 8px;">${item.productName || 'N/A'}</td>
-                <td style="border: 1px solid #d1d5db; padding: 8px;">${item.address || 'N/A'}</td>
-                <td style="border: 1px solid #d1d5db; padding: 8px;">${item.quotationId || 'N/A'}</td>
-                <td style="border: 1px solid #d1d5db; padding: 8px;">
-                  <span style="
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    font-size: 10px;
-                    font-weight: bold;
-                    ${item.paymentStatus === 'paid' ? 'background-color: #dcfce7; color: #166534;' :
-                      item.paymentStatus === 'pending' ? 'background-color: #fef3c7; color: #92400e;' :
-                      item.paymentStatus === 'partial' ? 'background-color: #dbeafe; color: #1e40af;' :
-                      'background-color: #fee2e2; color: #991b1b;'}
-                  ">
-                    ${item.paymentStatus === 'paid' ? 'Paid' :
-                      item.paymentStatus === 'pending' ? 'Pending' :
-                      item.paymentStatus === 'partial' ? 'Partial' :
-                      'Overdue'}
-                  </span>
-                </td>
-                <td style="border: 1px solid #d1d5db; padding: 8px;">${item.workOrderId || 'N/A'}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        <div style="margin-top: 30px; text-align: center; color: #6b7280; font-size: 11px;">
-          <p>Total Records: ${filteredProducts.length}</p>
-          <p>Generated by ANOCAB CRM System</p>
-        </div>
-      `;
-
-      document.body.appendChild(tempDiv);
-      const opt = {
-        margin: 0.5,
-        filename: `anocab-payment-tracking-report-${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 1, useCORS: true, logging: false },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
-      };
-      await html2pdf().set(opt).from(tempDiv).save();
-      document.body.removeChild(tempDiv);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Error generating PDF. Please try again.');
-    }
-  };
+  // Export functionality removed. Using Refresh instead.
 
   return (
     <div className="mb-6">
@@ -244,11 +132,12 @@ export default function ProductToolbar({ onSearch, onAddProduct, onExport, onFil
           </select>
 
           <button
-            onClick={handleExport}
+            onClick={onRefresh}
             className="px-3 py-2 rounded-md bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2"
+            title="Refresh"
           >
-            <Download className="h-4 w-4" />
-            Export
+            <RotateCw className="h-4 w-4" />
+            Refresh
           </button>
         </div>
       </div>

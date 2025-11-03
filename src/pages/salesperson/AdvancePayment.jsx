@@ -1,33 +1,69 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
-import { Package, Eye, X, Edit, Clock, CheckCircle, MessageCircle, Mail, DollarSign } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Package, Eye, X, Edit, Clock, CheckCircle, MessageCircle, Mail, DollarSign, CreditCard } from 'lucide-react';
 import Toolbar, { ProductPagination } from './PaymentTracking';
 import apiClient from '../../utils/apiClient';
 import quotationService from '../../api/admin_api/quotationService';
 import paymentService from '../../api/admin_api/paymentService';
+import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 
 // Timeline Sidebar component for viewing payment tracking details
-const PaymentTimelineSidebar = ({ item, onClose }) => {
+const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
   const [customerQuotations, setCustomerQuotations] = useState([]);
   const [loadingQuotations, setLoadingQuotations] = useState(false);
   const [quotationError, setQuotationError] = useState(null);
+  const [quotationSummary, setQuotationSummary] = useState(null);
+  const [paymentsForQuotation, setPaymentsForQuotation] = useState([]);
 
   if (!item) return null;
 
-  // Fetch customer quotations when component mounts
+  // Fetch quotation summary + payments (avoid listing all quotations if we already have one)
+  const fetchedKeyRef = useRef('');
   useEffect(() => {
+    const fetchKey = `${item.leadData?.id || ''}-${item.quotationData?.id || ''}-${refreshKey}`;
+    if (fetchedKeyRef.current === fetchKey) {
+      return; // avoid duplicate fetch in React StrictMode
+    }
+    fetchedKeyRef.current = fetchKey;
     const fetchCustomerQuotations = async () => {
       if (!item.leadData?.id) return;
-      
+
       try {
         setLoadingQuotations(true);
         setQuotationError(null);
         
-        // Fetch quotations for this customer/lead
+        // If we already have a quotation ID, only fetch its summary and payments
+        const chosenQuotationId = item.quotationData?.id;
+        if (chosenQuotationId) {
+          try {
+            const [sRes, pRes] = await Promise.all([
+              quotationService.getSummary(chosenQuotationId),
+              paymentService.getPaymentsByQuotation(chosenQuotationId)
+            ]);
+            setCustomerQuotations([item.quotationData]);
+            setQuotationSummary(sRes?.data || null);
+            setPaymentsForQuotation(pRes?.data || []);
+            return;
+          } catch (innerErr) {
+            console.warn('Failed to load quotation summary/payments', innerErr);
+          }
+        }
+
+        // Fallback: fetch quotations for this customer/lead and then pick latest approved
         const quotationsResponse = await quotationService.getQuotationsByCustomer(item.leadData.id);
-        setCustomerQuotations(quotationsResponse?.data || []);
+        const qList = quotationsResponse?.data || [];
+        setCustomerQuotations(qList);
+        const latestApproved = qList.filter(q => q.status === 'approved').slice(-1)[0];
+        if (latestApproved?.id) {
+          const [sRes, pRes] = await Promise.all([
+            quotationService.getSummary(latestApproved.id),
+            paymentService.getPaymentsByQuotation(latestApproved.id)
+          ]);
+          setQuotationSummary(sRes?.data || null);
+          setPaymentsForQuotation(pRes?.data || []);
+        }
       } catch (error) {
         console.error('Error fetching customer quotations:', error);
         setQuotationError('Failed to load quotations');
@@ -37,7 +73,7 @@ const PaymentTimelineSidebar = ({ item, onClose }) => {
     };
 
     fetchCustomerQuotations();
-  }, [item.leadData?.id]);
+  }, [item.leadData?.id, item.quotationData?.id, refreshKey]);
 
   // Handle view quotation - show in modal using QuotationPreview format
   const handleViewQuotation = async (quotationId) => {
@@ -98,103 +134,237 @@ const PaymentTimelineSidebar = ({ item, onClose }) => {
             })) || [],
             subtotal: parseFloat(quotation.subtotal || 0),
             taxAmount: parseFloat(quotation.tax_amount || 0),
-            totalAmount: parseFloat(quotation.total_amount || 0),
-            notes: quotation.notes || '',
-            terms: quotation.terms || ''
+            total: parseFloat(quotation.total_amount || 0),
+            discountRate: parseFloat(quotation.discount_rate || 0),
+            discountAmount: parseFloat(quotation.discount_amount || 0),
+            taxRate: parseFloat(quotation.tax_rate || 18),
+            selectedBranch: 'ANODE'
           };
           
-          // Generate HTML content for the quotation
+          // Create HTML content using the exact same format as QuotationPreview
           const htmlContent = `
             <!DOCTYPE html>
             <html>
             <head>
               <title>Quotation ${quotationData.quotationNumber}</title>
+              <script src="https://cdn.tailwindcss.com"></script>
               <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                .header { text-align: center; margin-bottom: 30px; }
-                .company-info { margin-bottom: 20px; }
-                .quotation-details { display: flex; justify-content: space-between; margin-bottom: 20px; }
-                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                th { background-color: #f2f2f2; }
-                .total-section { text-align: right; margin-top: 20px; }
-                .notes { margin-top: 30px; }
+                @media print {
+                  .no-print { display: none !important; }
+                }
               </style>
             </head>
-            <body>
-              <div class="header">
-                <h1>${companyBranches.ANODE.name}</h1>
-                <p>${companyBranches.ANODE.description}</p>
-                <p>${companyBranches.ANODE.address}</p>
-                <p>Tel: ${companyBranches.ANODE.tel} | Web: ${companyBranches.ANODE.web} | Email: ${companyBranches.ANODE.email}</p>
+            <body class="bg-gray-100">
+              <div class="max-w-4xl mx-auto bg-white font-sans text-sm" id="quotation-content">
+                <div class="p-6">
+                  <div class="border-2 border-black mb-4">
+                    <div class="p-2 flex justify-between items-center">
+                      <div>
+                        <h1 class="text-xl font-bold">${companyBranches.ANODE.name}</h1>
+                        <p class="text-xs font-semibold text-gray-700">${companyBranches.ANODE.gstNumber}</p>
+                        <p class="text-xs">${companyBranches.ANODE.description}</p>
+                      </div>
+                      <div class="text-right">
+                        <img
+                          src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
+                          alt="Company Logo"
+                          class="h-12 w-auto bg-white p-1 rounded"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="p-3 bg-gray-50">
+                      <div class="grid grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <p><strong>${companyBranches.ANODE.address}</strong></p>
+                        </div>
+                        <div class="text-right">
+                          <p>Tel: ${companyBranches.ANODE.tel}</p>
+                          <p>Web: ${companyBranches.ANODE.web}</p>
+                          <p>Email: ${companyBranches.ANODE.email}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="border border-black mb-4">
+                    <div class="bg-gray-100 p-2 text-center font-bold">
+                      <h2>Quotation Details</h2>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 p-2 text-xs border-b">
+                      <div><strong>Quotation Date</strong></div>
+                      <div><strong>Quotation Number</strong></div>
+                      <div><strong>Valid Upto</strong></div>
+                      <div><strong>Voucher Number</strong></div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 p-2 text-xs">
+                      <div>${quotationData.quotationDate}</div>
+                      <div>${quotationData.quotationNumber}</div>
+                      <div>${quotationData.validUpto}</div>
+                      <div>${quotationData.voucherNumber}</div>
+                    </div>
+                  </div>
+
+                  <div class="border border-black mb-4">
+                    <div class="grid grid-cols-2 gap-4 p-3 text-xs">
+                      <div>
+                        <h3 class="font-bold mb-2">BILL TO:</h3>
+                        <p><strong>${quotationData.billTo.business || 'Customer'}</strong></p>
+                        ${quotationData.billTo.address ? `<p>${quotationData.billTo.address}</p>` : ''}
+                        ${quotationData.billTo.phone ? `<p><strong>PHONE:</strong> ${quotationData.billTo.phone}</p>` : ''}
+                        ${quotationData.billTo.gstNo ? `<p><strong>GSTIN:</strong> ${quotationData.billTo.gstNo}</p>` : ''}
+                        ${quotationData.billTo.state ? `<p><strong>State:</strong> ${quotationData.billTo.state}</p>` : ''}
+                      </div>
+                      <div>
+                        <p><strong>L.R. No:</strong> -</p>
+                        <p><strong>Transport:</strong> STAR TRANSPORTS</p>
+                        <p><strong>Transport ID:</strong> 562345</p>
+                        <p><strong>Vehicle Number:</strong> GJ01HJ2520</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="border border-black mb-4">
+                    <table class="w-full text-xs">
+                      <thead>
+                        <tr class="bg-gray-100">
+                          <th class="border border-gray-300 p-1 text-center w-10">Sr.</th>
+                          <th class="border border-gray-300 p-2 text-left">Name of Product / Service</th>
+                          <th class="border border-gray-300 p-1 text-center w-16">HSN / SAC</th>
+                          <th class="border border-gray-300 p-1 text-center w-12">Qty</th>
+                          <th class="border border-gray-300 p-1 text-center w-12">Unit</th>
+                          <th class="border border-gray-300 p-1 text-right w-20">Buyer Rate</th>
+                          <th class="border border-gray-300 p-1 text-right w-20">Taxable Value</th>
+                          <th class="border border-gray-300 p-0.5 text-center w-8 text-[10px] whitespace-nowrap">GST%</th>
+                          <th class="border border-gray-300 p-1 text-right w-24">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${quotationData.items && quotationData.items.length > 0 ? 
+                          quotationData.items.map((item, index) => `
+                            <tr>
+                              <td class="border border-gray-300 p-1 text-center">${index + 1}</td>
+                              <td class="border border-gray-300 p-2">${item.productName || item.description}</td>
+                              <td class="border border-gray-300 p-1 text-center">${item.hsn || '85446090'}</td>
+                              <td class="border border-gray-300 p-1 text-center">${item.quantity}</td>
+                              <td class="border border-gray-300 p-1 text-center">${item.unit || 'Nos'}</td>
+                              <td class="border border-gray-300 p-1 text-right">${parseFloat(item.buyerRate || item.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                              <td class="border border-gray-300 p-1 text-right">${parseFloat(item.amount || item.taxable || item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                              <td class="border border-gray-300 p-0 text-center text-xs">${item.gstRate ? `${item.gstRate}%` : '18%'}</td>
+                              <td class="border border-gray-300 p-1 text-right">${parseFloat((item.amount ?? item.total ?? 0) * (item.gstMultiplier ?? 1.18)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            </tr>
+                          `).join('') : 
+                          '<tr><td colspan="9" class="border border-gray-300 p-2 text-center">No items</td></tr>'
+                        }
+
+                        ${Array.from({ length: 8 }).map((_, i) => `
+                          <tr class="h-8">
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                            <td class="border border-gray-300 p-2"></td>
+                          </tr>
+                        `).join('')}
+
+                        <tr class="bg-gray-100 font-bold">
+                          <td class="border border-gray-300 p-2 text-left">Total</td>
+                          <td class="border border-gray-300 p-2"></td>
+                          <td class="border border-gray-300 p-2"></td>
+                          <td class="border border-gray-300 p-2"></td>
+                          <td class="border border-gray-300 p-2"></td>
+                          <td class="border border-gray-300 p-2"></td>
+                          <td class="border border-gray-300 p-2">${quotationData.subtotal?.toFixed ? quotationData.subtotal.toFixed(2) : (quotationData.subtotal || '').toString()}</td>
+                          <td class="border border-gray-300 p-2">${quotationData.taxAmount?.toFixed ? quotationData.taxAmount.toFixed(2) : (quotationData.taxAmount || '').toString()}</td>
+                          <td class="border border-gray-300 p-2">${quotationData.total?.toFixed ? quotationData.total.toFixed(2) : (quotationData.total || '').toString()}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="border border-black p-3">
+                      <h3 class="font-bold text-xs mb-2">Bank Details</h3>
+                      <div class="text-xs space-y-1">
+                        <p><strong>Bank Name:</strong> ICICI Bank</p>
+                        <p><strong>Branch Name:</strong> WRIGHT TOWN JABALPUR</p>
+                        <p><strong>Bank Account Number:</strong> 657605601783</p>
+                        <p><strong>Bank Branch IFSC:</strong> ICIC0006576</p>
+                      </div>
+                    </div>
+                    <div class="border border-black p-3">
+                      <div class="text-xs space-y-1">
+                        <div class="flex justify-between">
+                          <span>Subtotal</span>
+                          <span>${quotationData.subtotal?.toFixed ? quotationData.subtotal.toFixed(2) : (quotationData.subtotal || '0.00')}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span>Less: Discount (${quotationData.discountRate || 0}%)</span>
+                          <span>${quotationData.discountAmount?.toFixed ? quotationData.discountAmount.toFixed(2) : (quotationData.discountAmount || '0.00')}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span>Taxable Amount</span>
+                          <span>${(typeof quotationData.subtotal === 'number' ? (quotationData.subtotal - (quotationData.discountAmount || 0)).toFixed(2) : (quotationData.taxable || '')).toString()}</span>
+                        </div>
+                        <div class="flex justify-between">
+                          <span>Add: Total GST (${quotationData.taxRate || 18}%)</span>
+                          <span>${quotationData.taxAmount?.toFixed ? quotationData.taxAmount.toFixed(2) : (quotationData.taxAmount || '0.00')}</span>
+                        </div>
+                        <div class="flex justify-between font-bold border-t pt-1">
+                          <span>Total Amount After Tax</span>
+                          <span>₹ ${quotationData.total?.toFixed ? quotationData.total.toFixed(2) : (quotationData.total || '0.00')}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="border border-black mb-4">
+                    <div class="bg-gray-100 p-2 font-bold text-xs">
+                      <h3>Terms and Conditions</h3>
+                    </div>
+                    <div class="p-3 text-xs space-y-2">
+                      <div>
+                        <h4 class="font-bold">PRICING & VALIDITY</h4>
+                        <p>• Prices are valid for 3 days only from the date of the final quotation/PI unless otherwise specified terms.</p>
+                        <p>• The order will be considered confirmed only upon receipt of the advance payment.</p>
+                      </div>
+                      <div>
+                        <h4 class="font-bold">PAYMENT TERMS</h4>
+                        <p>• 30% advance payment upon order confirmation</p>
+                        <p>• Remaining Balance at time of final dispatch / against LC / Bank Guarantee (if applicable).</p>
+                        <p>• Liquidated Damages @ 0.5% to 1% per WEEK will be charged on delayed payments beyond the agreed terms.</p>
+                      </div>
+                      <div>
+                        <h4 class="font-bold">DELIVERY & DISPATCH</h4>
+                        <p>• Standard delivery period as per the telecommunication with customer.</p>
+                        <p>• Any delays due to unforeseen circumstances (force majeure, strikes, and transportation issues) will be communicated.</p>
+                      </div>
+                      <div>
+                        <h4 class="font-bold">QUALITY & WARRANTY</h4>
+                        <p>• Cables will be supplied as per IS and other applicable BIS standards/or as per the agreed specifications mentioned/special demand by the customer.</p>
+                        <p>• Any manufacturing defects should be reported immediately, within 3 working days of receipt.</p>
+                        <p>• Warranty: 12 months from the date of dispatch for manufacturing defects only in ISI mark products.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="text-right text-xs">
+                    <p class="mb-4">For <strong>${companyBranches.ANODE.name}</strong></p>
+                    <p class="mb-8">This is computer generated invoice no signature required.</p>
+                    <p class="font-bold">Authorized Signatory</p>
+                    <p class="mt-2 text-sm font-semibold text-gray-800">${user.name || user.email || 'User'}</p>
+                  </div>
+                </div>
               </div>
               
-              <div class="quotation-details">
-                <div>
-                  <h3>Bill To:</h3>
-                  <p><strong>${quotationData.billTo.business}</strong></p>
-                  <p>${quotationData.billTo.address}</p>
-                  <p>Phone: ${quotationData.billTo.phone}</p>
-                  <p>GST No: ${quotationData.billTo.gstNo}</p>
-                  <p>State: ${quotationData.billTo.state}</p>
-                </div>
-                <div>
-                  <h3>Quotation Details:</h3>
-                  <p><strong>Quotation No:</strong> ${quotationData.quotationNumber}</p>
-                  <p><strong>Date:</strong> ${quotationData.quotationDate}</p>
-                  <p><strong>Valid Until:</strong> ${quotationData.validUpto}</p>
-                  <p><strong>Voucher No:</strong> ${quotationData.voucherNumber}</p>
-                </div>
+              <div class="fixed bottom-0 left-0 right-0 bg-white p-4 border-t border-gray-300 flex justify-between no-print">
+                <button onclick="window.close()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Close</button>
+                <button onclick="window.print()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">Print PDF</button>
               </div>
-              
-              <table>
-                <thead>
-                  <tr>
-                    <th>Product Name</th>
-                    <th>Description</th>
-                    <th>Quantity</th>
-                    <th>Unit</th>
-                    <th>Rate</th>
-                    <th>Amount</th>
-                    <th>HSN</th>
-                    <th>GST%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${quotationData.items.map(item => `
-                    <tr>
-                      <td>${item.productName}</td>
-                      <td>${item.description}</td>
-                      <td>${item.quantity}</td>
-                      <td>${item.unit}</td>
-                      <td>₹${item.unitPrice}</td>
-                      <td>₹${item.amount}</td>
-                      <td>${item.hsn}</td>
-                      <td>${item.gstRate}%</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-              
-              <div class="total-section">
-                <p><strong>Subtotal: ₹${quotationData.subtotal.toFixed(2)}</strong></p>
-                <p><strong>Tax Amount: ₹${quotationData.taxAmount.toFixed(2)}</strong></p>
-                <p><strong>Total Amount: ₹${quotationData.totalAmount.toFixed(2)}</strong></p>
-              </div>
-              
-              ${quotationData.notes ? `
-                <div class="notes">
-                  <h3>Notes:</h3>
-                  <p>${quotationData.notes}</p>
-                </div>
-              ` : ''}
-              
-              ${quotationData.terms ? `
-                <div class="notes">
-                  <h3>Terms & Conditions:</h3>
-                  <p>${quotationData.terms}</p>
-                </div>
-              ` : ''}
             </body>
             </html>
           `;
@@ -205,132 +375,667 @@ const PaymentTimelineSidebar = ({ item, onClose }) => {
       }
     } catch (error) {
       console.error('Error viewing quotation:', error);
-      alert('Error loading quotation details');
+      alert('Failed to load quotation');
     }
   };
 
+  // Format date to Indian format (DD/MM/YYYY)
+  const formatIndianDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  // Format date and time to Indian format
+  const formatIndianDateTime = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  // Get status badge component
+  const getStatusBadge = (status, type = 'default') => {
+    const statusConfig = {
+      'completed': { bg: 'bg-green-100', text: 'text-green-800', label: 'COMPLETED' },
+      'approved': { bg: 'bg-green-100', text: 'text-green-800', label: 'APPROVED' },
+      'pending': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' },
+      'rejected': { bg: 'bg-red-100', text: 'text-red-800', label: 'REJECTED' },
+      'paid': { bg: 'bg-green-100', text: 'text-green-800', label: 'PAID' },
+      'partial': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'PARTIAL' },
+      'overdue': { bg: 'bg-red-100', text: 'text-red-800', label: 'OVERDUE' },
+      'due': { bg: 'bg-red-100', text: 'text-red-800', label: 'PENDING' },
+      'deal-closed': { bg: 'bg-green-100', text: 'text-green-800', label: 'DEAL CLOSED' }
+    };
+
+    const config = statusConfig[status] || statusConfig['pending'];
+    
+    return (
+      <span className={`px-2 py-1 text-xs font-semibold rounded ${config.bg} ${config.text}`}>
+        {config.label}
+      </span>
+    );
+  };
+
+  // Calculate payment summary from approved quotations
+  const calculatePaymentSummary = () => {
+    const approvedQuotations = customerQuotations.filter(q => q.status === 'approved');
+    
+    if (approvedQuotations.length === 0) {
+      return {
+        totalAmount: 0,
+        paidAmount: 0,
+        remainingAmount: 0,
+        advanceAmount: 0,
+        partialAmount: 0,
+        dueAmount: 0,
+        paymentStatus: 'pending'
+      };
+    }
+
+    // Get the latest approved quotation amount
+    const latestApprovedQuotation = approvedQuotations[approvedQuotations.length - 1];
+    // Prefer backend summary if available for accuracy
+    const totalAmount = (quotationSummary?.total ?? latestApprovedQuotation.total_amount) || 0;
+    const paidAmount = typeof quotationSummary?.paid === 'number'
+      ? quotationSummary.paid
+      : (Array.isArray(paymentsForQuotation)
+          ? paymentsForQuotation.filter(p => (p.status || '').toLowerCase() === 'completed').reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+          : 0);
+    const remainingAmount = typeof quotationSummary?.remaining === 'number'
+      ? quotationSummary.remaining
+      : Math.max(0, Number(totalAmount) - Number(paidAmount));
+    
+    // Calculate advance (first payment), partial (subsequent payments), due (remaining)
+    let advanceAmount = 0;
+    let partialAmount = 0;
+    
+    const pmts = Array.isArray(paymentsForQuotation) ? paymentsForQuotation.slice().sort((a,b)=> new Date(a.payment_date) - new Date(b.payment_date)) : [];
+    if (pmts.length > 0) {
+      advanceAmount = Number(pmts[0]?.amount || 0);
+      if (pmts.length > 1) {
+        partialAmount = pmts.slice(1).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      }
+    }
+    
+    const dueAmount = remainingAmount;
+    
+    let paymentStatus = 'pending';
+    if (paidAmount >= totalAmount) {
+      paymentStatus = 'paid';
+    } else if (paidAmount > 0) {
+      paymentStatus = 'partial';
+    }
+
+    return {
+      totalAmount,
+      paidAmount,
+      remainingAmount,
+      advanceAmount,
+      partialAmount,
+      dueAmount,
+      paymentStatus
+    };
+  };
+
+  const dataReady = !loadingQuotations && (
+    quotationSummary !== null || (Array.isArray(paymentsForQuotation) && paymentsForQuotation.length > 0)
+  );
+  const paymentSummary = dataReady ? calculatePaymentSummary() : null;
+
+  // Build chronological payment timeline with running remaining balance
+  const buildPaymentTimeline = () => {
+    const approvedQuotations = customerQuotations.filter(q => q.status === 'approved');
+    if (approvedQuotations.length === 0) return [];
+    const latestApprovedQuotation = approvedQuotations[approvedQuotations.length - 1];
+    const totalAmount = (quotationSummary?.total ?? latestApprovedQuotation.total_amount) || 0;
+    const pmts = Array.isArray(paymentsForQuotation)
+      ? paymentsForQuotation.slice().sort((a, b) => new Date(a.payment_date) - new Date(b.payment_date))
+      : [];
+    let cumulativePaid = 0;
+    return pmts.map((p, idx) => {
+      const amountNum = Number(p.amount ?? p.installment_amount) || 0;
+      cumulativePaid += amountNum;
+      const remaining = Math.max(0, Number(totalAmount) - cumulativePaid);
+      const label = idx === 0 ? 'Advance' : 'Partial';
+      return { ...p, amount: amountNum, label, remainingAfter: remaining };
+    });
+  };
+  const paymentTimeline = buildPaymentTimeline();
+
+  // Get due date from payments (delivery_date or revised_delivery_date)
+  const getDueDate = () => {
+    const paymentsWithDates = Array.isArray(paymentsForQuotation) 
+      ? paymentsForQuotation.filter(p => p.revised_delivery_date || p.delivery_date) 
+      : [];
+    if (paymentsWithDates.length > 0) {
+      const latestPayment = paymentsWithDates[paymentsWithDates.length - 1];
+      return latestPayment.revised_delivery_date || latestPayment.delivery_date;
+    }
+    return null;
+  };
+
+  const dueDate = getDueDate();
+  const hasPendingAmount = dataReady && paymentSummary?.dueAmount > 0;
+
+  // Timeline events data - complete sequence (include payments inline)
+  const timelineEvents = [
+    {
+      id: 'customer-created',
+      title: 'Customer Created',
+      date: formatIndianDate(item.leadData?.created_at),
+      status: 'completed',
+      icon: '✓',
+      description: `Lead ID: ${item.leadId}`
+    },
+    ...customerQuotations.map((quotation, index) => ({
+      id: `quotation-${quotation.id}`,
+      title: `Quotation ${index + 1}`,
+      date: formatIndianDateTime(quotation.created_at),
+      status: quotation.status === 'approved' ? 'approved' : 'pending',
+      icon: quotation.status === 'approved' ? '✓' : '⏳',
+      description: `ID: ${quotation.quotation_number || `QT-${quotation.id}`} | Purchase Order: ${quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'}`,
+      amount: quotation.total_amount || 0,
+      quotationId: quotation.id,
+      quotationStatus: quotation.status
+    })),
+    ...paymentTimeline.map((payment, index) => ({
+      id: `payment-${index + 1}`,
+      title: `${payment.label} Payment #${index + 1}`,
+      date: formatIndianDateTime(payment.payment_date),
+      status: (payment.status || 'completed').toLowerCase(),
+      icon: '₹',
+      description: `Method: ${payment.payment_method || 'N/A'}`,
+      amount: payment.amount ?? payment.installment_amount,
+      remainingAmount: payment.remainingAfter
+    })),
+    ...(hasPendingAmount ? [{
+      id: 'due-payment',
+      title: 'DUE',
+      date: dueDate ? formatIndianDate(dueDate) : 'N/A',
+      status: 'due',
+      icon: '⚠',
+      description: dueDate ? `Due Date: ${formatIndianDate(dueDate)}` : 'Payment pending',
+      amount: paymentSummary.dueAmount,
+      isDue: true
+    }] : []),
+    ...((paymentSummary && paymentSummary.paymentStatus === 'paid') ? [{
+      id: 'deal-closed',
+      title: 'Deal Closed',
+      date: Array.isArray(item.paymentsData) && item.paymentsData.length > 0 ? formatIndianDateTime(item.paymentsData[item.paymentsData.length - 1]?.payment_date) : 'N/A',
+      status: 'completed',
+      icon: '✓',
+      description: 'Full and final payment received'
+    }] : [])
+  ];
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-end z-50">
-      <div className="bg-white h-full w-full max-w-4xl shadow-xl overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end">
+      <div className="bg-white w-96 h-full overflow-y-auto shadow-xl">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-900">Payment Details - Advance Payment</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Customer Timeline</h2>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600"
             >
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5" />
             </button>
+          </div>
+            </div>
+
+        {/* Customer Details */}
+        <div className="p-4 border-b border-gray-200">
+          <h3 className="text-md font-semibold text-gray-900 mb-3">Customer Details</h3>
+          <div className="space-y-2">
+            <div>
+              <span className="text-sm font-medium text-gray-600">Customer Name:</span>
+              <span className="ml-2 text-sm text-gray-900">{item.customerName}</span>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-600">Lead ID:</span>
+              <span className="ml-2 text-sm text-gray-900">{item.leadId}</span>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-600">Product Name:</span>
+              <span className="ml-2 text-sm text-gray-900">{item.productName}</span>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-600">Address:</span>
+              <span className="ml-2 text-sm text-gray-900">{item.address}</span>
+            </div>
           </div>
         </div>
 
-        <div className="p-6">
-          {/* Customer Information */}
-          <div className="mb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-3">Customer Information</h3>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Customer Name</p>
-                  <p className="text-sm text-gray-900">{item.customerName}</p>
+        {/* Timeline */}
+        <div className="p-4">
+          <div className="relative">
+            {/* Timeline line */}
+            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300"></div>
+            
+            {timelineEvents.map((event, index) => (
+              <div key={event.id} className="relative flex items-start mb-6">
+                {/* Timeline icon */}
+                <div className={`relative z-10 flex items-center justify-center w-8 h-8 rounded-full ${
+                  event.isDue
+                    ? 'bg-red-500'
+                    : event.id?.startsWith('payment-')
+                    ? 'bg-yellow-500'
+                    : event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
+                    ? 'bg-green-500'
+                    : 'bg-gray-400'
+                }`}>
+                  <span className="text-white text-sm font-bold">{event.icon}</span>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Lead ID</p>
-                  <p className="text-sm text-gray-900">{item.leadId}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Phone</p>
-                  <p className="text-sm text-gray-900">{item.leadData?.phone || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Email</p>
-                  <p className="text-sm text-gray-900">{item.leadData?.email || 'N/A'}</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-sm font-medium text-gray-700">Address</p>
-                  <p className="text-sm text-gray-900">{item.address || 'N/A'}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Payment Information */}
-          <div className="mb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-3">Payment Information</h3>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Quotation ID</p>
-                  <p className="text-sm text-gray-900">{item.quotationId}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Work Order ID</p>
-                  <p className="text-sm text-gray-900">{item.workOrderId || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Payment Status</p>
-                  <p className="text-sm text-gray-900">{item.paymentStatus}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Advance Amount</p>
-                  <p className="text-sm text-green-600 font-semibold">₹{item.advanceAmount || '0'}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Advance Date</p>
-                  <p className="text-sm text-gray-900">{item.advanceDate || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Remaining Amount</p>
-                  <p className="text-sm text-blue-600 font-semibold">₹{item.remainingAmount || '0'}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Customer Quotations */}
-          <div className="mb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-3">Customer Quotations</h3>
-            {loadingQuotations ? (
-              <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="text-sm text-gray-500 mt-2">Loading quotations...</p>
-              </div>
-            ) : quotationError ? (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-sm text-red-600">{quotationError}</p>
-              </div>
-            ) : customerQuotations.length > 0 ? (
-              <div className="space-y-3">
-                {customerQuotations.map((quotation) => (
-                  <div key={quotation.id} className="bg-gray-50 p-4 rounded-lg">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          Quotation #{quotation.quotation_number || quotation.id}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Date: {quotation.quotation_date || quotation.created_at?.split('T')[0]}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Amount: ₹{quotation.total_amount || '0'}
-                        </p>
+                
+                {/* Event card */}
+                <div className={`ml-4 flex-1 p-3 rounded-lg ${
+                  event.isDue
+                    ? 'bg-red-50 border border-red-300'
+                    : event.id?.startsWith('payment-')
+                    ? 'bg-yellow-50'
+                    : event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
+                    ? 'bg-green-50'
+                    : 'bg-gray-50'
+                }`}>
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className={`text-sm font-semibold ${event.isDue ? 'text-red-700' : 'text-gray-900'}`}>{event.title}</h4>
+                        {!event.id?.startsWith('payment-') && event.amount && (
+                          <span className={`text-sm font-bold ${event.isDue ? 'text-red-700' : 'text-gray-900'}`}>₹{Number(event.amount).toLocaleString('en-IN')}</span>
+                        )}
                       </div>
-                      <button
-                        onClick={() => handleViewQuotation(quotation.id)}
-                        className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
-                      >
-                        View
-                      </button>
+                      <p className={`text-xs mt-1 ${event.isDue ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>{event.date}</p>
+                      <p className={`text-xs mt-1 ${event.isDue ? 'text-red-600' : 'text-gray-500'}`}>{event.description}</p>
+                      {/* PI number intentionally hidden per requirement */}
+                      {!event.isDue && event.remainingAmount !== undefined && (
+                        <p className="text-xs text-red-600 mt-1 font-medium">Remaining: ₹{Number(event.remainingAmount).toLocaleString('en-IN')}</p>
+                      )}
+                      
+                      {/* View button for quotations */}
+                      {event.quotationId && (
+                        <div className="mt-2 flex items-center space-x-2">
+                          <button
+                            onClick={() => handleViewQuotation(event.quotationId)}
+                            className="text-blue-600 hover:text-blue-800 text-xs flex items-center space-x-1"
+                          >
+                            <Eye className="h-3 w-3" />
+                            <span>View</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="ml-2">
+                      {event.id?.startsWith('payment-') ? (
+                        <span className="px-2 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800">
+                          ₹{Number(event.amount || 0).toLocaleString('en-IN')}
+                        </span>
+                      ) : (
+                        getStatusBadge(event.status)
+                      )}
                     </div>
                   </div>
-                ))}
+                </div>
               </div>
-            ) : (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-sm text-gray-500">No quotations found for this customer</p>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Payment Modal component for adding payments
+const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
+  const [paymentData, setPaymentData] = useState({
+    installment_amount: '',
+    payment_method: 'cash',
+    payment_reference: '',
+    delivery_note: '',
+    payment_remark: '',
+    payment_status: 'advance',
+    payment_receipt_url: '',
+    purchase_order_id: '',
+    delivery_date: '',
+    delivery_status: 'pending'
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [approvedQuotations, setApprovedQuotations] = useState([]);
+  const [selectedQuotationId, setSelectedQuotationId] = useState(item.quotationData?.id || '');
+  const [proformaInvoices, setProformaInvoices] = useState([]);
+  const [selectedPIId, setSelectedPIId] = useState('');
+  const [summary, setSummary] = useState({ total: 0, paid: 0, remaining: 0 });
+  const [credit, setCredit] = useState(0);
+  const [installments, setInstallments] = useState([]);
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        if (!item?.leadData?.id) return;
+        const [qRes, cRes] = await Promise.all([
+          quotationService.getApproved(item.leadData.id),
+          paymentService.getCustomerCredit(item.leadData.id)
+        ]);
+        setApprovedQuotations(qRes?.data || []);
+        setCredit(cRes?.data?.balance || 0);
+        const qid = item.quotationData?.id || (qRes?.data?.[0]?.id || '');
+        if (qid) {
+          setSelectedQuotationId(qid);
+          const [sRes, pRes, piRes] = await Promise.all([
+            quotationService.getSummary(qid),
+            paymentService.getPaymentsByQuotation(qid),
+            proformaInvoiceService.getPIsByQuotation(qid)
+          ]);
+          const s = sRes?.data || { total: 0, paid: 0, remaining: 0 };
+          setSummary(s);
+          setInstallments(pRes?.data || []);
+          const pis = piRes?.data || [];
+          setProformaInvoices(pis);
+          setPaymentData((p) => ({ 
+            ...p, 
+            installment_amount: String(s.remaining || ''),
+            purchase_order_id: item.quotationData?.work_order_id || ''
+          }));
+        }
+      } catch (e) {
+        setError('Failed to initialize payment modal');
+      }
+    };
+    init();
+  }, [item?.leadData?.id, item.quotationData?.id]);
+
+  const handleSelectQuotation = async (qid) => {
+    setSelectedQuotationId(qid);
+    setSelectedPIId('');
+    setProformaInvoices([]);
+    if (!qid) return;
+    try {
+      const [sRes, pRes, piRes] = await Promise.all([
+        quotationService.getSummary(qid),
+        paymentService.getPaymentsByQuotation(qid),
+        proformaInvoiceService.getPIsByQuotation(qid)
+      ]);
+      const s = sRes?.data || { total: 0, paid: 0, remaining: 0 };
+      setSummary(s);
+      setInstallments(pRes?.data || []);
+      const pis = piRes?.data || [];
+      setProformaInvoices(pis);
+      setPaymentData((p) => ({ ...p, installment_amount: String(s.remaining || '') }));
+    } catch (e) {
+      setProformaInvoices([]);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const paymentPayload = {
+        lead_id: item.leadData?.id,
+        quotation_id: selectedQuotationId || null,
+        pi_id: selectedPIId || null,
+        installment_amount: parseFloat(paymentData.installment_amount),
+        payment_method: paymentData.payment_method,
+        payment_reference: paymentData.payment_reference,
+        payment_status: paymentData.payment_status,
+        payment_receipt_url: paymentData.payment_receipt_url || undefined,
+        payment_date: new Date().toISOString(),
+        notes: paymentData.delivery_note,
+        remarks: paymentData.payment_remark,
+        purchase_order_id: paymentData.purchase_order_id,
+        delivery_date: paymentData.delivery_date || null,
+        delivery_status: paymentData.delivery_status
+      };
+
+      const response = await paymentService.createPayment(paymentPayload);
+      if (response.success) {
+        const { summary: responseSummary } = response.data;
+        onClose();
+        onPaymentAdded({ leadId: item.leadData?.id, quotationId: selectedQuotationId || null });
+        alert(`Payment installment #${responseSummary.installment_number} added successfully!\nPaid: ₹${responseSummary.total_paid.toLocaleString('en-IN')}\nRemaining: ₹${responseSummary.remaining.toLocaleString('en-IN')}`);
+      } else {
+        setError('Failed to add payment');
+      }
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to add payment. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!item) return null;
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
+      <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl flex flex-col">
+        <div className="flex justify-between items-center px-6 py-4 border-b">
+          <h3 className="text-lg font-semibold text-gray-900">Add Payment</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-gray-900">{item.customerName}</h4>
+            <p className="text-sm text-gray-600">Lead ID: {item.leadId}</p>
+            <div className="mt-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Quotation (approved only)</label>
+              <select
+                value={selectedQuotationId}
+                onChange={(e) => handleSelectQuotation(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">-- Select Approved Quotation --</option>
+                {approvedQuotations.map((q) => (
+                  <option key={q.id} value={q.id}>{q.quotation_number || q.id} - ₹{Number(q.total_amount || q.totalAmount || 0).toLocaleString()}</option>
+                ))}
+              </select>
+              <div className="text-xs text-gray-600 mt-2 grid grid-cols-2 gap-2">
+                <div>Total: ₹{Number(summary.total ?? 0).toLocaleString()}</div>
+                <div>Paid: ₹{Number(summary.paid ?? 0).toLocaleString()}</div>
+                <div>Remaining: ₹{Number(summary.remaining ?? 0).toLocaleString()}</div>
+                <div>Available credit: ₹{Number(credit ?? 0).toLocaleString()}</div>
+              </div>
+            </div>
+
+            {selectedQuotationId && proformaInvoices.length > 0 && (
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Proforma Invoice (PI) - Optional</label>
+                <select
+                  value={selectedPIId}
+                  onChange={(e) => setSelectedPIId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">-- Select PI (Optional) --</option>
+                  {proformaInvoices.map((pi) => (
+                    <option key={pi.id} value={pi.id}>
+                      {pi.pi_number} - ₹{Number(pi.total_amount || 0).toLocaleString()} 
+                      {pi.status && ` (${pi.status})`}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Select a PI if this payment is against a specific Proforma Invoice</p>
               </div>
             )}
           </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Installment Amount *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                required
+                value={paymentData.installment_amount}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, installment_amount: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter installment amount"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Payment Method *
+              </label>
+              <select
+                required
+                value={paymentData.payment_method}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, payment_method: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="cash">Cash</option>
+                <option value="upi">UPI</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="cheque">Cheque</option>
+                <option value="credit">Credit</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
+              <select
+                value={paymentData.payment_status}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, payment_status: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="advance">Advance</option>
+                <option value="full">Full Payment</option>
+                <option value="completed">Completed</option>
+                <option value="due">Due</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Payment Reference
+              </label>
+              <input
+                type="text"
+                value={paymentData.payment_reference}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, payment_reference: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="UTR/Ref No, UPI Txn ID, Cheque No, Bank Ref No"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Upload Payment Receipt (URL)</label>
+              <input
+                type="url"
+                value={paymentData.payment_receipt_url}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, payment_receipt_url: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="https://..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Purchase Order ID
+              </label>
+              <input
+                type="text"
+                value={paymentData.purchase_order_id}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, purchase_order_id: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Purchase order reference"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Delivery Date
+                </label>
+                <input
+                  type="date"
+                  value={paymentData.delivery_date}
+                  onChange={(e) => setPaymentData(prev => ({ ...prev, delivery_date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Delivery Status
+                </label>
+                <select
+                  value={paymentData.delivery_status}
+                  onChange={(e) => setPaymentData(prev => ({ ...prev, delivery_status: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="in_transit">In Transit</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Payment Remark</label>
+              <textarea
+                value={paymentData.payment_remark}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, payment_remark: e.target.value }))}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Payment remarks"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Note</label>
+              <textarea
+                value={paymentData.delivery_note}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, delivery_note: e.target.value }))}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Delivery note (optional)"
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                {loading ? 'Processing...' : 'Add Payment Installment'}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -367,6 +1072,8 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPaymentItem, setSelectedPaymentItem] = useState(null);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredPaymentTracking.length / itemsPerPage);
@@ -381,54 +1088,95 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
         setLoading(true);
         setError(null);
 
-        // Fetch leads with quotations and payments
-        const leadsResponse = await apiClient.get(API_ENDPOINTS.LEADS_LIST());
-        const leads = leadsResponse.data || [];
-
-        // For now, use mock data since quotation and payment services don't have getAll methods
-        // TODO: Implement proper API endpoints for fetching all quotations and payments
-        const quotations = [];
-        const payments = [];
-
-        // Process and combine data
-        const processedData = leads.map(lead => {
-          // Find quotations for this lead
-          const leadQuotations = quotations.filter(q => q.lead_id === lead.id);
-          const latestQuotation = leadQuotations[leadQuotations.length - 1];
-
-          // Find payments for this lead
-          const leadPayments = payments.filter(p => p.lead_id === lead.id);
-          const totalPaid = leadPayments.reduce((sum, payment) => sum + (parseFloat(payment.amount) || 0), 0);
-          const quotationTotal = parseFloat(latestQuotation?.total_amount || 0);
-          const advanceAmount = totalPaid;
-          const remainingAmount = quotationTotal - totalPaid;
-
+        // Fetch assigned leads for the salesperson
+        const leadsResponse = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
+        const leads = leadsResponse?.data || [];
+        
+        // Create a map of customer ID to lead data for quick lookup
+        const leadsMap = {};
+        leads.forEach(lead => {
+          leadsMap[lead.id] = lead;
+        });
+        
+        // Fetch all quotations with payments in a single optimized API call
+        const bulkResponse = await quotationService.getBulkWithPayments();
+        const { quotations = [], payments = [] } = bulkResponse?.data || {};
+        
+        // Create a map of quotation ID to payments for quick lookup
+        const paymentsMap = {};
+        payments.forEach(payment => {
+          if (!paymentsMap[payment.quotation_id]) {
+            paymentsMap[payment.quotation_id] = [];
+          }
+          paymentsMap[payment.quotation_id].push(payment);
+        });
+        
+        // Build payment tracking data from the bulk response
+        const paymentTrackingData = quotations.map(quotation => {
+          const lead = leadsMap[quotation.customer_id] || {};
+          const quotationPayments = paymentsMap[quotation.id] || [];
+          
+          const totalAmount = Number(quotation.total_amount || 0);
+          const paidAmount = Number(quotation.paid_amount || 0);
+          const remainingAmount = Number(quotation.remaining_amount || 0);
+          
+          // Get due date and purchase order from payments (delivery_date or revised_delivery_date)
+          const paymentsWithDates = quotationPayments.filter(p => p.revised_delivery_date || p.delivery_date);
+          let dueDate = null;
+          let deliveryStatus = 'pending';
+          let purchaseOrderId = null;
+          
+          if (paymentsWithDates.length > 0) {
+            const latestPayment = paymentsWithDates[paymentsWithDates.length - 1];
+            dueDate = latestPayment.revised_delivery_date || latestPayment.delivery_date;
+            deliveryStatus = latestPayment.delivery_status || 'pending';
+          }
+          
+          if (quotationPayments.length > 0) {
+            const latestPayment = quotationPayments[quotationPayments.length - 1];
+            purchaseOrderId = latestPayment.purchase_order_id || quotation.work_order_id;
+          }
+          
+          // Get advance date from first payment
+          const advanceDate = quotationPayments.length > 0 
+            ? quotationPayments[0]?.payment_date || quotationPayments[0]?.created_at?.split('T')[0] 
+            : null;
+          
+          let paymentStatus = 'pending';
+          if (paidAmount >= totalAmount && totalAmount > 0) {
+            paymentStatus = 'paid';
+          } else if (paidAmount > 0) {
+            paymentStatus = 'partial';
+          }
+          
           return {
-            id: lead.id,
-            leadId: lead.lead_id || `LD-${lead.id}`,
-            customerName: lead.customer_name || 'N/A',
-            productName: latestQuotation?.items?.[0]?.product_name || 'N/A',
-            address: lead.address || 'N/A',
-            quotationId: latestQuotation?.quotation_number || 'N/A',
-            paymentStatus: totalPaid > 0 ? 'advance' : 'pending',
-            workOrderId: latestQuotation?.work_order_id || 'N/A',
-            leadData: {
-              id: lead.id,
-              phone: lead.phone,
-              email: lead.email,
-              whatsapp: lead.whatsapp
-            },
-            quotationData: latestQuotation,
-            advanceAmount: advanceAmount,
-            advanceDate: leadPayments[leadPayments.length - 1]?.payment_date || leadPayments[leadPayments.length - 1]?.created_at?.split('T')[0],
+            id: `${quotation.customer_id}-${quotation.id}`,
+            leadId: `LD-${quotation.customer_id}`,
+            customerName: quotation.customer_name || lead.name || 'N/A',
+            productName: lead.product_type || quotation.items?.[0]?.description || 'N/A',
+            address: quotation.customer_address || lead.address || 'N/A',
+            quotationId: quotation.quotation_number || `QT-${quotation.id}`,
+            paymentStatus: paymentStatus,
+            workOrderId: purchaseOrderId ? `PO-${purchaseOrderId}` : (quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'),
+            advanceAmount: paidAmount,
+            advanceDate: advanceDate,
+            dueDate: dueDate,
+            deliveryStatus: deliveryStatus,
             remainingAmount: remainingAmount,
-            totalAmount: quotationTotal,
-            paidAmount: totalPaid
+            totalAmount: totalAmount,
+            paidAmount: paidAmount,
+            leadData: lead,
+            quotationData: {
+              ...quotation,
+              paid_amount: paidAmount,
+              remaining_amount: remainingAmount
+            },
+            paymentsData: quotationPayments
           };
         });
-
-        // Filter only advance payments (where some payment has been made)
-        const advancePayments = processedData.filter(item => item.paymentStatus === 'advance' && item.advanceAmount > 0);
+        
+        // Filter only items with advance payments (paid_amount > 0)
+        const advancePayments = paymentTrackingData.filter(item => item.paidAmount > 0);
         
         setPaymentTracking(advancePayments);
         setFilteredPaymentTracking(advancePayments);
@@ -520,29 +1268,26 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
     setSelectedProduct(item);
   };
 
-  const handleEditPayment = (item) => {
-    // Handle edit functionality
-    console.log('Edit payment:', item);
+  const handleAddPayment = (item) => {
+    if (!item) {
+      alert('Please select a payment record from the table to add payment');
+      return;
+    }
+    setSelectedPaymentItem(item);
+    setShowPaymentModal(true);
   };
 
   const getPaymentStatusBadge = (status, item) => {
     const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium";
     
-    if (status === 'advance') {
-      return (
-        <span className={`${baseClasses} ${
-          item.remainingAmount > 0 
-            ? 'bg-blue-100 text-blue-800' 
-            : 'bg-green-100 text-green-800'
-        }`}>
-          {item.remainingAmount > 0 ? 'Partial Advance' : 'Full Advance'}
-        </span>
-      );
-    }
-    
+    // Always show "Advance" for items in this page since they have paid amount
     return (
-      <span className={`${baseClasses} bg-gray-100 text-gray-800`}>
-        Pending
+      <span className={`${baseClasses} ${
+        item.remainingAmount > 0 
+          ? 'bg-purple-100 text-purple-800' 
+          : 'bg-green-100 text-green-800'
+      }`}>
+        {item.remainingAmount > 0 ? 'Advance' : 'Paid'}
       </span>
     );
   };
@@ -569,7 +1314,6 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
       <Toolbar
         onSearch={handleSearch}
         onAddProduct={handleAddProduct}
-        onExport={() => {}}
         onFilterChange={handleFilterChange}
         onRefresh={() => window.location.reload()}
         products={paymentTracking}
@@ -616,6 +1360,9 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Remaining Amount
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Delivery Date
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Action
@@ -680,6 +1427,19 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
                         )}
                       </div>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium">
+                          {item.dueDate ? 
+                            new Date(item.dueDate).toLocaleDateString('en-GB') : 
+                            'N/A'
+                          }
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {item.deliveryStatus || 'Pending'}
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
                         <Tooltip text="View Details">
@@ -693,15 +1453,15 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
                             <Eye className="h-4 w-4" />
                           </button>
                         </Tooltip>
-                          <Tooltip text="Edit">
+                          <Tooltip text="Add Payment">
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleEditPayment(item);
+                                handleAddPayment(item);
                               }}
-                              className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-50"
+                              className="text-purple-600 hover:text-purple-900 p-1 rounded-full hover:bg-purple-50"
                             >
-                              <Edit className="h-4 w-4" />
+                              <CreditCard className="h-4 w-4" />
                           </button>
                         </Tooltip>
                       </div>
@@ -736,6 +1496,22 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
         <PaymentTimelineSidebar 
           item={selectedProduct} 
           onClose={() => setSelectedProduct(null)} 
+        />
+      )}
+      
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <PaymentModal 
+          item={selectedPaymentItem} 
+          onClose={() => {
+            setShowPaymentModal(false);
+            setSelectedPaymentItem(null);
+          }}
+          onPaymentAdded={async () => {
+            setShowPaymentModal(false);
+            setSelectedPaymentItem(null);
+            await fetchPaymentTracking();
+          }}
         />
       )}
       

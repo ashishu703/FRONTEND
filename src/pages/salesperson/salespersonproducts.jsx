@@ -6,6 +6,7 @@ import Toolbar, { ProductPagination } from './PaymentTracking';
 import apiClient from '../../utils/apiClient';
 import quotationService from '../../api/admin_api/quotationService';
 import paymentService from '../../api/admin_api/paymentService';
+import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 
 // Timeline Sidebar component for viewing payment tracking details
@@ -413,6 +414,7 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
       'paid': { bg: 'bg-green-100', text: 'text-green-800', label: 'PAID' },
       'partial': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'PARTIAL' },
       'overdue': { bg: 'bg-red-100', text: 'text-red-800', label: 'OVERDUE' },
+      'due': { bg: 'bg-red-100', text: 'text-red-800', label: 'PENDING' },
       'deal-closed': { bg: 'bg-green-100', text: 'text-green-800', label: 'DEAL CLOSED' }
     };
 
@@ -502,14 +504,29 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
       : [];
     let cumulativePaid = 0;
     return pmts.map((p, idx) => {
-      const amountNum = Number(p.amount) || 0;
+      const amountNum = Number(p.amount ?? p.installment_amount) || 0;
       cumulativePaid += amountNum;
       const remaining = Math.max(0, Number(totalAmount) - cumulativePaid);
       const label = idx === 0 ? 'Advance' : 'Partial';
-      return { ...p, label, remainingAfter: remaining };
+      return { ...p, amount: amountNum, label, remainingAfter: remaining };
     });
   };
   const paymentTimeline = buildPaymentTimeline();
+
+  // Get due date from payments (delivery_date or revised_delivery_date)
+  const getDueDate = () => {
+    const paymentsWithDates = Array.isArray(paymentsForQuotation) 
+      ? paymentsForQuotation.filter(p => p.revised_delivery_date || p.delivery_date) 
+      : [];
+    if (paymentsWithDates.length > 0) {
+      const latestPayment = paymentsWithDates[paymentsWithDates.length - 1];
+      return latestPayment.revised_delivery_date || latestPayment.delivery_date;
+    }
+    return null;
+  };
+
+  const dueDate = getDueDate();
+  const hasPendingAmount = dataReady && paymentSummary?.dueAmount > 0;
 
   // Timeline events data - complete sequence (include payments inline)
   const timelineEvents = [
@@ -532,26 +549,6 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
       quotationId: quotation.id,
       quotationStatus: quotation.status
     })),
-    dataReady ? {
-      id: 'payment-status',
-      title: 'Payment Status',
-      date: paymentTimeline.length > 0 ? formatIndianDateTime(paymentTimeline[0]?.payment_date) : 'N/A',
-      status: paymentSummary.paymentStatus,
-      icon: paymentSummary.paymentStatus === 'paid' ? '✓' : '⏳',
-      description: paymentTimeline.length > 0 
-        ? `Advance: ₹${paymentSummary.advanceAmount.toLocaleString('en-IN')} | Partial: ₹${paymentSummary.partialAmount.toLocaleString('en-IN')} | Due: ₹${paymentSummary.dueAmount.toLocaleString('en-IN')}`
-        : `Total: ₹${paymentSummary.totalAmount.toLocaleString('en-IN')} | Due: ₹${paymentSummary.dueAmount.toLocaleString('en-IN')}`,
-      amount: paymentSummary.paidAmount,
-      remainingAmount: paymentSummary.dueAmount
-    } : {
-      id: 'payment-status',
-      title: 'Payment Status',
-      date: 'N/A',
-      status: 'pending',
-      icon: '⏳',
-      description: 'Loading payment summary...'
-    },
-    // Inline payment entries after status
     ...paymentTimeline.map((payment, index) => ({
       id: `payment-${index + 1}`,
       title: `${payment.label} Payment #${index + 1}`,
@@ -559,9 +556,19 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
       status: (payment.status || 'completed').toLowerCase(),
       icon: '₹',
       description: `Method: ${payment.payment_method || 'N/A'}`,
-      amount: payment.amount,
+      amount: payment.amount ?? payment.installment_amount,
       remainingAmount: payment.remainingAfter
     })),
+    ...(hasPendingAmount ? [{
+      id: 'due-payment',
+      title: 'DUE',
+      date: dueDate ? formatIndianDate(dueDate) : 'N/A',
+      status: 'due',
+      icon: '⚠',
+      description: dueDate ? `Due Date: ${formatIndianDate(dueDate)}` : 'Payment pending',
+      amount: paymentSummary.dueAmount,
+      isDue: true
+    }] : []),
     ...((paymentSummary && paymentSummary.paymentStatus === 'paid') ? [{
       id: 'deal-closed',
       title: 'Deal Closed',
@@ -621,8 +628,12 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
               <div key={event.id} className="relative flex items-start mb-6">
                 {/* Timeline icon */}
                 <div className={`relative z-10 flex items-center justify-center w-8 h-8 rounded-full ${
-                  event.status === 'completed' || event.status === 'approved' || event.status === 'paid' 
-                    ? 'bg-green-500' 
+                  event.isDue
+                    ? 'bg-red-500'
+                    : event.id?.startsWith('payment-')
+                    ? 'bg-yellow-500'
+                    : event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
+                    ? 'bg-green-500'
                     : 'bg-gray-400'
                 }`}>
                   <span className="text-white text-sm font-bold">{event.icon}</span>
@@ -630,21 +641,26 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
                 
                 {/* Event card */}
                 <div className={`ml-4 flex-1 p-3 rounded-lg ${
-                  event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
+                  event.isDue
+                    ? 'bg-red-50 border border-red-300'
+                    : event.id?.startsWith('payment-')
+                    ? 'bg-yellow-50'
+                    : event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
                     ? 'bg-green-50'
                     : 'bg-gray-50'
                 }`}>
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-semibold text-gray-900">{event.title}</h4>
-                        {event.amount && (
-                          <span className="text-sm font-bold text-gray-900">₹{Number(event.amount).toLocaleString('en-IN')}</span>
+                        <h4 className={`text-sm font-semibold ${event.isDue ? 'text-red-700' : 'text-gray-900'}`}>{event.title}</h4>
+                        {!event.id?.startsWith('payment-') && event.amount && (
+                          <span className={`text-sm font-bold ${event.isDue ? 'text-red-700' : 'text-gray-900'}`}>₹{Number(event.amount).toLocaleString('en-IN')}</span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-600 mt-1">{event.date}</p>
-                      <p className="text-xs text-gray-500 mt-1">{event.description}</p>
-                      {event.id !== 'payment-status' && event.remainingAmount !== undefined && (
+                      <p className={`text-xs mt-1 ${event.isDue ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>{event.date}</p>
+                      <p className={`text-xs mt-1 ${event.isDue ? 'text-red-600' : 'text-gray-500'}`}>{event.description}</p>
+                      {/* PI number intentionally hidden per requirement */}
+                      {!event.isDue && event.remainingAmount !== undefined && (
                         <p className="text-xs text-red-600 mt-1 font-medium">Remaining: ₹{Number(event.remainingAmount).toLocaleString('en-IN')}</p>
                       )}
                       
@@ -662,20 +678,18 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
                       )}
                     </div>
                     <div className="ml-2">
-                      {getStatusBadge(event.status)}
+                      {event.id?.startsWith('payment-') ? (
+                        <span className="px-2 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800">
+                          ₹{Number(event.amount || 0).toLocaleString('en-IN')}
+                        </span>
+                      ) : (
+                        getStatusBadge(event.status)
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
             ))}
-
-            {/* Payment history rendered inline in timeline */}
-            {/* Remaining summary after payment history */}
-            {dataReady && typeof paymentSummary?.dueAmount === 'number' && (
-              <div className="mt-2 ml-12">
-                <p className="text-xs text-red-600 font-semibold">Remaining: ₹{Number(paymentSummary.dueAmount).toLocaleString('en-IN')}</p>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -701,6 +715,8 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
   const [error, setError] = useState(null);
   const [approvedQuotations, setApprovedQuotations] = useState([]);
   const [selectedQuotationId, setSelectedQuotationId] = useState(item.quotationData?.id || '');
+  const [proformaInvoices, setProformaInvoices] = useState([]);
+  const [selectedPIId, setSelectedPIId] = useState('');
   const [summary, setSummary] = useState({ total: 0, paid: 0, remaining: 0 });
   const [credit, setCredit] = useState(0);
   const [installments, setInstallments] = useState([]);
@@ -718,13 +734,16 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         const qid = item.quotationData?.id || (qRes?.data?.[0]?.id || '');
         if (qid) {
           setSelectedQuotationId(qid);
-          const [sRes, pRes] = await Promise.all([
+          const [sRes, pRes, piRes] = await Promise.all([
             quotationService.getSummary(qid),
-            paymentService.getPaymentsByQuotation(qid)
+            paymentService.getPaymentsByQuotation(qid),
+            proformaInvoiceService.getPIsByQuotation(qid)
           ]);
           const s = sRes?.data || { total: 0, paid: 0, remaining: 0 };
           setSummary(s);
           setInstallments(pRes?.data || []);
+          const pis = piRes?.data || [];
+          setProformaInvoices(pis);
           setPaymentData((p) => ({ 
             ...p, 
             installment_amount: String(s.remaining || ''),
@@ -740,18 +759,23 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
 
   const handleSelectQuotation = async (qid) => {
     setSelectedQuotationId(qid);
+    setSelectedPIId('');
+    setProformaInvoices([]);
     if (!qid) return;
     try {
-      const [sRes, pRes] = await Promise.all([
+      const [sRes, pRes, piRes] = await Promise.all([
         quotationService.getSummary(qid),
-        paymentService.getPaymentsByQuotation(qid)
+        paymentService.getPaymentsByQuotation(qid),
+        proformaInvoiceService.getPIsByQuotation(qid)
       ]);
       const s = sRes?.data || { total: 0, paid: 0, remaining: 0 };
       setSummary(s);
       setInstallments(pRes?.data || []);
+      const pis = piRes?.data || [];
+      setProformaInvoices(pis);
       setPaymentData((p) => ({ ...p, installment_amount: String(s.remaining || '') }));
     } catch (e) {
-      console.error('Failed to fetch summary', e);
+      setProformaInvoices([]);
     }
   };
 
@@ -764,6 +788,7 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
       const paymentPayload = {
         lead_id: item.leadData?.id,
         quotation_id: selectedQuotationId || null,
+        pi_id: selectedPIId || null,
         installment_amount: parseFloat(paymentData.installment_amount),
         payment_method: paymentData.payment_method,
         payment_reference: paymentData.payment_reference,
@@ -996,6 +1021,26 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
                 <div>Available credit: ₹{Number(credit ?? 0).toLocaleString()}</div>
               </div>
           </div>
+
+          {selectedQuotationId && proformaInvoices.length > 0 && (
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Proforma Invoice (PI) - Optional</label>
+              <select
+                value={selectedPIId}
+                onChange={(e) => setSelectedPIId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">-- Select PI (Optional) --</option>
+                {proformaInvoices.map((pi) => (
+                  <option key={pi.id} value={pi.id}>
+                    {pi.pi_number} - ₹{Number(pi.total_amount || 0).toLocaleString()} 
+                    {pi.status && ` (${pi.status})`}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Select a PI if this payment is against a specific Proforma Invoice</p>
+            </div>
+          )}
         </div>
 
         {/* Payment Installment History */}
@@ -1194,7 +1239,7 @@ export default function ProductsPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPaymentItem, setSelectedPaymentItem] = useState(null);
 
-  // Fetch payment tracking data from leads and approved quotations
+  // Fetch payment tracking data using optimized bulk API call
   useEffect(() => {
     const fetchPaymentTrackingData = async () => {
       try {
@@ -1205,76 +1250,82 @@ export default function ProductsPage() {
         const leadsResponse = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
         const leads = leadsResponse?.data || [];
         
-        // Fetch approved quotations for each lead
-        const paymentTrackingData = [];
+        // Create a map of customer ID to lead data for quick lookup
+        const leadsMap = {};
+        leads.forEach(lead => {
+          leadsMap[lead.id] = lead;
+        });
         
-        for (const lead of leads) {
-          try {
-            // Get quotations for this lead/customer
-            const quotationsResponse = await quotationService.getQuotationsByCustomer(lead.id);
-            const quotations = quotationsResponse?.data || [];
-            
-            // Filter only approved quotations
-            const approvedQuotations = quotations.filter(q => q.status === 'approved');
-            
-            // For each approved quotation, get payment data
-            for (const quotation of approvedQuotations) {
-              try {
-                const paymentsResponse = await paymentService.getPaymentsByQuotation(quotation.id);
-                const payments = paymentsResponse?.data || [];
-                
-                // Calculate payment status based on payments
-                let paymentStatus = 'pending';
-                if (payments.length > 0) {
-                  const totalPaid = payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-                  const quotationTotal = quotation.total_amount || 0;
-                  
-                  if (totalPaid >= quotationTotal) {
-                    paymentStatus = 'paid';
-                  } else if (totalPaid > 0) {
-                    paymentStatus = 'partial';
-                  } else {
-                    paymentStatus = 'pending';
-                  }
-                }
-                
-                // Create payment tracking entry
-                paymentTrackingData.push({
-                  id: `${lead.id}-${quotation.id}`,
-                  leadId: `LD-${lead.id}`,
-                  customerName: lead.name || 'N/A',
-                  productName: lead.product_type || quotation.items?.[0]?.description || 'N/A',
-                  address: lead.address || 'N/A',
-                  quotationId: quotation.quotation_number || `QT-${quotation.id}`,
-                  paymentStatus: paymentStatus,
-                  workOrderId: quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A',
-                  // Additional data for details
-                  leadData: lead,
-                  quotationData: quotation,
-                  paymentsData: payments
-                });
-              } catch (paymentError) {
-                console.error(`Error fetching payments for quotation ${quotation.id}:`, paymentError);
-                // Still add the entry with pending status
-                paymentTrackingData.push({
-                  id: `${lead.id}-${quotation.id}`,
-                  leadId: `LD-${lead.id}`,
-                  customerName: lead.name || 'N/A',
-                  productName: lead.product_type || quotation.items?.[0]?.description || 'N/A',
-                  address: lead.address || 'N/A',
-                  quotationId: quotation.quotation_number || `QT-${quotation.id}`,
-                  paymentStatus: 'pending',
-                  workOrderId: quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A',
-                  leadData: lead,
-                  quotationData: quotation,
-                  paymentsData: []
-                });
-              }
-            }
-          } catch (quotationError) {
-            console.error(`Error fetching quotations for lead ${lead.id}:`, quotationError);
+        // Fetch all quotations with payments in a single optimized API call
+        const bulkResponse = await quotationService.getBulkWithPayments();
+        const { quotations = [], payments = [] } = bulkResponse?.data || {};
+        
+        // Create a map of quotation ID to payments for quick lookup
+        const paymentsMap = {};
+        payments.forEach(payment => {
+          if (!paymentsMap[payment.quotation_id]) {
+            paymentsMap[payment.quotation_id] = [];
           }
-        }
+          paymentsMap[payment.quotation_id].push(payment);
+        });
+        
+        // Build payment tracking data from the bulk response
+        const paymentTrackingData = quotations.map(quotation => {
+          const lead = leadsMap[quotation.customer_id] || {};
+          const quotationPayments = paymentsMap[quotation.id] || [];
+          
+          // Calculate payment status based on the pre-calculated amounts from backend
+          let paymentStatus = 'pending';
+          const totalAmount = Number(quotation.total_amount || 0);
+          const paidAmount = Number(quotation.paid_amount || 0);
+          const remainingAmount = Number(quotation.remaining_amount || 0);
+          
+          if (paidAmount >= totalAmount && totalAmount > 0) {
+            paymentStatus = 'paid';
+          } else if (paidAmount > 0) {
+            paymentStatus = 'partial';
+          } else {
+            paymentStatus = 'pending';
+          }
+          
+          // Get delivery date and purchase order from latest payment
+          const paymentsWithDates = quotationPayments.filter(p => p.revised_delivery_date || p.delivery_date);
+          let deliveryDate = null;
+          let deliveryStatus = 'pending';
+          let purchaseOrderId = null;
+          
+          if (paymentsWithDates.length > 0) {
+            const latestPayment = paymentsWithDates[paymentsWithDates.length - 1];
+            deliveryDate = latestPayment.revised_delivery_date || latestPayment.delivery_date;
+            deliveryStatus = latestPayment.delivery_status || 'pending';
+          }
+          
+          if (quotationPayments.length > 0) {
+            const latestPayment = quotationPayments[quotationPayments.length - 1];
+            purchaseOrderId = latestPayment.purchase_order_id || quotation.work_order_id;
+          }
+          
+          return {
+            id: `${quotation.customer_id}-${quotation.id}`,
+            leadId: `LD-${quotation.customer_id}`,
+            customerName: quotation.customer_name || lead.name || 'N/A',
+            productName: lead.product_type || quotation.items?.[0]?.description || 'N/A',
+            address: quotation.customer_address || lead.address || 'N/A',
+            quotationId: quotation.quotation_number || `QT-${quotation.id}`,
+            paymentStatus: paymentStatus,
+            workOrderId: purchaseOrderId ? `PO-${purchaseOrderId}` : (quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'),
+            // Additional data for details
+            leadData: lead,
+            quotationData: {
+              ...quotation,
+              paid_amount: paidAmount,
+              remaining_amount: remainingAmount,
+              delivery_date: deliveryDate,
+              delivery_status: deliveryStatus
+            },
+            paymentsData: quotationPayments
+          };
+        });
         
         setPaymentTracking(paymentTrackingData);
         setFilteredPaymentTracking(paymentTrackingData);
@@ -1382,75 +1433,63 @@ export default function ProductsPage() {
       const leadsResponse = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
       const leads = leadsResponse?.data || [];
       
-      // Fetch approved quotations for each lead
-      const paymentTrackingData = [];
+      // Create a map of customer ID to lead data for quick lookup
+      const leadsMap = {};
+      leads.forEach(lead => {
+        leadsMap[lead.id] = lead;
+      });
       
-      for (const lead of leads) {
-        try {
-          // Get quotations for this lead/customer
-          const quotationsResponse = await quotationService.getQuotationsByCustomer(lead.id);
-          const quotations = quotationsResponse?.data || [];
-          
-          // Filter only approved quotations
-          const approvedQuotations = quotations.filter(q => q.status === 'approved');
-          
-          // For each approved quotation, get payment data
-          for (const quotation of approvedQuotations) {
-            try {
-              const paymentsResponse = await paymentService.getPaymentsByQuotation(quotation.id);
-              const payments = paymentsResponse?.data || [];
-              
-              // Calculate payment status based on payments
-              let paymentStatus = 'pending';
-              if (payments.length > 0) {
-                const totalPaid = payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-                const quotationTotal = quotation.total_amount || 0;
-                
-                if (totalPaid >= quotationTotal) {
-                  paymentStatus = 'paid';
-                } else if (totalPaid > 0) {
-                  paymentStatus = 'partial';
-                } else {
-                  paymentStatus = 'pending';
-                }
-              }
-              
-              // Create payment tracking entry
-              paymentTrackingData.push({
-                id: `${lead.id}-${quotation.id}`,
-                leadId: `LD-${lead.id}`,
-                customerName: lead.name || 'N/A',
-                productName: lead.product_type || quotation.items?.[0]?.description || 'N/A',
-                address: lead.address || 'N/A',
-                quotationId: `QT-${quotation.id}`,
-                paymentStatus: paymentStatus,
-                workOrderId: quotation.work_order_id ? `WO-${quotation.work_order_id}` : 'N/A',
-                leadData: lead,
-                quotationData: quotation,
-                paymentsData: payments
-              });
-            } catch (paymentError) {
-              console.error(`Error fetching payments for quotation ${quotation.id}:`, paymentError);
-              // Still add the entry with pending status
-              paymentTrackingData.push({
-                id: `${lead.id}-${quotation.id}`,
-                leadId: `LD-${lead.id}`,
-                customerName: lead.name || 'N/A',
-                productName: lead.product_type || quotation.items?.[0]?.description || 'N/A',
-                address: lead.address || 'N/A',
-                quotationId: `QT-${quotation.id}`,
-                paymentStatus: 'pending',
-                workOrderId: quotation.work_order_id ? `WO-${quotation.work_order_id}` : 'N/A',
-                leadData: lead,
-                quotationData: quotation,
-                paymentsData: []
-              });
-            }
-          }
-        } catch (quotationError) {
-          console.error(`Error fetching quotations for lead ${lead.id}:`, quotationError);
+      // Fetch all quotations with payments in a single optimized API call
+      const bulkResponse = await quotationService.getBulkWithPayments();
+      const { quotations = [], payments = [] } = bulkResponse?.data || {};
+      
+      // Create a map of quotation ID to payments for quick lookup
+      const paymentsMap = {};
+      payments.forEach(payment => {
+        if (!paymentsMap[payment.quotation_id]) {
+          paymentsMap[payment.quotation_id] = [];
         }
-      }
+        paymentsMap[payment.quotation_id].push(payment);
+      });
+      
+      // Build payment tracking data from the bulk response
+      const paymentTrackingData = quotations.map(quotation => {
+        const lead = leadsMap[quotation.customer_id] || {};
+        const quotationPayments = paymentsMap[quotation.id] || [];
+        
+        // Calculate payment status based on the pre-calculated amounts from backend
+        let paymentStatus = 'pending';
+        const totalAmount = Number(quotation.total_amount || 0);
+        const paidAmount = Number(quotation.paid_amount || 0);
+        const remainingAmount = Number(quotation.remaining_amount || 0);
+        
+        if (paidAmount >= totalAmount && totalAmount > 0) {
+          paymentStatus = 'paid';
+        } else if (paidAmount > 0) {
+          paymentStatus = 'partial';
+        } else {
+          paymentStatus = 'pending';
+        }
+        
+        return {
+          id: `${quotation.customer_id}-${quotation.id}`,
+          leadId: `LD-${quotation.customer_id}`,
+          customerName: quotation.customer_name || lead.name || 'N/A',
+          productName: lead.product_type || quotation.items?.[0]?.description || 'N/A',
+          address: quotation.customer_address || lead.address || 'N/A',
+          quotationId: quotation.quotation_number || `QT-${quotation.id}`,
+          paymentStatus: paymentStatus,
+          workOrderId: quotation.work_order_id ? `WO-${quotation.work_order_id}` : 'N/A',
+          // Additional data for details
+          leadData: lead,
+          quotationData: {
+            ...quotation,
+            paid_amount: paidAmount,
+            remaining_amount: remainingAmount
+          },
+          paymentsData: quotationPayments
+        };
+      });
       
       setPaymentTracking(paymentTrackingData);
       setFilteredPaymentTracking(paymentTrackingData);
@@ -1503,12 +1542,9 @@ export default function ProductsPage() {
       'due': 'Due',
     };
 
-    // Calculate amount from payments data
-    let amount = 'N/A';
-    if (item?.paymentsData && item.paymentsData.length > 0) {
-      const totalAmount = item.paymentsData.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-      amount = `₹${totalAmount.toLocaleString()}`;
-    }
+    // Get paid amount from quotation data
+    const paidAmount = Number(item?.quotationData?.paid_amount || 0);
+    const amount = paidAmount > 0 ? `₹${paidAmount.toLocaleString('en-IN')}` : 'N/A';
 
     return (
       <div className="space-y-1">
@@ -1532,7 +1568,6 @@ export default function ProductsPage() {
       <Toolbar
         onSearch={handleSearch}
         onAddProduct={() => handleAddPayment(null)}
-        onExport={handleExport}
         onFilterChange={handleFilterChange}
         onRefresh={handleRefresh}
         products={paymentTracking}

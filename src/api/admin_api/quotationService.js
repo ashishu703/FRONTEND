@@ -159,6 +159,17 @@ class QuotationService {
       throw error;
     }
   }
+
+  // Get all quotations with payments in single call (optimized for payment tracking)
+  async getBulkWithPayments() {
+    try {
+      const response = await apiClient.get('/api/quotations/bulk-with-payments');
+      return response;
+    } catch (error) {
+      console.error('Error fetching bulk quotations with payments:', error);
+      throw error;
+    }
+  }
 }
 
 export default new QuotationService();
