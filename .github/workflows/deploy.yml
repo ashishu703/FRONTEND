@@ -12,10 +12,11 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup SSH Agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+      # This step is no longer needed since we aren't using agent forwarding
+      # - name: Setup SSH Agent
+      #   uses: webfactory/ssh-agent@v0.9.0
+      #   with:
+      #     ssh-private-key: ${{ secrets.DEPLOY_KEY }}
 
       - name: Add remote server to known_hosts
         run: ssh-keyscan -H 62.72.12.249 >> ~/.ssh/known_hosts
@@ -23,16 +24,29 @@ jobs:
       - name: Deploy on VPS
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_KEY }}
         run: |
-          ssh -A deploy@62.72.12.249 "
-            echo '>>> Testing SSH connection to GitHub (Should succeed)'
-            ssh -T git@github.com
+          # We use a standard ssh login, no -A (agent forwarding) needed
+          ssh deploy@62.72.12.249 "
+            echo '>>> Writing temporary deploy key...'
+            # Create a temporary key file
+            echo \"${SSH_PRIVATE_KEY}\" > /home/deploy/deploy_key.pem
+            
+            # Set strict permissions
+            chmod 600 /home/deploy/deploy_key.pem
 
-            echo '>>> Now attempting git fetch, ignoring server .ssh/config...'
+            echo '>>> Setting GIT_SSH_COMMAND to use the key file...'
+            # Tell git to use this specific key file
+            export GIT_SSH_COMMAND=\"ssh -i /home/deploy/deploy_key.pem -o IdentitiesOnly=yes -o StrictHostKeyChecking=no\"
+
+            echo '>>> Running git fetch...'
             cd /home/deploy/app && \
-            export GIT_SSH_COMMAND=\"ssh -v -F /dev/null -o IdentitiesOnly=yes\" && \
             git fetch origin main && \
             git reset --hard origin/main && \
-            echo '>>> Building and starting Docker containers...' && \
+            
+            echo '>>> Cleaning up temporary key...'
+            rm -f /home/deploy/deploy_key.pem
+            
+            echo '>>> Building and starting Docker containers...'
             docker compose build --build-arg VITE_API_BASE_URL=${VITE_API_BASE_URL} && \
             docker compose up -d"
