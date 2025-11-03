@@ -20,7 +20,7 @@ jobs:
       - name: Add remote server to known_hosts
         run: ssh-keyscan -H 62.72.12.249 >> ~/.ssh/known_hosts
 
-      - name: Deploy on VPS (with SSH verbose logging)
+      - name: Deploy on VPS
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
         run: |
@@ -28,9 +28,9 @@ jobs:
             echo '>>> Testing SSH connection to GitHub (Should succeed)'
             ssh -T git@github.com
 
-            echo '>>> Now attempting git fetch with VERBOSE SSH...'
+            echo '>>> Now attempting git fetch, ignoring server .ssh/config...'
             cd /home/deploy/app && \
-            export GIT_SSH_COMMAND=\"ssh -v -o IdentitiesOnly=yes\" && \
+            export GIT_SSH_COMMAND=\"ssh -v -F /dev/null -o IdentitiesOnly=yes\" && \
             git fetch origin main && \
             git reset --hard origin/main && \
             echo '>>> Building and starting Docker containers...' && \
