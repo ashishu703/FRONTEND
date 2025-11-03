@@ -26,6 +26,96 @@ const MarketingSalespersonCalendar = () => {
   const [showLeadPanel, setShowLeadPanel] = useState(false);
   const [selectedLeadDetails, setSelectedLeadDetails] = useState(null);
   const [assignmentsTick, setAssignmentsTick] = useState(0);
+  const [showEditPanel, setShowEditPanel] = useState(false);
+  const [editLead, setEditLead] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    address: '',
+    productType: '',
+    visitingStatus: 'Scheduled',
+    finalStatus: 'Pending',
+    remark: ''
+  });
+
+  const openEdit = (lead) => {
+    setEditLead(lead);
+    setEditForm({
+      name: lead.name || '',
+      phone: lead.phone || '',
+      email: lead.email || '',
+      address: lead.address || '',
+      productType: lead.productType || '',
+      visitingStatus: lead.visitingStatus || 'Scheduled',
+      finalStatus: lead.finalStatus || 'Pending',
+      remark: lead.notes || lead.remark || lead.finalStatusRemark || lead.connectedStatusRemark || ''
+    });
+    setShowEditPanel(true);
+  };
+
+  const saveEdit = () => {
+    if (!editLead) return;
+    try {
+      // Update shared context (for in-memory list)
+      updateCustomer(editLead.id, {
+        name: editForm.name,
+        phone: editForm.phone,
+        email: editForm.email,
+        address: editForm.address,
+        productType: editForm.productType,
+        visitingStatus: editForm.visitingStatus,
+        finalStatus: editForm.finalStatus,
+        notes: editForm.remark,
+        finalStatusRemark: editForm.remark
+      });
+
+      // Update localStorage assignments if this lead exists there
+      try {
+        const allAssignments = JSON.parse(localStorage.getItem('marketingAssignments') || '[]');
+        const updated = Array.isArray(allAssignments)
+          ? allAssignments.map(e => {
+              const same = String(e.leadId || e.id) === String(editLead.leadId || editLead.id);
+              if (!same) return e;
+              return {
+                ...e,
+                name: editForm.name,
+                phone: editForm.phone,
+                address: editForm.address,
+                productType: editForm.productType,
+                visitingStatus: editForm.visitingStatus,
+                finalStatus: editForm.finalStatus,
+                remark: editForm.remark,
+                notes: editForm.remark
+              };
+            })
+          : allAssignments;
+        localStorage.setItem('marketingAssignments', JSON.stringify(updated));
+        try { window.dispatchEvent(new CustomEvent('marketingAssignmentsUpdated')); } catch {}
+      } catch {}
+
+      // Keep any currently selected details in sync
+      const updatedLead = {
+        ...editLead,
+        name: editForm.name,
+        phone: editForm.phone,
+        email: editForm.email,
+        address: editForm.address,
+        productType: editForm.productType,
+        visitingStatus: editForm.visitingStatus,
+        finalStatus: editForm.finalStatus,
+        notes: editForm.remark,
+        finalStatusRemark: editForm.remark,
+        remark: editForm.remark
+      };
+      if (selectedLeadDetails && String(selectedLeadDetails.id) === String(editLead.id)) {
+        setSelectedLeadDetails(updatedLead);
+      }
+
+      setShowEditPanel(false);
+      setEditLead(null);
+    } catch (e) { console.error('saveEdit error', e); }
+  };
 
   // Get current month and year
   const currentMonth = currentDate.getMonth();
@@ -80,10 +170,16 @@ const MarketingSalespersonCalendar = () => {
         id: e.leadId || e.id,
         name: e.name,
         phone: e.phone,
+        email: e.email || '',
         address: e.address,
         productType: e.productType,
         visitingStatus: e.visitingStatus || 'Scheduled',
         finalStatus: e.finalStatus || 'Pending',
+        // surface remarks into the event so preview/edit shows latest
+        notes: e.notes || e.remark || e.finalStatusRemark || e.connectedStatusRemark || '',
+        remark: e.remark || e.notes || '',
+        finalStatusRemark: e.finalStatusRemark || '',
+        connectedStatusRemark: e.connectedStatusRemark || '',
         assignedDate: (typeof e.assignedDate === 'string' ? e.assignedDate : (e.assignedDate ? new Date(e.assignedDate) : null)) ? (typeof e.assignedDate === 'string' ? e.assignedDate : (()=>{ const y=e.assignedDate.getFullYear?.(); return y?`${y}-${String(e.assignedDate.getMonth()+1).padStart(2,'0')}-${String(e.assignedDate.getDate()).padStart(2,'0')}`:e.assignedDate; })()) : e.assignedDate,
         assignedToName: e.assignedToName || '',
         assignedToEmail: e.assignedToEmail || '',
@@ -357,22 +453,84 @@ const MarketingSalespersonCalendar = () => {
                 <div className="text-gray-900">{selectedLeadDetails.productType || '-'}</div>
               </div>
               <div>
+                <div className="text-xs text-gray-500">Remark</div>
+                <div className="text-gray-900 whitespace-pre-wrap break-words">
+                  {selectedLeadDetails.notes || selectedLeadDetails.remark || selectedLeadDetails.finalStatusRemark || selectedLeadDetails.connectedStatusRemark || '-'}
+                </div>
+              </div>
+              <div>
                 <div className="text-xs text-gray-500">Assigned Date</div>
                 <div className="text-gray-900">{(selectedLeadDetails.assignedDate || selectedLeadDetails.followUpDate || selectedLeadDetails.date || '').toString()}</div>
               </div>
               <div className="pt-2 flex gap-2">
-                {selectedLeadDetails.visitingStatus !== 'Visited' && (
-                  <button
-                    onClick={() => {
-                      updateCustomer(selectedLeadDetails.id, { visitingStatus: 'Visited', visitingStatusUpdated: new Date().toISOString() });
-                      setSelectedLeadDetails({ ...selectedLeadDetails, visitingStatus: 'Visited' });
-                    }}
-                    className="px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700"
-                  >
-                    Mark Visit Done
-                  </button>
-                )}
+                <button
+                  onClick={() => { moveToVisits(selectedLeadDetails); setShowLeadPanel(false); }}
+                  className="px-3 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700"
+                >
+                  Move to Visits
+                </button>
                 <button onClick={() => setShowLeadPanel(false)} className="px-3 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200">Close</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* Edit Lead slide-over */}
+      {showEditPanel && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="flex-1 bg-black bg-opacity-30" onClick={() => setShowEditPanel(false)}></div>
+          <aside className="w-full max-w-md bg-white h-full shadow-xl overflow-y-auto">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Edit Lead</h3>
+              <button onClick={() => setShowEditPanel(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div className="p-6 space-y-4 text-sm">
+              <div>
+                <label className="text-xs text-gray-500">Name</label>
+                <input value={editForm.name} onChange={(e)=>setEditForm(f=>({...f,name:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Phone</label>
+                <input value={editForm.phone} onChange={(e)=>setEditForm(f=>({...f,phone:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Email</label>
+                <input value={editForm.email} onChange={(e)=>setEditForm(f=>({...f,email:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Address</label>
+                <textarea value={editForm.address} onChange={(e)=>setEditForm(f=>({...f,address:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1" rows={2} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Product Type</label>
+                <input value={editForm.productType} onChange={(e)=>setEditForm(f=>({...f,productType:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500">Visiting Status</label>
+                  <select value={editForm.visitingStatus} onChange={(e)=>setEditForm(f=>({...f,visitingStatus:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1">
+                    <option>Scheduled</option>
+                    <option>Visited</option>
+                    <option>Not Visited</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500">Final Status</label>
+                  <select value={editForm.finalStatus} onChange={(e)=>setEditForm(f=>({...f,finalStatus:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1">
+                    <option>Pending</option>
+                    <option>Interested</option>
+                    <option>Not Interested</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Remark</label>
+                <textarea value={editForm.remark} onChange={(e)=>setEditForm(f=>({...f,remark:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1" rows={3} />
+              </div>
+              <div className="pt-2 flex gap-2">
+                <button onClick={saveEdit} className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">Save</button>
+                <button onClick={() => setShowEditPanel(false)} className="px-3 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200">Cancel</button>
               </div>
             </div>
           </aside>
@@ -565,11 +723,14 @@ const MarketingSalespersonCalendar = () => {
                       <div className="flex items-start justify-between mb-2">
                         <h4 className="font-medium text-gray-900 truncate">{lead.name}</h4>
                         <div className="flex space-x-1">
-                          <button className="p-1 text-gray-400 hover:text-blue-600">
+                          <button
+                            className="p-1 text-gray-400 hover:text-blue-600"
+                            onClick={() => { setSelectedLeadDetails(lead); setShowLeadPanel(true); }}
+                          >
                             <Eye className="w-4 h-4" />
                           </button>
                           <button className="p-1 text-gray-400 hover:text-green-600">
-                            <Edit className="w-4 h-4" />
+                            <Edit className="w-4 h-4" onClick={() => openEdit(lead)} />
                           </button>
                         </div>
                       </div>
