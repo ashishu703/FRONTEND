@@ -2279,47 +2279,42 @@ const LeadsSimplified = () => {
                       assignedSalesperson: assignForm.salesperson || null,
                       assignedTelecaller: assignForm.telecaller || null,
                     };
+                    // Single lead assignment
                     if (assigningLead) {
-                      await departmentHeadService.updateLead(assigningLead.id, payload);
+                      const leadId = assigningLead.id;
+                      await departmentHeadService.updateLead(leadId, payload);
+                      // Update UI optimistically
                       setLeadsData(prev => prev.map(l =>
-                        l.id === assigningLead.id
+                        l.id === leadId
                           ? { ...l, assignedSalesperson: payload.assignedSalesperson || '', assignedTelecaller: payload.assignedTelecaller || '' }
                           : l
                       ));
-                      // Refresh from server to ensure latest values
-                      try {
-                        const params = { page, limit };
-                        if (searchTerm && searchTerm.trim() !== '') params.search = searchTerm.trim();
-                        const response = await departmentHeadService.getAllLeads(params);
-                        if (response && response.data) {
-                          const transformedData = transformApiData(response.data);
-                          setLeadsData(transformedData);
-                          if (response.pagination) setTotal(Number(response.pagination.total) || 0);
-                        }
-                      } catch (e) {}
                       toastManager.success('Lead assigned successfully');
                       setAssigningLead(null);
                     } else {
-                      await Promise.all(selectedLeadIds.map(id => departmentHeadService.updateLead(id, payload)));
+                      // Batch update multiple leads - single API call to avoid rate limiting
+                      await departmentHeadService.batchUpdateLeads(selectedLeadIds, payload);
+                      // Update UI optimistically
                       setLeadsData(prev => prev.map(l => selectedLeadIds.includes(l.id)
                         ? { ...l, assignedSalesperson: payload.assignedSalesperson || '', assignedTelecaller: payload.assignedTelecaller || '' }
                         : l
                       ));
-                      // Refresh list from server
-                      try {
-                        const params = { page, limit };
-                        if (searchTerm && searchTerm.trim() !== '') params.search = searchTerm.trim();
-                        const response = await departmentHeadService.getAllLeads(params);
-                        if (response && response.data) {
-                          const transformedData = transformApiData(response.data);
-                          setLeadsData(transformedData);
-                          if (response.pagination) setTotal(Number(response.pagination.total) || 0);
-                        }
-                      } catch (e) {}
                       toastManager.success(`Assigned ${selectedLeadIds.length} leads successfully`);
                       setSelectedLeadIds([]);
                       setIsAllSelected(false);
                     }
+
+                    // Refresh from server to ensure latest values
+                    try {
+                      const params = { page, limit };
+                      if (searchTerm && searchTerm.trim() !== '') params.search = searchTerm.trim();
+                      const response = await departmentHeadService.getAllLeads(params);
+                      if (response && response.data) {
+                        const transformedData = transformApiData(response.data);
+                        setLeadsData(transformedData);
+                        if (response.pagination) setTotal(Number(response.pagination.total) || 0);
+                      }
+                    } catch (e) {}
                     setShowAssignModal(false);
                   } catch (err) {
                     apiErrorHandler.handleError(err, 'assign lead');

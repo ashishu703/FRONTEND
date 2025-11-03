@@ -1994,8 +1994,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
       );
     }
     
-   // removed erroneous merge-conflict block here
-    
+   
     if (advancedFilters.dateFrom) {
       result = result.filter(customer => {
         const customerDate = new Date(customer.date);

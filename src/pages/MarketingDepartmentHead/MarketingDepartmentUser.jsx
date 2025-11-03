@@ -30,7 +30,10 @@ const UserManagementTable = ({ setActiveView }) => {
     username: '',
     email: '',
     password: '',
-    target: ''
+    target: '',
+    targetStartDate: '',
+    targetDurationDays: '30',
+    customDays: '' // Separate field for custom days input
   });
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -99,17 +102,27 @@ const UserManagementTable = ({ setActiveView }) => {
       if (searchTerm.trim()) params.search = searchTerm.trim();
       const res = await departmentUsersService.listUsers(params);
       const payload = res.data || res;
-      const items = (payload.users || []).map(u => ({
-        id: u.id,
-        username: u.username,
-        email: u.email,
-        role: 'DEPARTMENT USER',
-        department: apiToUiDepartment(u.departmentType || u.department_type),
-        target: typeof u.target === 'number' ? String(u.target) : (u.target || ''),
-        achievedTarget: typeof u.achievedTarget === 'number' ? String(u.achievedTarget) : (u.achievedTarget || '0'),
-        remainingTarget: (u.remainingTarget ?? u.remaining_target) !== undefined ? String(u.remainingTarget ?? u.remaining_target) : (u.target && u.achievedTarget ? String((+u.target) - (+u.achievedTarget)) : ''),
-        createdAt: u.createdAt || u.created_at ? new Date(u.createdAt || u.created_at).toDateString() : ''
-      }));
+      const items = (payload.users || []).map(u => {
+        const target = parseFloat(u.target || 0);
+        const achievedTarget = parseFloat(u.achievedTarget || u.achieved_target || 0);
+        const remainingTarget = target - achievedTarget;
+        
+        return {
+          id: u.id,
+          username: u.username,
+          email: u.email,
+          role: 'DEPARTMENT USER',
+          department: apiToUiDepartment(u.departmentType || u.department_type),
+          target: String(target),
+          achievedTarget: String(achievedTarget),
+          remainingTarget: String(remainingTarget),
+        targetStartDate: u.targetStartDate || u.target_start_date || null,
+          targetEndDate: u.targetEndDate || u.target_end_date || null,
+          targetDurationDays: u.targetDurationDays || u.target_duration_days || null,
+          targetStatus: u.targetStatus || u.target_status || 'active',
+          createdAt: u.createdAt || u.created_at ? new Date(u.createdAt || u.created_at).toDateString() : ''
+        };
+      });
       setUsers(items);
       const pagination = payload.pagination || {};
       setTotal(pagination.total || 0);
@@ -231,6 +244,18 @@ const UserManagementTable = ({ setActiveView }) => {
                 <th className="text-left py-3 px-4">
                   <div className="flex items-center gap-2 text-gray-600 font-medium">
                     <Calendar className="w-4 h-4 text-teal-600" />
+                    Target Period
+                  </div>
+                </th>
+                <th className="text-left py-3 px-4">
+                  <div className="flex items-center gap-2 text-gray-600 font-medium">
+                    <Shield className="w-4 h-4 text-blue-600" />
+                    Status
+                  </div>
+                </th>
+                <th className="text-left py-3 px-4">
+                  <div className="flex items-center gap-2 text-gray-600 font-medium">
+                    <Calendar className="w-4 h-4 text-gray-600" />
                     Created At
                   </div>
                 </th>
@@ -244,10 +269,10 @@ const UserManagementTable = ({ setActiveView }) => {
             </thead>
             <tbody>
               {loading && (
-                <tr><td className="py-8 px-4 text-center text-gray-500" colSpan={10}>Loading...</td></tr>
+                <tr><td className="py-8 px-4 text-center text-gray-500" colSpan={12}>Loading...</td></tr>
               )}
               {!loading && filteredUsers.length === 0 && (
-                <tr><td className="py-8 px-4 text-center text-gray-500" colSpan={10}>{error || 'No users found'}</td></tr>
+                <tr><td className="py-8 px-4 text-center text-gray-500" colSpan={12}>{error || 'No users found'}</td></tr>
               )}
               {!loading && filteredUsers.map((user) => (
                 <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
@@ -283,6 +308,30 @@ const UserManagementTable = ({ setActiveView }) => {
                     <span className="text-red-600 font-medium bg-red-50 px-2 py-1 rounded-md">{user.remainingTarget}</span>
                   </td>
                   <td className="py-4 px-4">
+                    <div className="text-xs text-gray-600">
+                      {user.targetStartDate ? (
+                        <>
+                          <div>From: {new Date(user.targetStartDate).toLocaleDateString()}</div>
+                          <div>To: {user.targetEndDate ? new Date(user.targetEndDate).toLocaleDateString() : 'N/A'}</div>
+                          {user.targetDurationDays && <div className="text-gray-500">({user.targetDurationDays} days)</div>}
+                        </>
+                      ) : (
+                        <span className="text-gray-400">Not set</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className={`inline-block px-2 py-1 rounded-md text-xs font-semibold ${
+                      user.targetStatus === 'achieved' ? 'bg-green-100 text-green-800' :
+                      user.targetStatus === 'overachieved' ? 'bg-blue-100 text-blue-800' :
+                      user.targetStatus === 'unachieved' ? 'bg-red-100 text-red-800' :
+                      user.targetStatus === 'expired' ? 'bg-gray-100 text-gray-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {user.targetStatus?.toUpperCase() || 'ACTIVE'}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4">
                     <span className="text-gray-700">{user.createdAt}</span>
                   </td>
                   <td className="py-4 px-4">
@@ -295,13 +344,23 @@ const UserManagementTable = ({ setActiveView }) => {
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => {
-                          // Navigate to Marketing Salesperson dashboard with correct userType
-                          const url = `${window.location.origin}/?login=true&userType=marketing-salesperson`;
-                          window.open(url, '_blank');
+                        onClick={async () => {
+                          // Login as this specific user
+                          try {
+                            const result = await impersonate(user.email);
+                            if (result.success) {
+                              const token = result.token || result?.user?.token || '';
+                              const url = `${window.location.origin}/?impersonateToken=${encodeURIComponent(token)}`;
+                              window.open(url, '_blank');
+                            } else {
+                              alert(result.error || 'Failed to login as user');
+                            }
+                          } catch (err) {
+                            alert('Failed to login as user: ' + (err.message || 'Unknown error'));
+                          }
                         }}
                         className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                        title="Open Marketing Salesperson Dashboard"
+                        title="Login as this user"
                       >
                         <LogIn className="w-4 h-4" />
                       </button>
@@ -356,17 +415,26 @@ const UserManagementTable = ({ setActiveView }) => {
                 e.preventDefault();
                 setSaving(true);
                 try {
+                  const targetStartDate = newUser.targetStartDate ? new Date(newUser.targetStartDate) : new Date();
+                  const targetDurationDays = newUser.targetDurationDays === 'custom' 
+                    ? parseInt(newUser.customDays || 30)
+                    : parseInt(newUser.targetDurationDays || 30);
+                  const targetEndDate = new Date(targetStartDate);
+                  targetEndDate.setDate(targetEndDate.getDate() + targetDurationDays);
+                  
                   const payload = {
                     username: newUser.username,
                     email: newUser.email,
                     password: newUser.password,
                     headUserEmail: currentUser?.email,
-                    target: Number(newUser.target || 0)
+                    target: Number(newUser.target || 0),
+                    targetStartDate: targetStartDate.toISOString().split('T')[0],
+                    targetDurationDays: targetDurationDays
                   };
                   await departmentUsersService.createUser(payload);
                   await fetchUsers();
                   setShowAddModal(false);
-                  setNewUser({ username: '', email: '', password: '', target: '' });
+                  setNewUser({ username: '', email: '', password: '', target: '', targetStartDate: '', targetDurationDays: '30', customDays: '' });
                 } catch (err) {
                   setError(err.message || 'Failed to create user');
                 } finally {
@@ -409,17 +477,52 @@ const UserManagementTable = ({ setActiveView }) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Target (Rs)</label>
+                  <label className="block text-xs text-gray-600 mb-1">Payment Target (Rs)</label>
                   <input
                     type="number"
                     min="0"
                     value={newUser.target}
                     onChange={(e) => setNewUser({ ...newUser, target: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter target to assign"
+                    placeholder="Enter payment target"
                   />
                 </div>
-                
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Target Start Date</label>
+                  <input
+                    type="date"
+                    value={newUser.targetStartDate}
+                    onChange={(e) => setNewUser({ ...newUser, targetStartDate: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Target Duration (Days)</label>
+                  <select
+                    value={newUser.targetDurationDays}
+                    onChange={(e) => setNewUser({ ...newUser, targetDurationDays: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="15">15 Days</option>
+                    <option value="30">30 Days (Monthly)</option>
+                    <option value="60">60 Days (2 Months)</option>
+                    <option value="90">90 Days (Quarterly)</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                {newUser.targetDurationDays === 'custom' && (
+                  <div className="md:col-span-2">
+                    <label className="block text-xs text-gray-600 mb-1">Custom Duration (Days)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newUser.customDays || ''}
+                      onChange={(e) => setNewUser({ ...newUser, customDays: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter number of days"
+                    />
+                  </div>
+                )}
               </div>
               <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
                 <button

@@ -49,7 +49,6 @@ const ProductionDepartmentHeadDashboard = ({ activeView, setActiveView }) => {
       case 'stock-alerts':
         return <Inventory activeView={activeView} setActiveView={setActiveView} />;
       case 'production-users':
-      case 'operator-performance':
         return <ProductionUsers />;
       case 'reports':
       case 'production-reports':

@@ -6,7 +6,15 @@ import { API_ENDPOINTS } from '../api/admin_api/api';
  */
 class ApiClient {
   constructor() {
-    this.baseURL = API_ENDPOINTS.LOGIN.split('/api')[0];
+    // Use empty string for relative URLs to work with Vite proxy
+    // The proxy will forward /api requests to the backend
+    this.baseURL = '';
+    
+    // Only use full URL if explicitly provided via env variable (for production)
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+    if (apiBaseUrl && apiBaseUrl.includes('http')) {
+      this.baseURL = apiBaseUrl.replace(/\/api.*$/, '');
+    }
   }
 
   /**

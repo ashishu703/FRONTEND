@@ -36,6 +36,7 @@ export const API_ENDPOINTS = {
   LEADS_LIST: (query = '') => `${LEADS_BASE}${query ? `?${query}` : ''}`,
   LEADS_CREATE: () => `${LEADS_BASE}`,
   LEADS_IMPORT: () => `${LEADS_BASE}/import`,
+  LEADS_BATCH_UPDATE: () => `${LEADS_BASE}/batch`,
   LEAD_BY_ID: (id) => `${LEADS_BASE}/${id}`,
   LEADS_STATS: () => `${LEADS_BASE}/stats`,
   SALESPERSON_ASSIGNED_LEADS_ME: () => `${LEADS_BASE}/assigned/salesperson`,
