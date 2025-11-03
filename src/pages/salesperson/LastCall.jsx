@@ -170,9 +170,9 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                   lead.sales_status === 'pending' ? 'bg-yellow-500' :
                   lead.sales_status === 'running' ? 'bg-blue-500' :
                   lead.sales_status === 'converted' ? 'bg-green-500' :
-                  lead.sales_status === 'lost/closed' ? 'bg-red-500' :
+                  (lead.sales_status === 'lost/closed' || lead.sales_status === 'lost' || lead.sales_status === 'closed' || lead.sales_status === 'loose') ? 'bg-red-500' :
                   lead.sales_status === 'interested' ? 'bg-purple-500' :
-                  lead.sales_status === 'win lead' ? 'bg-emerald-500' :
+                  (lead.sales_status === 'win lead' || lead.sales_status === 'win/closed') ? 'bg-emerald-500' :
                   'bg-gray-500'
                 }`}>
                   <Clock className="h-4 w-4 text-white" />
@@ -185,9 +185,9 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                         lead.sales_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                         lead.sales_status === 'running' ? 'bg-blue-100 text-blue-800' :
                         lead.sales_status === 'converted' ? 'bg-green-100 text-green-800' :
-                        lead.sales_status === 'lost/closed' ? 'bg-red-100 text-red-800' :
+                        (lead.sales_status === 'lost/closed' || lead.sales_status === 'lost' || lead.sales_status === 'closed' || lead.sales_status === 'loose') ? 'bg-red-100 text-red-800' :
                         lead.sales_status === 'interested' ? 'bg-purple-100 text-purple-800' :
-                        lead.sales_status === 'win lead' ? 'bg-emerald-100 text-emerald-800' :
+                        (lead.sales_status === 'win lead' || lead.sales_status === 'win/closed') ? 'bg-emerald-100 text-emerald-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {lead.sales_status?.toUpperCase() || 'PENDING'}
@@ -350,9 +350,11 @@ const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
     { value: 'pending', label: 'Pending' },
     { value: 'running', label: 'Running' },
     { value: 'converted', label: 'Converted' },
-    { value: 'lost/closed', label: 'Lost/Closed' },
     { value: 'interested', label: 'Interested' },
-    { value: 'win lead', label: 'Win Lead' }
+    { value: 'loose', label: 'Loose' },
+    { value: 'win/closed', label: 'Win/Closed' },
+    { value: 'lost', label: 'Lost' },
+    { value: 'closed', label: 'Closed' },
   ];
 
   const followUpOptions = [

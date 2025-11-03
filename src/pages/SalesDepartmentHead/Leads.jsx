@@ -509,6 +509,10 @@ const LeadsSimplified = () => {
         const parsedData = parseCSV(csvText);
         setImportPreview(parsedData);
         setShowImportModal(true);
+        // Allow selecting the same file name again later
+        if (importFileInputRef.current) {
+          importFileInputRef.current.value = '';
+        }
       };
       reader.readAsText(file);
     } else {
@@ -557,43 +561,33 @@ const LeadsSimplified = () => {
     }
 
     setImporting(true);
-    let successCount = 0;
-    let errorCount = 0;
 
     try {
-      for (const row of importPreview) {
-        try {
-          const leadData = {
-            customer: row['Customer Name'] || null,
-            phone: row['Mobile Number'] || null,
-            email: row['Email'] || null,
-            address: row['Address'] || null,
-            business: row['Business Name'] || null,
-            leadSource: row['Lead Source'] || null,
-            category: row['Business Category'] || 'N/A',
-            salesStatus: 'PENDING',
-            gstNo: row['GST Number'] || null,
-            productNames: row['Product Names (comma separated)'] || 'N/A',
-            state: row['State'] || null,
-            assignedSalesperson: row['Assigned Salesperson'] || null,
-            assignedTelecaller: row['Assigned Telecaller'] || null,
-            whatsapp: row['WhatsApp Number'] || row['Mobile Number'] || null,
-            date: formatDate(row['Date (YYYY-MM-DD)']),
-            createdAt: new Date().toISOString().split('T')[0],
-            telecallerStatus: 'INACTIVE',
-            paymentStatus: 'PENDING',
-            connectedStatus: 'pending',
-            finalStatus: 'open',
-            customerType: 'business'
-          };
+      const leadsPayload = importPreview.map((row) => ({
+        customer: row['Customer Name'] || null,
+        phone: row['Mobile Number'] || null,
+        email: row['Email'] || null,
+        address: row['Address'] || null,
+        business: row['Business Name'] || null,
+        leadSource: row['Lead Source'] || null,
+        category: row['Business Category'] || 'N/A',
+        salesStatus: 'PENDING',
+        gstNo: row['GST Number'] || null,
+        productNames: row['Product Names (comma separated)'] || 'N/A',
+        state: row['State'] || null,
+        assignedSalesperson: row['Assigned Salesperson'] || null,
+        assignedTelecaller: row['Assigned Telecaller'] || null,
+        whatsapp: row['WhatsApp Number'] || row['Mobile Number'] || null,
+        date: formatDate(row['Date (YYYY-MM-DD)']),
+        createdAt: new Date().toISOString().split('T')[0],
+        telecallerStatus: 'INACTIVE',
+        paymentStatus: 'PENDING',
+        connectedStatus: 'pending',
+        finalStatus: 'open',
+        customerType: 'business'
+      }));
 
-          await departmentHeadService.createLead(leadData);
-          successCount++;
-        } catch (error) {
-          console.error('Error importing lead:', error);
-          errorCount++;
-        }
-      }
+      const resp = await departmentHeadService.importLeads(leadsPayload);
 
       // Refresh leads data
       const response = await departmentHeadService.getAllLeads();
@@ -601,11 +595,14 @@ const LeadsSimplified = () => {
         const transformedData = transformApiData(response.data);
         setLeadsData(transformedData);
       }
-
-      toastManager.success(`Import completed! ${successCount} leads imported successfully, ${errorCount} failed`);
+      const inserted = resp?.data?.importedCount ?? leadsPayload.length;
+      toastManager.success(`Import completed! ${inserted} leads processed`);
       setShowImportModal(false);
       setImportPreview([]);
       setImportFile(null);
+      if (importFileInputRef.current) {
+        importFileInputRef.current.value = '';
+      }
     } catch (error) {
       apiErrorHandler.handleError(error, 'import leads');
     } finally {
@@ -1183,24 +1180,7 @@ const LeadsSimplified = () => {
             </button>
               
             <button
-            onClick={async () => {
-              try {
-                setLoading(true);
-                const params = { page, limit };
-                if (searchTerm && searchTerm.trim() !== '') params.search = searchTerm.trim();
-                const response = await departmentHeadService.getAllLeads(params);
-                if (response && response.data) {
-                  const transformedData = transformApiData(response.data);
-                  setLeadsData(transformedData);
-                  if (response.pagination) setTotal(Number(response.pagination.total) || 0);
-                  toastManager.success('Data refreshed successfully');
-                }
-              } catch (error) {
-                apiErrorHandler.handleError(error, 'refresh leads');
-              } finally {
-                setLoading(false);
-              }
-            }}
+            onClick={() => { window.location.reload(); }}
             className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <RefreshCw className="w-4 h-4" />

@@ -1328,7 +1328,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
               formData.append('lead_source', customer.enquiryBy || 'N/A');
               formData.append('customer_type', customer.customerType || 'N/A');
               formData.append('date', customer.date);
-              formData.append('sales_status', customer.salesStatus || 'follow up');
+              formData.append('sales_status', customer.salesStatus || 'pending');
               formData.append('sales_status_remark', customer.salesStatusRemark || 'Imported from CSV');
               
               await apiClient.postFormData(API_ENDPOINTS.LEADS_CREATE(), formData);

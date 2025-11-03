@@ -127,7 +127,7 @@ const MobileLeads = () => {
         formData.append('customer_type', newCustomerData.customerType || 'N/A');
         formData.append('date', newCustomerData.date);
         formData.append('whatsapp', newCustomerData.whatsappNumber ? newCustomerData.whatsappNumber.replace(/\D/g, '').slice(-10) : '');
-        formData.append('sales_status', newCustomerData.salesStatus || 'follow up');
+        formData.append('sales_status', newCustomerData.salesStatus || 'pending');
         formData.append('sales_status_remark', newCustomerData.salesStatusRemark || '');
         formData.append('transferred_to', newCustomerData.transferredTo || '');
 
@@ -153,7 +153,7 @@ const MobileLeads = () => {
         formData.append('lead_source', newCustomerData.leadSource || 'N/A');
         formData.append('customer_type', newCustomerData.customerType || 'N/A');
         formData.append('date', newCustomerData.date);
-        formData.append('sales_status', newCustomerData.salesStatus || 'follow up');
+        formData.append('sales_status', newCustomerData.salesStatus || 'pending');
 
         if (newCustomerData.callRecordingFile) {
           formData.append('call_recording', newCustomerData.callRecordingFile);

@@ -270,7 +270,7 @@ const SalesDashboard = () => {
       setPayments(pRows);
 
       // Leads: fetch and client-side filter (API has no date filter)
-      const lRes = await departmentHeadService.getAllLeads({ page: 1, limit: 1000 });
+      const lRes = await departmentHeadService.getAllLeads({ page: 1, limit: 100 });
       const lRows = Array.isArray(lRes?.data) ? lRes.data : (Array.isArray(lRes?.data?.leads) ? lRes.data.leads : []);
       const filteredLeads = lRows.filter((ld) => {
         const d = ld.created_at || ld.createdAt || ld.date || ld.updated_at || ld.updatedAt;
@@ -401,7 +401,8 @@ const SalesDashboard = () => {
   };
 
   const handleRefresh = () => {
-    fetchData();
+    // Do a hard reload to avoid intermediate loader flicker and ensure fresh state
+    window.location.reload();
   };
 
   // Salespersons list - simplified for now
