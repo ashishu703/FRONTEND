@@ -692,14 +692,24 @@ export default function ScheduledCall() {
   // Handle lead status update
   const handleUpdateLeadStatus = async (leadId, statusData) => {
     try {
-      const response = await apiClient.put(`/api/leads/assigned/salesperson/lead/${leadId}`, statusData);
+      const payload = {
+        sales_status: statusData.sales_status ?? statusData.salesStatus ?? '',
+        sales_status_remark: statusData.sales_status_remark ?? statusData.salesStatusRemark ?? '',
+        follow_up_status: statusData.follow_up_status ?? statusData.followUpStatus ?? '',
+        follow_up_remark: statusData.follow_up_remark ?? statusData.followUpRemark ?? '',
+        follow_up_date: statusData.follow_up_date ?? statusData.followUpDate ?? '',
+        follow_up_time: statusData.follow_up_time ?? statusData.followUpTime ?? '',
+      }
+      const fd = new FormData()
+      Object.entries(payload).forEach(([k, v]) => fd.append(k, v == null ? '' : v))
+      const response = await apiClient.putFormData(`/api/leads/assigned/salesperson/lead/${leadId}`, fd);
       
       if (response.success) {
         // Update the leads list
         setLeads(prevLeads => 
           prevLeads.map(lead => 
             lead.id === leadId 
-              ? { ...lead, ...statusData, updated_at: new Date().toISOString() }
+              ? { ...lead, ...payload, updated_at: new Date().toISOString() }
               : lead
           )
         );
@@ -708,7 +718,7 @@ export default function ScheduledCall() {
         setFilteredLeads(prevFiltered => 
           prevFiltered.map(lead => 
             lead.id === leadId 
-              ? { ...lead, ...statusData, updated_at: new Date().toISOString() }
+              ? { ...lead, ...payload, updated_at: new Date().toISOString() }
               : lead
           )
         );
