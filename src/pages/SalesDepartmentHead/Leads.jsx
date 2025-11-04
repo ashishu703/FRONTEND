@@ -610,6 +610,19 @@ const LeadsSimplified = () => {
     }
   };
 
+  // Format a datetime to IST (DD/MM/YYYY HH:mm)
+  const formatToIST = (value) => {
+    if (!value) return 'N/A';
+    try {
+      const d = new Date(value);
+      const date = d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
+      const time = d.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
+      return `${date} ${time}`;
+    } catch (e) {
+      return String(value);
+    }
+  };
+
   // Transform API data to frontend format
   const transformApiData = (apiData) => {
     return apiData.map(lead => ({
@@ -622,7 +635,8 @@ const LeadsSimplified = () => {
       productNamesText: lead.product_names,
       category: lead.category,
       salesStatus: lead.sales_status,
-      createdAt: lead.created,
+      salesStatusRemark: lead.sales_status_remark || null,
+      createdAt: formatToIST(lead.created_at),
       assignedSalesperson: lead.assigned_salesperson,
       assignedTelecaller: lead.assigned_telecaller,
       telecallerStatus: lead.telecaller_status,
@@ -633,12 +647,16 @@ const LeadsSimplified = () => {
       state: lead.state,
       customerType: lead.customer_type,
       date: lead.date,
-      connectedStatus: lead.connected_status,
+      // Normalized follow-up fields (prefer salesperson values if present)
+      followUpStatus: lead.follow_up_status || lead.connected_status || lead.telecaller_status,
+      // keep legacy key for any parts still reading connectedStatus
+      connectedStatus: lead.follow_up_status || lead.connected_status || lead.telecaller_status,
+      followUpRemark: lead.follow_up_remark || null,
       finalStatus: lead.final_status,
       whatsapp: lead.whatsapp,
       createdBy: lead.created_by,
-      created_at: lead.created_at,
-      updated_at: lead.updated_at
+      created_at: formatToIST(lead.created_at),
+      updated_at: formatToIST(lead.updated_at)
     }));
   };
 
@@ -1108,26 +1126,55 @@ const LeadsSimplified = () => {
 
   // Get status badge
   const getStatusBadge = (status, type) => {
-    const statusConfig = {
-      'sales': {
-        'PENDING': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' },
-        'IN_PROGRESS': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'IN PROGRESS' },
-        'COMPLETED': { bg: 'bg-green-100', text: 'text-green-800', label: 'COMPLETED' }
-      },
-      'telecaller': {
-        'ACTIVE': { bg: 'bg-green-100', text: 'text-green-800', label: 'ACTIVE' },
-        'INACTIVE': { bg: 'bg-red-100', text: 'text-red-800', label: 'INACTIVE' }
-      },
-      'payment': {
-        'PENDING': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' },
-        'IN_PROGRESS': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'IN PROGRESS' },
-        'COMPLETED': { bg: 'bg-green-100', text: 'text-green-800', label: 'COMPLETED' }
-      }
+    const normalized = (status || '').toString();
+    const upper = normalized.toUpperCase();
+    const lower = normalized.toLowerCase();
+
+    // Sales status mapping (support old DH enums + salesperson enums)
+    const salesMap = {
+      'PENDING': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' },
+      'IN_PROGRESS': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'IN PROGRESS' },
+      'COMPLETED': { bg: 'bg-green-100', text: 'text-green-800', label: 'COMPLETED' },
+      // Salesperson page values (lowercase)
+      'pending': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' },
+      'running': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'RUNNING' },
+      'converted': { bg: 'bg-green-100', text: 'text-green-800', label: 'CONVERTED' },
+      'interested': { bg: 'bg-purple-100', text: 'text-purple-800', label: 'INTERESTED' },
+      'loose': { bg: 'bg-red-100', text: 'text-red-800', label: 'LOOSE' },
+      'win/closed': { bg: 'bg-emerald-100', text: 'text-emerald-800', label: 'WIN/CLOSED' },
+      'win lead': { bg: 'bg-emerald-100', text: 'text-emerald-800', label: 'WIN LEAD' },
+      'lost': { bg: 'bg-red-100', text: 'text-red-800', label: 'LOST' },
+      'closed': { bg: 'bg-red-100', text: 'text-red-800', label: 'CLOSED' },
+      'lost/closed': { bg: 'bg-red-100', text: 'text-red-800', label: 'LOST/CLOSED' }
     };
 
-    const typeConfig = statusConfig[type] || statusConfig['sales'];
-    const config = typeConfig[status] || typeConfig['PENDING'];
-  return (
+    // Follow-up mapping – reuse salesperson follow-up statuses for DH view
+    const followUpMap = {
+      'ACTIVE': { bg: 'bg-green-100', text: 'text-green-800', label: 'ACTIVE' },
+      'INACTIVE': { bg: 'bg-red-100', text: 'text-red-800', label: 'INACTIVE' },
+      'appointment scheduled': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'APPOINTMENT SCHEDULED' },
+      'not interested': { bg: 'bg-red-100', text: 'text-red-800', label: 'NOT INTERESTED' },
+      'interested': { bg: 'bg-green-100', text: 'text-green-800', label: 'INTERESTED' },
+      'quotation sent': { bg: 'bg-purple-100', text: 'text-purple-800', label: 'QUOTATION SENT' },
+      'negotiation': { bg: 'bg-orange-100', text: 'text-orange-800', label: 'NEGOTIATION' },
+      'close order': { bg: 'bg-emerald-100', text: 'text-emerald-800', label: 'CLOSE ORDER' },
+      'closed/lost': { bg: 'bg-gray-100', text: 'text-gray-800', label: 'CLOSED/LOST' },
+      'call back request': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'CALL BACK REQUEST' },
+      'unreachable/call not connected': { bg: 'bg-red-100', text: 'text-red-800', label: 'UNREACHABLE' },
+      'currently not required': { bg: 'bg-gray-100', text: 'text-gray-800', label: 'NOT REQUIRED' },
+      'not relevant': { bg: 'bg-gray-100', text: 'text-gray-800', label: 'NOT RELEVANT' },
+      'pending': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' }
+    };
+
+    const paymentMap = {
+      'PENDING': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' },
+      'IN_PROGRESS': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'IN PROGRESS' },
+      'COMPLETED': { bg: 'bg-green-100', text: 'text-green-800', label: 'COMPLETED' }
+    };
+
+    const typeMap = type === 'telecaller' ? followUpMap : type === 'payment' ? paymentMap : salesMap;
+    const config = typeMap[upper] || typeMap[lower] || typeMap['PENDING'] || { bg: 'bg-gray-100', text: 'text-gray-800', label: normalized || 'PENDING' };
+    return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
         {config.label}
       </span>
@@ -1418,14 +1465,24 @@ const LeadsSimplified = () => {
                   {visibleColumns.state && (
                     <td className="px-4 py-4 text-sm text-gray-900">{lead.state}</td>
                   )}
-                  {visibleColumns.followUpStatus && (
-                    <td className="px-4 py-4">
-                      {getStatusBadge(lead.connectedStatus || lead.telecallerStatus, 'telecaller')}
-                    </td>
-                  )}
+                {visibleColumns.followUpStatus && (
+                  <td className="px-4 py-4">
+                    <div className="space-y-1">
+                      {getStatusBadge(lead.followUpStatus || lead.connectedStatus || lead.telecallerStatus, 'telecaller')}
+                      {lead.followUpRemark && (
+                        <div className="text-xs text-gray-600 italic">"{lead.followUpRemark}"</div>
+                      )}
+                    </div>
+                  </td>
+                )}
                   {visibleColumns.salesStatus && (
                     <td className="px-4 py-4">
-                      {getStatusBadge(lead.salesStatus, 'sales')}
+                      <div className="space-y-1">
+                        {getStatusBadge(lead.salesStatus, 'sales')}
+                        {lead.salesStatusRemark && (
+                          <div className="text-xs text-gray-600 italic">"{lead.salesStatusRemark}"</div>
+                        )}
+                      </div>
                     </td>
                   )}
                   {visibleColumns.assignedSalesperson && (
@@ -1714,7 +1771,10 @@ const LeadsSimplified = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Follow Up Status</label>
-                    <p className="text-gray-900 font-semibold">{previewLead.connectedStatus || previewLead.telecallerStatus || 'N/A'}</p>
+                    <p className="text-gray-900 font-semibold">{previewLead.followUpStatus || previewLead.telecallerStatus || 'N/A'}</p>
+                    {previewLead.followUpRemark && (
+                      <p className="text-xs text-gray-600 italic mt-0.5">"{previewLead.followUpRemark}"</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Assigned Salesperson</label>

@@ -42,6 +42,8 @@ export const API_ENDPOINTS = {
   SALESPERSON_ASSIGNED_LEADS_ME: () => `${LEADS_BASE}/assigned/salesperson`,
   SALESPERSON_ASSIGNED_LEADS_BY_USERNAME: (username) => `${LEADS_BASE}/assigned/salesperson/${encodeURIComponent(username)}`,
   SALESPERSON_LEAD_BY_ID: (id) => `${LEADS_BASE}/assigned/salesperson/lead/${id}`,
+  SALESPERSON_CREATE_LEAD: () => `${LEADS_BASE}/assigned/salesperson/lead`,
+  SALESPERSON_IMPORT_LEADS: () => `${LEADS_BASE}/assigned/salesperson/import`,
 
   // Production
   PRODUCTION_BASE: PRODUCTION_BASE,

@@ -257,7 +257,6 @@ const PaymentsDashboard = () => {
   };
 
   const handleEditPayment = (payment) => {
-    console.log('Edit payment:', payment);
     setEditingPayment(payment);
     setEditFormData({
       customerId: payment.customerId,
