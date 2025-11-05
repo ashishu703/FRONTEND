@@ -269,10 +269,19 @@ const SalesDashboard = () => {
       const pRows = Array.isArray(pRes?.data) ? pRes.data : [];
       setPayments(pRows);
 
-      // Leads: fetch and client-side filter (API has no date filter)
-      const lRes = await departmentHeadService.getAllLeads({ page: 1, limit: 100 });
-      const lRows = Array.isArray(lRes?.data) ? lRes.data : (Array.isArray(lRes?.data?.leads) ? lRes.data.leads : []);
-      const filteredLeads = lRows.filter((ld) => {
+      // Leads: fetch ALL pages and client-side filter (API has no date filter)
+      let allRows = [];
+      let page = 1;
+      const pageSize = 100;
+      while (true) {
+        const resp = await departmentHeadService.getAllLeads({ page, limit: pageSize });
+        const rows = Array.isArray(resp?.data) ? resp.data : (Array.isArray(resp?.data?.leads) ? resp.data.leads : []);
+        if (!rows || rows.length === 0) break;
+        allRows = allRows.concat(rows);
+        if (rows.length < pageSize) break;
+        page += 1;
+      }
+      const filteredLeads = allRows.filter((ld) => {
         const d = ld.created_at || ld.createdAt || ld.date || ld.updated_at || ld.updatedAt;
         return inRange(d, start, end);
       });
@@ -401,8 +410,7 @@ const SalesDashboard = () => {
   };
 
   const handleRefresh = () => {
-    // Do a hard reload to avoid intermediate loader flicker and ensure fresh state
-    window.location.reload();
+    fetchData();
   };
 
   // Salespersons list - simplified for now

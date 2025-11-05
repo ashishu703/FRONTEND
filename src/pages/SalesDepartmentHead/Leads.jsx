@@ -660,31 +660,33 @@ const LeadsSimplified = () => {
     }));
   };
 
+  // Fetch leads function
+  const fetchLeads = async () => {
+    try {
+      setLoading(true);
+      const params = { page, limit };
+      if (searchTerm && searchTerm.trim() !== '') {
+        params.search = searchTerm.trim();
+      }
+      const response = await departmentHeadService.getAllLeads(params);
+      if (response && response.data) {
+        const transformedData = transformApiData(response.data);
+        setLeadsData(transformedData);
+        if (response.pagination) {
+          setTotal(Number(response.pagination.total) || 0);
+        }
+      }
+    } catch (error) {
+      apiErrorHandler.handleError(error, 'fetch leads');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch leads when page, limit, or search changes
   useEffect(() => {
-    const fetchLeads = async () => {
-      try {
-        setLoading(true);
-        const params = { page, limit };
-        if (searchTerm && searchTerm.trim() !== '') {
-          params.search = searchTerm.trim();
-        }
-        const response = await departmentHeadService.getAllLeads(params);
-        if (response && response.data) {
-          const transformedData = transformApiData(response.data);
-          setLeadsData(transformedData);
-          if (response.pagination) {
-            setTotal(Number(response.pagination.total) || 0);
-          }
-        }
-      } catch (error) {
-        apiErrorHandler.handleError(error, 'fetch leads');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchLeads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, searchTerm]);
 
   // Load department usernames when edit modal opens
@@ -1227,7 +1229,7 @@ const LeadsSimplified = () => {
             </button>
               
             <button
-            onClick={() => { window.location.reload(); }}
+            onClick={fetchLeads}
             className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <RefreshCw className="w-4 h-4" />
