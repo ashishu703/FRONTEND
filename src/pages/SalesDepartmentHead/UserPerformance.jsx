@@ -4,6 +4,8 @@ import departmentUserService from '../../api/admin_api/departmentUserService';
 import departmentHeadService from '../../api/admin_api/departmentHeadService';
 import apiErrorHandler from '../../utils/ApiErrorHandler';
 import toastManager from '../../utils/ToastManager';
+import apiClient from '../../utils/apiClient';
+import { API_ENDPOINTS } from '../../api/admin_api/api';
 
 const SalesDashboard = () => {
   const [userData, setUserData] = useState([]);
@@ -27,32 +29,98 @@ const SalesDashboard = () => {
       try {
         setLoading(true);
         const response = await departmentUserService.listUsers({ page: 1, limit: 100 });
-        if (response && response.data) {
-          const users = response.data.users || response.data;
-          const performanceData = users.map(user => ({
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            department: user.departmentType === 'office_sales' ? 'Sales Department' : user.departmentType === 'marketing_sales' ? 'Marketing Department' : 'HR Department',
-            role: user.isActive ? 'Department User' : 'Inactive User',
-            associatedEmail: user.email,
-            date: new Date(user.createdAt).toLocaleDateString('en-US', { 
-              weekday: 'short', 
-              year: 'numeric', 
-              month: 'short', 
-              day: 'numeric' 
-            }),
-            pending: { count: Math.floor(Math.random() * 50) + 10, total: Math.floor(Math.random() * 100) + 50 },
-            followUp: { count: Math.floor(Math.random() * 30) + 5, total: Math.floor(Math.random() * 60) + 20 },
-            done: { count: Math.floor(Math.random() * 40) + 5, total: Math.floor(Math.random() * 80) + 20 },
-            notConnected: { count: Math.floor(Math.random() * 25) + 5, total: Math.floor(Math.random() * 50) + 15 },
-            notInterested: { count: Math.floor(Math.random() * 15) + 2, total: Math.floor(Math.random() * 30) + 10 },
-            meetingScheduled: { count: Math.floor(Math.random() * 10) + 1, total: Math.floor(Math.random() * 20) + 5 },
-            totalAmount: Math.floor(Math.random() * 200000) + 50000,
-            dueAmount: Math.floor(Math.random() * 50000) + 5000
-          }));
-          setUserData(performanceData);
-        }
+        if (!response || !response.data) return setUserData([]);
+
+        const users = response.data.users || response.data;
+
+        // Helper: aggregate lead metrics for a user
+        const aggregateMetrics = (leads) => {
+          const result = {
+            pending: { count: 0, total: 0 },
+            followUp: { count: 0, total: 0 },
+            done: { count: 0, total: 0 },
+            notConnected: { count: 0, total: 0 },
+            notInterested: { count: 0, total: 0 },
+            meetingScheduled: { count: 0, total: 0 },
+          };
+
+          const total = Array.isArray(leads) ? leads.length : 0;
+          for (const l of leads || []) {
+            const status = String(l.sales_status || '').toLowerCase();
+            switch (status) {
+              case 'pending':
+                result.pending.count += 1; break;
+              case 'follow_up':
+                result.followUp.count += 1; break;
+              case 'done':
+              case 'closed':
+                result.done.count += 1; break;
+              case 'not_connected':
+                result.notConnected.count += 1; break;
+              case 'not_interested':
+                result.notInterested.count += 1; break;
+              case 'meeting_scheduled':
+                result.meetingScheduled.count += 1; break;
+              default:
+                break;
+            }
+          }
+          // Set totals uniformly to the lead count for display n/total
+          Object.keys(result).forEach(k => result[k].total = total);
+          return result;
+        };
+
+        // Fetch leads for each user in parallel and build performance rows
+        const rows = await Promise.all(users.map(async (u) => {
+          try {
+            const leadsRes = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_BY_USERNAME(u.username));
+            const leads = leadsRes?.data || leadsRes?.rows || [];
+            const metrics = aggregateMetrics(leads);
+
+            const target = parseFloat(u.target || u.target_amount || 0) || 0;
+            const achieved = parseFloat(u.achieved_target || 0) || 0;
+            const due = Math.max(target - achieved, 0);
+
+            return {
+              id: u.id,
+              username: u.username,
+              email: u.email,
+              department: u.departmentType === 'office_sales' ? 'Sales Department' : u.departmentType === 'marketing_sales' ? 'Marketing Department' : 'HR Department',
+              role: u.isActive ? 'Department User' : 'Inactive User',
+              associatedEmail: u.email,
+              date: (u.createdAt || u.created_at) ? new Date(u.createdAt || u.created_at).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '',
+              pending: metrics.pending,
+              followUp: metrics.followUp,
+              done: metrics.done,
+              notConnected: metrics.notConnected,
+              notInterested: metrics.notInterested,
+              meetingScheduled: metrics.meetingScheduled,
+              totalAmount: target,
+              dueAmount: due,
+            };
+          } catch (e) {
+            // Fallback if leads fetch fails for this user
+            return {
+              id: u.id,
+              username: u.username,
+              email: u.email,
+              department: u.departmentType === 'office_sales' ? 'Sales Department' : u.departmentType === 'marketing_sales' ? 'Marketing Department' : 'HR Department',
+              role: u.isActive ? 'Department User' : 'Inactive User',
+              associatedEmail: u.email,
+              date: (u.createdAt || u.created_at) ? new Date(u.createdAt || u.created_at).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '',
+              pending: { count: 0, total: 0 },
+              followUp: { count: 0, total: 0 },
+              done: { count: 0, total: 0 },
+              notConnected: { count: 0, total: 0 },
+              notInterested: { count: 0, total: 0 },
+              meetingScheduled: { count: 0, total: 0 },
+              totalAmount: parseFloat(u.target || 0) || 0,
+              dueAmount: Math.max(parseFloat(u.target || 0) - (parseFloat(u.achieved_target || 0) || 0), 0)
+            };
+          }
+        }));
+
+        setUserData(rows);
       } catch (error) {
         apiErrorHandler.handleError(error, 'fetch user performance');
         toastManager.error('Failed to load user performance data');

@@ -537,6 +537,30 @@ export default function LeadStatusPage() {
   const [followUpFilter, setFollowUpFilter] = useState('');
   const [showFilterPanel, setShowFilterPanel] = useState(false);
 
+  // Badge selections
+  const leadStatusBadges = [
+    { key: 'pending', label: 'Pending', bg: 'bg-yellow-100', text: 'text-yellow-800', ring: 'ring-yellow-300' },
+    { key: 'running', label: 'Running', bg: 'bg-blue-100', text: 'text-blue-800', ring: 'ring-blue-300' },
+    { key: 'converted', label: 'Converted', bg: 'bg-green-100', text: 'text-green-800', ring: 'ring-green-300' },
+    { key: 'interested', label: 'Interested', bg: 'bg-purple-100', text: 'text-purple-800', ring: 'ring-purple-300' },
+    { key: 'win/closed', label: 'Win', bg: 'bg-emerald-100', text: 'text-emerald-800', ring: 'ring-emerald-300' },
+    { key: 'closed', label: 'Closed', bg: 'bg-gray-100', text: 'text-gray-800', ring: 'ring-gray-300' },
+    { key: 'lost', label: 'Lost', bg: 'bg-red-100', text: 'text-red-800', ring: 'ring-red-300' },
+  ];
+  const followUpBadges = [
+    { key: 'appointment scheduled', label: 'Scheduled Call', bg: 'bg-blue-50', text: 'text-blue-700', ring: 'ring-blue-200' },
+    { key: 'call back request', label: 'Last Call', bg: 'bg-orange-50', text: 'text-orange-700', ring: 'ring-orange-200' },
+  ];
+
+  const toggleLeadStatusBadge = (key) => {
+    const next = statusFilter === key ? '' : key;
+    handleStatusFilter(next);
+  };
+  const toggleFollowBadge = (key) => {
+    const next = followUpFilter === key ? '' : key;
+    handleFollowUpFilter(next);
+  };
+
   // Fetch leads data
   useEffect(() => {
     const fetchLeads = async () => {
@@ -804,121 +828,57 @@ export default function LeadStatusPage() {
 
   return (
     <div className="p-6">
-      {/* Search and Filter Bar */}
-      <div className="mb-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-          {/* Left side - Search */}
-          <div className="relative w-full sm:w-80">
-            <div className="flex">
+      {/* Search and Filters */}
+      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 mb-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex-1 flex items-center gap-2">
+            <div className="relative w-full sm:w-96">
               <input
                 type="text"
-                className="flex-1 px-4 py-2 border border-blue-500 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                placeholder="Search by customer name, phone, email, follow up status..."
+                placeholder="Search by customer name, phone, email, business, lead id..."
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
-              <button className="px-4 py-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <Search className="h-4 w-4" />
-              </button>
+              <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
             </div>
-          </div>
 
-          {/* Right side - Filter Button */}
-          <div className="flex items-center gap-3 relative filter-panel-container">
-            {/* Filter Button */}
             <button
               onClick={() => setShowFilterPanel(!showFilterPanel)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-                statusFilter || followUpFilter
-                  ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-              }`}
+              className="px-3 py-2 rounded-md bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2"
             >
               <Filter className="h-4 w-4" />
-              <span className="text-sm font-medium">Filters</span>
-              {(statusFilter || followUpFilter) && (
-                <span className="ml-1 px-2 py-0.5 bg-white text-blue-600 rounded-full text-xs font-semibold">
-                  {[statusFilter, followUpFilter].filter(Boolean).length}
-                </span>
-              )}
+              Filters
             </button>
+          </div>
+        </div>
 
-            {/* Filter Panel */}
-            {showFilterPanel && (
-              <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
-                <div className="p-4">
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold text-gray-900">Filter Leads</h3>
-                    {(statusFilter || followUpFilter) && (
-                      <button
-                        onClick={() => {
-                          setStatusFilter('');
-                          setFollowUpFilter('');
-                          applyFilters('', '');
-                        }}
-                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        Clear All
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Lead Status Filter */}
-                  <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                      Lead Status
-                    </label>
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => handleStatusFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">All Status</option>
-                      <option value="win">Win</option>
-                      <option value="closed">Closed</option>
-                      <option value="follow up">Follow Up</option>
-                      <option value="not interested">Not Interested</option>
-                    </select>
-                  </div>
-
-                  {/* Follow Up Status Filter */}
-                  <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                      Follow Up Status
-                    </label>
-                    <select
-                      value={followUpFilter}
-                      onChange={(e) => handleFollowUpFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">All Follow Up Status</option>
-                      <option value="pending">Pending</option>
-                      <option value="next meeting">Next Meeting</option>
-                      <option value="appointment scheduled">Appointment Scheduled</option>
-                      <option value="not interested">Not Interested</option>
-                      <option value="interested">Interested</option>
-                      <option value="quotation sent">Quotation Sent</option>
-                      <option value="negotiation">Negotiation</option>
-                      <option value="close order">Close Order</option>
-                      <option value="closed/lost">Closed/Lost</option>
-                      <option value="call back request">Call Back Request</option>
-                      <option value="unreachable/call not connected">Unreachable/Call Not Connected</option>
-                      <option value="currently not required">Currently Not Required</option>
-                      <option value="not relevant">Not Relevant</option>
-                    </select>
-                  </div>
-
-                  {/* Apply Button */}
-                  <button
-                    onClick={() => setShowFilterPanel(false)}
-                    className="w-full px-4 py-2 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
-                  >
-                    Apply Filters
-                  </button>
-                </div>
-              </div>
-            )}
+        {/* Badge Filters Row */}
+        <div className="mt-4">
+          <div className="flex flex-wrap gap-2 items-center">
+            {/* Lead status badges */}
+            <button
+              onClick={() => {
+                setStatusFilter('');
+                setFollowUpFilter('');
+                applyFilters('', '');
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 hover:ring-2 ring-gray-300 transition ${!statusFilter && !followUpFilter ? 'ring-2' : ''}`}
+              title="Show All"
+            >
+              All
+            </button>
+            {leadStatusBadges.map(b => (
+              <button
+                key={b.key}
+                onClick={() => toggleLeadStatusBadge(b.key)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border ${b.bg} ${b.text} hover:ring-2 ${b.ring} transition ${statusFilter === b.key ? 'ring-2' : ''}`}
+                title={`Filter: ${b.label}`}
+              >
+                {b.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
