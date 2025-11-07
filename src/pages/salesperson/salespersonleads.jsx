@@ -1337,14 +1337,17 @@ export default function CustomerListContent({ isDarkMode = false }) {
               sales_status_remark: c.salesStatusRemark || 'Imported from CSV',
             }));
 
-            await apiClient.post(API_ENDPOINTS.SALESPERSON_IMPORT_LEADS(), { leads: leadsPayload });
+            const resp = await apiClient.post(API_ENDPOINTS.SALESPERSON_IMPORT_LEADS(), { leads: leadsPayload });
 
             // Refresh leads from API after successful import
             await handleRefresh();
 
-            const successMessage = errors.length > 0
-              ? `Successfully imported ${importedCustomers.length} leads. ${errors.length} rows had errors and were skipped.`
-              : `Successfully imported ${importedCustomers.length} leads`;
+            const duplicates = resp?.data?.duplicatesCount || 0;
+            const created = resp?.data?.created || importedCustomers.length;
+            const baseMsg = `Successfully imported ${created} lead(s)`;
+            const dupMsg = duplicates > 0 ? `, ${duplicates} duplicate(s) skipped` : '';
+            const csvErrMsg = errors.length > 0 ? `. ${errors.length} row(s) had CSV errors and were skipped.` : '';
+            const successMessage = baseMsg + dupMsg + csvErrMsg;
             alert(successMessage);
             setShowImportModal(false);
             setImportFile(null);

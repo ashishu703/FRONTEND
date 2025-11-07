@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Eye, Edit, MessageCircle, Mail, Search, Filter, Download, ChevronDown, X, Save, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, FileText, Receipt, CreditCard } from 'lucide-react';
+import { Eye, Edit, MessageCircle, Mail, Search, Filter, Download, ChevronDown, X, Save, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, FileText, Receipt, CreditCard, RefreshCcw } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import quotationService from '../../api/admin_api/quotationService';
@@ -15,12 +15,34 @@ const LeadStatusPreview = ({ lead, onClose }) => {
   const [latestPI, setLatestPI] = useState(null);
   const [payments, setPayments] = useState([]);
   const [paymentSummary, setPaymentSummary] = useState(null);
+  const [history, setHistory] = useState([]);
+
+  // Compact Indian date-time like "03 Nov 2025, 04:05 AM"
+  const formatIndianDateTime = (dateStr, timeStr, createdAt) => {
+    try {
+      if (dateStr || timeStr) {
+        const date = dateStr ? new Date(dateStr) : new Date(createdAt || Date.now());
+        if (timeStr) {
+          const [hh, mm] = String(timeStr).split(':');
+          date.setHours(Number(hh || 0), Number(mm || 0), 0, 0);
+        }
+        return date.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      }
+      if (createdAt) return new Date(createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (_) {}
+    return '';
+  };
 
   useEffect(() => {
     let cancelled = false;
     async function loadDocs() {
       try {
         if (!lead?.id) return;
+        // Load lead history
+        try {
+          const hRes = await apiClient.get(API_ENDPOINTS.SALESPERSON_LEAD_HISTORY(lead.id));
+          if (!cancelled) setHistory(hRes?.data?.data || hRes?.data || []);
+        } catch (_) {}
         const qRes = await quotationService.getQuotationsByCustomer(lead.id);
         const qList = (qRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         const q = qList[0] || null;
@@ -46,175 +68,133 @@ const LeadStatusPreview = ({ lead, onClose }) => {
     return () => { cancelled = true; };
   }, [lead?.id]);
 
+  const groupedHistory = React.useMemo(() => {
+    const items = [...history]
+      .sort((a, b) => new Date(a.created_at || a.follow_up_date || 0) - new Date(b.created_at || b.follow_up_date || 0));
+    const groups = {};
+    items.forEach((h) => {
+      const d = new Date(h.follow_up_date || h.created_at || Date.now());
+      const key = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(h);
+    });
+    // Ensure the Customer Created day appears at top if different from first history item
+    if (lead?.created_at) {
+      const createdKey = new Date(lead.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      if (!groups[createdKey]) groups[createdKey] = [];
+    }
+    return groups;
+  }, [history, lead?.created_at]);
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-end z-50">
-      <div className="bg-white w-full max-w-md h-full overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Customer Timeline</h3>
+    <div className="fixed top-0 right-0 h-screen z-50 flex">
+      <div className="bg-white w-[360px] h-screen flex flex-col shadow-xl border-l border-gray-200">
+        {/* Sticky Header */}
+        <div className="flex justify-between items-center p-2 border-b border-gray-200 sticky top-0 bg-white z-10">
+          <h3 className="text-sm font-semibold text-gray-900">Customer Timeline</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="p-6">
+        {/* Scrollable Body */}
+        <div className="flex-1 p-2 overflow-y-auto">
           {/* Customer Details */}
-          <div className="mb-6">
-            <h4 className="text-md font-bold text-gray-900 mb-3">Customer Details</h4>
-            <div className="space-y-2 text-sm">
+          <div className="mb-3">
+            <h4 className="text-xs font-bold text-gray-900 mb-1.5">Customer Details</h4>
+            <div className="space-y-1 text-[11px]">
               <div>
                 <span className="font-medium text-gray-600">Customer Name:</span>
-                <span className="ml-2 text-gray-900">{lead.name}</span>
+                <span className="ml-1.5 text-gray-900">{lead.name}</span>
               </div>
               <div>
                 <span className="font-medium text-gray-600">Business Name:</span>
-                <span className="ml-2 text-gray-900">{lead.business || 'N/A'}</span>
+                <span className="ml-1.5 text-gray-900">{lead.business || 'N/A'}</span>
               </div>
               <div>
                 <span className="font-medium text-gray-600">Contact No:</span>
-                <span className="ml-2 text-gray-900">{lead.phone || 'N/A'}</span>
+                <span className="ml-1.5 text-gray-900">{lead.phone || 'N/A'}</span>
               </div>
               <div>
                 <span className="font-medium text-gray-600">Email Address:</span>
-                <span className="ml-2 text-gray-900">{lead.email || 'N/A'}</span>
+                <span className="ml-1.5 text-gray-900">{lead.email || 'N/A'}</span>
               </div>
             </div>
           </div>
 
           {/* Timeline */}
-          <div className="relative">
-            <h4 className="text-md font-bold text-gray-900 mb-4">Timeline</h4>
-            
-            {/* Timeline Line */}
-            <div className="absolute left-4 top-8 bottom-0 w-0.5 bg-gray-300"></div>
-            
-            <div className="space-y-6">
-              {/* Customer Created */}
-              <div className="relative flex items-start">
-                <div className="flex-shrink-0 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center z-10">
-                  <CheckCircle className="h-4 w-4 text-white" />
+          <div>
+            <h4 className="text-xs font-bold text-gray-900 mb-2">Timeline</h4>
+
+            {/* Customer Created as first chat bubble */}
+            <div className="flex justify-center">
+              <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                {new Date(lead.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}
+              </span>
+            </div>
+            <div className="mt-1.5 flex justify-start">
+              <div className="max-w-[85%] rounded-lg rounded-tl-none bg-green-50 border border-green-200 p-2">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <CheckCircle className="h-3 w-3 text-green-600" />
+                  <span className="text-[11px] font-medium text-gray-900">Customer Created</span>
+                  <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-green-100 text-green-800">COMPLETED</span>
                 </div>
-                <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-gray-900">Customer Created</h5>
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
-                        COMPLETED
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      <div>{new Date(lead.created_at).toLocaleDateString('en-GB')}</div>
-                      <div>Lead ID: LD-{lead.id}</div>
-                    </div>
-                  </div>
+                <div className="text-[10px] text-gray-600">Lead ID: LD-{lead.id}</div>
+              </div>
+            </div>
+
+            {/* Follow ups grouped by date, chat style bubbles */}
+            {Object.keys(groupedHistory).sort((a,b) => new Date(a) - new Date(b)).map((dateKey) => (
+              <div key={dateKey} className="mt-3">
+                <div className="flex justify-center">
+                  <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">{dateKey}</span>
+                </div>
+                <div className="mt-1.5 space-y-1.5">
+                  {groupedHistory[dateKey].map((h, idx) => {
+                    const right = Boolean(h.sales_status && (h.sales_status.toLowerCase() === 'win' || h.sales_status.toLowerCase() === 'converted'));
+                    return (
+                      <div key={`${h.id || idx}`} className={right ? 'flex justify-end' : 'flex justify-start'}>
+                        <div className={right ? 'max-w-[85%] rounded-lg rounded-tr-none bg-blue-50 border border-blue-200 p-2' : 'max-w-[85%] rounded-lg rounded-tl-none bg-white border border-gray-200 p-2'}>
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-[10px] font-medium text-gray-700">Follow Up</span>
+                            {h.sales_status && (
+                              <span className="ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded bg-yellow-100 text-yellow-800">{String(h.sales_status).toUpperCase()}</span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-gray-800">
+                            <div className="mb-0.5"><span className="font-medium">Status:</span> {h.follow_up_status || '—'}</div>
+                            {h.follow_up_remark && (
+                              <div className="mb-0.5"><span className="font-medium">Remark:</span> {h.follow_up_remark}</div>
+                            )}
+                            {(h.follow_up_date || h.follow_up_time || h.created_at) && (
+                              <div className="text-[9px] text-gray-500">{formatIndianDateTime(h.follow_up_date, h.follow_up_time, h.created_at)}</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+            ))}
 
-              {/* Follow Up Status */}
-              <div className="relative flex items-start">
-                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center z-10 ${
-                  lead.follow_up_status === 'appointment scheduled' ? 'bg-blue-500' :
-                  lead.follow_up_status === 'not interested' ? 'bg-red-500' :
-                  lead.follow_up_status === 'interested' ? 'bg-green-500' :
-                  lead.follow_up_status === 'quotation sent' ? 'bg-purple-500' :
-                  lead.follow_up_status === 'negotiation' ? 'bg-orange-500' :
-                  lead.follow_up_status === 'close order' ? 'bg-emerald-500' :
-                  lead.follow_up_status === 'closed/lost' ? 'bg-red-500' :
-                  lead.follow_up_status === 'call back request' ? 'bg-yellow-500' :
-                  lead.follow_up_status === 'unreachable/call not connected' ? 'bg-red-500' :
-                  lead.follow_up_status === 'currently not required' ? 'bg-gray-500' :
-                  lead.follow_up_status === 'not relevant' ? 'bg-gray-500' :
-                  'bg-gray-500'
-                }`}>
-                  <Clock className="h-4 w-4 text-white" />
+            {/* Quotation Status - Chat Style */}
+            {latestQuotation && (
+              <>
+                <div className="mt-3 flex justify-center">
+                  <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                    {latestQuotation?.quotation_date ? new Date(latestQuotation.quotation_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A'}
+                  </span>
                 </div>
-                <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-gray-900">Follow Up Status</h5>
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
-                        lead.follow_up_status === 'appointment scheduled' ? 'bg-blue-100 text-blue-800' :
-                        lead.follow_up_status === 'not interested' ? 'bg-red-100 text-red-800' :
-                        lead.follow_up_status === 'interested' ? 'bg-green-100 text-green-800' :
-                        lead.follow_up_status === 'quotation sent' ? 'bg-purple-100 text-purple-800' :
-                        lead.follow_up_status === 'negotiation' ? 'bg-orange-100 text-orange-800' :
-                        lead.follow_up_status === 'close order' ? 'bg-emerald-100 text-emerald-800' :
-                        lead.follow_up_status === 'closed/lost' ? 'bg-red-100 text-red-800' :
-                        lead.follow_up_status === 'call back request' ? 'bg-yellow-100 text-yellow-800' :
-                        lead.follow_up_status === 'unreachable/call not connected' ? 'bg-red-100 text-red-800' :
-                        lead.follow_up_status === 'currently not required' ? 'bg-gray-100 text-gray-800' :
-                        lead.follow_up_status === 'not relevant' ? 'bg-gray-100 text-gray-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {lead.follow_up_status?.toUpperCase() || 'PENDING'}
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {lead.follow_up_remark && (
-                        <div className="font-bold text-gray-900 mb-1">{lead.follow_up_remark}</div>
-                      )}
-                      {lead.follow_up_date && lead.follow_up_time && (
-                        <div>Scheduled: {lead.follow_up_date} at {lead.follow_up_time}</div>
-                      )}
-                      <div>Updated: {lead.updated_at ? new Date(lead.updated_at).toLocaleDateString('en-GB') : 'N/A'}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Lead Status */}
-              <div className="relative flex items-start">
-                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center z-10 ${
-                  (lead.sales_status || '').toLowerCase() === 'pending' ? 'bg-yellow-500' :
-                  (lead.sales_status || '').toLowerCase() === 'running' ? 'bg-blue-500' :
-                  (lead.sales_status || '').toLowerCase() === 'converted' ? 'bg-green-500' :
-                  (lead.sales_status || '').toLowerCase() === 'interested' ? 'bg-purple-500' :
-                  (lead.sales_status || '').toLowerCase() === 'loose' ? 'bg-red-500' :
-                  (lead.sales_status || '').toLowerCase() === 'win/closed' || (lead.sales_status || '').toLowerCase() === 'win lead' ? 'bg-emerald-500' :
-                  ['lost', 'closed', 'lost/closed'].includes((lead.sales_status || '').toLowerCase()) ? 'bg-red-500' :
-                  'bg-gray-500'
-                }`}>
-                  <Clock className="h-4 w-4 text-white" />
-                </div>
-                <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-gray-900">Lead Status</h5>
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
-                        (lead.sales_status || '').toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        (lead.sales_status || '').toLowerCase() === 'running' ? 'bg-blue-100 text-blue-800' :
-                        (lead.sales_status || '').toLowerCase() === 'converted' ? 'bg-green-100 text-green-800' :
-                        (lead.sales_status || '').toLowerCase() === 'interested' ? 'bg-purple-100 text-purple-800' :
-                        (lead.sales_status || '').toLowerCase() === 'loose' ? 'bg-red-100 text-red-800' :
-                        ((lead.sales_status || '').toLowerCase() === 'win/closed' || (lead.sales_status || '').toLowerCase() === 'win lead') ? 'bg-emerald-100 text-emerald-800' :
-                        ['lost', 'closed', 'lost/closed'].includes((lead.sales_status || '').toLowerCase()) ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {(lead.sales_status || 'pending').toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {lead.sales_status_remark && (
-                        <div className="font-bold text-gray-900 mb-1">{lead.sales_status_remark}</div>
-                      )}
-                      <div>Updated: {lead.updated_at ? new Date(lead.updated_at).toLocaleDateString('en-GB') : 'N/A'}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quotation Status */}
-              <div className="relative flex items-start">
-                <div className="flex-shrink-0 w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center z-10">
-                  <FileText className="h-4 w-4 text-white" />
-                </div>
-                <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-gray-900">Quotation Status</h5>
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                <div className="mt-1.5 flex justify-start">
+                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-yellow-50 border border-yellow-200 p-2">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <FileText className="h-3 w-3 text-yellow-600" />
+                      <span className="text-[11px] font-medium text-gray-900">Quotation Status</span>
+                      <span className={`ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded ${
                         (latestQuotation?.status || '').toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
                         (latestQuotation?.status || '').toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
                         (latestQuotation?.status ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800')
@@ -222,24 +202,28 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                         {(latestQuotation?.status || 'PENDING').toUpperCase()}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      <div>Date: {latestQuotation?.quotation_date ? new Date(latestQuotation.quotation_date).toLocaleDateString('en-GB') : 'N/A'}</div>
+                    <div className="text-[10px] text-gray-700">
                       <div>No.: {latestQuotation?.quotation_number || 'N/A'}</div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </>
+            )}
 
-              {/* PI Status */}
-              <div className="relative flex items-start">
-                <div className="flex-shrink-0 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center z-10">
-                  <Receipt className="h-4 w-4 text-white" />
+            {/* PI Status - Chat Style */}
+            {latestPI && (
+              <>
+                <div className="mt-3 flex justify-center">
+                  <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                    {latestPI?.created_at ? new Date(latestPI.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A'}
+                  </span>
                 </div>
-                <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-gray-900">PI Status</h5>
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                <div className="mt-1.5 flex justify-start">
+                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-orange-50 border border-orange-200 p-2">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <Receipt className="h-3 w-3 text-orange-600" />
+                      <span className="text-[11px] font-medium text-gray-900">PI Status</span>
+                      <span className={`ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded ${
                         (latestPI?.status || '').toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
                         (latestPI?.status || '').toLowerCase() === 'pending_approval' ? 'bg-yellow-100 text-yellow-800' :
                         (latestPI?.status ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800')
@@ -247,24 +231,28 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                         {(latestPI?.status || 'PENDING').toUpperCase()}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      <div>Date: {latestPI?.created_at ? new Date(latestPI.created_at).toLocaleDateString('en-GB') : 'N/A'}</div>
+                    <div className="text-[10px] text-gray-700">
                       <div>No.: {latestPI?.pi_number || 'N/A'}</div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </>
+            )}
 
-              {/* Payment Status */}
-              <div className="relative flex items-start">
-                <div className="flex-shrink-0 w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center z-10">
-                  <CreditCard className="h-4 w-4 text-white" />
+            {/* Payment Status - Chat Style */}
+            {paymentSummary && (
+              <>
+                <div className="mt-3 flex justify-center">
+                  <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                    {payments.length > 0 && payments[0]?.payment_date ? new Date(payments[0].payment_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'Today'}
+                  </span>
                 </div>
-                <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-gray-900">Payment Status</h5>
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                <div className="mt-1.5 flex justify-start">
+                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-purple-50 border border-purple-200 p-2">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <CreditCard className="h-3 w-3 text-purple-600" />
+                      <span className="text-[11px] font-medium text-gray-900">Payment Status</span>
+                      <span className={`ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded ${
                         paymentSummary && paymentSummary.remaining <= 0 ? 'bg-green-100 text-green-800' :
                         paymentSummary && paymentSummary.paid > 0 ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800'
@@ -273,45 +261,40 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                          paymentSummary && paymentSummary.paid > 0 ? 'PARTIAL' : 'PENDING'}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-600 space-y-2">
-                      {paymentSummary && (
-                        <>
-                          <div className="font-medium text-gray-900">Total: ₹{Number(paymentSummary.total || 0).toLocaleString('en-IN')}</div>
-                          <div className="text-green-700">Paid: ₹{Number(paymentSummary.paid || 0).toLocaleString('en-IN')}</div>
-                          <div className="text-red-700">Due: ₹{Number(paymentSummary.remaining || 0).toLocaleString('en-IN')}</div>
-                          {payments.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
-                              <div className="font-medium text-gray-700 mb-2 text-xs">Payment History:</div>
-                              {payments.map((payment, idx) => (
-                                <div key={payment.id} className="text-xs mb-1.5 p-2 bg-gray-50 rounded">
-                                  <div className="flex justify-between">
-                                    <span className="font-medium">Advance Payment #{idx + 1}</span>
-                                    <span className="text-green-700 font-medium">₹{Number(payment.installment_amount || 0).toLocaleString('en-IN')}</span>
-                                  </div>
-                                  <div className="text-gray-500 mt-0.5">
-                                    Method: {payment.payment_method || 'N/A'}
-                                  </div>
-                                  <div className="text-gray-500">
-                                    Date: {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-GB') : 'N/A'}
-                                  </div>
-                                  {payment.quotation_number && (
-                                    <div className="text-gray-500">Quotation: {payment.quotation_number}</div>
-                                  )}
-                                  {payment.pi_number && (
-                                    <div className="text-gray-500">PI: {payment.pi_number}</div>
-                                  )}
-                                </div>
-                              ))}
+                    <div className="text-[10px] text-gray-700 space-y-0.5">
+                      <div className="font-medium text-gray-900">Total: ₹{Number(paymentSummary.total || 0).toLocaleString('en-IN')}</div>
+                      <div className="text-green-700">Paid: ₹{Number(paymentSummary.paid || 0).toLocaleString('en-IN')}</div>
+                      <div className="text-red-700">Due: ₹{Number(paymentSummary.remaining || 0).toLocaleString('en-IN')}</div>
+                      {payments.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                          <div className="font-medium text-gray-700 mb-1 text-[9px]">Payment History:</div>
+                          {payments.map((payment, idx) => (
+                            <div key={payment.id} className="text-[9px] mb-1 p-1.5 bg-gray-50 rounded">
+                              <div className="flex justify-between">
+                                <span className="font-medium">Advance Payment #{idx + 1}</span>
+                                <span className="text-green-700 font-medium">₹{Number(payment.installment_amount || 0).toLocaleString('en-IN')}</span>
+                              </div>
+                              <div className="text-gray-500 mt-0.5">
+                                Method: {payment.payment_method || 'N/A'}
+                              </div>
+                              <div className="text-gray-500">
+                                Date: {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-GB') : 'N/A'}
+                              </div>
+                              {payment.quotation_number && (
+                                <div className="text-gray-500">Quotation: {payment.quotation_number}</div>
+                              )}
+                              {payment.pi_number && (
+                                <div className="text-gray-500">PI: {payment.pi_number}</div>
+                              )}
                             </div>
-                          )}
-                        </>
+                          ))}
+                        </div>
                       )}
-                      {!paymentSummary && <div>No payment data available</div>}
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -526,6 +509,7 @@ export default function LeadStatusPage() {
   const [selectedLead, setSelectedLead] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [hydratingDocs, setHydratingDocs] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -535,9 +519,13 @@ export default function LeadStatusPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [followUpFilter, setFollowUpFilter] = useState('');
+  const [quotationFilter, setQuotationFilter] = useState(''); 
+  const [piFilter, setPiFilter] = useState('');
   const [showFilterPanel, setShowFilterPanel] = useState(false);
 
-  // Badge selections
+  const [quotationStatusByLead, setQuotationStatusByLead] = useState({});
+  const [piStatusByLead, setPiStatusByLead] = useState({});
+
   const leadStatusBadges = [
     { key: 'pending', label: 'Pending', bg: 'bg-yellow-100', text: 'text-yellow-800', ring: 'ring-yellow-300' },
     { key: 'running', label: 'Running', bg: 'bg-blue-100', text: 'text-blue-800', ring: 'ring-blue-300' },
@@ -561,27 +549,122 @@ export default function LeadStatusPage() {
     handleFollowUpFilter(next);
   };
 
-  // Fetch leads data
-  useEffect(() => {
-    const fetchLeads = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
-        const leadsData = response?.data || [];
-        
-        setLeads(leadsData);
-        setFilteredLeads(leadsData);
-      } catch (err) {
-        console.error('Error fetching leads:', err);
-        setError('Failed to load leads data');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const hydrateDocStatuses = async () => {
+    const missingLeadIds = leads
+      .filter(l => !quotationStatusByLead[l.id] || (quotationStatusByLead[l.id] && !piStatusByLead[l.id]))
+      .map(l => l.id);
+    if (missingLeadIds.length === 0) return;
+    try {
+      setHydratingDocs(true);
+      await Promise.all(
+        leads.map(async (lead) => {
+          if (quotationStatusByLead[lead.id] && piStatusByLead[lead.id]) return;
+          try {
+            const qRes = await quotationService.getQuotationsByCustomer(lead.id);
+            const qList = (qRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            const latestQ = qList[0];
+            if (latestQ) {
+              setQuotationStatusByLead(prev => ({ ...prev, [lead.id]: (latestQ.status || '').toLowerCase() }));
+              try {
+                const piRes = await proformaInvoiceService.getPIsByQuotation(latestQ.id);
+                const piList = (piRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                const latestPi = piList[0];
+                if (latestPi) {
+                  setPiStatusByLead(prev => ({ ...prev, [lead.id]: (latestPi.status || '').toLowerCase() }));
+                } else {
+                  setPiStatusByLead(prev => ({ ...prev, [lead.id]: '' }));
+                }
+              } catch (_) {
+                setPiStatusByLead(prev => ({ ...prev, [lead.id]: '' }));
+              }
+            } else {
+              setQuotationStatusByLead(prev => ({ ...prev, [lead.id]: '' }));
+              setPiStatusByLead(prev => ({ ...prev, [lead.id]: '' }));
+            }
+          } catch (_) {
+            setQuotationStatusByLead(prev => ({ ...prev, [lead.id]: '' }));
+            setPiStatusByLead(prev => ({ ...prev, [lead.id]: '' }));
+          }
+        })
+      );
+    } finally {
+      setHydratingDocs(false);
+    }
+  };
 
+  // Counts for badges
+  const leadStatusCounts = React.useMemo(() => {
+    const counts = {
+      all: leads.length,
+      pending: 0,
+      running: 0,
+      converted: 0,
+      interested: 0,
+      'win/closed': 0,
+      closed: 0,
+      lost: 0,
+    };
+    leads.forEach((l) => {
+      const key = String(l.sales_status || '').toLowerCase();
+      if (counts[key] != null) counts[key] += 1;
+    });
+    return counts;
+  }, [leads]);
+
+  const quotationCounts = React.useMemo(() => {
+    const result = { pending_approval: 0, approved: 0, rejected: 0 };
+    leads.forEach((l) => {
+      const st = String(quotationStatusByLead[l.id] || '').toLowerCase();
+      if (result[st] != null) result[st] += 1;
+    });
+    return result;
+  }, [leads, quotationStatusByLead]);
+
+  const piCounts = React.useMemo(() => {
+    const result = { pending_approval: 0, approved: 0, rejected: 0 };
+    leads.forEach((l) => {
+      const st = String(piStatusByLead[l.id] || '').toLowerCase();
+      if (result[st] != null) result[st] += 1;
+    });
+    return result;
+  }, [leads, piStatusByLead]);
+
+  // Hydrate doc statuses once leads arrive so counts are visible
+  useEffect(() => {
+    if (leads && leads.length > 0) {
+      hydrateDocStatuses();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads.length]);
+
+  // Fetch leads data (reused for refresh)
+  const fetchLeads = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
+      const leadsData = response?.data || [];
+
+      setLeads(leadsData);
+      // Re-apply current filters/search after fetch
+      if (searchQuery || statusFilter || followUpFilter) {
+        setFilteredLeads(leadsData);
+        setTimeout(() => applyFilters(statusFilter, followUpFilter), 0);
+      } else {
+        setFilteredLeads(leadsData);
+      }
+    } catch (err) {
+      console.error('Error fetching leads:', err);
+      setError('Failed to load leads data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchLeads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Close filter panel when clicking outside
@@ -653,8 +736,24 @@ export default function LeadStatusPage() {
     setCurrentPage(1);
   };
 
+  const handleQuotationFilter = async (status) => {
+    const next = quotationFilter === status ? '' : status;
+    setQuotationFilter(next);
+    await hydrateDocStatuses();
+    applyFilters(statusFilter, followUpFilter, next, piFilter);
+    setCurrentPage(1);
+  };
+
+  const handlePiFilter = async (status) => {
+    const next = piFilter === status ? '' : status;
+    setPiFilter(next);
+    await hydrateDocStatuses();
+    applyFilters(statusFilter, followUpFilter, quotationFilter, next);
+    setCurrentPage(1);
+  };
+
   // Apply both filters
-  const applyFilters = (status, followUp) => {
+  const applyFilters = (status, followUp, quotation = quotationFilter, pi = piFilter) => {
     let filtered = leads;
     
     // Apply search query first if exists
@@ -687,6 +786,16 @@ export default function LeadStatusPage() {
         return leadFollowUp === followUp.toLowerCase();
       });
     }
+
+    // Apply quotation status filter
+    if (quotation) {
+      filtered = filtered.filter(lead => (quotationStatusByLead[lead.id] || '') === quotation.toLowerCase());
+    }
+
+    // Apply PI status filter
+    if (pi) {
+      filtered = filtered.filter(lead => (piStatusByLead[lead.id] || '') === pi.toLowerCase());
+    }
     
     setFilteredLeads(filtered);
   };
@@ -694,7 +803,6 @@ export default function LeadStatusPage() {
   // Handle lead status update
   const handleUpdateLeadStatus = async (leadId, statusData) => {
     try {
-      // Normalize keys to the API's expected snake_case without changing existing behavior
       const payload = {
         sales_status: statusData.sales_status ?? statusData.salesStatus ?? '',
         sales_status_remark: statusData.sales_status_remark ?? statusData.salesStatusRemark ?? '',
@@ -827,7 +935,7 @@ export default function LeadStatusPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className={`pt-6 pb-6 pl-6 pr-0 transition-all duration-300 ${showPreview ? 'pr-[360px]' : ''}`}>
       {/* Search and Filters */}
       <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 mb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -842,7 +950,8 @@ export default function LeadStatusPage() {
               />
               <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
             </div>
-
+          </div>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilterPanel(!showFilterPanel)}
               className="px-3 py-2 rounded-md bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2"
@@ -850,35 +959,92 @@ export default function LeadStatusPage() {
               <Filter className="h-4 w-4" />
               Filters
             </button>
+            <button
+              onClick={fetchLeads}
+              className="px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 inline-flex items-center gap-2"
+              title="Refresh"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              Refresh
+            </button>
           </div>
         </div>
 
-        {/* Badge Filters Row */}
-        <div className="mt-4">
-          <div className="flex flex-wrap gap-2 items-center">
+        {/* One-line badges row (no scrollbar, compact) */}
+        <div className="mt-4 overflow-hidden">
+          <div className="flex items-center gap-1 whitespace-nowrap">
             {/* Lead status badges */}
             <button
               onClick={() => {
                 setStatusFilter('');
                 setFollowUpFilter('');
+                setQuotationFilter('');
+                setPiFilter('');
                 applyFilters('', '');
                 setCurrentPage(1);
               }}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 hover:ring-2 ring-gray-300 transition ${!statusFilter && !followUpFilter ? 'ring-2' : ''}`}
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium border bg-gray-100 text-gray-800 hover:ring-2 ring-gray-300 transition ${!statusFilter && !followUpFilter ? 'ring-2' : ''}`}
               title="Show All"
             >
-              All
+              All ({leadStatusCounts.all})
             </button>
             {leadStatusBadges.map(b => (
               <button
                 key={b.key}
                 onClick={() => toggleLeadStatusBadge(b.key)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border ${b.bg} ${b.text} hover:ring-2 ${b.ring} transition ${statusFilter === b.key ? 'ring-2' : ''}`}
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${b.bg} ${b.text} hover:ring-2 ${b.ring} transition ${statusFilter === b.key ? 'ring-2' : ''}`}
                 title={`Filter: ${b.label}`}
               >
-                {b.label}
+                {b.label} ({leadStatusCounts[b.key] || 0})
               </button>
             ))}
+
+            {/* Quotation & PI filters inline */}
+            <span className="mx-1 h-4 w-px bg-gray-200" />
+            <div className="text-[11px] font-medium text-gray-600">Quotation:</div>
+            <button
+              onClick={() => handleQuotationFilter('pending_approval')}
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium border bg-yellow-50 text-yellow-800 hover:ring-2 ring-yellow-200 transition ${quotationFilter === 'pending_approval' ? 'ring-2' : ''}`}
+            >
+              Sent for Approval ({quotationCounts.pending_approval || 0})
+            </button>
+            <button
+              onClick={() => handleQuotationFilter('approved')}
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium border bg-green-50 text-green-800 hover:ring-2 ring-green-200 transition ${quotationFilter === 'approved' ? 'ring-2' : ''}`}
+            >
+              Approved ({quotationCounts.approved || 0})
+            </button>
+            <button
+              onClick={() => handleQuotationFilter('rejected')}
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium border bg-red-50 text-red-800 hover:ring-2 ring-red-200 transition ${quotationFilter === 'rejected' ? 'ring-2' : ''}`}
+            >
+              Rejected ({quotationCounts.rejected || 0})
+            </button>
+
+            <span className="mx-1 h-4 w-px bg-gray-200" />
+            <div className="text-[11px] font-medium text-gray-600">PI:</div>
+            <button
+              onClick={() => handlePiFilter('pending_approval')}
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium border bg-yellow-50 text-yellow-800 hover:ring-2 ring-yellow-200 transition ${piFilter === 'pending_approval' ? 'ring-2' : ''}`}
+            >
+              Sent for Approval ({piCounts.pending_approval || 0})
+            </button>
+            <button
+              onClick={() => handlePiFilter('approved')}
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium border bg-green-50 text-green-800 hover:ring-2 ring-green-200 transition ${piFilter === 'approved' ? 'ring-2' : ''}`}
+            >
+              Approved ({piCounts.approved || 0})
+            </button>
+            <button
+              onClick={() => handlePiFilter('rejected')}
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium border bg-red-50 text-red-800 hover:ring-2 ring-red-200 transition ${piFilter === 'rejected' ? 'ring-2' : ''}`}
+            >
+              Rejected ({piCounts.rejected || 0})
+            </button>
+
+            {hydratingDocs && (
+              <span className="text-[11px] text-gray-500 ml-2">Loading latest document statuses…</span>
+            )}
           </div>
         </div>
       </div>

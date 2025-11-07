@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, UserPlus, Upload, Edit, LogOut, Trash2, Hash, User, Mail, Shield, Building, Target, Calendar, MoreHorizontal, TrendingUp, AlertTriangle, LogIn } from 'lucide-react';
 import departmentUserService, { apiToUiDepartment } from '../../api/admin_api/departmentUserService';
 import { useAuth } from '../../context/AuthContext';
+import toastManager from '../../utils/ToastManager';
 
 const SalesDepartmentUser = ({ setActiveView }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -505,8 +506,12 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                   await fetchUsers();
                   setShowAddModal(false);
                   setNewUser({ username: '', email: '', password: '', target: '', targetStartDate: '', targetDurationDays: '30', customDays: '' });
+                  toastManager.success('User created successfully');
                 } catch (err) {
-                  setError(err.message || 'Failed to create user');
+                  // Extract error message from API response
+                  const errorMessage = err?.data?.error || err?.data?.message || err?.message || 'Failed to create user';
+                  setError(errorMessage);
+                  toastManager.error(errorMessage);
                 } finally {
                   setSaving(false);
                 }
@@ -697,8 +702,12 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                   await fetchUsers();
                   setShowEditModal(false);
                   setEditingUser(null);
+                  toastManager.success('User updated successfully');
                 } catch (err) {
-                  setError(err.message || 'Failed to update user');
+                  // Extract error message from API response
+                  const errorMessage = err?.data?.error || err?.data?.message || err?.message || 'Failed to update user';
+                  setError(errorMessage);
+                  toastManager.error(errorMessage);
                 } finally {
                   setSavingEdit(false);
                 }

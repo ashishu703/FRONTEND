@@ -15,12 +15,33 @@ const LeadStatusPreview = ({ lead, onClose }) => {
   const [latestPI, setLatestPI] = useState(null);
   const [payments, setPayments] = useState([]);
   const [paymentSummary, setPaymentSummary] = useState(null);
+  const [history, setHistory] = useState([]);
+
+  const formatIndianDateTime = (dateStr, timeStr, createdAt) => {
+    try {
+      if (dateStr || timeStr) {
+        const date = dateStr ? new Date(dateStr) : new Date(createdAt || Date.now());
+        if (timeStr) {
+          const [hh, mm] = String(timeStr).split(':');
+          date.setHours(Number(hh || 0), Number(mm || 0), 0, 0);
+        }
+        return date.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      }
+      if (createdAt) return new Date(createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (_) {}
+    return '';
+  };
 
   useEffect(() => {
     let cancelled = false;
     async function loadDocs() {
       try {
         if (!lead?.id) return;
+        // Load lead history for full timeline
+        try {
+          const hRes = await apiClient.get(API_ENDPOINTS.SALESPERSON_LEAD_HISTORY(lead.id));
+          if (!cancelled) setHistory(hRes?.data?.data || hRes?.data || []);
+        } catch (_) {}
         const qRes = await quotationService.getQuotationsByCustomer(lead.id);
         const qList = (qRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         const q = qList[0] || null;
@@ -112,107 +133,45 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                 </div>
               </div>
 
-              {/* Follow Up Status */}
-              <div className="relative flex items-start">
-                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center z-10 ${
-                  lead.follow_up_status === 'appointment scheduled' ? 'bg-blue-500' :
-                  lead.follow_up_status === 'not interested' ? 'bg-red-500' :
-                  lead.follow_up_status === 'interested' ? 'bg-green-500' :
-                  lead.follow_up_status === 'quotation sent' ? 'bg-purple-500' :
-                  lead.follow_up_status === 'negotiation' ? 'bg-orange-500' :
-                  lead.follow_up_status === 'close order' ? 'bg-emerald-500' :
-                  lead.follow_up_status === 'closed/lost' ? 'bg-red-500' :
-                  lead.follow_up_status === 'call back request' ? 'bg-yellow-500' :
-                  lead.follow_up_status === 'unreachable/call not connected' ? 'bg-red-500' :
-                  lead.follow_up_status === 'currently not required' ? 'bg-gray-500' :
-                  lead.follow_up_status === 'not relevant' ? 'bg-gray-500' :
-                  'bg-gray-500'
-                }`}>
-                  <Clock className="h-4 w-4 text-white" />
-                </div>
-                <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-gray-900">Follow Up Status</h5>
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
-                        lead.follow_up_status === 'appointment scheduled' ? 'bg-blue-100 text-blue-800' :
-                        lead.follow_up_status === 'not interested' ? 'bg-red-100 text-red-800' :
-                        lead.follow_up_status === 'interested' ? 'bg-green-100 text-green-800' :
-                        lead.follow_up_status === 'quotation sent' ? 'bg-purple-100 text-purple-800' :
-                        lead.follow_up_status === 'negotiation' ? 'bg-orange-100 text-orange-800' :
-                        lead.follow_up_status === 'close order' ? 'bg-emerald-100 text-emerald-800' :
-                        lead.follow_up_status === 'closed/lost' ? 'bg-red-100 text-red-800' :
-                        lead.follow_up_status === 'call back request' ? 'bg-yellow-100 text-yellow-800' :
-                        lead.follow_up_status === 'unreachable/call not connected' ? 'bg-red-100 text-red-800' :
-                        lead.follow_up_status === 'currently not required' ? 'bg-gray-100 text-gray-800' :
-                        lead.follow_up_status === 'not relevant' ? 'bg-gray-100 text-gray-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {lead.follow_up_status?.toUpperCase() || 'PENDING'}
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {lead.follow_up_remark && (
-                        <div className="font-bold text-gray-900 mb-1">{lead.follow_up_remark}</div>
-                      )}
-                      {lead.follow_up_date && lead.follow_up_time && (
-                        <div>Scheduled: {lead.follow_up_date} at {lead.follow_up_time}</div>
-                      )}
-                      <div>Updated: {lead.updated_at ? new Date(lead.updated_at).toLocaleDateString('en-GB') : 'N/A'}</div>
+              {/* Historical follow ups */}
+              {[...history].sort((a,b)=> new Date(a.created_at || a.follow_up_date || 0) - new Date(b.created_at || b.follow_up_date || 0)).map((h, idx) => (
+                <div key={`${h.id || idx}`} className="relative flex items-start">
+                  <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center z-10 ${h.follow_up_status ? 'bg-blue-500' : 'bg-gray-400'}`}>
+                    <span className="text-[10px] text-white font-semibold">{idx + 1}</span>
+                  </div>
+                  <div className="ml-4 flex-1">
+                    <div className="bg-white border border-gray-200 rounded-md p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <h5 className="font-medium text-gray-900 text-sm">Follow Up</h5>
+                        {h.sales_status && (
+                          <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-[10px] font-medium rounded">{String(h.sales_status).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div className="text-[13px] text-gray-700">
+                        <div className="mb-0.5"><span className="font-medium">Status:</span> {h.follow_up_status || '—'}</div>
+                        {h.follow_up_remark && <div className="mb-0.5"><span className="font-medium">Remark:</span> {h.follow_up_remark}</div>}
+                        {(h.follow_up_date || h.follow_up_time || h.created_at) && (
+                          <div className="text-[11px] text-gray-500">{formatIndianDateTime(h.follow_up_date, h.follow_up_time, h.created_at)}</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ))}
 
-              {/* Lead Status */}
-              <div className="relative flex items-start">
-                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center z-10 ${
-                  lead.sales_status === 'pending' ? 'bg-yellow-500' :
-                  lead.sales_status === 'running' ? 'bg-blue-500' :
-                  lead.sales_status === 'converted' ? 'bg-green-500' :
-                  (lead.sales_status === 'lost/closed' || lead.sales_status === 'lost' || lead.sales_status === 'closed' || lead.sales_status === 'loose') ? 'bg-red-500' :
-                  lead.sales_status === 'interested' ? 'bg-purple-500' :
-                  (lead.sales_status === 'win lead' || lead.sales_status === 'win/closed') ? 'bg-emerald-500' :
-                  'bg-gray-500'
-                }`}>
-                  <Clock className="h-4 w-4 text-white" />
-                </div>
-                <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-gray-900">Lead Status</h5>
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
-                        lead.sales_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        lead.sales_status === 'running' ? 'bg-blue-100 text-blue-800' :
-                        lead.sales_status === 'converted' ? 'bg-green-100 text-green-800' :
-                        (lead.sales_status === 'lost/closed' || lead.sales_status === 'lost' || lead.sales_status === 'closed' || lead.sales_status === 'loose') ? 'bg-red-100 text-red-800' :
-                        lead.sales_status === 'interested' ? 'bg-purple-100 text-purple-800' :
-                        (lead.sales_status === 'win lead' || lead.sales_status === 'win/closed') ? 'bg-emerald-100 text-emerald-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {lead.sales_status?.toUpperCase() || 'PENDING'}
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {lead.sales_status_remark && (
-                        <div className="font-bold text-gray-900 mb-1">{lead.sales_status_remark}</div>
-                      )}
-                      <div>Updated: {lead.updated_at ? new Date(lead.updated_at).toLocaleDateString('en-GB') : 'N/A'}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* Follow Up Status (current) - removed to avoid duplication */}
+              {/* Lead Status - removed to avoid duplication */}
 
               {/* Quotation Status */}
               <div className="relative flex items-start">
-                <div className="flex-shrink-0 w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center z-10">
-                  <FileText className="h-4 w-4 text-white" />
+                <div className="flex-shrink-0 w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center z-10">
+                  <FileText className="h-3.5 w-3.5 text-white" />
                 </div>
                 <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-gray-900">Quotation Status</h5>
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                  <div className="bg-white border border-gray-200 rounded-md p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <h5 className="font-medium text-gray-900 text-sm">Quotation Status</h5>
+                      <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${
                         (latestQuotation?.status || '').toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
                         (latestQuotation?.status || '').toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
                         (latestQuotation?.status ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800')
@@ -220,8 +179,8 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                         {(latestQuotation?.status || 'PENDING').toUpperCase()}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      <div>Date: {latestQuotation?.quotation_date ? new Date(latestQuotation.quotation_date).toLocaleDateString('en-GB') : 'N/A'}</div>
+                    <div className="text-[13px] text-gray-700">
+                      <div>Date: {latestQuotation?.quotation_date ? new Date(latestQuotation.quotation_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A'}</div>
                       <div>No.: {latestQuotation?.quotation_number || 'N/A'}</div>
                     </div>
                   </div>
@@ -230,14 +189,14 @@ const LeadStatusPreview = ({ lead, onClose }) => {
 
               {/* PI Status */}
               <div className="relative flex items-start">
-                <div className="flex-shrink-0 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center z-10">
-                  <Receipt className="h-4 w-4 text-white" />
+                <div className="flex-shrink-0 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center z-10">
+                  <Receipt className="h-3.5 w-3.5 text-white" />
                 </div>
                 <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-gray-900">PI Status</h5>
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                  <div className="bg-white border border-gray-200 rounded-md p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <h5 className="font-medium text-gray-900 text-sm">PI Status</h5>
+                      <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${
                         (latestPI?.status || '').toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
                         (latestPI?.status || '').toLowerCase() === 'pending_approval' ? 'bg-yellow-100 text-yellow-800' :
                         (latestPI?.status ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800')
@@ -245,8 +204,8 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                         {(latestPI?.status || 'PENDING').toUpperCase()}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      <div>Date: {latestPI?.created_at ? new Date(latestPI.created_at).toLocaleDateString('en-GB') : 'N/A'}</div>
+                    <div className="text-[13px] text-gray-700">
+                      <div>Date: {latestPI?.created_at ? new Date(latestPI.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A'}</div>
                       <div>No.: {latestPI?.pi_number || 'N/A'}</div>
                     </div>
                   </div>
@@ -255,14 +214,14 @@ const LeadStatusPreview = ({ lead, onClose }) => {
 
               {/* Payment Status */}
               <div className="relative flex items-start">
-                <div className="flex-shrink-0 w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center z-10">
-                  <CreditCard className="h-4 w-4 text-white" />
+                <div className="flex-shrink-0 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center z-10">
+                  <CreditCard className="h-3.5 w-3.5 text-white" />
                 </div>
                 <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-gray-900">Payment Status</h5>
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                  <div className="bg-white border border-gray-200 rounded-md p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <h5 className="font-medium text-gray-900 text-sm">Payment Status</h5>
+                      <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${
                         paymentSummary && paymentSummary.remaining <= 0 ? 'bg-green-100 text-green-800' :
                         paymentSummary && paymentSummary.paid > 0 ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800'
@@ -271,7 +230,7 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                          paymentSummary && paymentSummary.paid > 0 ? 'PARTIAL' : 'PENDING'}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-600 space-y-2">
+                    <div className="text-[13px] text-gray-700 space-y-1">
                       {paymentSummary && (
                         <>
                           <div className="font-medium text-gray-900">Total: ₹{Number(paymentSummary.total || 0).toLocaleString('en-IN')}</div>

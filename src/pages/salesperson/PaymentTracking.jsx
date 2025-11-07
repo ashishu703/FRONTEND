@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Plus, RotateCw, ChevronDown, X, Save, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
-export default function ProductToolbar({ onSearch, onAddProduct, onFilterChange, onRefresh, products = [], loading = false }) {
+export default function ProductToolbar({ onSearch, onAddProduct, onFilterChange, onRefresh, products = [], loading = false, showBadges = false }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     paymentType: '', // 'advance', 'due', or ''
@@ -166,35 +166,37 @@ export default function ProductToolbar({ onSearch, onAddProduct, onFilterChange,
         </div>
       </div>
 
-      {/* Badge Filters Row (separate full-width row between search and table) */}
-      <div className="w-full mt-2">
-        <div className="flex gap-2 flex-nowrap overflow-x-auto whitespace-nowrap items-center bg-white rounded-md p-2 border border-gray-200">
-          {/* All Payments badge */}
-          <button
-            onClick={() => {
-              const newFilters = { ...filters, paymentType: '', quotationStatus: '' };
-              setFilters(newFilters);
-              onFilterChange(newFilters);
-            }}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 hover:ring-2 ring-gray-300 transition ${!filters.paymentType && !filters.quotationStatus ? 'ring-2' : ''}`}
-            title="All Payments"
-          >
-            All Payments
-          </button>
-
-          {badgeDefs.map(b => (
+      {/* Badge Filters Row (hidden by default) */}
+      {showBadges && (
+        <div className="w-full mt-2">
+          <div className="flex gap-2 flex-nowrap overflow-x-auto whitespace-nowrap items-center bg-white rounded-md p-2 border border-gray-200">
+            {/* All Payments badge */}
             <button
-              key={b.key}
-              onClick={() => toggleBadge(b)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border ${b.bg} ${b.text} hover:ring-2 ${b.ring} transition ` +
-                ((b.type === 'payment' && filters.paymentType === b.key) || (b.type === 'quotation' && filters.quotationStatus === b.key) ? 'ring-2' : '')}
-              title={`Filter: ${b.label}`}
+              onClick={() => {
+                const newFilters = { ...filters, paymentType: '', quotationStatus: '' };
+                setFilters(newFilters);
+                onFilterChange(newFilters);
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 hover:ring-2 ring-gray-300 transition ${!filters.paymentType && !filters.quotationStatus ? 'ring-2' : ''}`}
+              title="All Payments"
             >
-              {b.label}
+              All Payments
             </button>
-          ))}
+
+            {badgeDefs.map(b => (
+              <button
+                key={b.key}
+                onClick={() => toggleBadge(b)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border ${b.bg} ${b.text} hover:ring-2 ${b.ring} transition ` +
+                  ((b.type === 'payment' && filters.paymentType === b.key) || (b.type === 'quotation' && filters.quotationStatus === b.key) ? 'ring-2' : '')}
+                title={`Filter: ${b.label}`}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Add/Edit Item Modal */}
       {showAddItemModal && (

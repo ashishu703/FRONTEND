@@ -33,40 +33,67 @@ const SalesDashboard = () => {
 
         const users = response.data.users || response.data;
 
-        // Helper: aggregate lead metrics for a user
+        // Helper: aggregate lead metrics for a user with all requested statuses
         const aggregateMetrics = (leads) => {
           const result = {
-            pending: { count: 0, total: 0 },
-            followUp: { count: 0, total: 0 },
-            done: { count: 0, total: 0 },
-            notConnected: { count: 0, total: 0 },
-            notInterested: { count: 0, total: 0 },
-            meetingScheduled: { count: 0, total: 0 },
+            totalLeads: 0,
+            pending: 0,
+            running: 0,
+            converted: 0,
+            interested: 0,
+            winClosed: 0,
+            closed: 0,
+            lost: 0,
+            meetingScheduled: 0,
+            quotationSent: 0,
+            closedLostFollowup: 0,
           };
 
           const total = Array.isArray(leads) ? leads.length : 0;
+          result.totalLeads = total;
+          
           for (const l of leads || []) {
-            const status = String(l.sales_status || '').toLowerCase();
-            switch (status) {
+            const salesStatus = String(l.sales_status || '').toLowerCase();
+            const followUpStatus = String(l.follow_up_status || '').toLowerCase();
+            
+            // Count by sales_status
+            switch (salesStatus) {
               case 'pending':
-                result.pending.count += 1; break;
-              case 'follow_up':
-                result.followUp.count += 1; break;
-              case 'done':
+                result.pending += 1; break;
+              case 'running':
+              case 'in_progress':
+                result.running += 1; break;
+              case 'converted':
+                result.converted += 1; break;
+              case 'interested':
+                result.interested += 1; break;
+              case 'win/closed':
+              case 'win':
+              case 'win lead':
+                result.winClosed += 1; break;
               case 'closed':
-                result.done.count += 1; break;
-              case 'not_connected':
-                result.notConnected.count += 1; break;
-              case 'not_interested':
-                result.notInterested.count += 1; break;
-              case 'meeting_scheduled':
-                result.meetingScheduled.count += 1; break;
+                result.closed += 1; break;
+              case 'lost':
+              case 'loose':
+                result.lost += 1; break;
+              default:
+                break;
+            }
+            
+            // Count by follow_up_status
+            switch (followUpStatus) {
+              case 'appointment scheduled':
+              case 'meeting scheduled':
+                result.meetingScheduled += 1; break;
+              case 'quotation sent':
+                result.quotationSent += 1; break;
+              case 'closed/lost':
+                result.closedLostFollowup += 1; break;
               default:
                 break;
             }
           }
-          // Set totals uniformly to the lead count for display n/total
-          Object.keys(result).forEach(k => result[k].total = total);
+          
           return result;
         };
 
@@ -79,7 +106,19 @@ const SalesDashboard = () => {
 
             const target = parseFloat(u.target || u.target_amount || 0) || 0;
             const achieved = parseFloat(u.achieved_target || 0) || 0;
-            const due = Math.max(target - achieved, 0);
+            const remaining = Math.max(target - achieved, 0);
+            
+            // Calculate days left
+            let daysLeft = null;
+            if (u.target_end_date || u.targetEndDate) {
+              const endDate = new Date(u.target_end_date || u.targetEndDate);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              endDate.setHours(0, 0, 0, 0);
+              const diffTime = endDate - today;
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              daysLeft = diffDays > 0 ? diffDays : 0;
+            }
 
             return {
               id: u.id,
@@ -89,14 +128,11 @@ const SalesDashboard = () => {
               role: u.isActive ? 'Department User' : 'Inactive User',
               associatedEmail: u.email,
               date: (u.createdAt || u.created_at) ? new Date(u.createdAt || u.created_at).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '',
-              pending: metrics.pending,
-              followUp: metrics.followUp,
-              done: metrics.done,
-              notConnected: metrics.notConnected,
-              notInterested: metrics.notInterested,
-              meetingScheduled: metrics.meetingScheduled,
-              totalAmount: target,
-              dueAmount: due,
+              ...metrics,
+              target: target,
+              achievedTarget: achieved,
+              remainingTarget: remaining,
+              daysLeft: daysLeft,
             };
           } catch (e) {
             // Fallback if leads fetch fails for this user
@@ -108,14 +144,21 @@ const SalesDashboard = () => {
               role: u.isActive ? 'Department User' : 'Inactive User',
               associatedEmail: u.email,
               date: (u.createdAt || u.created_at) ? new Date(u.createdAt || u.created_at).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '',
-              pending: { count: 0, total: 0 },
-              followUp: { count: 0, total: 0 },
-              done: { count: 0, total: 0 },
-              notConnected: { count: 0, total: 0 },
-              notInterested: { count: 0, total: 0 },
-              meetingScheduled: { count: 0, total: 0 },
-              totalAmount: parseFloat(u.target || 0) || 0,
-              dueAmount: Math.max(parseFloat(u.target || 0) - (parseFloat(u.achieved_target || 0) || 0), 0)
+              totalLeads: 0,
+              pending: 0,
+              running: 0,
+              converted: 0,
+              interested: 0,
+              winClosed: 0,
+              closed: 0,
+              lost: 0,
+              meetingScheduled: 0,
+              quotationSent: 0,
+              closedLostFollowup: 0,
+              target: parseFloat(u.target || 0) || 0,
+              achievedTarget: parseFloat(u.achieved_target || 0) || 0,
+              remainingTarget: Math.max(parseFloat(u.target || 0) - (parseFloat(u.achieved_target || 0) || 0), 0),
+              daysLeft: null
             };
           }
         }));
@@ -155,8 +198,8 @@ const SalesDashboard = () => {
       department: user.department,
       role: user.role,
       associatedEmail: user.associatedEmail,
-      totalAmount: user.totalAmount,
-      dueAmount: user.dueAmount
+      totalAmount: user.target,
+      dueAmount: user.remainingTarget
     });
     setShowEditModal(true);
   };
@@ -384,78 +427,36 @@ const SalesDashboard = () => {
           </div>
         )}
 
-        {/* Table */}
+        {/* User Performance Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-4 text-left">
-                    <span className="text-sm font-medium text-gray-700 uppercase tracking-wider">#</span>
-                  </th>
-                  <th className="px-3 py-2 text-left">
-                    <div className="flex items-center space-x-1">
-                      <User className="w-3 h-3 text-blue-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Sales User</span>
-                    </div>
-                  </th>
-                  <th className="px-2 py-2 text-center">
-                    <div className="flex items-center justify-center space-x-1">
-                      <i className="fas fa-clock text-orange-500 text-xs"></i>
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">PENDING</span>
-                    </div>
-                  </th>
-                  <th className="px-2 py-2 text-center">
-                    <div className="flex items-center justify-center space-x-1">
-                      <i className="fas fa-phone text-purple-500 text-xs"></i>
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">FOLLOW UP</span>
-                    </div>
-                  </th>
-                  <th className="px-2 py-2 text-center">
-                    <div className="flex items-center justify-center space-x-1">
-                      <i className="fas fa-check-circle text-green-500 text-xs"></i>
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">DONE</span>
-                    </div>
-                  </th>
-                  <th className="px-2 py-2 text-center">
-                    <div className="flex items-center justify-center space-x-1">
-                      <i className="fas fa-times-circle text-blue-400 text-xs"></i>
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">NOT CONNECTED</span>
-                    </div>
-                  </th>
-                  <th className="px-2 py-2 text-center">
-                    <div className="flex items-center justify-center space-x-1">
-                      <i className="fas fa-user-slash text-red-500 text-xs"></i>
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">NOT INTERESTED</span>
-                    </div>
-                  </th>
-                  <th className="px-2 py-2 text-center">
-                    <div className="flex items-center justify-center space-x-1">
-                      <i className="fas fa-calendar-check text-blue-600 text-xs"></i>
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">MEETING SCHEDULED</span>
-                    </div>
-                  </th>
-                  <th className="px-2 py-2 text-center">
-                    <div className="flex items-center justify-center space-x-1">
-                      <DollarSign className="w-3 h-3 text-green-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">TOTAL TARGET</span>
-                    </div>
-                  </th>
-                  <th className="px-2 py-2 text-center">
-                    <div className="flex items-center justify-center space-x-1">
-                      <DollarSign className="w-3 h-3 text-red-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">DUE TARGET</span>
-                    </div>
-                  </th>
-                  <th className="px-2 py-2 text-center">
-                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Actions</span>
-                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase">#</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase">Sales User</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Total Leads</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Pending</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Running</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Converted</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Interested</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Win/Closed</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Closed</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Lost</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Meeting Scheduled</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Quotation Sent</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Closed/Lost (F/U)</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Target</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Achieved</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Remaining</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Days Left</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan="11" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="18" className="px-6 py-8 text-center text-gray-500">
                       <div className="flex items-center justify-center space-x-2">
                         <RefreshCw className="w-4 h-4 animate-spin" />
                         <span>Loading user performance data...</span>
@@ -464,62 +465,54 @@ const SalesDashboard = () => {
                   </tr>
                 ) : getFilteredUsers().length === 0 ? (
                   <tr>
-                    <td colSpan="11" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="18" className="px-6 py-8 text-center text-gray-500">
                       No users found. Create some department users to see their performance.
                     </td>
                   </tr>
                 ) : (
                   getFilteredUsers().map((user, index) => (
-                  <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-3 py-2">
-                      <span className="text-xs text-gray-500 font-medium">{index + 1}</span>
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className="text-xs text-gray-900 font-bold">{user.username}</span>
-                    </td>
-                    <td className="px-2 py-2 text-center">
-                      <span className="text-xs text-gray-900">{user.pending.count}/{user.pending.total}</span>
-                    </td>
-                    <td className="px-2 py-2 text-center">
-                      <span className="text-xs text-gray-900">{user.followUp.count}/{user.followUp.total}</span>
-                    </td>
-                    <td className="px-2 py-2 text-center">
-                      <span className="text-xs text-gray-900">{user.done.count}/{user.done.total}</span>
-                    </td>
-                    <td className="px-2 py-2 text-center">
-                      <span className="text-xs text-gray-900">{user.notConnected.count}/{user.notConnected.total}</span>
-                    </td>
-                    <td className="px-2 py-2 text-center">
-                      <span className="text-xs text-gray-900">{user.notInterested.count}/{user.notInterested.total}</span>
-                    </td>
-                    <td className="px-2 py-2 text-center">
-                      <span className="text-xs text-gray-900">{user.meetingScheduled.count}/{user.meetingScheduled.total}</span>
-                    </td>
-                    <td className="px-2 py-2 text-center">
-                      <span className="text-xs text-gray-900">₹{user.totalAmount.toLocaleString()}</span>
-                    </td>
-                    <td className="px-2 py-2 text-center">
-                      <span className="text-xs text-gray-900">₹{user.dueAmount.toLocaleString()}</span>
-                    </td>
-                    <td className="px-2 py-2">
-                      <div className="flex items-center justify-center space-x-2">
-                        <button 
-                          onClick={() => handleEditUser(user)}
-                          className="w-5 h-5 flex items-center justify-center text-blue-600 border border-blue-200 rounded hover:bg-blue-50 transition-colors"
-                          title="Edit User"
-                        >
-                          <Edit className="w-2.5 h-2.5" />
-                        </button>
-                        <button 
-                          onClick={() => handleViewUser(user)}
-                          className="w-5 h-5 flex items-center justify-center text-green-600 border border-green-200 rounded hover:bg-green-50 transition-colors"
-                          title="View Details"
-                        >
-                          <Eye className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-3 py-3 text-xs text-gray-500">{index + 1}</td>
+                      <td className="px-3 py-3">
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900">{user.username}</div>
+                          <div className="text-xs text-gray-500">{user.email}</div>
+                        </div>
+                      </td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-900">{user.totalLeads || 0}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-900">{user.pending || 0}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-900">{user.running || 0}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-900">{user.converted || 0}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-900">{user.interested || 0}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-900">{user.winClosed || 0}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-900">{user.closed || 0}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-900">{user.lost || 0}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-900">{user.meetingScheduled || 0}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-900">{user.quotationSent || 0}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-900">{user.closedLostFollowup || 0}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-900">₹{(user.target || 0).toLocaleString('en-IN')}</td>
+                      <td className="px-2 py-3 text-center text-sm text-green-600 font-medium">₹{(user.achievedTarget || 0).toLocaleString('en-IN')}</td>
+                      <td className="px-2 py-3 text-center text-sm text-red-600 font-medium">₹{(user.remainingTarget || 0).toLocaleString('en-IN')}</td>
+                      <td className="px-2 py-3 text-center text-sm text-gray-900">{user.daysLeft !== null ? user.daysLeft : 'N/A'}</td>
+                      <td className="px-2 py-3">
+                        <div className="flex items-center justify-center space-x-2">
+                          <button 
+                            onClick={() => handleEditUser(user)}
+                            className="w-6 h-6 flex items-center justify-center text-blue-600 border border-blue-200 rounded hover:bg-blue-50 transition-colors"
+                            title="Edit User"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </button>
+                          <button 
+                            onClick={() => handleViewUser(user)}
+                            className="w-6 h-6 flex items-center justify-center text-green-600 border border-green-200 rounded hover:bg-green-50 transition-colors"
+                            title="View Details"
+                          >
+                            <Eye className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   ))
                 )}
               </tbody>
@@ -576,28 +569,48 @@ const SalesDashboard = () => {
                 <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Performance Metrics</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Total Leads</span>
+                    <span className="text-sm font-semibold text-gray-900">{selectedUser.totalLeads || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
                     <span className="text-xs text-gray-500">Pending</span>
-                    <span className="text-sm font-semibold text-gray-900">{selectedUser.pending.count}/{selectedUser.pending.total}</span>
+                    <span className="text-sm font-semibold text-gray-900">{selectedUser.pending || 0}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">Follow Up</span>
-                    <span className="text-sm font-semibold text-gray-900">{selectedUser.followUp.count}/{selectedUser.followUp.total}</span>
+                    <span className="text-xs text-gray-500">Running</span>
+                    <span className="text-sm font-semibold text-gray-900">{selectedUser.running || 0}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">Done</span>
-                    <span className="text-sm font-semibold text-gray-900">{selectedUser.done.count}/{selectedUser.done.total}</span>
+                    <span className="text-xs text-gray-500">Converted</span>
+                    <span className="text-sm font-semibold text-gray-900">{selectedUser.converted || 0}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">Not Connected</span>
-                    <span className="text-sm font-semibold text-gray-900">{selectedUser.notConnected.count}/{selectedUser.notConnected.total}</span>
+                    <span className="text-xs text-gray-500">Interested</span>
+                    <span className="text-sm font-semibold text-gray-900">{selectedUser.interested || 0}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">Not Interested</span>
-                    <span className="text-sm font-semibold text-gray-900">{selectedUser.notInterested.count}/{selectedUser.notInterested.total}</span>
+                    <span className="text-xs text-gray-500">Win/Closed</span>
+                    <span className="text-sm font-semibold text-gray-900">{selectedUser.winClosed || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Closed</span>
+                    <span className="text-sm font-semibold text-gray-900">{selectedUser.closed || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Lost</span>
+                    <span className="text-sm font-semibold text-gray-900">{selectedUser.lost || 0}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-gray-500">Meeting Scheduled</span>
-                    <span className="text-sm font-semibold text-gray-900">{selectedUser.meetingScheduled.count}/{selectedUser.meetingScheduled.total}</span>
+                    <span className="text-sm font-semibold text-gray-900">{selectedUser.meetingScheduled || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Quotation Sent</span>
+                    <span className="text-sm font-semibold text-gray-900">{selectedUser.quotationSent || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Closed/Lost (Follow-up)</span>
+                    <span className="text-sm font-semibold text-gray-900">{selectedUser.closedLostFollowup || 0}</span>
                   </div>
                 </div>
               </div>
@@ -607,12 +620,20 @@ const SalesDashboard = () => {
                 <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Financial Information</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">Total Target</span>
-                    <span className="text-sm font-semibold text-gray-900">₹{selectedUser.totalAmount.toLocaleString()}</span>
+                    <span className="text-xs text-gray-500">Target</span>
+                    <span className="text-sm font-semibold text-gray-900">₹{(selectedUser.target || 0).toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">Due Target</span>
-                    <span className="text-sm font-semibold text-gray-900">₹{selectedUser.dueAmount.toLocaleString()}</span>
+                    <span className="text-xs text-gray-500">Achieved Target</span>
+                    <span className="text-sm font-semibold text-green-600">₹{(selectedUser.achievedTarget || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Remaining Target</span>
+                    <span className="text-sm font-semibold text-red-600">₹{(selectedUser.remainingTarget || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Days Left</span>
+                    <span className="text-sm font-semibold text-gray-900">{selectedUser.daysLeft !== null ? selectedUser.daysLeft : 'N/A'}</span>
                   </div>
                 </div>
               </div>

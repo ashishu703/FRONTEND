@@ -79,9 +79,12 @@ class ApiClient {
     }
     
     if (!response.ok) {
-      const error = new Error(data.error || 'An error occurred');
+      // Extract error message from response - check both 'error' and 'message' fields
+      const errorMessage = data.error || data.message || 'An error occurred';
+      const error = new Error(errorMessage);
       error.status = response.status;
       error.data = data;
+      error.message = errorMessage; // Ensure message is set
       throw error;
     }
     
