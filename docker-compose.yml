@@ -1,14 +1,20 @@
 version: '3.8'
 
 services:
-  # Service ka naam 'frontend' hai
-  frontend:
-    # Image build karne ke liye current directory (.) mein Dockerfile use karo
+  # Service ka naam
+  frontend-app:
+    
+    # Isko 'my-frontend-app' naam dega
+    container_name: my-frontend-app
+    
+    # Humesha isi directory mein maujood Dockerfile se build karega
     build: .
-    # Container ka naam 'anode-frontend' rakho
-    container_name: anode-frontend
-    # Local machine ke port 8080 ko container ke port 80 se jodo
+    
+    # Ports mapping:
+    # "<Host_Port>:<Container_Port>"
+    # Aapke VPS ke 3200 port ko container ke 80 port se jodein
     ports:
-      - "8080:80"
-    # Agar container fail ho to automatically restart karo
+      - "3200:80"
+      
+    # Server restart hone par container ko automatically start kar dega
     restart: unless-stopped
