@@ -1,46 +1,34 @@
-name: CI/CD Deploy Frontend
+name: Deploy to VPS
 
+# Yeh workflow tabhi chalega jab 'master' branch mein push hoga
+# (Aapke repo mein 'master' branch hai, 'main' nahi)
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - master
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    # Yeh 'self-hosted' runner par chalega (jo hum agle step mein VPS par banayenge)
+    runs-on: self-hosted
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      # Step 1: Naya code server par pull (checkout) karein
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      # THIS STEP IS ESSENTIAL - it loads the key to log in to your server
-      - name: Setup SSH Agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+      # Step 2: Purana container (agar chal raha hai) band karein
+      - name: Stop and remove old container
+        run: docker-compose down || true
 
-      # This step includes the fix to create the .ssh directory
-      - name: Add remote server to known_hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H 62.72.12.249 >> ~/.ssh/known_hosts
+      # Step 3: Naye code ke saath image ko force-rebuild karein
+      - name: Build new Docker image
+        run: docker-compose build --no-cache
 
-      - name: Deploy on VPS
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-        run: |
-          # Use -A to forward the SSH agent
-          ssh -A deploy@62.72.12.249 "
-            echo '>>> Successfully logged into VPS.'
-            
-            echo '>>> Now attempting git fetch, ignoring server .ssh/config...'
-            cd /home/deploy/app && \
-            
-            # This is the most robust command to force git to use the forwarded key
-            export GIT_SSH_COMMAND=\"ssh -F /dev/null -o IdentitiesOnly=yes\" && \
-            
-            git fetch origin main && \
-            git reset --hard origin/main && \
-            
-            echo '>>> Building and starting Docker containers...'
-            docker compose build --build-arg VITE_API_BASE_URL=${VITE_API_BASE_URL} && \
-            docker compose up -d"
+      # Step 4: Naya container background (-d) mein shuru karein
+      - name: Start new container
+        run: docker-compose up -d
+
+      # Step 5: (Optional) Purani unused Docker images ko delete karein
+      - name: Clean up old images
+        run: docker image prune -f

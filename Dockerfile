@@ -1,37 +1,29 @@
-# Stage 1: Build the application
-FROM node:18-alpine AS builder
+# Stage 1: Build the React/Frontend App
+FROM node:lts-alpine AS builder
 
-# Set the working directory
+# Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
+# Copy package.json and install dependencies
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy the rest of the application source code
+# Copy all source code
 COPY . .
 
-# Declare the build argument
-ARG VITE_API_BASE_URL
-
-# Set the environment variable for the build command
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-
-# Build the application
+# Build the project (yeh 'build' folder banayega)
 RUN npm run build
 
-# Stage 2: Serve the application using Nginx
-FROM nginx:stable-alpine
+# Stage 2: Serve with Nginx
+FROM nginx:alpine
 
-# Copy the build output from the builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy the custom Nginx configuration
+# Nginx ko port 80 par chalane ke liye config file copy karein
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port 80
+# Builder stage se 'build' folder ko Nginx ke server directory mein copy karein
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# Container port 80 ko expose karein (hum ise bahar se 3200 se connect karenge)
 EXPOSE 80
 
 # Start Nginx
