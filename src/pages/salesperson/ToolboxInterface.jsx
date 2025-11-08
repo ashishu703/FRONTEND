@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Calculator, 
   DollarSign, 
@@ -29,7 +29,8 @@ import {
   X,
   Download,
   Eye,
-  Plus
+  Plus,
+  Trash2
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
@@ -98,7 +99,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   const [showBusinessCard, setShowBusinessCard] = useState(false);
   const [showCompanyEmails, setShowCompanyEmails] = useState(false);
   const [showLocations, setShowLocations] = useState(false);
-  const [showCalculators, setShowCalculators] = useState(false);
   const [showHelpingCalculators, setShowHelpingCalculators] = useState(false);
   
   // Product detail state
@@ -112,7 +112,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     'aluminium conductor galvanized steel reinforced',
     'all aluminium alloy conductor',
     'pvc insulated submersible cable',
-    'multi core xlpe insulated aluminium unarmoured cable'
+    'multi core xlpe insulated aluminium unarmoured cable',
+    'multistrand single core copper cable',
+    'multi core copper cable',
+    'pvc insulated single core aluminium cable',
+    'pvc insulated multicore aluminium cable',
+    'submersible winding wire',
+    'twin twisted copper wire',
+    'speaker cable',
+    'cctv cable',
+    'lan cable',
+    'automobile cable',
+    'pv solar cable',
+    'co axial cable',
+    'uni-tube unarmoured optical fibre cable',
+    'armoured unarmoured pvc insulated copper control cable',
+    'telecom switch board cables',
+    'multi core pvc insulated aluminium unarmoured cable',
+    'multi core xlpe insulated aluminium armoured cable',
+    'multi core pvc insulated aluminium armoured cable',
+    'single core xlpe insulated aluminium/copper armoured/unarmoured cable',
+    'single core pvc insulated aluminium/copper armoured/unarmoured cable',
+    'paper cover aluminium conductor'
   ];
   
   // Check if product has data
@@ -123,16 +144,1109 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   const [isFileViewerOpen, setIsFileViewerOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isBusinessCardOpen, setIsBusinessCardOpen] = useState(false);
+  const [isSamriddhiBusinessCardOpen, setIsSamriddhiBusinessCardOpen] = useState(false);
   const [isCompanyEmailsOpen, setIsCompanyEmailsOpen] = useState(false);
+  const [isGstDetailsOpen, setIsGstDetailsOpen] = useState(false);
+  const [isApprovalsOpen, setIsApprovalsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredTools, setFilteredTools] = useState([]);
+  // AB Cable - Costing calculator editable inputs (sheet row 30)
+  const [abPhaseInputs, setAbPhaseInputs] = useState({ cores: 3, strands: 7, strandSize: 2.12 });
+  // CALCUS helper function
+  const getCalcusValue = (strands) => {
+    const map = {
+      3: 3.029,
+      7: 7.091,
+      19: 19.34,
+      37: 37.74,
+      61: 62.35,
+      1: 1.01,
+      6: 6,
+      36: 36,
+      12: 12
+    };
+    return map[strands] || 0;
+  };
+  // CALCUS for row 2, 5, 8 (insulation multiplier)
+  const getCalcusMultiplier = (strands) => {
+    const map = {
+      1: 1,
+      7: 3,
+      19: 5,
+      37: 7,
+      0: 0,
+      12: 3.5
+    };
+    return map[strands] || 0;
+  };
+  const abPhaseGauge = (() => {
+    const s = Number(abPhaseInputs.strandSize) || 0;
+    const n = Number(abPhaseInputs.strands) || 0;
+    const gauge = s * s * n * 0.785; // E30*E30*D30*0.785
+    return Number.isFinite(gauge) ? gauge : 0;
+  })();
+  // CALCUS values
+  const abPhaseCalcus = getCalcusValue(abPhaseInputs.strands); // F30
+  const abPhInnCalcus = getCalcusMultiplier(abPhaseInputs.strands) * Number(abPhaseInputs.strandSize) || 0; // Row 2: IFS(D30=...)*E30
+  // Pricing & details shared inputs
+  const [lengthMeters, setLengthMeters] = useState(1000);
+  const [aluminiumRate, setAluminiumRate] = useState(270.0); // C41
+  const [alloyRate, setAlloyRate] = useState(270.0); // C42
+  const [innerInsuRate, setInnerInsuRate] = useState(120.0); // C43
+  const [outerInsuRate, setOuterInsuRate] = useState(0.0);   // C44
+  const [drumType, setDrumType] = useState("DRUM 2X");
+  
+  // Reverse calculation mode - when user inputs sale price and profit %
+  const [reverseMode, setReverseMode] = useState(false);
+  const [targetSalePrice, setTargetSalePrice] = useState(0);
+  const [targetProfitPercent, setTargetProfitPercent] = useState(0);
+  const drumCost = (() => {
+    const L = Number(lengthMeters) || 0;
+    let ratePerM;
+    switch (drumType) {
+      case "DRUM 4.5 FT":
+        ratePerM = 4;
+        break;
+      case "DRUM 3.5 FT":
+        ratePerM = 2.5;
+        break;
+      case "COIL":
+        ratePerM = 0;
+        break;
+      case "DRUM 2X":
+        ratePerM = 2.5 * 2; // 5 per meter
+        break;
+      case "DRUM":
+        // (2500/I42) * I42 → 2500 flat
+        return 2500;
+      default:
+        ratePerM = 0;
+    }
+    return ratePerM * L;
+  })();
+  const abPhaseKgPerM = (() => {
+    const F = abPhaseCalcus; // CALCUS (F30) - dynamic based on strands
+    const E = Number(abPhaseInputs.strandSize) || 0; // E30
+    const C = Number(abPhaseInputs.cores) || 0; // C30
+    const density = 2.703; // Aluminium density
+    const kg = ((F * E * E * 0.785) * density * C) * (lengthMeters / 1000);
+    return Number.isFinite(kg) ? kg : 0;
+  })();
+  // PH INN INS (row 31) - Gauge: F31 + E31 + E31, with F31 fixed 6.36 mm
+  const [abPhInnIns, setAbPhInnIns] = useState({ thickness: 1.20 });
+  const abPhInnGauge = (() => {
+    const e = Number(abPhInnIns.thickness) || 0;
+    const f = 6.36; // CALCUS value (F31)
+    const val = f + e + e;
+    return Number.isFinite(val) ? val : 0;
+  })();
+  const abPhInnKgPerM = (() => {
+    // Row 2: ((0.785*(((G31)^2)-((F31)^2))*C30)*0.94)/1000*I42
+    const G = Number(abPhInnGauge) || 0; // G31
+    const F = 6.36; // F31
+    const C = Number(abPhaseInputs.cores) || 0; // C30
+    const density = 0.94;
+    const ringArea = 0.785 * (G * G - F * F);
+    const kg = ((ringArea * C) * density) / 1000 * lengthMeters;
+    return Number.isFinite(kg) ? kg : 0;
+  })();
+  // PH OUT INS (row 32) - Gauge: G31 + E32 + E32
+  const [abPhOutIns, setAbPhOutIns] = useState({ thickness: 0 });
+  const abPhOutGauge = (() => {
+    const e = Number(abPhOutIns.thickness) || 0;
+    const g31 = Number(abPhInnGauge) || 0;
+    const val = g31 + e + e;
+    return Number.isFinite(val) ? val : 0;
+  })();
+  const abPhOutKgPerM = (() => {
+    // Row 3: ((0.785*(((G32)^2)-((F32)^2))*C30)*0.94)/1000*I42
+    const G = Number(abPhOutGauge) || 0; // G32
+    const F = Number(abPhInnGauge) || 0; // F32 = G31
+    const C = Number(abPhaseInputs.cores) || 0; // C30
+    const density = 0.94;
+    const ringArea = 0.785 * (G * G - F * F);
+    const kg = ((ringArea * C) * density) / 1000 * lengthMeters;
+    return Number.isFinite(kg) ? kg : 0;
+  })();
+  // STREET LIGHT conductor (row 33) - Gauge: E33*E33*D33*0.785
+  const [abStreetInputs, setAbStreetInputs] = useState({ cores: 1, strands: 7, strandSize: 1.70 });
+  const abStreetGauge = (() => {
+    const s = Number(abStreetInputs.strandSize) || 0;
+    const n = Number(abStreetInputs.strands) || 0;
+    const gauge = s * s * n * 0.785;
+    return Number.isFinite(gauge) ? gauge : 0;
+  })();
+  // CALCUS for STREET (row 4)
+  const abStreetCalcus = getCalcusValue(abStreetInputs.strands); // F33
+  const abStlInnCalcus = getCalcusMultiplier(abStreetInputs.strands) * Number(abStreetInputs.strandSize) || 0; // Row 5: IFS(D33=...)*E33
+  // STL INN/OUT INS thicknesses and derived gauges (rows 34, 35)
+  const [stlInnIns, setStlInnIns] = useState({ thickness: 1.20 });
+  const [stlOutIns, setStlOutIns] = useState({ thickness: 0 });
+  const stlInnGauge = (() => {
+    const e = Number(stlInnIns.thickness) || 0; // E34
+    const f = 5.10; // F34
+    const val = f + e + e;
+    return Number.isFinite(val) ? val : 0;
+  })();
+  const stlOutGauge = (() => {
+    const e = Number(stlOutIns.thickness) || 0; // E35
+    const f = Number(stlInnGauge) || 0; // F35 = G34
+    const val = f + e + e;
+    return Number.isFinite(val) ? val : 0;
+  })();
+  const abStreetKgPerM = (() => {
+    // Row 4: ((F33*E33*E33*0.785)*2.703*C33)*I42/1000
+    const F = abStreetCalcus; // F33 - dynamic CALCUS
+    const E = Number(abStreetInputs.strandSize) || 0; // E33
+    const C = Number(abStreetInputs.cores) || 0; // C33
+    const density = 2.703;
+    const kg = ((F * E * E * 0.785) * density * C) * lengthMeters / 1000;
+    return Number.isFinite(kg) ? kg : 0;
+  })();
+  // MESSENGER conductor (row 36) - Gauge: E36*E36*D36*0.785
+  const [abMessengerInputs, setAbMessengerInputs] = useState({ cores: 1, strands: 7, strandSize: 2.12 });
+  const abMessengerGauge = (() => {
+    const s = Number(abMessengerInputs.strandSize) || 0;
+    const n = Number(abMessengerInputs.strands) || 0;
+    const gauge = s * s * n * 0.785;
+    return Number.isFinite(gauge) ? gauge : 0;
+  })();
+  // CALCUS for MESSENGER (row 7)
+  const abMessengerCalcus = getCalcusValue(abMessengerInputs.strands); // F36
+  const abMsnInnCalcus = getCalcusMultiplier(abMessengerInputs.strands) * Number(abMessengerInputs.strandSize) || 0; // Row 8: IFS(D36=...)*E36
+  const abMessengerKgPerM = (() => {
+    // Row 7: ((F36*E36*E36*0.785)*2.703)*I42/1000
+    const F = abMessengerCalcus; // F36 - dynamic CALCUS
+    const E = Number(abMessengerInputs.strandSize) || 0; // E36
+    const density = 2.703;
+    const kg = ((F * E * E * 0.785) * density) * lengthMeters / 1000;
+    return Number.isFinite(kg) ? kg : 0;
+  })();
+  // MSN INN INS (row 37) - Gauge: F37 + E37 + E37 (F37 = 6.36 mm)
+  const [abMsnInn, setAbMsnInn] = useState({ thickness: 0 });
+  const abMsnInnGauge = (() => {
+    const e = Number(abMsnInn.thickness) || 0;
+    const f = 6.36;
+    const val = f + e + e;
+    return Number.isFinite(val) ? val : 0;
+  })();
+  const abStlInnKgPerM = (() => {
+    // Row 5: (0.785*(((G34)^2)-((F34)^2))*0.94*C33)/1000*I42
+    const G = Number(stlInnGauge) || 0; // G34
+    const F = 5.10; // F34
+    const C = Number(abStreetInputs.cores) || 0; // C33
+    const density = 0.94;
+    const ringArea = 0.785 * (G * G - F * F);
+    const kg = (ringArea * density * C) / 1000 * lengthMeters;
+    return Number.isFinite(kg) ? kg : 0;
+  })();
+  const abStlOutKgPerM = (() => {
+    // Row 6: (0.785*(((G35)^2)-((F35)^2))*0.94*C33)/1000*I42
+    const G = Number(stlOutGauge) || 0; // G35
+    const F = Number(stlInnGauge) || 0; // F35 = G34
+    const C = Number(abStreetInputs.cores) || 0; // C33
+    const density = 0.94;
+    const ringArea = 0.785 * (G * G - F * F);
+    const kg = (ringArea * density * C) / 1000 * lengthMeters;
+    return Number.isFinite(kg) ? kg : 0;
+  })();
+  // MSN OUT INS (row 38) - Gauge: F38 + E38 + E38 (F38 = 6.36 mm)
+  const [abMsnOut, setAbMsnOut] = useState({ thickness: 0 });
+  const abMsnOutGauge = (() => {
+    const e = Number(abMsnOut.thickness) || 0;
+    const f = 6.36;
+    const val = f + e + e;
+    return Number.isFinite(val) ? val : 0;
+  })();
+  const abMsnInnKgPerM = (() => {
+    // Row 8: (0.785*(((G37)^2)-((F37)^2))*0.94*C36)/1000*I42
+    const G = Number(abMsnInnGauge) || 0; // G37
+    const F = 6.36; // F37
+    const C = Number(abMessengerInputs.cores) || 0; // C36
+    const density = 0.94;
+    const ringArea = 0.785 * (G * G - F * F);
+    const kg = (ringArea * density * C) / 1000 * lengthMeters;
+    return Number.isFinite(kg) ? kg : 0;
+  })();
+  const abMsnOutKgPerM = (() => {
+    // Row 9: (0.785*(((G38)^2)-((F38)^2))*0.94*C36)/1000*I42
+    const G = Number(abMsnOutGauge) || 0; // G38
+    const F = 6.36; // F38
+    const C = Number(abMessengerInputs.cores) || 0; // C36
+    const density = 0.94;
+    const ringArea = 0.785 * (G * G - F * F);
+    const kg = (ringArea * density * C) / 1000 * lengthMeters;
+    return Number.isFinite(kg) ? kg : 0;
+  })();
+
+  // Reverse calculation: Calculate required rates from target sale price and profit %
+  const reverseCalculatedRates = (() => {
+    if (!reverseMode || !targetSalePrice || !targetProfitPercent) {
+      return { aluminiumRate, alloyRate, innerInsuRate, outerInsuRate };
+    }
+    
+    // Calculate target base cost per meter from target sale price and profit %
+    // profitPercent = ((salePrice - baseCostPerM) / baseCostPerM) * 100
+    // Solving for baseCostPerM: baseCostPerM = salePrice / (1 + profitPercent/100)
+    const targetBaseCostPerM = targetSalePrice / (1 + targetProfitPercent / 100);
+    const targetTotalCost = targetBaseCostPerM * (lengthMeters || 1);
+    
+    // Calculate current rate-dependent costs (without drum cost)
+    const currentAluminiumCost = (abPhaseKgPerM + abStreetKgPerM) * aluminiumRate;
+    const currentAlloyCost = abMessengerKgPerM * alloyRate;
+    const currentInnerInsuCost = (abPhInnKgPerM + abStlInnKgPerM + abMsnInnKgPerM) * innerInsuRate;
+    const currentOuterInsuCost = (abPhOutKgPerM + abStlOutKgPerM + abMsnOutKgPerM) * outerInsuRate;
+    const currentRateDependentCost = currentAluminiumCost + currentAlloyCost + currentInnerInsuCost + currentOuterInsuCost;
+    
+    // Calculate what the rate-dependent cost should be
+    const targetRateDependentCost = targetTotalCost - drumCost;
+    
+    // Calculate scaling factor
+    const scaleFactor = currentRateDependentCost > 0 ? targetRateDependentCost / currentRateDependentCost : 1;
+    
+    return {
+      aluminiumRate: aluminiumRate * scaleFactor,
+      alloyRate: alloyRate * scaleFactor,
+      innerInsuRate: innerInsuRate * scaleFactor,
+      outerInsuRate: outerInsuRate * scaleFactor
+    };
+  })();
+  
+  // Use reverse calculated rates if in reverse mode, otherwise use normal rates
+  const effectiveAluminiumRate = reverseMode && targetSalePrice && targetProfitPercent ? reverseCalculatedRates.aluminiumRate : aluminiumRate;
+  const effectiveAlloyRate = reverseMode && targetSalePrice && targetProfitPercent ? reverseCalculatedRates.alloyRate : alloyRate;
+  const effectiveInnerInsuRate = reverseMode && targetSalePrice && targetProfitPercent ? reverseCalculatedRates.innerInsuRate : innerInsuRate;
+  const effectiveOuterInsuRate = reverseMode && targetSalePrice && targetProfitPercent ? reverseCalculatedRates.outerInsuRate : outerInsuRate;
+
+  // TOTAL calculations: H30*C41, H31*C43, etc. where H = KG/MTR (total kg) and C = rate
+  // Note: KG/MTR values already include length factor, so they're total kg, not per meter
+  const totalRow1 = abPhaseKgPerM * effectiveAluminiumRate; // H30*C41
+  const totalRow2 = abPhInnKgPerM * effectiveInnerInsuRate; // H31*C43
+  const totalRow3 = abPhOutKgPerM * effectiveOuterInsuRate; // H32*C44
+  const totalRow4 = abStreetKgPerM * effectiveAluminiumRate; // H33*C41
+  const totalRow5 = abStlInnKgPerM * effectiveInnerInsuRate; // H34*C43
+  const totalRow6 = abStlOutKgPerM * effectiveOuterInsuRate; // H35*C44
+  const totalRow7 = abMessengerKgPerM * effectiveAlloyRate; // H36*C42
+  const totalRow8 = abMsnInnKgPerM * effectiveInnerInsuRate; // H37*C43
+  const totalRow9 = abMsnOutKgPerM * effectiveOuterInsuRate; // H38*C44
+  // SUM(I30:I41) includes all totals + drum cost
+  // I30=I30, I31=I31, ..., I38=I38 (rows 1-9), I39=drum, I40=freight, I41=0 or other
+  const sumI30ToI41 = totalRow1 + totalRow2 + totalRow3 + totalRow4 + totalRow5 + totalRow6 + totalRow7 + totalRow8 + totalRow9 + drumCost;
+  // Base cost per meter
+  const baseCostPerM = sumI30ToI41 / (lengthMeters || 1);
+  
+  // SALE PRICE calculation
+  // In reverse mode: use target sale price directly
+  // In normal mode: use baseCostPerM * 1.2 (20% markup) or calculate from profit %
+  const salePrice = reverseMode && targetSalePrice && targetProfitPercent 
+    ? targetSalePrice 
+    : baseCostPerM * 1.2; // Default 20% markup
+  
+  // PROFIT calculation
+  // In reverse mode: use target profit % directly
+  // In normal mode: calculate from salePrice and baseCostPerM
+  const profitPercent = reverseMode && targetSalePrice && targetProfitPercent
+    ? targetProfitPercent
+    : ((salePrice - baseCostPerM) / (baseCostPerM || 1)) * 100;
+
+  // Function to apply calculated rates from reverse mode
+  const applyCalculatedRates = () => {
+    if (reverseMode && targetSalePrice && targetProfitPercent) {
+      setAluminiumRate(reverseCalculatedRates.aluminiumRate);
+      setAlloyRate(reverseCalculatedRates.alloyRate);
+      setInnerInsuRate(reverseCalculatedRates.innerInsuRate);
+      setOuterInsuRate(reverseCalculatedRates.outerInsuRate);
+    }
+  };
+
+  // Summary weights
+  const aluminiumWt = Math.round(abPhaseKgPerM + abStreetKgPerM);
+  const alloyWt = Math.round(abMessengerKgPerM);
+  const innerXlpeWt = Math.round(abPhInnKgPerM + abStlInnKgPerM + abMsnInnKgPerM);
+  const outerXlpeWt = Math.round(abPhOutKgPerM + abStlOutKgPerM + abMsnOutKgPerM);
+  const cableWt = aluminiumWt + alloyWt + innerXlpeWt + outerXlpeWt;
   const businessCardRef = useRef(null);
+  const samriddhiBusinessCardRef = useRef(null);
+  // Reduction Gauge Calculator - shared Reduction % (rowSpan over 3 rows)
+  const [rgReduction, setRgReduction] = useState(10);
+  // Reduction Gauge - PHASE area (C49) and derived STRAND (E49)
+  const [rgPhaseArea, setRgPhaseArea] = useState("25 SQMM");
+  const rgPhaseAreaNum = (() => {
+    const str = String(rgPhaseArea || "");
+    const num = Number(str.replace(/[^\d.]/g, ""));
+    return Number.isFinite(num) ? num : 0;
+  })();
+  const rgPhaseStrand = (() => {
+    const c = rgPhaseAreaNum;
+    if (c === 0) return "0";
+    if (c < 51) return "7";
+    if (c > 51) return "19";
+    return "0";
+  })();
+  // PHASE WIRE (F49): SQRT((C49 - (C49*D49/100))/E49/0.785)
+  const rgPhaseWire = (() => {
+    const area = rgPhaseAreaNum; // C49
+    const reduction = Number(rgReduction) || 0; // D49 (%)
+    const strands = Number(rgPhaseStrand) || 0; // E49
+    if (area <= 0 || strands <= 0) return 0;
+    const effectiveArea = area - (area * reduction / 100);
+    const value = effectiveArea / strands / 0.785;
+    const wire = Math.sqrt(Math.max(value, 0)); // SQRT
+    return Number.isFinite(wire) ? wire : 0;
+  })();
+  // PHASE INSULATION (G49)
+  const rgPhaseInsulation = (() => {
+    const d = Number(rgReduction) || 0; // D49
+    const c = rgPhaseAreaNum; // C49
+    let addByReduction = 0;
+    if (d >= 10 && d <= 20) addByReduction = 0.1;
+    else if (d >= 21 && d <= 30) addByReduction = 0.2;
+    else if (d >= 31 && d <= 50) addByReduction = 0.3;
+    else if (d === 0) addByReduction = 0;
+    let baseByArea = 0;
+    if (c >= 0 && c <= 40) baseByArea = 1.2;
+    else if (c >= 41 && c <= 95) baseByArea = 1.5;
+    else if (c >= 96 && c <= 200) baseByArea = 1.8;
+    const res = addByReduction + baseByArea;
+    return Number.isFinite(res) ? res : 0;
+  })();
+  // PHASE OUTER DIA (H49): (IFS(E49="19",5,E49="7",3)*F49) + G49*2
+  const rgPhaseOuterDia = (() => {
+    const strand = String(rgPhaseStrand || ""); // E49
+    const wire = Number(rgPhaseWire) || 0; // F49
+    const ins = Number(rgPhaseInsulation) || 0; // G49
+    let multiplier = 0;
+    if (strand === "19") multiplier = 5;
+    else if (strand === "7") multiplier = 3;
+    const val = multiplier * wire + ins * 2;
+    return Number.isFinite(val) ? val : 0;
+  })();
+  // Reduction Gauge - STREET LIGHT area (C50) and derived STRAND (E50)
+  const [rgStreetArea, setRgStreetArea] = useState("16 SQMM");
+  const rgStreetAreaNum = (() => {
+    const str = String(rgStreetArea || "");
+    const num = Number(str.replace(/[^\d.]/g, ""));
+    return Number.isFinite(num) ? num : 0;
+  })();
+  const rgStreetStrand = (() => {
+    const c = rgStreetAreaNum;
+    if (c === 0) return "0";
+    if (c > 10) return "7";
+    return "0";
+  })();
+  // STREET WIRE (F50): SQRT((C50 - (C50*D49/100))/E50/0.785)
+  const rgStreetWire = (() => {
+    const area = rgStreetAreaNum; // C50
+    const reduction = Number(rgReduction) || 0; // D49 shared
+    const strands = Number(rgStreetStrand) || 0; // E50
+    if (area <= 0 || strands <= 0) return 0;
+    const effectiveArea = area - (area * reduction / 100);
+    const value = effectiveArea / strands / 0.785;
+    const wire = Math.sqrt(Math.max(value, 0));
+    return Number.isFinite(wire) ? wire : 0;
+  })();
+  // STREET INSULATION (G50)
+  const rgStreetInsulation = (() => {
+    const d = Number(rgReduction) || 0; // D49
+    const c = rgStreetAreaNum; // C50
+    let addByReduction = 0;
+    if (d >= 10 && d <= 20) addByReduction = 0.1;
+    else if (d >= 21 && d <= 30) addByReduction = 0.2;
+    else if (d >= 31 && d <= 50) addByReduction = 0.3;
+    else if (d === 0) addByReduction = 0;
+    let baseByArea = 0;
+    if (c <= 49) baseByArea = 1.2;
+    else if (c <= 120) baseByArea = 1.5;
+    const res = addByReduction + baseByArea;
+    return Number.isFinite(res) ? res : 0;
+  })();
+  // STREET OUTER DIA (H50): (IFS(E50="19",5,E50="7",3)*F50) + G50*2
+  const rgStreetOuterDia = (() => {
+    const strand = String(rgStreetStrand || ""); // E50
+    const wire = Number(rgStreetWire) || 0; // F50
+    const ins = Number(rgStreetInsulation) || 0; // G50
+    let multiplier = 0;
+    if (strand === "19") multiplier = 5;
+    else if (strand === "7") multiplier = 3;
+    const val = multiplier * wire + ins * 2;
+    return Number.isFinite(val) ? val : 0;
+  })();
+  // Reduction Gauge - MESSENGER area (C51) and derived STRAND (E51)
+  const [rgMessengerArea, setRgMessengerArea] = useState("25 SQMM");
+  const rgMessengerAreaNum = (() => {
+    const str = String(rgMessengerArea || "");
+    const num = Number(str.replace(/[^\d.]/g, ""));
+    return Number.isFinite(num) ? num : 0;
+  })();
+  const rgMessengerStrand = (() => {
+    const c = rgMessengerAreaNum;
+    if (c === 0) return "0";
+    if (c > 10) return "7";
+    return "0";
+  })();
+  // MESSENGER WIRE (F51): SQRT((C51 - (C51*D49/100))/E51/0.785)
+  const rgMessengerWire = (() => {
+    const area = rgMessengerAreaNum; // C51
+    const reduction = Number(rgReduction) || 0; // D49 shared
+    const strands = Number(rgMessengerStrand) || 0; // E51
+    if (area <= 0 || strands <= 0) return 0;
+    const effectiveArea = area - (area * reduction / 100);
+    const value = effectiveArea / strands / 0.785;
+    const wire = Math.sqrt(Math.max(value, 0));
+    return Number.isFinite(wire) ? wire : 0;
+  })();
+  // MESSENGER INSULATION (G51)
+  const rgMessengerInsulation = (() => {
+    const d = Number(rgReduction) || 0; // D49
+    const c = rgMessengerAreaNum; // C51
+    let addByReduction = 0;
+    if (d >= 10 && d <= 20) addByReduction = 0.1;
+    else if (d >= 21 && d <= 30) addByReduction = 0.2;
+    else if (d >= 31 && d <= 50) addByReduction = 0.3;
+    else if (d === 0) addByReduction = 0;
+    let baseByArea = 0;
+    if (c <= 49) baseByArea = 1.2;
+    else if (c <= 120) baseByArea = 1.5;
+    const res = addByReduction + baseByArea;
+    return Number.isFinite(res) ? res : 0;
+  })();
+  // MESSENGER OUTER DIA (H51): (IFS(E51="19",5,E51="7",3)*F51) + G51*2
+  const rgMessengerOuterDia = (() => {
+    const strand = String(rgMessengerStrand || ""); // E51
+    const wire = Number(rgMessengerWire) || 0; // F51
+    const ins = Number(rgMessengerInsulation) || 0; // G51
+    let multiplier = 0;
+    if (strand === "19") multiplier = 5;
+    else if (strand === "7") multiplier = 3;
+    const val = multiplier * wire + ins * 2;
+    return Number.isFinite(val) ? val : 0;
+  })();
+
+  // Wire/Cable Selection Calculator state
+  const [wsPhase, setWsPhase] = useState(3); // B57
+  const [wsPower, setWsPower] = useState(20.0); // C57
+  const [wsPowerUnit, setWsPowerUnit] = useState('HP'); // D57
+  const [wsLength, setWsLength] = useState(500); // E57 (value only for display now)
+  const [wsLengthUnit, setWsLengthUnit] = useState('MTR');
+  // Current calculation per provided formula
+  const wsCurrent = (() => {
+    const power = Number(wsPower) || 0;
+    const unit = wsPowerUnit;
+    const phase = Number(wsPhase) || 1;
+    let powerKw;
+    if (unit === 'HP') powerKw = power * 0.746;
+    else if (unit === 'WATT') powerKw = power * 0.001;
+    else powerKw = power; // KW
+    const numerator = powerKw * 1000;
+    const phaseFactor = phase === 3 ? 1.732 : 1;
+    const denominator = phaseFactor * 0.83 * 0.83 * 430;
+    const amps = denominator > 0 ? numerator / denominator : 0;
+    return Number.isFinite(amps) ? amps : 0;
+  })();
+  // Actual Gauge calculation
+  const wsActualGauge = (() => {
+    const current = Number(wsCurrent) || 0; // G57
+    const phase = Number(wsPhase) || 1; // B57
+    const lengthVal = Number(wsLength) || 0; // E57
+    const lengthMetersSel = wsLengthUnit === 'FT' ? lengthVal * 0.3048 : lengthVal;
+    const phaseFactor = phase === 3 ? 1.732 : 1;
+    const option1 = current / 5;
+    const option2 = (phaseFactor * current * 17.25 * lengthMetersSel) / ((0.05 * 430) * 1000);
+    const result = Math.max(option1, option2);
+    return Number.isFinite(result) ? result : 0;
+  })();
+  // Wire Size mapping from Actual Gauge (H57)
+  const wsWireSize = (() => {
+    const h = Number(wsActualGauge) || 0;
+    if (h <= 0.5) return '0.50 SQMM';
+    if (h <= 0.75) return '0.75 SQMM';
+    if (h <= 1.5) return '1.5 SQMM';
+    if (h <= 2.5) return '2.5 SQMM';
+    if (h <= 4) return '4 SQMM';
+    if (h <= 6) return '6 SQMM';
+    if (h <= 10) return '10 SQMM';
+    if (h <= 16) return '16 SQMM';
+    if (h <= 25) return '25 SQMM';
+    if (h <= 35) return '35 SQMM';
+    if (h <= 50) return '50 SQMM';
+    if (h <= 70) return '70 SQMM';
+    if (h <= 95) return '95 SQMM';
+    return 'Above Standard';
+  })();
+  
 
   // Image upload state
   const [productImages, setProductImages] = useState({}); // { [productName]: { [rowIndex]: [dataUrl1, ...] } }
   const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [viewingImageIndex, setViewingImageIndex] = useState(null); // Track which row index is being viewed in modal
+  const technicalCalcRef = useRef(null);
+  const conversionCalcRef = useRef(null);
+  const [isHelpingCalcOpen, setIsHelpingCalcOpen] = useState(false);
+  const [helpingCalcType, setHelpingCalcType] = useState(null); // 'technical' | 'conversional'
+  const closeHelpingCalc = () => { setIsHelpingCalcOpen(false); setHelpingCalcType(null); };
+
+  // Conversional Calculations - state (defaults per screenshots)
+  // Length conversion
+  const [convLenValL, setConvLenValL] = useState(1.00);
+  const [convLenUnitL, setConvLenUnitL] = useState('km');
+  const [convLenValR, setConvLenValR] = useState(1000.00);
+  const [convLenUnitR, setConvLenUnitR] = useState('m');
+
+  // Length conversion function (equivalent to Google Sheets CONVERT)
+  const convertLength = (value, fromUnit, toUnit) => {
+    if (!value || value === 0) return 0;
+    if (fromUnit === toUnit) return value;
+
+    // Convert to meters first (base unit)
+    let valueInMeters = 0;
+    switch (fromUnit) {
+      case 'km': valueInMeters = value * 1000; break;
+      case 'm': valueInMeters = value; break;
+      case 'dm': valueInMeters = value * 0.1; break;
+      case 'cm': valueInMeters = value * 0.01; break;
+      case 'mm': valueInMeters = value * 0.001; break;
+      case 'yd': valueInMeters = value * 0.9144; break;
+      case 'ft': valueInMeters = value * 0.3048; break;
+      case 'in': valueInMeters = value * 0.0254; break;
+      default: valueInMeters = value;
+    }
+
+    // Convert from meters to target unit
+    switch (toUnit) {
+      case 'km': return valueInMeters / 1000;
+      case 'm': return valueInMeters;
+      case 'dm': return valueInMeters / 0.1;
+      case 'cm': return valueInMeters / 0.01;
+      case 'mm': return valueInMeters / 0.001;
+      case 'yd': return valueInMeters / 0.9144;
+      case 'ft': return valueInMeters / 0.3048;
+      case 'in': return valueInMeters / 0.0254;
+      default: return valueInMeters;
+    }
+  };
+
+  // Calculate length conversion result
+  React.useEffect(() => {
+    const result = convertLength(convLenValL, convLenUnitL, convLenUnitR);
+    setConvLenValR(result);
+  }, [convLenValL, convLenUnitL, convLenUnitR]);
+  // Temperature convertor
+  const [ktFactor, setKtFactor] = useState(0.980);
+  const [ktTemp, setKtTemp] = useState(30);
+  const [ktTo20, setKtTo20] = useState(0.943);
+  const getTempTo20Factor = (t) => {
+    const temp = Number(t);
+    const map = {
+      5: 1.064, 6: 1.059, 7: 1.055, 8: 1.05, 9: 1.046,
+      10: 1.042, 11: 1.037, 12: 1.033, 13: 1.029, 14: 1.025,
+      15: 1.02, 16: 1.016, 17: 1.012, 18: 1.008, 19: 1.004,
+      20: 1, 21: 0.996, 22: 0.992, 23: 0.988, 24: 0.984,
+      25: 0.98, 26: 0.977, 27: 0.973, 28: 0.969, 29: 0.965,
+      30: 0.962, 31: 0.958, 32: 0.954, 33: 0.951, 34: 0.947,
+      35: 0.943, 36: 0.94, 37: 0.936, 38: 0.933, 39: 0.929,
+      40: 0.926, 41: 0.923, 42: 0.919, 43: 0.916, 44: 0.912,
+      45: 0.909, 46: 0.906, 47: 0.903, 48: 0.899, 49: 0.896,
+      50: 0.893,
+    };
+    return map.hasOwnProperty(temp) ? map[temp] : 1;
+  };
+  React.useEffect(() => {
+    const factor = getTempTo20Factor(ktTemp);
+    const result = (Number(ktFactor) || 0) * factor;
+    setKtTo20(Number.isFinite(result) ? Number(result.toFixed(3)) : 0);
+  }, [ktFactor, ktTemp]);
+  // Submersible motor selection
+  const [subMotorRating, setSubMotorRating] = useState(5.00);
+  const [subMotorUnit, setSubMotorUnit] = useState('HP');
+  const [subMotorLen, setSubMotorLen] = useState(800);
+  const [subMotorLenUnit, setSubMotorLenUnit] = useState('MTR');
+  const [subVoltDrop, setSubVoltDrop] = useState(21.50);
+  const [subCurrent, setSubCurrent] = useState(7.27);
+  const [subActualGauge, setSubActualGauge] = useState(8.08);
+  const [subCableSize, setSubCableSize] = useState('10 SQMM');
+
+  // Voltage Drop: = 0.05 * (430)
+  React.useEffect(() => {
+    setSubVoltDrop(0.05 * 430);
+  }, []);
+
+  // Current calculation
+  // = ((IF(unit="HP", (0.746*power), IF(unit="WATT", (0.001*power), (1*power))))*1000) / (((1.732))*0.83*0.83*(430))
+  React.useEffect(() => {
+    const power = Number(subMotorRating) || 0;
+    const unit = String(subMotorUnit || '').toUpperCase();
+    let kw = power; // default assume KW
+    if (unit === 'HP') kw = 0.746 * power;
+    else if (unit === 'WATT') kw = 0.001 * power;
+    // total apparent current denominator
+    const denom = (1.732) * 0.83 * 0.83 * 430;
+    const current = denom !== 0 ? (kw * 1000) / denom : 0;
+    setSubCurrent(Number.isFinite(current) ? current : 0);
+  }, [subMotorRating, subMotorUnit]);
+
+  // Actual Gauge:
+  // IF((S27/5) > ((1.732*S27*17.25*P27)/(R27*1000)), (S27/5), ((1.732*S27*17.25*P27)/(R27*1000)))
+  React.useEffect(() => {
+    const S = Number(subCurrent) || 0; // current
+    const Praw = Number(subMotorLen) || 0; // length value
+    const P = subMotorLenUnit === 'FT' ? Praw * 0.3048 : Praw; // convert to meters if FT
+    const R = Number(subVoltDrop) || 0; // voltage drop
+    const left = S / 5;
+    const rightDen = (R * 1000);
+    const right = rightDen !== 0 ? ((1.732) * S * 17.25 * P) / rightDen : 0;
+    const result = left > right ? left : right;
+    setSubActualGauge(Number.isFinite(result) ? result : 0);
+  }, [subCurrent, subMotorLen, subMotorLenUnit, subVoltDrop]);
+
+  // Cable Size:
+  // IFS(T27<=0.5, "0.50 SQMM", T27<=0.75, "0.75 SQMM", T27<=1.5, "1.5 SQMM", T27<=2.5, "2.5 SQMM", T27<=4, "4 SQMM", T27<=6, "6 SQMM", T27<=10, "10 SQMM", T27<=16, "16 SQMM", T27<=25, "25 SQMM", T27<=35, "35 SQMM", T27<=50, "50 SQMM", T27<=70, "70 SQMM", T27<=95, "95 SQMM", TRUE, "Above Standard")
+  React.useEffect(() => {
+    const T = Number(subActualGauge) || 0;
+    let size = "Above Standard";
+    if (T <= 0.5) size = "0.50 SQMM";
+    else if (T <= 0.75) size = "0.75 SQMM";
+    else if (T <= 1.5) size = "1.5 SQMM";
+    else if (T <= 2.5) size = "2.5 SQMM";
+    else if (T <= 4) size = "4 SQMM";
+    else if (T <= 6) size = "6 SQMM";
+    else if (T <= 10) size = "10 SQMM";
+    else if (T <= 16) size = "16 SQMM";
+    else if (T <= 25) size = "25 SQMM";
+    else if (T <= 35) size = "35 SQMM";
+    else if (T <= 50) size = "50 SQMM";
+    else if (T <= 70) size = "70 SQMM";
+    else if (T <= 95) size = "95 SQMM";
+    setSubCableSize(size);
+  }, [subActualGauge]);
+  // Armouring covering
+  const [armOd, setArmOd] = useState(16.00);
+  const [armWireStripOd, setArmWireStripOd] = useState(4.00);
+  const [armWidth, setArmWidth] = useState(25.12);
+  const [armLay, setArmLay] = useState(256.00);
+  const [armCosPhi, setArmCosPhi] = useState(0.9999);
+  const [armInnerOd, setArmInnerOd] = useState(8.00);
+  const [armCoveringPct, setArmCoveringPct] = useState(100.00);
+  const [armNoWires, setArmNoWires] = useState(6);
+  // Armoured OD = S36 + O36 + O36 -> inner OD + wire/strip OD + wire/strip OD
+  React.useEffect(() => {
+    const od = (Number(armInnerOd) || 0) + (Number(armWireStripOd) || 0) * 2;
+    setArmOd(Number.isFinite(od) ? Number(od.toFixed(2)) : 0);
+  }, [armInnerOd, armWireStripOd]);
+  // Width = COS(RADIANS(COS(R36))) * S36 * 3.14
+  React.useEffect(() => {
+    const cosPhiVal = Number(armCosPhi) || 0; // assume this stores COS(Φ)
+    const innerOd = Number(armInnerOd) || 0; // S36
+    const width = Math.cos((cosPhiVal * Math.PI) / 180) * innerOd * 3.14;
+    setArmWidth(Number.isFinite(width) ? Number(width.toFixed(2)) : 0);
+  }, [armCosPhi, armInnerOd]);
+  // Lay = N36 * 16 -> assume N36 corresponds to Wire/Strip OD
+  React.useEffect(() => {
+    const lay = (Number(armWireStripOd) || 0) * 16;
+    setArmLay(Number.isFinite(lay) ? Number(lay.toFixed(2)) : 0);
+  }, [armWireStripOd]);
+  // COS(Φ) = COS(RADIANS(COS(DEGREES(ATAN(ATAN(3.14*S36/Q36))))))
+  React.useEffect(() => {
+    const S = Number(armInnerOd) || 0; // S36 -> INNER OD
+    const Q = Number(armCoveringPct) || 0; // Q36 -> COVERING % (assumed)
+    const base = 3.14 * S / (Q === 0 ? 1 : Q);
+    const atan1 = Math.atan(base); // radians
+    const atan2 = Math.atan(atan1); // radians
+    const degrees = atan2 * (180 / Math.PI); // DEGREES(atan(atan(...)))
+    const cosOfDegrees = Math.cos(degrees * (Math.PI / 180)); // COS(DEGREES(...))
+    const radiansOfCos = cosOfDegrees * (Math.PI / 180); // RADIANS(COS(...))
+    const result = Math.cos(radiansOfCos); // COS(RADIANS(...))
+    setArmCosPhi(Number.isFinite(result) ? Number(result.toFixed(4)) : 0);
+  }, [armInnerOd, armCoveringPct]);
+  // N/O WIRES = P36 * (T36%) / O36 -> width * (covering%/100) / wireStripOd
+  React.useEffect(() => {
+    const width = Number(armWidth) || 0;
+    const cover = (Number(armCoveringPct) || 0) / 100;
+    const od = Number(armWireStripOd) || 1; // avoid div by 0
+    const wires = (width * cover) / od;
+    const rounded = Math.max(0, Math.round(wires));
+    setArmNoWires(Number.isFinite(rounded) ? rounded : 0);
+  }, [armWidth, armCoveringPct, armWireStripOd]);
+  // Energy conversion
+  const [energyValL, setEnergyValL] = useState(1.00);
+  const [energyUnitL, setEnergyUnitL] = useState('J');
+  const [energyValR, setEnergyValR] = useState(0.0010);
+  const [energyUnitR, setEnergyUnitR] = useState('kJ');
+
+  // Energy conversion function (equivalent to Google Sheets CONVERT)
+  const convertEnergy = (value, fromUnit, toUnit) => {
+    if (!value || value === 0) return 0;
+    if (fromUnit === toUnit) return value;
+
+    // Convert to Joules first (base unit)
+    let valueInJoules = 0;
+    switch (fromUnit) {
+      case 'J': valueInJoules = value; break;
+      case 'kJ': valueInJoules = value * 1000; break;
+      case 'Wh': valueInJoules = value * 3600; break;
+      case 'kWh': valueInJoules = value * 3600000; break;
+      case 'cal': valueInJoules = value * 4.184; break;
+      case 'kcal': valueInJoules = value * 4184; break;
+      case 'BTU': valueInJoules = value * 1055.06; break;
+      case 'eV': valueInJoules = value * 1.602176634e-19; break;
+      case 'MJ': valueInJoules = value * 1000000; break;
+      default: valueInJoules = value;
+    }
+
+    // Convert from Joules to target unit
+    switch (toUnit) {
+      case 'J': return valueInJoules;
+      case 'kJ': return valueInJoules / 1000;
+      case 'Wh': return valueInJoules / 3600;
+      case 'kWh': return valueInJoules / 3600000;
+      case 'cal': return valueInJoules / 4.184;
+      case 'kcal': return valueInJoules / 4184;
+      case 'BTU': return valueInJoules / 1055.06;
+      case 'eV': return valueInJoules / 1.602176634e-19;
+      case 'MJ': return valueInJoules / 1000000;
+      default: return valueInJoules;
+    }
+  };
+
+  // Calculate energy conversion result
+  React.useEffect(() => {
+    const result = convertEnergy(energyValL, energyUnitL, energyUnitR);
+    setEnergyValR(result);
+  }, [energyValL, energyUnitL, energyUnitR]);
+
+  // Power conversion
+  const [powerValL, setPowerValL] = useState(1.00);
+  const [powerUnitL, setPowerUnitL] = useState('J');
+  const [powerValR, setPowerValR] = useState(0.0010);
+  const [powerUnitR, setPowerUnitR] = useState('kJ');
+
+  // Power conversion function (equivalent to Google Sheets CONVERT)
+  // Note: Power units are the same as energy units (J, kJ, Wh, kWh, cal, kcal, BTU, eV, MJ)
+  const convertPower = (value, fromUnit, toUnit) => {
+    if (!value || value === 0) return 0;
+    if (fromUnit === toUnit) return value;
+
+    // Convert to Joules first (base unit)
+    let valueInJoules = 0;
+    switch (fromUnit) {
+      case 'J': valueInJoules = value; break;
+      case 'kJ': valueInJoules = value * 1000; break;
+      case 'Wh': valueInJoules = value * 3600; break;
+      case 'kWh': valueInJoules = value * 3600000; break;
+      case 'cal': valueInJoules = value * 4.184; break;
+      case 'kcal': valueInJoules = value * 4184; break;
+      case 'BTU': valueInJoules = value * 1055.06; break;
+      case 'eV': valueInJoules = value * 1.602176634e-19; break;
+      case 'MJ': valueInJoules = value * 1000000; break;
+      default: valueInJoules = value;
+    }
+
+    // Convert from Joules to target unit
+    switch (toUnit) {
+      case 'J': return valueInJoules;
+      case 'kJ': return valueInJoules / 1000;
+      case 'Wh': return valueInJoules / 3600;
+      case 'kWh': return valueInJoules / 3600000;
+      case 'cal': return valueInJoules / 4.184;
+      case 'kcal': return valueInJoules / 4184;
+      case 'BTU': return valueInJoules / 1055.06;
+      case 'eV': return valueInJoules / 1.602176634e-19;
+      case 'MJ': return valueInJoules / 1000000;
+      default: return valueInJoules;
+    }
+  };
+
+  // Calculate power conversion result
+  React.useEffect(() => {
+    const result = convertPower(powerValL, powerUnitL, powerUnitR);
+    setPowerValR(result);
+  }, [powerValL, powerUnitL, powerUnitR]);
+
+  // Copper House Wires calculator state
+  const [chwPhase, setChwPhase] = useState(1);
+  const [chwPowerVal, setChwPowerVal] = useState(20);
+  const [chwPowerUnit, setChwPowerUnit] = useState('HP');
+  const [chwLengthVal, setChwLengthVal] = useState(500);
+  const [chwLengthUnit, setChwLengthUnit] = useState('MTR');
+  const [chwCurrent, setChwCurrent] = useState(50.37);
+  const [chwActualGauge, setChwActualGauge] = useState(20.21);
+  const [chwWireSize, setChwWireSize] = useState('25 SQMM');
+
+  // CURRENT (Ω) for Copper House Wires:
+  // ((IF(unit="HP", 0.746*power, IF(unit="WATT", 0.001*power, 1*power)))*1000) / (((IF(phase=3,1.732,1))*0.83*0.83*(430)))
+  React.useEffect(() => {
+    const power = Number(chwPowerVal) || 0;
+    const unit = String(chwPowerUnit || '').toUpperCase();
+    let kw = power; // assume KW by default
+    if (unit === 'HP') kw = 0.746 * power;
+    else if (unit === 'WATT') kw = 0.001 * power;
+    const phaseFactor = Number(chwPhase) === 3 ? 1.732 : 1;
+    const denom = phaseFactor * 0.83 * 0.83 * 430;
+    const current = denom !== 0 ? (kw * 1000) / denom : 0;
+    setChwCurrent(Number.isFinite(current) ? current : 0);
+  }, [chwPowerVal, chwPowerUnit, chwPhase]);
+
+  // ACTUAL GAUGE for Copper House Wires:
+  // IF(((S57/5))>(((IF(N57=3,(1.732),1))*S57*17.25*Q57)/((0.05*(430))*1000)),((S57/5)),((((IF(N57=3,(1.732),1))*S57*17.25*Q57)/((0.05*(430))*1000))))
+  React.useEffect(() => {
+    const S = Number(chwCurrent) || 0; // current
+    const phaseFactor = Number(chwPhase) === 3 ? 1.732 : 1; // IF(N57=3,1.732,1)
+    const Qraw = Number(chwLengthVal) || 0; // length value
+    const Q = chwLengthUnit === 'FT' ? Qraw * 0.3048 : Qraw; // convert feet to meters
+    const denom = (0.05 * 430) * 1000;
+    const left = S / 5;
+    const right = denom !== 0 ? (phaseFactor * S * 17.25 * Q) / denom : 0;
+    const result = left > right ? left : right;
+    setChwActualGauge(Number.isFinite(result) ? result : 0);
+  }, [chwCurrent, chwPhase, chwLengthVal, chwLengthUnit]);
+
+  // WIRE SIZE mapping based on Actual Gauge (T57)
+  React.useEffect(() => {
+    const T = Number(chwActualGauge) || 0;
+    let size = "Above Standard";
+    if (T <= 0.5) size = "0.50 SQMM";
+    else if (T <= 0.75) size = "0.75 SQMM";
+    else if (T <= 1.5) size = "1.5 SQMM";
+    else if (T <= 2.5) size = "2.5 SQMM";
+    else if (T <= 4) size = "4 SQMM";
+    else if (T <= 6) size = "6 SQMM";
+    else if (T <= 10) size = "10 SQMM";
+    else if (T <= 16) size = "16 SQMM";
+    else if (T <= 25) size = "25 SQMM";
+    else if (T <= 35) size = "35 SQMM";
+    else if (T <= 50) size = "50 SQMM";
+    else if (T <= 70) size = "70 SQMM";
+    else if (T <= 95) size = "95 SQMM";
+    setChwWireSize(size);
+  }, [chwActualGauge]);
+
+  // Technical Calculations (Helping Calculator) - initial display data (formulas to be added later)
+  const [tcReductionPercent, setTcReductionPercent] = useState(20);
+  const [tcAerialParams, setTcAerialParams] = useState([
+    {
+      core: 'PHASE',
+      xSelectionArea: '95 SQMM',
+      strands: '19',
+      wireSize: '2.26 MM',
+      selectionalArea: '76 SQMM',
+      insulationThickness: '1.60 MM',
+      odOfCable: '14.49 MM'
+    },
+    {
+      core: 'ST LIGHT',
+      xSelectionArea: '16 SQMM',
+      strands: '7',
+      wireSize: '1.53 MM',
+      selectionalArea: '13 SQMM',
+      insulationThickness: '1.30 MM',
+      odOfCable: '7.18 MM'
+    },
+    {
+      core: 'MESSENGER',
+      xSelectionArea: '70 SQMM',
+      strands: '7',
+      wireSize: '3.19 MM',
+      selectionalArea: '56 SQMM',
+      insulationThickness: '1.60 MM',
+      odOfCable: '12.78 MM'
+    }
+  ]);
+
+  const [tcConductorType, setTcConductorType] = useState('AAAC Conductor');
+  const [tcStandard, setTcStandard] = useState('IS 398 P-IV');
+  const [tcSelectionArea, setTcSelectionArea] = useState('95.00 mm²');
+  const [tcCCCAmpsKm, setTcCCCAmpsKm] = useState('');
+  const [tcAtCAmp1, setTcAtCAmp1] = useState('');
+  const [tcACResistance, setTcACResistance] = useState('');
+  const [tcAtCAmp2, setTcAtCAmp2] = useState('');
+
+  // Update Standard (IS code) based on Conductor Type selection
+  React.useEffect(() => {
+    const type = String(tcConductorType || '').toLowerCase();
+    let standard = tcStandard;
+    if (type === 'ab cable' || type === 'aerial bunched cable') {
+      standard = 'IS 14255:1995';
+    } else if (type === 'aaac conductor' || type === 'aaac') {
+      standard = 'IS 398 P-IV';
+    } else if (type === 'acsr conductor' || type === 'acsr') {
+      standard = 'IS 398 P-II';
+    } else if (type === 'copper house wire') {
+      standard = 'IS 698:2010';
+    } else if (type === 'agricultural wire' || type === 'agricultere wire') {
+      standard = 'NA';
+    } else if (type === 'submersible flat cable') {
+      standard = 'NA';
+    }
+    setTcStandard(standard);
+  }, [tcConductorType]);
+
+  // Helpers for Technical Calculations
+  const parseAreaNumber = (val) => {
+    const n = Number(String(val || '').replace(/[^\d.]/g, ''));
+    return Number.isFinite(n) ? n : 0;
+  };
+  const computeWireSize = (areaVal, reductionPercent, strandsVal) => {
+    const area = parseAreaNumber(areaVal);
+    const red = Number(reductionPercent) || 0;
+    const strands = Number(String(strandsVal || '').replace(/[^\d.]/g, '')) || 0;
+    if (area <= 0 || strands <= 0) return 0;
+    const effectiveArea = area - (area * red / 100);
+    const value = effectiveArea / strands / 0.785;
+    const wire = Math.sqrt(Math.max(value, 0));
+    return Number.isFinite(wire) ? wire : 0;
+  };
+
+  const computeSelectionalArea = (strandsVal, wireSizeVal) => {
+    const strands = Number(String(strandsVal || '').replace(/[^\d.]/g, '')) || 0;
+    const wire = Number(wireSizeVal) || 0;
+    if (strands <= 0 || wire <= 0) return 0;
+    const area = strands * wire * wire * 0.785;
+    return Number.isFinite(area) ? area : 0;
+  };
+
+  const computeInsulationThickness = (reductionPercent, areaVal) => {
+    const d = Number(reductionPercent) || 0; // reduction %
+    const c = parseAreaNumber(areaVal); // x-selection area
+    let addByReduction = 0;
+    if (d >= 10 && d <= 20) addByReduction = 0.1;
+    else if (d >= 21 && d <= 30) addByReduction = 0.2;
+    else if (d >= 31 && d <= 50) addByReduction = 0.3;
+    else if (d === 0) addByReduction = 0;
+    let baseByArea = 0;
+    if (c >= 0 && c <= 40) baseByArea = 1.2;
+    else if (c >= 41 && c <= 95) baseByArea = 1.5;
+    else if (c >= 96 && c <= 200) baseByArea = 1.8;
+    const total = addByReduction + baseByArea;
+    return Number.isFinite(total) ? total : 0;
+  };
+
+  // Variant for Street Light row (different area buckets)
+  const computeInsulationThicknessStreet = (reductionPercent, areaVal) => {
+    const d = Number(reductionPercent) || 0;
+    const c = parseAreaNumber(areaVal);
+    let addByReduction = 0;
+    if (d >= 10 && d <= 20) addByReduction = 0.1;
+    else if (d >= 21 && d <= 30) addByReduction = 0.2;
+    else if (d >= 31 && d <= 50) addByReduction = 0.3;
+    else if (d === 0) addByReduction = 0;
+    let baseByArea = 0;
+    if (c <= 49) baseByArea = 1.2;
+    else if (c <= 120) baseByArea = 1.5;
+    const total = addByReduction + baseByArea;
+    return Number.isFinite(total) ? total : 0;
+  };
+  // AB Cable Parameters: NO OF STRANDS - Row 1 (PHASE)
+  const phaseNoOfStrands = (() => {
+    const areaNum = parseAreaNumber(tcAerialParams?.[0]?.xSelectionArea);
+    if (areaNum === 0) return '0';
+    if (areaNum < 51) return '7';
+    if (areaNum > 51) return '19';
+    return '7'; // default when exactly 51
+  })();
+
+  // Row 2 (ST LIGHT): IFS(D7=0, "0", D7>10, "7")
+  const streetNoOfStrands = (() => {
+    const areaNum = parseAreaNumber(tcAerialParams?.[1]?.xSelectionArea);
+    if (areaNum === 0) return '0';
+    if (areaNum > 10) return '7';
+    return '0';
+  })();
+
+  // Row 3 (MESSENGER): IFS(D8=0, "0", D8>10, "7")
+  const messengerNoOfStrands = (() => {
+    const areaNum = parseAreaNumber(tcAerialParams?.[2]?.xSelectionArea);
+    if (areaNum === 0) return '0';
+    if (areaNum > 10) return '7';
+    return '0';
+  })();
+
+  // Wire Size of Gauge - Row 1 (PHASE)
+  const phaseWireSize = (() => {
+    return computeWireSize(tcAerialParams?.[0]?.xSelectionArea, tcReductionPercent, phaseNoOfStrands);
+  })();
+
+  // Wire Size of Gauge - Row 2 (ST LIGHT)
+  const streetWireSize = (() => {
+    return computeWireSize(tcAerialParams?.[1]?.xSelectionArea, tcReductionPercent, streetNoOfStrands);
+  })();
+
+  // Wire Size of Gauge - Row 3 (MESSENGER)
+  const messengerWireSize = (() => {
+    return computeWireSize(tcAerialParams?.[2]?.xSelectionArea, tcReductionPercent, messengerNoOfStrands);
+  })();
+
+  // Selectional Area - Rows 1 and 2
+  const phaseSelectionalArea = (() => computeSelectionalArea(phaseNoOfStrands, phaseWireSize))();
+  const streetSelectionalArea = (() => computeSelectionalArea(streetNoOfStrands, streetWireSize))();
+  const messengerSelectionalArea = (() => computeSelectionalArea(messengerNoOfStrands, messengerWireSize))();
+
+  // Insulation Thickness - Row 1 (PHASE)
+  const phaseInsulationThickness = (() => computeInsulationThickness(tcReductionPercent, tcAerialParams?.[0]?.xSelectionArea))();
+  const streetInsulationThickness = (() => computeInsulationThicknessStreet(tcReductionPercent, tcAerialParams?.[1]?.xSelectionArea))();
+  const messengerInsulationThickness = (() => computeInsulationThicknessStreet(tcReductionPercent, tcAerialParams?.[2]?.xSelectionArea))();
+
+  // OD of Cable helper
+  const computeOdOfCable = (strandsVal, wireSizeVal, insulationThicknessVal) => {
+    const strands = String(strandsVal || '').trim();
+    const wire = Number(wireSizeVal) || 0;
+    const ins = Number(insulationThicknessVal) || 0;
+    let multiplier = 0;
+    if (strands === '19') multiplier = 5;
+    else if (strands === '7') multiplier = 3;
+    const od = multiplier * wire + ins * 2;
+    return Number.isFinite(od) ? od : 0;
+  };
+
+  // Row 1 OD of Cable
+  const phaseOdOfCable = (() => computeOdOfCable(phaseNoOfStrands, phaseWireSize, phaseInsulationThickness))();
+  // Row 2 OD of Cable
+  const streetOdOfCable = (() => computeOdOfCable(streetNoOfStrands, streetWireSize, streetInsulationThickness))();
+  // Row 3 OD of Cable
+  const messengerOdOfCable = (() => computeOdOfCable(messengerNoOfStrands, messengerWireSize, messengerInsulationThickness))();
+
+  // Technical Calculations - AAAC & ACSR parameter blocks (static values for now, formulas later)
+  const aaacOptions = [
+    { name: 'Mole', code: 'Mole', area: '15 mm²', strandDia: '3/2.50', dcResistance: '(N) 2.2286' },
+    { name: 'Squirrel', code: 'Squirrel', area: '20 mm²', strandDia: '7/2.00', dcResistance: '(N) 1.4969' },
+    { name: 'Weasel', code: 'Weasel', area: '34 mm²', strandDia: '7/2.50', dcResistance: '(N) 0.9580' },
+    { name: 'Rabbit', code: 'Rabbit', area: '55 mm²', strandDia: '7/3.15', dcResistance: '(N) 0.6034' },
+    { name: 'Raccoon', code: 'Raccoon', area: '80 mm²', strandDia: '7/3.81', dcResistance: '(N) 0.4125' },
+    { name: 'Dog', code: 'Dog', area: '100 mm²', strandDia: '7/4.26', dcResistance: '(N) 0.3299' },
+    { name: 'Dog(UP)', code: 'Dog(UP)', area: '125 mm²', strandDia: '19/2.89', dcResistance: '(N) 0.2654' },
+    { name: 'Coyote', code: 'Coyote', area: '150 mm²', strandDia: '19/3.15', dcResistance: '(N) 0.2234' },
+    { name: 'Wolf', code: 'Wolf', area: '175 mm²', strandDia: '19/3.40', dcResistance: '(N) 0.1918' },
+    { name: 'Wolf(UP)', code: 'Wolf(UP)', area: '200 mm²', strandDia: '19/3.66', dcResistance: '(N) 0.1655' },
+    { name: 'Panther', code: 'Panther', area: '232 mm²', strandDia: '19/3.94', dcResistance: '(N) 0.1428' },
+    { name: 'Panther(UP)', code: 'Panther(UP)', area: '290 mm²', strandDia: '37/3.15', dcResistance: '(N) 0.11500' },
+    { name: 'Kundah', code: 'Kundah', area: '400 mm²', strandDia: '37/3.71', dcResistance: '(N) 0.08289' },
+    { name: 'Zebra', code: 'Zebra', area: '465 mm²', strandDia: '37/4.00', dcResistance: '(N) 0.07130' },
+    { name: 'Zebra(UP)', code: 'Zebra(UP)', area: '525 mm²', strandDia: '61/3.31', dcResistance: '(N) 0.06330' },
+    { name: 'Moose', code: 'Moose', area: '570 mm²', strandDia: '61/3.45', dcResistance: '(N) 0.05827' }
+  ];
+  const [aaacSelected, setAaacSelected] = useState('Mole');
+  const aaacCurrent = aaacOptions.find(o => o.name === aaacSelected) || aaacOptions[0];
+
+  const acsrOptions = [
+    { name: 'Mole', code: 'Mole', area: '10 mm²', alStrandDia: '6/1.50', steelStrandDia: '1/1.50', dcResistance20: '2.780' },
+    { name: 'Squirrel', code: 'Squirrel', area: '20 mm²', alStrandDia: '6/1.96', steelStrandDia: '1/1.96', dcResistance20: '1.394' },
+    { name: 'Weasel', code: 'Weasel', area: '30 mm²', alStrandDia: '6/2.59', steelStrandDia: '1/2.59', dcResistance20: '0.929' },
+    { name: 'Rabbit', code: 'Rabbit', area: '50 mm²', alStrandDia: '6/3.35', steelStrandDia: '1/3.35', dcResistance20: '0.552' },
+    { name: 'Raccoon', code: 'Raccoon', area: '80 mm²', alStrandDia: '6/4.09', steelStrandDia: '1/4.09', dcResistance20: '0.371' },
+    { name: 'Dog', code: 'Dog', area: '100 mm²', alStrandDia: '6/4.72', steelStrandDia: '7/1.57', dcResistance20: '0.279' },
+    { name: 'Coyote', code: 'Coyote', area: '130 mm²', alStrandDia: '26/2.54', steelStrandDia: '7/1.91', dcResistance20: '0.225' },
+    { name: 'Wolf', code: 'Wolf', area: '150 mm²', alStrandDia: '30/2.59', steelStrandDia: '7/2.59', dcResistance20: '0.187' },
+    { name: 'Lynx', code: 'Lynx', area: '180 mm²', alStrandDia: '30/2.79', steelStrandDia: '7/2.79', dcResistance20: '0.161' },
+    { name: 'Panther', code: 'Panther', area: '200 mm²', alStrandDia: '30/3.00', steelStrandDia: '7/3.00', dcResistance20: '0.139' },
+    { name: 'Goat', code: 'Goat', area: '320 mm²', alStrandDia: '30/3.71', steelStrandDia: '7/3.71', dcResistance20: '0.091' },
+    { name: 'Kundah', code: 'Kundah', area: '400 mm²', alStrandDia: '42/3.50', steelStrandDia: '7/1.96', dcResistance20: '0.073' },
+    { name: 'Zebra', code: 'Zebra', area: '420 mm²', alStrandDia: '54/3.18', steelStrandDia: '7/3.18', dcResistance20: '0.069' },
+    { name: 'Moose', code: 'Moose', area: '520 mm²', alStrandDia: '54/3.53', steelStrandDia: '7/3.53', dcResistance20: '0.056' },
+    { name: 'Morkulla', code: 'Morkulla', area: '560 mm²', alStrandDia: '42/4.13', steelStrandDia: '7/2.30', dcResistance20: '0.052' },
+    { name: 'Bersimis', code: 'Bersimis', area: '690 mm²', alStrandDia: '42/4.57', steelStrandDia: '7/2.54', dcResistance20: '0.042' }
+  ];
+  const [acsrSelected, setAcsrSelected] = useState('Rabbit');
+  const acsrCurrent = acsrOptions.find(o => o.name === acsrSelected) || acsrOptions[0];
 
   // Image upload handlers
   const handleImageUpload = (index) => {
@@ -169,7 +1283,42 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     if (list.length > 0) {
       setSelectedFile(list); // pass array to modal
       setCurrentSlide(list.length - 1); // start from latest
+      setViewingImageIndex(index); // Store the row index being viewed
       setIsFileViewerOpen(true);
+    }
+  };
+
+  const handleImageDeleteFromModal = () => {
+    if (viewingImageIndex === null || !selectedFile || selectedFile.length === 0) return;
+    
+    const productKey = selectedProduct || 'default';
+    const currentImageIndex = currentSlide;
+    const newImageList = selectedFile.filter((_, idx) => idx !== currentImageIndex);
+    
+    // Update productImages state
+    setProductImages(prev => {
+      const productMap = prev[productKey] ? { ...prev[productKey] } : {};
+      if (newImageList.length > 0) {
+        productMap[viewingImageIndex] = newImageList;
+      } else {
+        // If no images left, remove the entry
+        delete productMap[viewingImageIndex];
+      }
+      return { ...prev, [productKey]: productMap };
+    });
+    
+    // Update selectedFile and currentSlide
+    if (newImageList.length > 0) {
+      setSelectedFile(newImageList);
+      // Adjust currentSlide if we deleted the last image
+      const newSlide = currentImageIndex >= newImageList.length ? newImageList.length - 1 : currentImageIndex;
+      setCurrentSlide(newSlide);
+    } else {
+      // Close modal if no images left
+      setIsFileViewerOpen(false);
+      setSelectedFile([]);
+      setCurrentSlide(0);
+      setViewingImageIndex(null);
     }
   };
 
@@ -564,19 +1713,11 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         setIsTableOpen(true);
       }
     } else if (tool.name === "TECHNICAL CALCULATIONS") {
-      // Open technical calculations calculator
-      openCalculator("technical-calculations");
+      // Disabled - functionality removed
+      return;
     } else if (tool.name === "CONVERSIONAL CALCULATIONS") {
-      // Load conversion calculations data
-      const convCalc = conversionCalculationsData[0]; // Default to first calculation
-      setSelectedTableData({
-        name: convCalc.name,
-        headers: convCalc.data.headers || ["Input", "Output", "Note"],
-        rows: convCalc.data.rows || [
-          [convCalc.data.inputValue || "", convCalc.data.outputValue || "", convCalc.data.note || ""]
-        ]
-      });
-      setIsTableOpen(true);
+      // Disabled - functionality removed
+      return;
     } else if (tool.name === "WIRE GAUGE CHART") {
       // Load wire gauge data
       const wireGauge = wireGaugeData[0];
@@ -783,12 +1924,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
             {
               title: "PHASE Φ",
               columns: [
-                "CROSS SECTIONAL AREA OF PHASE CONDUCTOR (SQMM)",
-                "STRANDS/WIRE (nos/mm)",
-                "CONDUCTOR DIA (mm)",
-                "INSULATION THICKNESS (mm)",
-                "INSULATED CORE DIA (mm)",
-                "MAXIMUM RESISTANCE (Ohm/Km) @20°C"
+                "AREA (SQMM)",
+                "STRANDS/WIRE",
+                "C DIA (mm)",
+                "INS Thick (mm)",
+                "IC DIA (mm)",
+                "MAX R (Ω/Km)"
               ],
               rows: [
                 { sqmm: "16", strands: "7/1.70", conductorDia: "5.10", insulationThickness: "1.20", insulatedCoreDia: "7.50", maxResistance: "1.910" },
@@ -802,12 +1943,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
             {
               title: "MESSENGER Φ",
               columns: [
-                "CROSS SECTIONAL AREA OF MESSENGER (SQMM)",
-                "STRANDS/WIRE (nos/mm)",
-                "CONDUCTOR DIA (mm)",
-                "INSULATION THICKNESS (mm)",
-                "MAXIMUM RESISTANCE (Ohm/Km) @20°C",
-                "MAXIMUM BREAKING LOAD (kN)"
+                "AREA (SQMM)",
+                "STRANDS/WIRE",
+                "C DIA (mm)",
+                "INS Thick (mm)",
+                "MAX R (Ω/Km)",
+                "Max br load (kN)"
               ],
               rows: [
                 { sqmm: "25", strands: "7/2.12", conductorDia: "6.36", insulationThickness: "1.20", maxResistance: "1.380", maxBreakingLoad: "7.560" },
@@ -898,11 +2039,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Traditional paper insulated conductor for overhead lines",
         imageUrl: "/images/products/paper covered aluminium conductor.jpeg",
         priceList: [
-          { size: "25 sq.mm", price: "₹65.80/m", stock: "Available", image: "/images/paper-25mm.jpg" },
-          { size: "50 sq.mm", price: "₹125.40/m", stock: "Available", image: "/images/paper-50mm.jpg" },
-          { size: "70 sq.mm", price: "₹168.90/m", stock: "Available", image: "/images/paper-70mm.jpg" },
-          { size: "95 sq.mm", price: "₹225.60/m", stock: "Available", image: "/images/paper-95mm.jpg" },
-          { size: "120 sq.mm", price: "₹285.40/m", stock: "Available", image: "/images/paper-120mm.jpg" }
+          { size: "0.80 mm (covered Dia 1.085 mm)", price: "", stock: "Available", image: "" },
+          { size: "1.06 mm (covered Dia 1.345 mm)", price: "", stock: "Available", image: "" },
+          { size: "1.25 mm (covered Dia 1.540 mm)", price: "", stock: "Available", image: "" },
+          { size: "1.32 mm (covered Dia 1.610 mm)", price: "", stock: "Available", image: "" },
+          { size: "1.40 mm (covered Dia 1.715 mm)", price: "", stock: "Available", image: "" },
+          { size: "1.50 mm (covered Dia 1.815 mm)", price: "", stock: "Available", image: "" },
+          { size: "1.60 mm (covered Dia 1.915 mm)", price: "", stock: "Available", image: "" },
+          { size: "1.70 mm (covered Dia 2.015 mm)", price: "", stock: "Available", image: "" },
+          { size: "1.80 mm (covered Dia 2.120 mm)", price: "", stock: "Available", image: "" },
+          { size: "1.90 mm (covered Dia 2.220 mm)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "11 kV",
@@ -919,12 +2065,15 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Single core power cable with PVC insulation",
         imageUrl: "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg",
         priceList: [
-          { size: "25 sq.mm", price: "₹95.50/m", stock: "Available", image: "/images/pvc-25mm.jpg" },
-          { size: "50 sq.mm", price: "₹185.20/m", stock: "Available", image: "/images/pvc-50mm.jpg" },
-          { size: "70 sq.mm", price: "₹245.80/m", stock: "Available", image: "/images/pvc-70mm.jpg" },
-          { size: "95 sq.mm", price: "₹325.40/m", stock: "Available", image: "/images/pvc-95mm.jpg" },
-          { size: "120 sq.mm", price: "₹398.60/m", stock: "Available", image: "/images/pvc-120mm.jpg" },
-          { size: "150 sq.mm", price: "₹485.20/m", stock: "Available", image: "/images/pvc-150mm.jpg" }
+          { size: "4 sq.mm (Ø 2.25 mm | 0.088 in)", price: "", stock: "Available", image: "" },
+          { size: "6 sq.mm (Ø 2.76 mm | 0.108 in)", price: "", stock: "Available", image: "" },
+          { size: "10 sq.mm (Ø 3.56 mm | 0.140 in)", price: "", stock: "Available", image: "" },
+          { size: "16 sq.mm (7/1.71 mm | 7/0.067 in)", price: "", stock: "Available", image: "" },
+          { size: "25 sq.mm (7/2.13 mm | 7/0.084 in)", price: "", stock: "Available", image: "" },
+          { size: "35 sq.mm (7/2.52 mm | 7/0.099 in)", price: "", stock: "Available", image: "" },
+          { size: "50 sq.mm (7/3.02 mm | 7/0.119 in)", price: "", stock: "Available", image: "" },
+          { size: "70 sq.mm (19/2.16 mm | 19/0.085 in)", price: "", stock: "Available", image: "" },
+          { size: "95 sq.mm (19/2.52 mm | 19/0.099 in)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "1.1 kV",
@@ -941,12 +2090,15 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Single core power cable with XLPE insulation",
         imageUrl: "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg",
         priceList: [
-          { size: "25 sq.mm", price: "₹125.80/m", stock: "Available", image: "/images/xlpe-25mm.jpg" },
-          { size: "50 sq.mm", price: "₹245.60/m", stock: "Available", image: "/images/xlpe-50mm.jpg" },
-          { size: "70 sq.mm", price: "₹325.40/m", stock: "Available", image: "/images/xlpe-70mm.jpg" },
-          { size: "95 sq.mm", price: "₹425.80/m", stock: "Available", image: "/images/xlpe-95mm.jpg" },
-          { size: "120 sq.mm", price: "₹525.20/m", stock: "Available", image: "/images/xlpe-120mm.jpg" },
-          { size: "150 sq.mm", price: "₹645.60/m", stock: "Available", image: "/images/xlpe-150mm.jpg" }
+          { size: "4 sq.mm (Ø 2.25 mm | 0.088 in)", price: "", stock: "Available", image: "" },
+          { size: "6 sq.mm (Ø 2.76 mm | 0.108 in)", price: "", stock: "Available", image: "" },
+          { size: "10 sq.mm (Ø 3.56 mm | 0.140 in)", price: "", stock: "Available", image: "" },
+          { size: "16 sq.mm (7/1.71 mm | 7/0.067 in)", price: "", stock: "Available", image: "" },
+          { size: "25 sq.mm (7/2.13 mm | 7/0.084 in)", price: "", stock: "Available", image: "" },
+          { size: "35 sq.mm (7/2.52 mm | 7/0.099 in)", price: "", stock: "Available", image: "" },
+          { size: "50 sq.mm (7/3.02 mm | 7/0.119 in)", price: "", stock: "Available", image: "" },
+          { size: "70 sq.mm (19/2.16 mm | 19/0.085 in)", price: "", stock: "Available", image: "" },
+          { size: "95 sq.mm (19/2.52 mm | 19/0.099 in)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "1.1 kV",
@@ -963,12 +2115,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Multi-core power cable with aluminium armour",
         imageUrl: "/images/products/multi core pvc isulated aluminium armoured cable.jpeg",
         priceList: [
-          { size: "2x25 sq.mm", price: "₹185.50/m", stock: "Available", image: "/images/multicore-pvc-25mm.jpg" },
-          { size: "2x50 sq.mm", price: "₹365.80/m", stock: "Available", image: "/images/multicore-pvc-50mm.jpg" },
-          { size: "3x25 sq.mm", price: "₹245.20/m", stock: "Available", image: "/images/multicore-pvc-3x25mm.jpg" },
-          { size: "3x50 sq.mm", price: "₹485.40/m", stock: "Available", image: "/images/multicore-pvc-3x50mm.jpg" },
-          { size: "4x25 sq.mm", price: "₹325.60/m", stock: "Available", image: "/images/multicore-pvc-4x25mm.jpg" },
-          { size: "4x50 sq.mm", price: "₹645.80/m", stock: "Available", image: "/images/multicore-pvc-4x50mm.jpg" }
+          { size: "2.5 sq.mm (Ø 1.78 mm | 0.070 in)", price: "", stock: "Available", image: "" },
+          { size: "4 sq.mm (Ø 2.25 mm | 0.088 in)", price: "", stock: "Available", image: "" },
+          { size: "6 sq.mm (Ø 2.76 mm | 0.108 in)", price: "", stock: "Available", image: "" },
+          { size: "10 sq.mm (Ø 3.56 mm | 0.140 in)", price: "", stock: "Available", image: "" },
+          { size: "16 sq.mm (7/1.71 mm | 7/0.067 in)", price: "", stock: "Available", image: "" },
+          { size: "25 sq.mm (7/2.13 mm | 7/0.084 in)", price: "", stock: "Available", image: "" },
+          { size: "35 sq.mm (7/2.52 mm | 7/0.099 in)", price: "", stock: "Available", image: "" },
+          { size: "50 sq.mm (7/3.02 mm | 7/0.119 in)", price: "", stock: "Available", image: "" },
+          { size: "70 sq.mm (19/2.16 mm | 19/0.085 in)", price: "", stock: "Available", image: "" },
+          { size: "95 sq.mm (19/2.52 mm | 19/0.099 in)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "1.1 kV",
@@ -986,12 +2142,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Multi-core XLPE cable with aluminium armour",
         imageUrl: "/images/products/multi core xlpe insulated aluminium armoured cable.jpeg",
         priceList: [
-          { size: "2x25 sq.mm", price: "₹245.80/m", stock: "Available", image: "/images/multicore-xlpe-25mm.jpg" },
-          { size: "2x50 sq.mm", price: "₹485.60/m", stock: "Available", image: "/images/multicore-xlpe-50mm.jpg" },
-          { size: "3x25 sq.mm", price: "₹325.40/m", stock: "Available", image: "/images/multicore-xlpe-3x25mm.jpg" },
-          { size: "3x50 sq.mm", price: "₹645.80/m", stock: "Available", image: "/images/multicore-xlpe-3x50mm.jpg" },
-          { size: "4x25 sq.mm", price: "₹425.60/m", stock: "Available", image: "/images/multicore-xlpe-4x25mm.jpg" },
-          { size: "4x50 sq.mm", price: "₹845.20/m", stock: "Available", image: "/images/multicore-xlpe-4x50mm.jpg" }
+          { size: "2.5 sq.mm (Ø 1.78 mm | 0.070 in)", price: "", stock: "Available", image: "" },
+          { size: "4 sq.mm (Ø 2.25 mm | 0.088 in)", price: "", stock: "Available", image: "" },
+          { size: "6 sq.mm (Ø 2.76 mm | 0.108 in)", price: "", stock: "Available", image: "" },
+          { size: "10 sq.mm (Ø 3.56 mm | 0.140 in)", price: "", stock: "Available", image: "" },
+          { size: "16 sq.mm (7/1.71 mm | 7/0.067 in)", price: "", stock: "Available", image: "" },
+          { size: "25 sq.mm (7/2.13 mm | 7/0.084 in)", price: "", stock: "Available", image: "" },
+          { size: "35 sq.mm (7/2.52 mm | 7/0.099 in)", price: "", stock: "Available", image: "" },
+          { size: "50 sq.mm (7/3.02 mm | 7/0.119 in)", price: "", stock: "Available", image: "" },
+          { size: "70 sq.mm (19/2.16 mm | 19/0.085 in)", price: "", stock: "Available", image: "" },
+          { size: "95 sq.mm (19/2.52 mm | 19/0.099 in)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "1.1 kV",
@@ -1009,12 +2169,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Multi-core power cable without armour",
         imageUrl: "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg",
         priceList: [
-          { size: "2x25 sq.mm", price: "₹165.50/m", stock: "Available", image: "/images/multicore-pvc-unarmoured-25mm.jpg" },
-          { size: "2x50 sq.mm", price: "₹325.80/m", stock: "Available", image: "/images/multicore-pvc-unarmoured-50mm.jpg" },
-          { size: "3x25 sq.mm", price: "₹205.20/m", stock: "Available", image: "/images/multicore-pvc-unarmoured-3x25mm.jpg" },
-          { size: "3x50 sq.mm", price: "₹405.40/m", stock: "Available", image: "/images/multicore-pvc-unarmoured-3x50mm.jpg" },
-          { size: "4x25 sq.mm", price: "₹275.60/m", stock: "Available", image: "/images/multicore-pvc-unarmoured-4x25mm.jpg" },
-          { size: "4x50 sq.mm", price: "₹545.80/m", stock: "Available", image: "/images/multicore-pvc-unarmoured-4x50mm.jpg" }
+          { size: "2.5 sq.mm (Ø 1.78 mm | 0.070 in)", price: "", stock: "Available", image: "" },
+          { size: "4 sq.mm (Ø 2.25 mm | 0.088 in)", price: "", stock: "Available", image: "" },
+          { size: "6 sq.mm (Ø 2.76 mm | 0.108 in)", price: "", stock: "Available", image: "" },
+          { size: "10 sq.mm (Ø 3.56 mm | 0.140 in)", price: "", stock: "Available", image: "" },
+          { size: "16 sq.mm (7/1.71 mm | 7/0.067 in)", price: "", stock: "Available", image: "" },
+          { size: "25 sq.mm (7/2.13 mm | 7/0.084 in)", price: "", stock: "Available", image: "" },
+          { size: "35 sq.mm (7/2.52 mm | 7/0.099 in)", price: "", stock: "Available", image: "" },
+          { size: "50 sq.mm (7/3.02 mm | 7/0.119 in)", price: "", stock: "Available", image: "" },
+          { size: "70 sq.mm (19/2.16 mm | 19/0.085 in)", price: "", stock: "Available", image: "" },
+          { size: "95 sq.mm (19/2.52 mm | 19/0.099 in)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "1.1 kV",
@@ -1059,12 +2223,13 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Flexible single core copper power cable",
         imageUrl: "/images/products/multistrand single core copper cable.jpeg",
         priceList: [
-          { size: "25 sq.mm", price: "₹185.50/m", stock: "Available", image: "/images/copper-single-25mm.jpg" },
-          { size: "50 sq.mm", price: "₹365.80/m", stock: "Available", image: "/images/copper-single-50mm.jpg" },
-          { size: "70 sq.mm", price: "₹485.40/m", stock: "Available", image: "/images/copper-single-70mm.jpg" },
-          { size: "95 sq.mm", price: "₹645.20/m", stock: "Available", image: "/images/copper-single-95mm.jpg" },
-          { size: "120 sq.mm", price: "₹785.60/m", stock: "Available", image: "/images/copper-single-120mm.jpg" },
-          { size: "150 sq.mm", price: "₹945.80/m", stock: "Available", image: "/images/copper-single-150mm.jpg" }
+          { size: "0.5 sq.mm (16/0.20 | 16/0.00788)", price: "", stock: "Available", image: "" },
+          { size: "0.75 sq.mm (24/0.20 | 24/0.00788)", price: "", stock: "Available", image: "" },
+          { size: "1 sq.mm (32/0.20 | 32/0.00788)", price: "", stock: "Available", image: "" },
+          { size: "1.5 sq.mm (30/0.25 | 30/0.00985)", price: "", stock: "Available", image: "" },
+          { size: "2.5 sq.mm (50/0.25 | 50/0.00985)", price: "", stock: "Available", image: "" },
+          { size: "4 sq.mm (56/0.30 | 56/0.01181)", price: "", stock: "Available", image: "" },
+          { size: "6 sq.mm (84/0.30 | 84/0.01181)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "1.1 kV",
@@ -1082,12 +2247,14 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Multi-core copper power cable",
         imageUrl: "/images/products/multi core copper cable.jpeg",
         priceList: [
-          { size: "2x25 sq.mm", price: "₹325.50/m", stock: "Available", image: "/images/copper-multicore-25mm.jpg" },
-          { size: "2x50 sq.mm", price: "₹645.80/m", stock: "Available", image: "/images/copper-multicore-50mm.jpg" },
-          { size: "3x25 sq.mm", price: "₹425.20/m", stock: "Available", image: "/images/copper-multicore-3x25mm.jpg" },
-          { size: "3x50 sq.mm", price: "₹845.40/m", stock: "Available", image: "/images/copper-multicore-3x50mm.jpg" },
-          { size: "4x25 sq.mm", price: "₹565.60/m", stock: "Available", image: "/images/copper-multicore-4x25mm.jpg" },
-          { size: "4x50 sq.mm", price: "₹1125.80/m", stock: "Available", image: "/images/copper-multicore-4x50mm.jpg" }
+          { size: "0.5 sq.mm (16/0.20 | 16/0.00788)", price: "", stock: "Available", image: "" },
+          { size: "0.75 sq.mm (24/0.20 | 24/0.00788)", price: "", stock: "Available", image: "" },
+          { size: "1 sq.mm (32/0.20 | 32/0.00788)", price: "", stock: "Available", image: "" },
+          { size: "1.5 sq.mm (30/0.25 | 30/0.00985)", price: "", stock: "Available", image: "" },
+          { size: "2.5 sq.mm (50/0.25 | 50/0.00985)", price: "", stock: "Available", image: "" },
+          { size: "4 sq.mm (56/0.30 | 56/0.01181)", price: "", stock: "Available", image: "" },
+          { size: "6 sq.mm (84/0.30 | 84/0.01181)", price: "", stock: "Available", image: "" },
+          { size: "10 sq.mm (80/0.40 | 80/0.01575)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "1.1 kV",
@@ -1195,12 +2362,13 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Single core aluminium cable with PVC insulation",
         imageUrl: "/images/products/pvc insulated single core aluminium cables.jpeg",
         priceList: [
-          { size: "25 sq.mm", price: "₹85.50/m", stock: "Available", image: "/images/pvc-aluminium-single-25mm.jpg" },
-          { size: "50 sq.mm", price: "₹165.80/m", stock: "Available", image: "/images/pvc-aluminium-single-50mm.jpg" },
-          { size: "70 sq.mm", price: "₹225.40/m", stock: "Available", image: "/images/pvc-aluminium-single-70mm.jpg" },
-          { size: "95 sq.mm", price: "₹298.60/m", stock: "Available", image: "/images/pvc-aluminium-single-95mm.jpg" },
-          { size: "120 sq.mm", price: "₹365.20/m", stock: "Available", image: "/images/pvc-aluminium-single-120mm.jpg" },
-          { size: "150 sq.mm", price: "₹445.80/m", stock: "Available", image: "/images/pvc-aluminium-single-150mm.jpg" }
+          { size: "4 sq.mm (Ø 2.25 mm | 13 SWG | 0.088 in)", price: "", stock: "Available", image: "" },
+          { size: "6 sq.mm (Ø 2.76 mm | 11 SWG | 0.108 in)", price: "", stock: "Available", image: "" },
+          { size: "> 8 sq.mm (Ø 3.02 mm | 10 SWG | 0.12 in)", price: "", stock: "Available", image: "" },
+          { size: "10 sq.mm (Ø 3.56 mm | 9 SWG | 0.14 in)", price: "", stock: "Available", image: "" },
+          { size: "4 sq.mm (7/0.85 | 7/20 | 7/0.034)", price: "", stock: "Available", image: "" },
+          { size: "6 sq.mm (7/1.05 | 7/18 | 7/0.042)", price: "", stock: "Available", image: "" },
+          { size: "10 sq.mm (7/1.35 | 7/16 | 7/0.054)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "1.1 kV",
@@ -1240,12 +2408,11 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Multi-core aluminium cable with PVC insulation",
         imageUrl: "/images/products/pvc insulated multicore aluminium cable.jpeg",
         priceList: [
-          { size: "2x25 sq.mm", price: "₹165.50/m", stock: "Available", image: "/images/pvc-aluminium-multicore-25mm.jpg" },
-          { size: "2x50 sq.mm", price: "₹325.80/m", stock: "Available", image: "/images/pvc-aluminium-multicore-50mm.jpg" },
-          { size: "3x25 sq.mm", price: "₹205.20/m", stock: "Available", image: "/images/pvc-aluminium-multicore-3x25mm.jpg" },
-          { size: "3x50 sq.mm", price: "₹405.40/m", stock: "Available", image: "/images/pvc-aluminium-multicore-3x50mm.jpg" },
-          { size: "4x25 sq.mm", price: "₹275.60/m", stock: "Available", image: "/images/pvc-aluminium-multicore-4x25mm.jpg" },
-          { size: "4x50 sq.mm", price: "₹545.80/m", stock: "Available", image: "/images/pvc-aluminium-multicore-4x50mm.jpg" }
+          { size: "2.5 sq.mm (Ø 1.78 mm | 0.070 in)", price: "", stock: "Available", image: "" },
+          { size: "4 sq.mm (Ø 2.25 mm | 0.088 in)", price: "", stock: "Available", image: "" },
+          { size: "6 sq.mm (Ø 2.76 mm | 0.108 in)", price: "", stock: "Available", image: "" },
+          { size: "10 sq.mm (Ø 3.56 mm | 0.140 in)", price: "", stock: "Available", image: "" },
+          { size: "16 sq.mm (Ø 4.51 mm | 0.177 in)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "1.1 kV",
@@ -1263,12 +2430,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Specialized winding wire for submersible applications",
         imageUrl: "/images/products/submersible winding wire.jpeg",
         priceList: [
-          { size: "0.5 sq.mm", price: "₹25.50/m", stock: "Available", image: "/images/winding-wire-0.5mm.jpg" },
-          { size: "0.75 sq.mm", price: "₹35.80/m", stock: "Available", image: "/images/winding-wire-0.75mm.jpg" },
-          { size: "1.0 sq.mm", price: "₹45.20/m", stock: "Available", image: "/images/winding-wire-1.0mm.jpg" },
-          { size: "1.5 sq.mm", price: "₹65.40/m", stock: "Available", image: "/images/winding-wire-1.5mm.jpg" },
-          { size: "2.5 sq.mm", price: "₹95.60/m", stock: "Available", image: "/images/winding-wire-2.5mm.jpg" },
-          { size: "4.0 sq.mm", price: "₹145.80/m", stock: "Available", image: "/images/winding-wire-4.0mm.jpg" }
+          { size: "0.40 mm (covered Ø 0.800 mm)", price: "", stock: "Available", image: "" },
+          { size: "0.45 mm (covered Ø 0.850 mm)", price: "", stock: "Available", image: "" },
+          { size: "0.50 mm (covered Ø 0.900 mm)", price: "", stock: "Available", image: "" },
+          { size: "0.55 mm (covered Ø 0.950 mm)", price: "", stock: "Available", image: "" },
+          { size: "0.60 mm (covered Ø 1.000 mm)", price: "", stock: "Available", image: "" },
+          { size: "0.65 mm (covered Ø 1.050 mm)", price: "", stock: "Available", image: "" },
+          { size: "0.70 mm (covered Ø 1.100 mm)", price: "", stock: "Available", image: "" },
+          { size: "0.75 mm (covered Ø 1.150 mm)", price: "", stock: "Available", image: "" },
+          { size: "0.80 mm (covered Ø 1.200 mm)", price: "", stock: "Available", image: "" },
+          { size: "0.85 mm (covered Ø 1.300 mm)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "0.6/1 kV",
@@ -1286,12 +2457,13 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Twisted pair copper wire",
         imageUrl: "/images/products/twin twisted copper wire.jpeg",
         priceList: [
-          { size: "0.5 sq.mm", price: "₹15.50/m", stock: "Available", image: "/images/twin-twisted-0.5mm.jpg" },
-          { size: "0.75 sq.mm", price: "₹22.80/m", stock: "Available", image: "/images/twin-twisted-0.75mm.jpg" },
-          { size: "1.0 sq.mm", price: "₹28.20/m", stock: "Available", image: "/images/twin-twisted-1.0mm.jpg" },
-          { size: "1.5 sq.mm", price: "₹38.40/m", stock: "Available", image: "/images/twin-twisted-1.5mm.jpg" },
-          { size: "2.5 sq.mm", price: "₹55.60/m", stock: "Available", image: "/images/twin-twisted-2.5mm.jpg" },
-          { size: "4.0 sq.mm", price: "₹85.80/m", stock: "Available", image: "/images/twin-twisted-4.0mm.jpg" }
+          { size: "0.5 sq.mm (16/0.20 | 16/0.00788)", price: "", stock: "Available", image: "" },
+          { size: "0.75 sq.mm (24/0.20 | 24/0.00788)", price: "", stock: "Available", image: "" },
+          { size: "1.0 sq.mm (32/0.20 | 32/0.00788)", price: "", stock: "Available", image: "" },
+          { size: "1.5 sq.mm (30/0.25 | 30/0.00985)", price: "", stock: "Available", image: "" },
+          { size: "2.5 sq.mm (50/0.25 | 50/0.00985)", price: "", stock: "Available", image: "" },
+          { size: "4.0 sq.mm (56/0.30 | 56/0.01181)", price: "", stock: "Available", image: "" },
+          { size: "6.0 sq.mm (84/0.30 | 84/0.01181)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "0.6/1 kV",
@@ -1309,12 +2481,10 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Audio speaker connection cable",
         imageUrl: "/images/products/speaker cable.jpeg",
         priceList: [
-          { size: "2x0.5 sq.mm", price: "₹25.50/m", stock: "Available", image: "/images/speaker-2x0.5mm.jpg" },
-          { size: "2x0.75 sq.mm", price: "₹35.80/m", stock: "Available", image: "/images/speaker-2x0.75mm.jpg" },
-          { size: "2x1.0 sq.mm", price: "₹45.20/m", stock: "Available", image: "/images/speaker-2x1.0mm.jpg" },
-          { size: "2x1.5 sq.mm", price: "₹65.40/m", stock: "Available", image: "/images/speaker-2x1.5mm.jpg" },
-          { size: "2x2.5 sq.mm", price: "₹95.60/m", stock: "Available", image: "/images/speaker-2x2.5mm.jpg" },
-          { size: "2x4.0 sq.mm", price: "₹145.80/m", stock: "Available", image: "/images/speaker-2x4.0mm.jpg" }
+          { size: "0.5 sq.mm (16/0.20 | 16/0.00788)", price: "", stock: "Available", image: "" },
+          { size: "0.75 sq.mm (24/0.20 | 24/0.00788)", price: "", stock: "Available", image: "" },
+          { size: "1.0 sq.mm (32/0.20 | 32/0.00788)", price: "", stock: "Available", image: "" },
+          { size: "1.5 sq.mm (30/0.25 | 30/0.00985)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "0.6/1 kV",
@@ -1332,12 +2502,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Closed-circuit television cable",
         imageUrl: "/images/products/cctv cable.jpeg",
         priceList: [
-          { size: "4+1 Core", price: "₹35.50/m", stock: "Available", image: "/images/cctv-4+1core.jpg" },
-          { size: "8+1 Core", price: "₹55.80/m", stock: "Available", image: "/images/cctv-8+1core.jpg" },
-          { size: "12+1 Core", price: "₹75.20/m", stock: "Available", image: "/images/cctv-12+1core.jpg" },
-          { size: "16+1 Core", price: "₹95.40/m", stock: "Available", image: "/images/cctv-16+1core.jpg" },
-          { size: "20+1 Core", price: "₹115.60/m", stock: "Available", image: "/images/cctv-20+1core.jpg" },
-          { size: "24+1 Core", price: "₹135.80/m", stock: "Available", image: "/images/cctv-24+1core.jpg" }
+          { size: "CCTV 3+1 | Co-ax RG-59 | 84/0.01181 | CR@20°C 3.550 Ω/km", price: "", stock: "Available", image: "" },
+          { size: "CCTV 4+1 | Co-ax RG-59 | 84/0.01181 | CR@20°C 3.550 Ω/km", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "0.6/1 kV",
@@ -1355,12 +2521,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Local area network cable",
         imageUrl: "/images/products/telecom switch board cables.jpeg",
         priceList: [
-          { size: "Cat5e", price: "₹25.50/m", stock: "Available", image: "/images/lan-cat5e.jpg" },
-          { size: "Cat6", price: "₹35.80/m", stock: "Available", image: "/images/lan-cat6.jpg" },
-          { size: "Cat6A", price: "₹55.20/m", stock: "Available", image: "/images/lan-cat6a.jpg" },
-          { size: "Cat7", price: "₹75.40/m", stock: "Available", image: "/images/lan-cat7.jpg" },
-          { size: "Cat8", price: "₹95.60/m", stock: "Available", image: "/images/lan-cat8.jpg" },
-          { size: "Fiber Optic", price: "₹125.80/m", stock: "Available", image: "/images/lan-fiber.jpg" }
+          { size: "CAT-5 4 Pair (1/0.574 mm)", price: "", stock: "Available", image: "" },
+          { size: "CAT-6 4 Pair (1/0.574 mm)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "0.6/1 kV",
@@ -1378,12 +2540,14 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Automotive electrical cable",
         imageUrl: "/images/products/automobile wire.jpeg",
         priceList: [
-          { size: "0.5 sq.mm", price: "₹15.50/m", stock: "Available", image: "/images/automobile-0.5mm.jpg" },
-          { size: "0.75 sq.mm", price: "₹22.80/m", stock: "Available", image: "/images/automobile-0.75mm.jpg" },
-          { size: "1.0 sq.mm", price: "₹28.20/m", stock: "Available", image: "/images/automobile-1.0mm.jpg" },
-          { size: "1.5 sq.mm", price: "₹38.40/m", stock: "Available", image: "/images/automobile-1.5mm.jpg" },
-          { size: "2.5 sq.mm", price: "₹55.60/m", stock: "Available", image: "/images/automobile-2.5mm.jpg" },
-          { size: "4.0 sq.mm", price: "₹85.80/m", stock: "Available", image: "/images/automobile-4.0mm.jpg" }
+          { size: "0.35 sq.mm (12/0.20)", price: "", stock: "Available", image: "" },
+          { size: "0.5 sq.mm (16/0.20)", price: "", stock: "Available", image: "" },
+          { size: "0.75 sq.mm (24/0.20)", price: "", stock: "Available", image: "" },
+          { size: "1 sq.mm (32/0.20)", price: "", stock: "Available", image: "" },
+          { size: "1.5 sq.mm (30/0.25)", price: "", stock: "Available", image: "" },
+          { size: "2.5 sq.mm (50/0.25)", price: "", stock: "Available", image: "" },
+          { size: "4 sq.mm (56/0.30)", price: "", stock: "Available", image: "" },
+          { size: "6 sq.mm (84/0.30)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "0.6/1 kV",
@@ -1401,12 +2565,15 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Photovoltaic solar panel cable",
         imageUrl: "/images/products/pv solar cable.jpeg",
         priceList: [
-          { size: "2x2.5 sq.mm", price: "₹45.50/m", stock: "Available", image: "/images/pv-solar-2x2.5mm.jpg" },
-          { size: "2x4.0 sq.mm", price: "₹65.80/m", stock: "Available", image: "/images/pv-solar-2x4.0mm.jpg" },
-          { size: "2x6.0 sq.mm", price: "₹85.20/m", stock: "Available", image: "/images/pv-solar-2x6.0mm.jpg" },
-          { size: "2x10.0 sq.mm", price: "₹125.40/m", stock: "Available", image: "/images/pv-solar-2x10.0mm.jpg" },
-          { size: "2x16.0 sq.mm", price: "₹185.60/m", stock: "Available", image: "/images/pv-solar-2x16.0mm.jpg" },
-          { size: "2x25.0 sq.mm", price: "₹285.80/m", stock: "Available", image: "/images/pv-solar-2x25.0mm.jpg" }
+          { size: "1.5 sq.mm (30/0.25)", price: "", stock: "Available", image: "" },
+          { size: "2.5 sq.mm (50/0.25)", price: "", stock: "Available", image: "" },
+          { size: "4 sq.mm (56/0.30)", price: "", stock: "Available", image: "" },
+          { size: "6 sq.mm (84/0.30)", price: "", stock: "Available", image: "" },
+          { size: "10 sq.mm (80/0.40)", price: "", stock: "Available", image: "" },
+          { size: "16 sq.mm (126/0.40)", price: "", stock: "Available", image: "" },
+          { size: "25 sq.mm (196/0.40)", price: "", stock: "Available", image: "" },
+          { size: "35 sq.mm (276/0.40)", price: "", stock: "Available", image: "" },
+          { size: "50 sq.mm (396/0.40)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "1.8 kV",
@@ -1424,12 +2591,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Coaxial transmission cable",
         imageUrl: "/images/products/co axial cable.jpeg",
         priceList: [
-          { size: "RG-6", price: "₹25.50/m", stock: "Available", image: "/images/coaxial-rg6.jpg" },
-          { size: "RG-11", price: "₹35.80/m", stock: "Available", image: "/images/coaxial-rg11.jpg" },
-          { size: "RG-58", price: "₹15.20/m", stock: "Available", image: "/images/coaxial-rg58.jpg" },
-          { size: "RG-59", price: "₹18.40/m", stock: "Available", image: "/images/coaxial-rg59.jpg" },
-          { size: "RG-174", price: "₹12.60/m", stock: "Available", image: "/images/coaxial-rg174.jpg" },
-          { size: "RG-213", price: "₹45.80/m", stock: "Available", image: "/images/coaxial-rg213.jpg" }
+          { size: "RG59 (1/0.80 mm)", price: "", stock: "Available", image: "" },
+          { size: "RG6 (1/1.02 mm)", price: "", stock: "Available", image: "" },
+          { size: "RG11 (1/1.63 mm)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "0.6/1 kV",
@@ -1447,12 +2611,10 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Single tube optical fibre cable",
         imageUrl: "/images/products/unitube unarmoured optical fibre cable.jpeg",
         priceList: [
-          { size: "2 Core", price: "₹45.50/m", stock: "Available", image: "/images/optical-2core.jpg" },
-          { size: "4 Core", price: "₹65.80/m", stock: "Available", image: "/images/optical-4core.jpg" },
-          { size: "6 Core", price: "₹85.20/m", stock: "Available", image: "/images/optical-6core.jpg" },
-          { size: "8 Core", price: "₹105.40/m", stock: "Available", image: "/images/optical-8core.jpg" },
-          { size: "12 Core", price: "₹145.60/m", stock: "Available", image: "/images/optical-12core.jpg" },
-          { size: "24 Core", price: "₹285.80/m", stock: "Available", image: "/images/optical-24core.jpg" }
+          { size: "2 Fibre (FRP Ø 0.8 mm)", price: "", stock: "Available", image: "" },
+          { size: "4 Fibre (FRP Ø 0.8 mm)", price: "", stock: "Available", image: "" },
+          { size: "6 Fibre (FRP Ø 0.8 mm)", price: "", stock: "Available", image: "" },
+          { size: "12 Fibre (FRP Ø 0.8 mm)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "0.6/1 kV",
@@ -1470,12 +2632,36 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Control cable for industrial applications",
         imageUrl: "/images/products/armoured unarmoured pvc insulated copper control cable.jpeg",
         priceList: [
-          { size: "2x1.5 sq.mm", price: "₹45.50/m", stock: "Available", image: "/images/control-2x1.5mm.jpg" },
-          { size: "3x1.5 sq.mm", price: "₹65.80/m", stock: "Available", image: "/images/control-3x1.5mm.jpg" },
-          { size: "4x1.5 sq.mm", price: "₹85.20/m", stock: "Available", image: "/images/control-4x1.5mm.jpg" },
-          { size: "6x1.5 sq.mm", price: "₹125.40/m", stock: "Available", image: "/images/control-6x1.5mm.jpg" },
-          { size: "8x1.5 sq.mm", price: "₹165.60/m", stock: "Available", image: "/images/control-8x1.5mm.jpg" },
-          { size: "12x1.5 sq.mm", price: "₹245.80/m", stock: "Available", image: "/images/control-12x1.5mm.jpg" }
+          { size: "2C×1.5 (Ground 26A | Air 24A)", price: "", stock: "Available", image: "" },
+          { size: "3C×1.5 (Ground 24A | Air 20A)", price: "", stock: "Available", image: "" },
+          { size: "4C×1.5 (Ground 24A | Air 20A)", price: "", stock: "Available", image: "" },
+          { size: "5C×1.5 (Ground 18A | Air 17A)", price: "", stock: "Available", image: "" },
+          { size: "6C×1.5 (Ground 17A | Air 16A)", price: "", stock: "Available", image: "" },
+          { size: "7C×1.5 (Ground 16A | Air 16A)", price: "", stock: "Available", image: "" },
+          { size: "8C×1.5 (Ground 16A | Air 14A)", price: "", stock: "Available", image: "" },
+          { size: "9C×1.5 (Ground 15A | Air 14A)", price: "", stock: "Available", image: "" },
+          { size: "10C×1.5 (Ground 15A | Air 13A)", price: "", stock: "Available", image: "" },
+          { size: "12C×1.5 (Ground 14A | Air 12A)", price: "", stock: "Available", image: "" },
+          { size: "14C×1.5 (Ground 13A | Air 12A)", price: "", stock: "Available", image: "" },
+          { size: "16C×1.5 (Ground 13A | Air 11A)", price: "", stock: "Available", image: "" },
+          { size: "19C×1.5 (Ground 11A | Air 11A)", price: "", stock: "Available", image: "" },
+          { size: "21C×1.5 (Ground 11A | Air 10A)", price: "", stock: "Available", image: "" },
+          { size: "24C×1.5 (Ground 10A | Air 10A)", price: "", stock: "Available", image: "" },
+          { size: "2C×2.5 (Ground 36A | Air 32A)", price: "", stock: "Available", image: "" },
+          { size: "3C×2.5 (Ground 31A | Air 29A)", price: "", stock: "Available", image: "" },
+          { size: "4C×2.5 (Ground 31A | Air 29A)", price: "", stock: "Available", image: "" },
+          { size: "5C×2.5 (Ground 26A | Air 23A)", price: "", stock: "Available", image: "" },
+          { size: "6C×2.5 (Ground 24A | Air 22A)", price: "", stock: "Available", image: "" },
+          { size: "7C×2.5 (Ground 23A | Air 20A)", price: "", stock: "Available", image: "" },
+          { size: "8C×2.5 (Ground 22A | Air 19A)", price: "", stock: "Available", image: "" },
+          { size: "9C×2.5 (Ground 21A | Air 18A)", price: "", stock: "Available", image: "" },
+          { size: "10C×2.5 (Ground 21A | Air 18A)", price: "", stock: "Available", image: "" },
+          { size: "12C×2.5 (Ground 19A | Air 17A)", price: "", stock: "Available", image: "" },
+          { size: "14C×2.5 (Ground 18A | Air 17A)", price: "", stock: "Available", image: "" },
+          { size: "16C×2.5 (Ground 17A | Air 16A)", price: "", stock: "Available", image: "" },
+          { size: "19C×2.5 (Ground 16A | Air 14A)", price: "", stock: "Available", image: "" },
+          { size: "21C×2.5 (Ground 15A | Air 13A)", price: "", stock: "Available", image: "" },
+          { size: "24C×2.5 (Ground 15A | Air 13A)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "0.6/1 kV",
@@ -1493,12 +2679,34 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Telecommunications switchboard cable",
         imageUrl: "/images/products/telecom switch board cables.jpeg",
         priceList: [
-          { size: "10 Pair", price: "₹25.50/m", stock: "Available", image: "/images/telecom-10pair.jpg" },
-          { size: "20 Pair", price: "₹45.80/m", stock: "Available", image: "/images/telecom-20pair.jpg" },
-          { size: "50 Pair", price: "₹95.20/m", stock: "Available", image: "/images/telecom-50pair.jpg" },
-          { size: "100 Pair", price: "₹185.40/m", stock: "Available", image: "/images/telecom-100pair.jpg" },
-          { size: "200 Pair", price: "₹365.60/m", stock: "Available", image: "/images/telecom-200pair.jpg" },
-          { size: "300 Pair", price: "₹545.80/m", stock: "Available", image: "/images/telecom-300pair.jpg" }
+          { size: "2 Pair — 0.4 mm (286 Ω)", price: "", stock: "Available", image: "" },
+          { size: "2 Pair — 0.5 mm (184 Ω)", price: "", stock: "Available", image: "" },
+          { size: "2 Pair — 0.63 mm (128 Ω)", price: "", stock: "Available", image: "" },
+          { size: "2 Pair — 0.7 mm (90 Ω)", price: "", stock: "Available", image: "" },
+          { size: "5 Pair — 0.4 mm (286 Ω)", price: "", stock: "Available", image: "" },
+          { size: "5 Pair — 0.5 mm (184 Ω)", price: "", stock: "Available", image: "" },
+          { size: "5 Pair — 0.63 mm (128 Ω)", price: "", stock: "Available", image: "" },
+          { size: "5 Pair — 0.7 mm (90 Ω)", price: "", stock: "Available", image: "" },
+          { size: "10 Pair — 0.4 mm (286 Ω)", price: "", stock: "Available", image: "" },
+          { size: "10 Pair — 0.5 mm (184 Ω)", price: "", stock: "Available", image: "" },
+          { size: "10 Pair — 0.63 mm (128 Ω)", price: "", stock: "Available", image: "" },
+          { size: "10 Pair — 0.7 mm (90 Ω)", price: "", stock: "Available", image: "" },
+          { size: "20 Pair — 0.4 mm (286 Ω)", price: "", stock: "Available", image: "" },
+          { size: "20 Pair — 0.5 mm (184 Ω)", price: "", stock: "Available", image: "" },
+          { size: "20 Pair — 0.63 mm (128 Ω)", price: "", stock: "Available", image: "" },
+          { size: "20 Pair — 0.7 mm (90 Ω)", price: "", stock: "Available", image: "" },
+          { size: "25 Pair — 0.4 mm (286 Ω)", price: "", stock: "Available", image: "" },
+          { size: "25 Pair — 0.5 mm (184 Ω)", price: "", stock: "Available", image: "" },
+          { size: "25 Pair — 0.63 mm (128 Ω)", price: "", stock: "Available", image: "" },
+          { size: "25 Pair — 0.7 mm (90 Ω)", price: "", stock: "Available", image: "" },
+          { size: "30 Pair — 0.4 mm (286 Ω)", price: "", stock: "Available", image: "" },
+          { size: "30 Pair — 0.5 mm (184 Ω)", price: "", stock: "Available", image: "" },
+          { size: "30 Pair — 0.63 mm (128 Ω)", price: "", stock: "Available", image: "" },
+          { size: "30 Pair — 0.7 mm (90 Ω)", price: "", stock: "Available", image: "" },
+          { size: "50 Pair — 0.4 mm (286 Ω)", price: "", stock: "Available", image: "" },
+          { size: "50 Pair — 0.5 mm (184 Ω)", price: "", stock: "Available", image: "" },
+          { size: "50 Pair — 0.63 mm (128 Ω)", price: "", stock: "Available", image: "" },
+          { size: "50 Pair — 0.7 mm (90 Ω)", price: "", stock: "Available", image: "" }
         ],
         technicalData: {
           voltage: "0.6/1 kV",
@@ -1529,6 +2737,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   const closeFileViewer = () => {
     setIsFileViewerOpen(false);
     setSelectedFile(null);
+    setViewingImageIndex(null);
+    setCurrentSlide(0);
   };
 
   const openBusinessCard = () => {
@@ -1537,6 +2747,14 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
 
   const closeBusinessCard = () => {
     setIsBusinessCardOpen(false);
+  };
+
+  const openSamriddhiBusinessCard = () => {
+    setIsSamriddhiBusinessCardOpen(true);
+  };
+
+  const closeSamriddhiBusinessCard = () => {
+    setIsSamriddhiBusinessCardOpen(false);
   };
 
   const downloadBusinessCard = async (format = 'pdf') => {
@@ -1645,6 +2863,105 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     }
   };
 
+  const downloadSamriddhiBusinessCard = async (format = 'pdf') => {
+    if (!samriddhiBusinessCardRef.current) return;
+
+    try {
+      const cardElement = samriddhiBusinessCardRef.current;
+      
+      // Wait a bit to ensure all images are loaded
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (format === 'pdf') {
+        // Download as PDF - capture card exactly as displayed
+        const opt = {
+          margin: [0, 0, 0, 0],
+          filename: 'samriddhi-business-card.pdf',
+          image: { type: 'jpeg', quality: 1.0 },
+          html2canvas: { 
+            scale: 3,
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: '#ffffff',
+            logging: false,
+            letterRendering: true,
+            width: cardElement.offsetWidth,
+            height: cardElement.offsetHeight,
+            scrollX: 0,
+            scrollY: 0
+          },
+          jsPDF: { 
+            unit: 'px', 
+            format: [cardElement.offsetWidth, cardElement.offsetHeight],
+            orientation: cardElement.offsetWidth > cardElement.offsetHeight ? 'landscape' : 'portrait',
+            compress: false
+          }
+        };
+        
+        await html2pdf().set(opt).from(cardElement).save();
+      } else if (format === 'image') {
+        // Download as image - use html2canvas directly for better quality
+        try {
+          // Dynamically import html2canvas
+          const html2canvas = (await import('html2canvas')).default;
+          
+          const canvas = await html2canvas(cardElement, {
+            scale: 3,
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: '#ffffff',
+            logging: false,
+            letterRendering: true,
+            width: cardElement.offsetWidth,
+            height: cardElement.offsetHeight
+          });
+          
+          const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
+          const link = document.createElement('a');
+          link.download = 'samriddhi-business-card.jpg';
+          link.href = dataUrl;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } catch (error) {
+          console.error('Image download error:', error);
+          // Fallback: use html2pdf to generate canvas
+          const opt = {
+            margin: [0, 0, 0, 0],
+            image: { type: 'jpeg', quality: 1.0 },
+            html2canvas: { 
+              scale: 3,
+              useCORS: true,
+              backgroundColor: '#ffffff',
+              logging: false,
+              width: cardElement.offsetWidth,
+              height: cardElement.offsetHeight
+            },
+            jsPDF: { 
+              unit: 'px', 
+              format: [cardElement.offsetWidth, cardElement.offsetHeight]
+            }
+          };
+          
+          html2pdf().set(opt).from(cardElement).outputImg('dataurlstring').then((dataUrl) => {
+            const link = document.createElement('a');
+            link.download = 'samriddhi-business-card.jpg';
+            link.href = dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }).catch((err) => {
+            console.error('Fallback image download failed:', err);
+            alert('Failed to download image. Please try again.');
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error downloading Samriddhi business card:', error);
+      alert('Failed to download business card. Please try again.');
+    }
+  };
+
   const openBrochure = () => {
     // Open the brochure PDF directly in a new tab
     const pdfUrl = `${window.location.origin}/pdf/Anocab brochure.pdf`;
@@ -1652,6 +2969,32 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     if (!newWindow) {
       alert('Please allow pop-ups for this site to view the brochure');
     }
+  };
+
+  const openApprovals = () => {
+    setIsApprovalsOpen(true);
+  };
+
+  const closeApprovals = () => {
+    setIsApprovalsOpen(false);
+  };
+
+  const openApprovalPdf = (stateName) => {
+    const pdfMappings = {
+      'CHHATTISGARH': 'CHHATTISGARH approval.pdf',
+      'MADHYA PRADESH': 'MP approval.pdf',
+      'MAHARASHTRA': 'MAHARASHTRA approval.pdf'
+    };
+    const pdfUrl = `${window.location.origin}/pdf/${pdfMappings[stateName]}`;
+    const newWindow = window.open(pdfUrl, '_blank');
+    if (!newWindow) {
+      alert('Please allow pop-ups for this site to view the approval');
+    }
+  };
+
+  const openLicense = () => {
+    // Show "DATA UPCOMING" popup
+    setShowDataUpcoming(true);
   };
 
   const openCompanyEmails = () => {
@@ -1662,9 +3005,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     setIsCompanyEmailsOpen(false);
   };
 
-  const openCalculators = () => {
-    setShowCalculators(!showCalculators);
-  };
 
   const openHelpingCalculators = () => {
     setShowHelpingCalculators(!showHelpingCalculators);
@@ -1899,81 +3239,433 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
           </div>
         </div>
       )}
-      {/* Technical Calculations Modal */}
-      {isTechnicalCalculationsOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">Technical Calculations</h2>
-              <button 
-                onClick={closeTechnicalCalculations}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-6 h-6" />
+
+      {/* Conversional Calculations Modal */}
+      {isHelpingCalcOpen && helpingCalcType === 'conversional' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="w-full max-w-6xl max-h-[90vh] overflow-y-auto bg-white rounded-lg">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Conversional Calculations</h3>
+              <button onClick={closeHelpingCalc} className="text-gray-400 hover:text-gray-600">
+                <X className="h-6 w-6" />
               </button>
             </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Current Carrying Capacity Calculator</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Conductor Type</label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option>Copper</option>
-                        <option>Aluminium</option>
+            <div className="p-6 space-y-6">
+              {/* LENGTH CONVERSION CALCULATOR */}
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
+                  <h5 className="text-sm font-semibold text-gray-900">Length Conversion Calculator</h5>
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
+                      <div className="flex gap-2">
+                        <input 
+                          type="number" 
+                          value={convLenValL} 
+                          onChange={(e) => setConvLenValL(Number(e.target.value) || 0)}
+                          className="flex-1 px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                        />
+                        <select 
+                          value={convLenUnitL}
+                          onChange={(e) => setConvLenUnitL(e.target.value)}
+                          className="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option>km</option>
+                          <option>m</option>
+                          <option>dm</option>
+                          <option>cm</option>
+                          <option>mm</option>
+                          <option>yd</option>
+                          <option>ft</option>
+                          <option>in</option>
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Temperature (°C)</label>
-                      <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="20" />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Conductor Area (mm²)</label>
-                      <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="100" />
+                    <div className="text-xl text-gray-400 font-semibold">→</div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
+                      <div className="flex gap-2">
+                        <input 
+                          type="number" 
+                          value={convLenValR.toFixed(4)} 
+                          className="flex-1 px-3 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-300 rounded-md" 
+                          readOnly 
+                        />
+                        <select 
+                          value={convLenUnitR}
+                          onChange={(e) => setConvLenUnitR(e.target.value)}
+                          className="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option>km</option>
+                          <option>m</option>
+                          <option>dm</option>
+                          <option>cm</option>
+                          <option>mm</option>
+                          <option>yd</option>
+                          <option>ft</option>
+                          <option>in</option>
+                        </select>
                     </div>
-                    <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                      Calculate
-                    </button>
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Results</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Current Capacity:</span>
-                        <span className="font-semibold">250 A</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Resistance:</span>
-                        <span className="font-semibold">0.172 Ω</span>
+                      </div>
+
+              {/* TEMPERATURE CONVERTOR CALCULATOR */}
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
+                  <h5 className="text-sm font-semibold text-gray-900">Temperature Convertor Calculator</h5>
+                </div>
+                <div className="p-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">kt Factor</label>
+                      <input 
+                        type="number" 
+                        step="0.001" 
+                        value={ktFactor}
+                        onChange={(e) => setKtFactor(Number(e.target.value) || 0)}
+                        className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                      />
+                  </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Temperature (°C)</label>
+                      <input 
+                        type="number" 
+                        value={ktTemp}
+                        onChange={(e) => setKtTemp(Number(e.target.value) || 0)}
+                        className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                      />
+                </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">t°C to 20°C</label>
+                      <input 
+                        type="number" 
+                        step="0.001" 
+                        value={ktTo20}
+                        className="w-full px-3 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-300 rounded-md" 
+                        readOnly 
+                      />
+              </div>
+            </div>
+          </div>
+        </div>
+
+              {/* CABLE SELECTION FOR SUBMERSIBLE MOTOR CALCULATOR */}
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
+                  <h5 className="text-sm font-semibold text-gray-900">Cable Selection for Submersible Motor</h5>
+                  <p className="text-[11px] text-gray-600">3 PHASE, 220-240 V, 50Hz | Direct on line Starter</p>
+                </div>
+                <div className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Motor Rating</label>
+                    <div className="space-y-2">
+                        <input 
+                          type="number" 
+                          value={subMotorRating}
+                          onChange={(e) => setSubMotorRating(Number(e.target.value) || 0)}
+                          className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                        />
+                        <select 
+                          value={subMotorUnit}
+                          onChange={(e) => setSubMotorUnit(e.target.value)}
+                          className="w-full px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option>HP</option>
+                          <option>KW</option>
+                          <option>WATT</option>
+                      </select>
+                    </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Length</label>
+                      <div className="space-y-2">
+                        <input 
+                          type="number" 
+                          value={subMotorLen}
+                          onChange={(e) => setSubMotorLen(Number(e.target.value) || 0)}
+                          className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                        />
+                        <select 
+                          value={subMotorLenUnit}
+                          onChange={(e) => setSubMotorLenUnit(e.target.value)}
+                          className="w-full px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option>MTR</option>
+                          <option>FT</option>
+                        </select>
+                    </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Voltage Drop</label>
+                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subVoltDrop).toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Current (Ω)</label>
+                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subCurrent).toFixed(2)}</div>
+                  </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Actual Gauge</label>
+                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subActualGauge).toFixed(2)}</div>
+                </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Cable Size</label>
+                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{subCableSize}</div>
+          </div>
+        </div>
+                </div>
+              </div>
+
+              {/* ARMOURING COVERING CALCULATOR */}
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
+                  <h5 className="text-sm font-semibold text-gray-900">Armouring Covering Calculator</h5>
+                </div>
+                <div className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Armoured OD</label>
+                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armOd).toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Wire/Strip OD</label>
+                      <input 
+                        type="number" 
+                        value={armWireStripOd}
+                        onChange={(e) => setArmWireStripOd(Number(e.target.value) || 0)}
+                        className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                      />
+          </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Width</label>
+                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armWidth).toFixed(2)}</div>
+        </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Lay</label>
+                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armLay).toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">COS(Φ)</label>
+                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armCosPhi).toFixed(4)}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Inner OD</label>
+                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armInnerOd).toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Covering %</label>
+                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armCoveringPct).toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">N/O Wires</label>
+                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{armNoWires}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ENERGY CONVERSION CALCULATOR */}
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
+                  <h5 className="text-sm font-semibold text-gray-900">Energy Conversion Calculator</h5>
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
+                      <div className="flex gap-2">
+                        <input 
+                          type="number" 
+                          value={energyValL}
+                          onChange={(e) => setEnergyValL(Number(e.target.value) || 0)}
+                          className="flex-1 px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                        />
+                        <select 
+                          value={energyUnitL}
+                          onChange={(e) => setEnergyUnitL(e.target.value)}
+                          className="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option>J</option>
+                          <option>kJ</option>
+                          <option>Wh</option>
+                          <option>kWh</option>
+                          <option>cal</option>
+                          <option>kcal</option>
+                          <option>BTU</option>
+                          <option>eV</option>
+                          <option>MJ</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="text-xl text-gray-400 font-semibold">→</div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
+                      <div className="flex gap-2">
+                        <input 
+                          type="number" 
+                          step="0.0001" 
+                          value={energyValR.toFixed(4)} 
+                          className="flex-1 px-3 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-300 rounded-md" 
+                          readOnly 
+                        />
+                        <select 
+                          value={energyUnitR}
+                          onChange={(e) => setEnergyUnitR(e.target.value)}
+                          className="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option>J</option>
+                          <option>kJ</option>
+                          <option>Wh</option>
+                          <option>kWh</option>
+                          <option>cal</option>
+                          <option>kcal</option>
+                          <option>BTU</option>
+                          <option>eV</option>
+                          <option>MJ</option>
+                        </select>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Other Modals - Simplified for now */}
-      {isConversionCalculationsOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">Conversion Calculations</h2>
-              <button onClick={closeConversionCalculations} className="text-gray-400 hover:text-gray-600">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-600">Conversion calculation tools will be implemented here.</p>
-            </div>
-          </div>
-        </div>
-      )}
 
+              {/* CABLE SELECTION FOR COPPER HOUSE WIRES CALCULATOR */}
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
+                  <h5 className="text-sm font-semibold text-gray-900">Cable Selection for Copper House Wires</h5>
+                </div>
+                <div className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Phase Φ</label>
+                      <select 
+                        value={chwPhase}
+                        onChange={(e) => setChwPhase(Number(e.target.value) || 1)}
+                        className="w-full px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value={1}>1</option>
+                        <option value={3}>3</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Power Consumption</label>
+                    <div className="space-y-2">
+                        <input 
+                          type="number" 
+                          value={chwPowerVal}
+                          onChange={(e) => setChwPowerVal(Number(e.target.value) || 0)}
+                          className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                        />
+                        <select 
+                          value={chwPowerUnit}
+                          onChange={(e) => setChwPowerUnit(e.target.value)}
+                          className="w-full px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option>HP</option>
+                          <option>KW</option>
+                          <option>WATT</option>
+                        </select>
+                      </div>
+                      </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Length</label>
+                      <div className="space-y-2">
+                        <input 
+                          type="number" 
+                          value={chwLengthVal}
+                          onChange={(e) => setChwLengthVal(Number(e.target.value) || 0)}
+                          className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                        />
+                        <select 
+                          value={chwLengthUnit}
+                          onChange={(e) => setChwLengthUnit(e.target.value)}
+                          className="w-full px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option>MTR</option>
+                          <option>FT</option>
+                        </select>
+                    </div>
+                  </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Current (Ω)</label>
+                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(chwCurrent).toFixed(2)}</div>
+                </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Actual Gauge</label>
+                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(chwActualGauge).toFixed(2)}</div>
+              </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Wire Size</label>
+                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{chwWireSize}</div>
+            </div>
+          </div>
+        </div>
+            </div>
+
+              {/* POWER CONVERSION CALCULATOR */}
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div className="px-4 py-3 border-b"><h5 className="text-sm font-semibold text-gray-900">POWER CONVERSION CALCULATOR</h5></div>
+                <div className="p-4 grid grid-cols-2 gap-4 items-center">
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="number" 
+                      value={powerValL}
+                      onChange={(e) => setPowerValL(Number(e.target.value) || 0)}
+                      className="w-28 text-red-600 font-semibold border border-gray-300 rounded px-2 py-1" 
+                    />
+                    <select 
+                      value={powerUnitL}
+                      onChange={(e) => setPowerUnitL(e.target.value)}
+                      className="border border-gray-300 rounded px-2 py-1"
+                    >
+                      <option>J</option>
+                      <option>kJ</option>
+                      <option>Wh</option>
+                      <option>kWh</option>
+                      <option>cal</option>
+                      <option>kcal</option>
+                      <option>BTU</option>
+                      <option>eV</option>
+                      <option>MJ</option>
+                    </select>
+            </div>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="number" 
+                      step="0.0001" 
+                      value={powerValR.toFixed(4)} 
+                      className="w-28 text-blue-700 font-semibold border border-gray-300 rounded px-2 py-1" 
+                      readOnly 
+                    />
+                    <select 
+                      value={powerUnitR}
+                      onChange={(e) => setPowerUnitR(e.target.value)}
+                      className="border border-gray-300 rounded px-2 py-1"
+                    >
+                      <option>J</option>
+                      <option>kJ</option>
+                      <option>Wh</option>
+                      <option>kWh</option>
+                      <option>cal</option>
+                      <option>kcal</option>
+                      <option>BTU</option>
+                      <option>eV</option>
+                      <option>MJ</option>
+                    </select>
+          </div>
+        </div>
+              </div>
+
+              {/* Additional sections will follow as per screenshot; placeholders to confirm modal works */}
+              <div className="text-xs text-gray-500 italic">Placeholders added. I’ll wire exact tables and formulas next.</div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Image Viewer Modal - images only */}
       {isFileViewerOpen && Array.isArray(selectedFile) && selectedFile.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1985,7 +3677,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     <FileText className="h-6 w-6 text-blue-600" />
                   </div>
                   <div>
-                  <h2 className="text-xl font-bold text-gray-900">Image Preview</h2>
+                    <h2 className="text-xl font-bold text-gray-900">Image/Video Preview</h2>
                   </div>
                 </div>
                 <button onClick={closeFileViewer} className="text-gray-400 hover:text-gray-600">
@@ -1996,7 +3688,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
 
             <div className="p-6 overflow-auto max-h-[70vh]">
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Image Preview</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Image/Video Preview</h3>
                 <div className="border border-gray-200 rounded-lg p-6 bg-white">
                   <div className="relative flex items-center justify-center">
                     <button
@@ -2007,11 +3699,38 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     >
                       ‹
                     </button>
-                    <img 
-                      src={selectedFile[currentSlide]}
+                    {(() => {
+                      const currentFile = selectedFile[currentSlide];
+                      const isVideo = currentFile.startsWith('data:video/') || /\.(mp4|webm|ogg|mov|avi|wmv|flv|mkv)$/i.test(currentFile);
+                      return isVideo ? (
+                        <video 
+                          key={`video-${currentSlide}`}
+                          src={currentFile}
+                          controls
+                          preload="auto"
+                          playsInline
+                          autoPlay={false}
+                          muted={false}
+                          className="max-w-full max-h-[60vh] object-contain mx-auto rounded-lg shadow-sm"
+                          style={{ maxWidth: '100%', maxHeight: '60vh' }}
+                          onError={(e) => {
+                            console.error('Video playback error:', e);
+                            console.error('Video src type:', currentFile.substring(0, 50));
+                          }}
+                          onLoadedData={() => {
+                            console.log('Video loaded successfully');
+                          }}
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      ) : (
+                        <img 
+                          src={currentFile}
                       alt={`Preview ${currentSlide + 1}`}
                       className="max-w-full max-h-[60vh] object-contain mx-auto rounded-lg shadow-sm"
                     />
+                      );
+                    })()}
                     <button
                       onClick={() => setCurrentSlide(s => Math.min(selectedFile.length - 1, s + 1))}
                       className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow"
@@ -2086,10 +3805,10 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
           {/* Blank space placeholder */}
           <div className="mb-12"></div>
 
-          {/* Business Card & Brochure - Side by Side */}
+          {/* Business Cards & Brochure */}
           <div className="mb-4">
-            <div className="grid grid-cols-2 gap-3">
-              {/* Business Card */}
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              {/* Business Card - Anocab */}
               <div className="flex-1">
                 <div 
                   className={`p-3 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
@@ -2106,14 +3825,37 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     <div className="w-full">
                       <h3 className={`font-semibold text-xs ${
                         isDarkMode ? 'text-white' : 'text-gray-900'
-                      }`}>Business Card</h3>
+                      }`}>Anocab Business Card</h3>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Brochure */}
+              {/* Samriddhi Industries Business Card */}
               <div className="flex-1">
+                <div 
+                  className={`p-3 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+                    isDarkMode 
+                      ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
+                      : 'border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50 hover:from-purple-100 hover:to-violet-100'
+                  }`}
+                  onClick={openSamriddhiBusinessCard}
+                >
+                  <div className="flex flex-col items-center text-center gap-2">
+                    <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-sm">
+                      <User className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="w-full">
+                      <h3 className={`font-semibold text-xs ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Samriddhi Business Card</h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Brochure */}
+            <div className="w-full">
                 <div 
                   className={`p-3 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
                     isDarkMode 
@@ -2133,18 +3875,78 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     </div>
                   </div>
                 </div>
+            </div>
+          </div>
+
+          {/* Approvals */}
+          <div className="mb-4">
+            <div 
+              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+                isDarkMode 
+                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
+                  : 'border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100'
+              }`}
+              onClick={openApprovals}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm">
+                  <CheckCircle className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className={`font-semibold text-sm ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>Approvals</h3>
+                  <p className={`text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>Product approvals and certifications</p>
+                </div>
+                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`} />
+              </div>
+            </div>
+          </div>
+
+          {/* License */}
+          <div className="mb-4">
+            <div 
+              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+                isDarkMode 
+                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
+                  : 'border-gray-200 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100'
+              }`}
+              onClick={openLicense}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-sm">
+                  <Shield className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className={`font-semibold text-sm ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>License</h3>
+                  <p className={`text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>Company licenses and certifications</p>
+                </div>
+                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`} />
               </div>
             </div>
           </div>
 
           {/* GST Details */}
           <div className="mb-4">
-            <div className={`p-4 rounded-xl border shadow-sm ${
+            <div 
+              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
               isDarkMode 
-                ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600' 
-                : 'border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50'
-            }`}>
-              <div className="flex items-center gap-3 mb-3">
+                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
+                  : 'border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50 hover:from-purple-100 hover:to-violet-100'
+              }`}
+              onClick={() => setIsGstDetailsOpen(!isGstDetailsOpen)}
+            >
+              <div className="flex items-center gap-3">
                 <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-sm">
                   <CreditCard className="h-5 w-5 text-white" />
                 </div>
@@ -2156,8 +3958,14 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>Tax registration information</p>
                 </div>
+                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                } ${isGstDetailsOpen ? 'rotate-90' : ''}`} />
               </div>
-              <div className="space-y-3">
+            </div>
+            
+            {isGstDetailsOpen && (
+              <div className="mt-3 space-y-3">
                 {/* ANODE ELECTRIC PVT LTD */}
                 <div className={`p-3 rounded-lg border ${
                   isDarkMode 
@@ -2200,7 +4008,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   }`}>23ABWFS1117M1ZT</div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Company Emails */}
@@ -2328,75 +4136,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               </div>
             )}
           </div>
-
-          {/* Calculators */}
-          <div className="mb-4">
-            <div 
-              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
-                isDarkMode 
-                  ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
-                  : 'border-gray-200 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100'
-              }`}
-              onClick={openCalculators}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-sm">
-                  <Calculator className="h-5 w-5 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h3 className={`font-semibold text-sm ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>Calculators</h3>
-                  <p className={`text-xs ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  }`}>Mathematical and conversion tools</p>
-                </div>
-                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                } ${showCalculators ? 'rotate-90' : ''}`} />
-              </div>
-            </div>
-            
-            {showCalculators && (
-              <div className="mt-3 space-y-2">
-                {[
-                  { name: "Basic Calculator", description: "Standard calculations", icon: Calculator },
-                  { name: "Scientific Calculator", description: "Advanced mathematical functions", icon: Settings },
-                  { name: "Unit Converter", description: "Convert between units", icon: Wrench },
-                  { name: "Financial Calculator", description: "Financial computations", icon: DollarSign },
-                  { name: "Statistics Calculator", description: "Statistical analysis", icon: BarChart3 },
-                ].map((calculator, index) => (
-                  <div 
-                    key={index}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
-                      isDarkMode 
-                        ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' 
-                        : 'border-gray-200 bg-white hover:bg-orange-50'
-                    }`}
-                    onClick={() => handleToolClick(calculator)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${
-                        isDarkMode ? 'bg-gray-600' : 'bg-orange-100'
-                      }`}>
-                        <calculator.icon className={`h-4 w-4 ${
-                          isDarkMode ? 'text-orange-400' : 'text-orange-600'
-                        }`} />
-                      </div>
-                      <div className="flex-1">
-                        <span className={`text-sm font-medium ${
-                          isDarkMode ? 'text-white' : 'text-gray-900'
-                        }`}>{calculator.name}</span>
-                        <p className={`text-xs mt-1 ${
-                          isDarkMode ? 'text-gray-300' : 'text-gray-500'
-                        }`}>{calculator.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
           
           {/* Helping Calculators */}
           <div className="mb-4">
@@ -2436,12 +4175,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 ].map((calculator, index) => (
                   <div 
                     key={index}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
-                      isDarkMode 
-                        ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' 
-                        : 'border-gray-200 bg-white hover:bg-teal-50'
+                    className={`p-3 rounded-lg border transition-all duration-200 shadow-sm cursor-pointer hover:shadow-md ${
+                      isDarkMode ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' : 'border-gray-200 bg-white hover:bg-teal-50'
                     }`}
-                    onClick={() => handleToolClick(calculator)}
+                    onClick={() => {
+                      if (calculator.name === 'TECHNICAL CALCULATIONS') {
+                        setHelpingCalcType('technical');
+                        setIsHelpingCalcOpen(true);
+                      } else if (calculator.name === 'CONVERSIONAL CALCULATIONS') {
+                        setHelpingCalcType('conversional');
+                        setIsHelpingCalcOpen(true);
+                      } else {
+                        handleToolClick(calculator);
+                      }
+                    }}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-lg ${
@@ -2464,6 +4211,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 ))}
               </div>
             )}
+
+            {false && showHelpingCalculators && (<div />)}
           </div>
 
         </div>
@@ -2502,8 +4251,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
               )}
 
-              {/* Technical Specifications Section - Aerial Bunch Cable, AAAC, PVC Submersible, Multi Core XLPE Unarmoured */}
-              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "All Aluminium Alloy Conductor" || selectedProduct === "PVC Insulated Submersible Cable" || selectedProduct === "Multi Core XLPE Insulated Aluminium Unarmoured Cable") && (
+              {/* Technical Specifications Section - includes products with custom specs */}
+              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "All Aluminium Alloy Conductor" || selectedProduct === "PVC Insulated Submersible Cable" || selectedProduct === "Multi Core XLPE Insulated Aluminium Unarmoured Cable" || selectedProduct === "Multistrand Single Core Copper Cable" || selectedProduct === "Multi Core Copper Cable" || selectedProduct === "PVC Insulated Single Core Aluminium Cable" || selectedProduct === "PVC Insulated Multicore Aluminium Cable" || selectedProduct === "Submersible Winding Wire" || selectedProduct === "Twin Twisted Copper Wire" || selectedProduct === "Speaker Cable" || selectedProduct === "CCTV Cable" || selectedProduct === "LAN Cable" || selectedProduct === "Automobile Cable" || selectedProduct === "PV Solar Cable" || selectedProduct === "Co Axial Cable" || selectedProduct === "Uni-tube Unarmoured Optical Fibre Cable" || selectedProduct === "Armoured Unarmoured PVC Insulated Copper Control Cable" || selectedProduct === "Telecom Switch Board Cables" || selectedProduct === "Multi Core PVC Insulated Aluminium Unarmoured Cable" || selectedProduct === "Multi Core XLPE Insulated Aluminium Armoured Cable" || selectedProduct === "Multi Core PVC Insulated Aluminium Armoured Cable" || selectedProduct === "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable" || selectedProduct === "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable" || selectedProduct === "Paper Cover Aluminium Conductor") && (
                 <div className="mb-8">
                   <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Wrench className="h-5 w-5 text-blue-600" />
@@ -2563,7 +4312,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                               <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">ISO & BIS Certification</span>
+                                  <span className="text-sm font-semibold text-gray-800">ISO & BIS License</span>
                                   <p className="text-sm text-gray-800">Certified Company</p>
                                 </div>
                                 <div className="space-y-1">
@@ -2645,6 +4394,981 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                               </div>
                             </div>
                           </div>
+                        ) : selectedProduct === "Multi Core Copper Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>Suitable for low voltage grade applications</li>
+                                <li>Transferring & connecting power for residential and commercial infrastructure</li>
+                                <li>Useful for control of motors and other electric appliances</li>
+                                <li>PVC insulated & sheathed multicore cables for general purpose; temperature range -15°C to 70°C</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS 694:2010</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">Electrolytic grade annealed copper Class 5 as per IS 8130</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">PVC Type A, HR PVC Type C, as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of Core</span>
+                                  <p className="text-sm text-gray-800">Red & black for 2 core; Red, Yellow, Blue for 3 core; Red, Yellow, Blue & Black for 4 core</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
+                                  <p className="text-sm text-gray-800">PVC Type ST-1, PVC Type ST-2 as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of Sheath</span>
+                                  <p className="text-sm text-gray-800">Black and other colours as per customer demand</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
+                                  <p className="text-sm text-gray-800">Up to and including 450/750V</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
+                                  <p className="text-sm text-gray-800">Standard packing of 100/300/500 mtr coil; other lengths on request. Cables printed with ‘ANOCAB’ marking.</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Multistrand Single Core Copper Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>High quality multilayer PVC having greater IR Value</li>
+                                <li>REACH and RoHS Compliant Cable</li>
+                                <li>Flame Retardant Cable with higher Oxygen Index</li>
+                                <li>Anti-Rodent, Anti-Termite</li>
+                                <li>100% Pure Electrolytic grade Copper</li>
+                                <li>Super flexible conductor</li>
+                                <li>100% Conductivity</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS 694:2010</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Grade</span>
+                                  <p className="text-sm text-gray-800">Up to and including 1100V</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">Electrolytic Grade Copper class - 2, 5, as per IS: 8130:2013</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">PVC confirming to IS-5831 and formulated with FR properties and heat resistance up to 85°C. FRLSH & ZHFR insulation Type A/C 70/85°C.</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
+                                  <p className="text-sm text-gray-800">Red, yellow, blue, black & other colours on customer demand</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
+                                  <p className="text-sm text-gray-800">The cables are printed with marking of ‘ANOCAB’</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
+                                  <p className="text-sm text-gray-800">90 mtr. coil is packed in protective plastic bag; longer length available on customer demand</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "PVC Insulated Single Core Aluminium Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>High quality multilayer PVC having greater IR Value</li>
+                                <li>REACH and RoHS Compliant Cable</li>
+                                <li>Flame Retardant Cable with higher Oxygen Index</li>
+                                <li>Anti-Rodent, Anti-Termite</li>
+                                <li>100% Pure EC Grade Aluminium</li>
+                                <li>Super Annealed Conductor</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS 694:2010</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Grade</span>
+                                  <p className="text-sm text-gray-800">Up to and including 450/750V</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">EC grade Annealed Aluminium Class I, II as per IS 8130:2013</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">PVC confirming to IS-5831 and formulated with FR properties and ultraviolet rays; IS 5831 Type A/C FR 70°C</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
+                                  <p className="text-sm text-gray-800">Red, yellow, blue, black & other colours on customer demand</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
+                                  <p className="text-sm text-gray-800">The cables are printed with marking of ‘ANOCAB’</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
+                                  <p className="text-sm text-gray-800">90 mtr & 270 mtr coil packed in protective plastic bag</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "PVC Insulated Multicore Aluminium Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>High quality multilayer PVC having greater IR Value</li>
+                                <li>REACH and RoHS Compliant Cable</li>
+                                <li>Flame Retardant Cable with higher Oxygen Index</li>
+                                <li>Anti-Rodent, Anti-Termite</li>
+                                <li>100% Pure EC Grade Aluminium</li>
+                                <li>Super Annealed Conductor</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS 694:2010</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">EC Grade Aluminium Class 1 & 2 as per IS 8130</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">PVC Type A as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of Core</span>
+                                  <p className="text-sm text-gray-800">Red & black (2 core); Red, Yellow, Blue (3 core); Red, Yellow, Blue & Black (4 core)</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
+                                  <p className="text-sm text-gray-800">PVC Type ST-1, PVC Type ST-2 as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of Sheath</span>
+                                  <p className="text-sm text-gray-800">Black and other colours as per requirement</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
+                                  <p className="text-sm text-gray-800">Up to and including 450/750V</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
+                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr coil; other lengths available on request. Cables printed with ‘ANOCAB’ marking.</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Submersible Winding Wire" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>100% Pure CC Grade Copper</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS-8783 Part 4 Section 3 for Polyester & Polypropylene taped; IS-8783 Part 4 Section 1 for HR PVC</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">As per IS-8783 Part 1 Annealed Copper</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">Polypropylene and Polyester Tape; HR PVC as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Resistivity</span>
+                                  <p className="text-sm text-gray-800">Material Resistivity 0.01724 Ω·mm²/m at 20°C</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Test</span>
+                                  <p className="text-sm text-gray-800">Tested at 3 kV</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Twin Twisted Copper Wire" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>High quality multilayer PVC having greater IR Value</li>
+                                <li>REACH and RoHS Compliant Cable</li>
+                                <li>Flame Retardant Cable with higher Oxygen Index</li>
+                                <li>Anti-Rodent, Anti-Termite</li>
+                                <li>100% Pure Electrolytic grade Copper</li>
+                                <li>Super flexible conductor</li>
+                                <li>100% Conductivity</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS 694:2010</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Grade</span>
+                                  <p className="text-sm text-gray-800">Up to and including 1100V</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">Electrolytic Grade Copper Class 2/5 as per IS 8130:2013</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">PVC confirming to IS-5831 and formulated with FR properties and heat resistance up to 85°C; IS 5831 Type A/C FR 70°C</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
+                                  <p className="text-sm text-gray-800">Red, black & other colours on customer demand</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
+                                  <p className="text-sm text-gray-800">Cables printed with ‘ANOCAB’</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
+                                  <p className="text-sm text-gray-800">90 m coil packed in protective plastic bag; longer length on demand</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Speaker Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>High quality multilayer PVC having greater IR Value</li>
+                                <li>REACH and RoHS Compliant Cable</li>
+                                <li>Flame Retardant Cable with higher Oxygen Index</li>
+                                <li>Anti-Rodent, Anti-Termite</li>
+                                <li>100% Pure Electrolytic grade Copper</li>
+                                <li>Super flexible conductor</li>
+                                <li>100% Conductivity</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS 694:2010</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Grade</span>
+                                  <p className="text-sm text-gray-800">Up to and including 450/750V</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">Electrolytic Grade Copper class-5, as per IS 8130:2013</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">PVC confirming to IS-5831 with FR properties and heat resistance up to 85°C; IS 5831 Type A/C FR 70°C</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
+                                  <p className="text-sm text-gray-800">Transparent colour with colored strip for core identification; other colours on demand</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
+                                  <p className="text-sm text-gray-800">Cables printed with ‘ANOCAB’</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
+                                  <p className="text-sm text-gray-800">90 m coil packed in protective plastic bag; longer lengths on demand</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "CCTV Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>High definition video signal transmission</li>
+                                <li>Minimum distortion or attenuation</li>
+                                <li>Suitable for outdoor application</li>
+                                <li>Super Annealed Copper</li>
+                                <li>Aluminium alloy braided</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Grade</span>
+                                  <p className="text-sm text-gray-800">Up to and including 600/1000 V AC, 1800 V DC</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">Electrolytic Grade Annealed Copper class-1</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">Gas injected Polyethylene foam / solid LDPE</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
+                                  <p className="text-sm text-gray-800">PVC compound ST1</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
+                                  <p className="text-sm text-gray-800">Gray & other colours on customer demand</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
+                                  <p className="text-sm text-gray-800">The cables are printed with marking of ‘ANOCAB’</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
+                                  <p className="text-sm text-gray-800">100 mtr. coil packed in protective plastic bag; longer length on customer demand</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "LAN Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>Low attenuation and cross talk</li>
+                                <li>Insulated with high quality Polyethylene</li>
+                                <li>Flame Retardant Cable with higher Oxygen Index</li>
+                                <li>Anti-Rodent, Anti-Termite</li>
+                                <li>Super Annealed Conductor</li>
+                                <li>Low structural return loss</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">ISO/IEC 11801, TIA/EIA-568-C.2 : UTP cable</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage</span>
+                                  <p className="text-sm text-gray-800">72 Volt</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">Annealed Solid Bare Copper</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">High Quality Polyethylene compound</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
+                                  <p className="text-sm text-gray-800">White, Blue, Orange, Green, Brown</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
+                                  <p className="text-sm text-gray-800">Cables printed with ‘ANOCAB’</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
+                                  <p className="text-sm text-gray-800">100 mtr & 305 mtr coil packed in protective plastic bag</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Automobile Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>Flame Retardant</li>
+                                <li>Highly resistant against acid, petrol, diesel, grease</li>
+                                <li>High temperature range -40°C to 105°C</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">DIN 72551 Pt-6 FLRY-B</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Test Voltage</span>
+                                  <p className="text-sm text-gray-800">3000 Volts</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">Class-B according to DIN 13602</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">Plasticized PVC with properties according to DIN 72551 & ISO 6722, lead free</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "PV Solar Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>High grade crosslinked halogen free & flame retardant compound with protection against UV, O₃, oil, grease and weather</li>
+                                <li>REACH and RoHS compliant cable</li>
+                                <li>High temperature grade</li>
+                                <li>Super annealed tinned copper</li>
+                                <li>Super flexible conductor</li>
+                                <li>Low smoke emission</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">TUV : EN50618</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Grade</span>
+                                  <p className="text-sm text-gray-800">Up to and including 600/1000 V AC, 1800 V DC</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">Electrolytic grade annealed tinned copper class-5</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">Crosslinked halogen free & flame retardant compound</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
+                                  <p className="text-sm text-gray-800">XLPO compound ozone and UV resistant</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
+                                  <p className="text-sm text-gray-800">Red, black & other colours on customer demand</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
+                                  <p className="text-sm text-gray-800">Cables printed with ‘ANOCAB’</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
+                                  <p className="text-sm text-gray-800">100 m coil packed in protective plastic bag; longer length on demand</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Co Axial Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>Low loss video signal transmission</li>
+                                <li>REACH and RoHS compliant cable</li>
+                                <li>Suitable for outdoor application</li>
+                                <li>Super annealed copper</li>
+                                <li>Aluminium alloy braided</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS 14459</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Grade</span>
+                                  <p className="text-sm text-gray-800">Up to and including 600/1000 V AC, 1800 V DC</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">Electrolytic Grade Annealed Copper class-1</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">Gas injected Polyethylene foam / solid LDPE</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
+                                  <p className="text-sm text-gray-800">PVC compound ST1</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
+                                  <p className="text-sm text-gray-800">Black & other colours on customer demand</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
+                                  <p className="text-sm text-gray-800">Cables printed with ‘ANOCAB’</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
+                                  <p className="text-sm text-gray-800">100 m coil packed in protective plastic bag; longer length on demand</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Uni-tube Unarmoured Optical Fibre Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>Longitudinal water protection</li>
+                                <li>UV Protected</li>
+                                <li>High Speed Signal transmission</li>
+                                <li>High Flexibility</li>
+                                <li>Totally Dielectric</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IEC.60794 series, ANSI/ICEA S-87-640, ITU-T Rec. G 652 D</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Tensile Strength</span>
+                                  <p className="text-sm text-gray-800">500 N</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Bending Radius</span>
+                                  <p className="text-sm text-gray-800">20 D</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Crush Resistance (N/100mm)</span>
+                                  <p className="text-sm text-gray-800">1000</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Impact Strength (N.m)</span>
+                                  <p className="text-sm text-gray-800">50 N 0.5 m</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
+                                  <p className="text-sm text-gray-800">Blue, Orange, Green, Brown, Grey, White, Red, Black, Yellow, Violet, Pink and Aqua</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
+                                  <p className="text-sm text-gray-800">The cables are printed with marking of ‘ANOCAB’</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
+                                  <p className="text-sm text-gray-800">2000 mtr coil packed in protective Plastic bag</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Armoured Unarmoured PVC Insulated Copper Control Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>Premium quality compound with protection against UV, O₃, oil, grease and various weather conditions</li>
+                                <li>101% Pure Copper</li>
+                                <li>Flammability test as per IS 10810-53</li>
+                                <li>Heavy duty cable suitable for outdoor installation</li>
+                                <li>2 to 24 core, 1.5 & 2.5 sq mm control cable</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS 1554 PT-1</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">CC Grade Copper Class 1 & 2 as per IS 8130</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">PVC Type A, C as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of Core</span>
+                                  <p className="text-sm text-gray-800">Red & Black for 2 core; Red, Yellow, Blue for 3 core; Red, Yellow, Blue & Black for 4 core</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
+                                  <p className="text-sm text-gray-800">PVC Type ST-1, ST-2; PVC Type ST-2 as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of Sheath</span>
+                                  <p className="text-sm text-gray-800">Black and other colours as per requirement</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
+                                  <p className="text-sm text-gray-800">Up to and including 1100 Volt</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
+                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr coil; other lengths on request. Cables are printed with ‘ANOCAB’.</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>Premium Quality Compound having Protection against UV, O3, Oil Grease and different weather conditions</li>
+                                <li>100% Pure EC Grade Aluminium/Copper</li>
+                                <li>Galvanized Iron Armoured Protected</li>
+                                <li>Heavy duty Cable suitable for outdoor installation</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS 1554 PT-1</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">EC Grade Aluminium/Copper Class 1 & 2 as per IS 8130</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">PVC Type - A, as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of core</span>
+                                  <p className="text-sm text-gray-800">Red & black for 2 core cable, red, yellow, blue for 3 core cable, red, yellow, blue & black for 4 core cable</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
+                                  <p className="text-sm text-gray-800">PVC Type ST-1, PVC Type - ST 2 as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of sheath</span>
+                                  <p className="text-sm text-gray-800">Black and Other Colour as per requirement</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
+                                  <p className="text-sm text-gray-800">Up to and including 1100 Volt</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
+                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr. in coil. & Other length available on request, cables are printed with marking of 'ANOCAB'</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Paper Cover Aluminium Conductor" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>100% Pure EC Grade Aluminium</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS-6162 (Part-1):1971</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">Round Aluminium Conductor Pure EC grade Confirming to IS 4026-1969</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">Double Layer of Paper Covered with O, F & S Grade as per Customer Requirement</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Resistivity</span>
+                                  <p className="text-sm text-gray-800">0.028264 Ohm mm²/m at 20°C</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Test</span>
+                                  <p className="text-sm text-gray-800">Tested at 5.5 KV to 10 KV</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>Premium Quality Compound having Protection against UV, O3, Oil Grease and different weather conditions</li>
+                                <li>100% Pure EC Grade Aluminium</li>
+                                <li>Galvanized Iron Armoured Protected</li>
+                                <li>Heavy duty Cable suitable for outdoor installation</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS - 7098 PT-1</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">EC Grade Aluminium/Copper Class 1 & 2 as per IS 8130</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">XLPE Insulation As per IS 7098 Pt-1</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of core</span>
+                                  <p className="text-sm text-gray-800">Red, yellow, blue & black</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
+                                  <p className="text-sm text-gray-800">PVC Type ST-1, PVC Type - ST 2 as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of sheath</span>
+                                  <p className="text-sm text-gray-800">Black and Other Colour as per requirement</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
+                                  <p className="text-sm text-gray-800">Up to and including 1100 Volt</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
+                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr. in coil. & Other length available on request, cables are printed with marking of 'ANOCAB'</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Multi Core PVC Insulated Aluminium Armoured Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>Premium Quality Compound having Protection against UV, O3, Oil Grease and different weather conditions</li>
+                                <li>100% Pure EC Grade Aluminium</li>
+                                <li>Galvanized Iron Armoured Protected</li>
+                                <li>Heavy duty Cable suitable for outdoor installation</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS 1554 PT-1</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">EC Grade Aluminium Class 1 & 2 as per IS 8130</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">PVC Type - A, as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of core</span>
+                                  <p className="text-sm text-gray-800">Red & black for 2 core cable, red, yellow, blue for 3 core cable, red, yellow, blue & black for 4 core cable</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
+                                  <p className="text-sm text-gray-800">PVC Type ST-1, PVC Type - ST 2 as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of sheath</span>
+                                  <p className="text-sm text-gray-800">Black and Other Colour as per requirement</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
+                                  <p className="text-sm text-gray-800">Up to and including 1100 Volt</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
+                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr. in coil. & Other length available on request, cables are printed with marking of 'ANOCAB'</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Multi Core XLPE Insulated Aluminium Armoured Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>Premium Quality Compound having Protection against UV, O3, Oil Grease and different weather conditions</li>
+                                <li>100% Pure EC Grade Aluminium</li>
+                                <li>Galvanized Iron Armoured Protected</li>
+                                <li>Heavy duty Cable suitable for outdoor installation</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS 7098 PT-1</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">EC Grade Aluminium Class 1 & 2 as per IS 8130</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">XLPE insulated</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of core</span>
+                                  <p className="text-sm text-gray-800">Red & black for 2 core cable, red, yellow, blue for 3 core cable, red, yellow, blue & black for 4 core cable</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
+                                  <p className="text-sm text-gray-800">PVC Type ST-1, PVC Type - ST 2 as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of sheath</span>
+                                  <p className="text-sm text-gray-800">Black and Other Colour as per requirement</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
+                                  <p className="text-sm text-gray-800">Up to and including 1100 Volt</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
+                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr. in coil. & Other length available on request, cables are printed with marking of 'ANOCAB'</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Multi Core PVC Insulated Aluminium Unarmoured Cable" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>Premium Quality Compound having Protection against UV, O3, Oil Grease and different weather conditions</li>
+                                <li>100% Pure EC Grade Aluminium</li>
+                                <li>Heavy duty Cable suitable for outdoor installation</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">IS 1554 PT-1</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">EC Grade Aluminium Class 1 & 2 as per IS 8130</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">PVC Type - A, as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
+                                  <p className="text-sm text-gray-800">PVC Type ST-1, PVC Type - ST 2 as per IS 5831</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
+                                  <p className="text-sm text-gray-800">Red & black for 2 core cable, red, yellow, blue for 3 core cable, red, yellow, blue & black for 4 core cable</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Colour of sheath</span>
+                                  <p className="text-sm text-gray-800">Black and Other Colour as per requirement</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
+                                  <p className="text-sm text-gray-800">Up to and including 1100 Volt</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Marking & Packing</span>
+                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr. in coil. & Other length available on request, cables are printed with marking of 'ANOCAB'</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Telecom Switch Board Cables" ? (
+                          <div className="space-y-6">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
+                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                                <li>High quality multilayer PVC having greater IR Value</li>
+                                <li>REACH and RoHS Compliant Cable</li>
+                                <li>Flame Retardant Cable with higher Oxygen Index</li>
+                                <li>Anti-Rodent, Anti-Termite</li>
+                                <li>Super Annealed Conductor</li>
+                              </ul>
+                            </div>
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
+                                  <p className="text-sm text-gray-800">DOT TEC Spec No: G/WIR-06/02</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Test Voltage</span>
+                                  <p className="text-sm text-gray-800">2000 V spark Tester</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
+                                  <p className="text-sm text-gray-800">Annealed Tinned Copper Conductor</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
+                                  <p className="text-sm text-gray-800">Hard PVC confirming to IS-13176 (1991) type-2</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
+                                  <p className="text-sm text-gray-800">White, Blue, Orange, Green, Brown & Grey colour as per DOT</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
+                                  <p className="text-sm text-gray-800">Cables printed with marking of ‘ANOCAB’</p>
+                                </div>
+                                <div className="space-y-1 md:col-span-2">
+                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
+                                  <p className="text-sm text-gray-800">100 mtr. & 200 mtr. coil packed in protective Plastic bag</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         ) : (
                           <>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2686,6 +5410,69 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           </>
                         )}
                       </div>
+                      {/* Vertical Buttons Section */}
+                      <div className="flex flex-col gap-3 lg:min-w-[140px]">
+                        <button 
+                          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                          onClick={() => {
+                            // Scroll to Approvals section
+                            const approvalsSection = document.querySelector('[data-section="approvals"]');
+                            if (approvalsSection) {
+                              approvalsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }}
+                        >
+                          Approvals
+                        </button>
+                        <button 
+                          className="px-4 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                          onClick={() => {
+                            // Scroll to License section or open license
+                            const licenseSection = document.querySelector('[data-section="license"]');
+                            if (licenseSection) {
+                              licenseSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }}
+                        >
+                          License
+                        </button>
+                        <button 
+                          className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                          onClick={() => {
+                            // Scroll to GTP section
+                            const gtpSection = document.querySelector('[data-section="gtp"]');
+                            if (gtpSection) {
+                              gtpSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }}
+                        >
+                          GTP
+                        </button>
+                        <button 
+                          className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                          onClick={() => {
+                            // Scroll to Type Test section
+                            const typeTestSection = document.querySelector('[data-section="type-test"]');
+                            if (typeTestSection) {
+                              typeTestSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }}
+                        >
+                          Type Test
+                        </button>
+                        <button 
+                          className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                          onClick={() => {
+                            // Scroll to Process Chart section
+                            const processChartSection = document.querySelector('[data-section="process-chart"]');
+                            if (processChartSection) {
+                              processChartSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }}
+                        >
+                          Process Chart
+                        </button>
+                      </div>
                       <div className="lg:w-1/3 flex flex-col items-center">
                         <div className="w-full h-64 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
                           <img 
@@ -2694,6 +5481,48 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   : selectedProduct === "PVC Insulated Submersible Cable" 
                                   ? "/images/products/pvc insulated submersible cable.jpeg" 
                                   : selectedProduct === "Multi Core XLPE Insulated Aluminium Unarmoured Cable"
+                                  ? "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg"
+                                  : selectedProduct === "Multi Core XLPE Insulated Aluminium Armoured Cable"
+                                  ? "/images/products/multi core xlpe insulated aluminium armoured cable.jpeg"
+                                  : selectedProduct === "Multi Core PVC Insulated Aluminium Armoured Cable"
+                                  ? "/images/products/multi core pvc isulated aluminium armoured cable.jpeg"
+                                  : selectedProduct === "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable"
+                                  ? "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg"
+                                  : selectedProduct === "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable"
+                                  ? "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg"
+                                  : selectedProduct === "Paper Cover Aluminium Conductor"
+                                  ? "/images/products/paper covered aluminium conductor.jpeg"
+                                  : selectedProduct === "Multistrand Single Core Copper Cable"
+                                  ? "/images/products/multistrand single core copper cable.jpeg"
+                                  : selectedProduct === "Multi Core Copper Cable"
+                                  ? "/images/products/multi core copper cable.jpeg"
+                                  : selectedProduct === "PVC Insulated Single Core Aluminium Cable"
+                                  ? "/images/products/pvc insulated single core aluminium cables.jpeg"
+                                  : selectedProduct === "PVC Insulated Multicore Aluminium Cable"
+                                  ? "/images/products/pvc insulated multicore aluminium cable.jpeg"
+                                  : selectedProduct === "Submersible Winding Wire"
+                                  ? "/images/products/submersible winding wire.jpeg"
+                                  : selectedProduct === "Twin Twisted Copper Wire"
+                                  ? "/images/products/twin twisted copper wire.jpeg"
+                                  : selectedProduct === "Speaker Cable"
+                                  ? "/images/products/speaker cable.jpeg"
+                                  : selectedProduct === "CCTV Cable"
+                                  ? "/images/products/cctv cable.jpeg"
+                                  : selectedProduct === "LAN Cable"
+                                  ? "/images/products/telecom switch board cables.jpeg"
+                                  : selectedProduct === "Automobile Cable"
+                                  ? "/images/products/automobile wire.jpeg"
+                                  : selectedProduct === "PV Solar Cable"
+                                  ? "/images/products/pv solar cable.jpeg"
+                                  : selectedProduct === "Co Axial Cable"
+                                  ? "/images/products/co axial cable.jpeg"
+                                  : selectedProduct === "Uni-tube Unarmoured Optical Fibre Cable"
+                                  ? "/images/products/unitube unarmoured optical fibre cable.jpeg"
+                                  : selectedProduct === "Armoured Unarmoured PVC Insulated Copper Control Cable"
+                                  ? "/images/products/armoured unarmoured pvc insulated copper control cable.jpeg"
+                                  : selectedProduct === "Telecom Switch Board Cables"
+                                  ? "/images/products/telecom switch board cables.jpeg"
+                                  : selectedProduct === "Multi Core PVC Insulated Aluminium Unarmoured Cable"
                                   ? "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg"
                                   : "/images/products/aerial bunch cable.jpeg"}
                             alt={selectedProduct}
@@ -2826,54 +5655,163 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     Price List
                   </h3>
                   <button 
-                    onClick={() => {
-                      const htmlContent = `
-                        <!DOCTYPE html>
-                        <html>
-                        <head>
-                          <title>${productData.title} - Price List</title>
-                          <style>
-                            body { font-family: Arial, sans-serif; margin: 20px; }
-                            h1 { color: #2563eb; margin-bottom: 20px; }
-                            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                            th, td { border: 1px solid #d1d5db; padding: 12px; text-align: left; }
-                            th { background-color: #f3f4f6; font-weight: 600; color: #374151; }
-                            .header { text-align: center; margin-bottom: 30px; }
-                          </style>
-                        </head>
-                        <body>
-                          <div class="header">
-                            <h1>${getProductData(selectedProduct).title} - Price List</h1>
-                            <p>Generated on ${new Date().toLocaleDateString()}</p>
-                          </div>
-                          <table>
+                  onClick={async () => {
+                    const productData = getProductData(selectedProduct);
+                    if (!productData.priceList || productData.priceList.length === 0) {
+                      alert('No price list data available.');
+                      return;
+                    }
+
+                    // APPROACH 1: Direct jsPDF table (most reliable)
+                    try {
+                      const JS_PDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : (await import('jspdf')).jsPDF;
+                      const doc = new JS_PDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+                      // Title
+                      doc.setFont('helvetica', 'bold');
+                      doc.setFontSize(16);
+                      doc.text(`${productData.title} - Price List`, 105, 15, { align: 'center' });
+                      doc.setFont('helvetica', 'normal');
+                      doc.setFontSize(10);
+                      doc.text(`Generated on ${new Date().toLocaleDateString()}`, 105, 21, { align: 'center' });
+
+                      // Table headers
+                      const startX = 10; // mm
+                      let y = 30; // start Y
+                      const colW = [90, 50, 50];
+                      const headers = ['Size', 'Price per Meter', 'Stock Status'];
+                      doc.setFillColor(243, 244, 246);
+                      doc.setDrawColor(209, 213, 219);
+                      doc.setTextColor(55, 65, 81);
+                      doc.setFont('helvetica', 'bold');
+                      doc.setFontSize(11);
+                      // Header background
+                      doc.rect(startX, y - 6, colW[0] + colW[1] + colW[2], 8, 'F');
+                      // Header text
+                      let xCursor = startX + 2;
+                      doc.text(headers[0], xCursor, y);
+                      xCursor += colW[0];
+                      doc.text(headers[1], xCursor + 2, y);
+                      xCursor += colW[1];
+                      doc.text(headers[2], xCursor + 2, y);
+                      // Header border
+                      doc.rect(startX, y - 6, colW[0] + colW[1] + colW[2], 8);
+
+                      y += 6; // move below header
+                      doc.setFont('helvetica', 'normal');
+                      doc.setFontSize(10);
+                      doc.setTextColor(17, 24, 39);
+
+                      const lineHeight = 7; // mm
+                      for (const item of productData.priceList) {
+                        // Page break check
+                        if (y + lineHeight > 285) { // approx bottom margin
+                          doc.addPage();
+                          y = 20;
+                        }
+                        // Row borders
+                        doc.setDrawColor(209, 213, 219);
+                        doc.rect(startX, y - 5.5, colW[0] + colW[1] + colW[2], lineHeight);
+                        // Text
+                        let x = startX + 2;
+                        const sizeTxt = String(item.size || '-');
+                        const priceTxt = String(item.price || '-');
+                        const stockTxt = String(item.stock || '-');
+                        doc.text(sizeTxt, x, y);
+                        x += colW[0];
+                        doc.text(priceTxt, x + 2, y);
+                        x += colW[1];
+                        doc.text(stockTxt, x + 2, y);
+                        y += lineHeight;
+                      }
+
+                      doc.save(`${productData.title.toLowerCase().replace(/\s+/g, '-')}-price-list.pdf`);
+                      return; // done
+                    } catch (jsPdfErr) {
+                      // Fallback to html2pdf approach below
+                      console.warn('jsPDF not available, falling back to html2pdf', jsPdfErr);
+                    }
+
+                    // APPROACH 2: html2pdf fallback (keep only required columns)
+                    const rows = productData.priceList.map(item => {
+                      const stockClass = item.stock === 'Available'
+                        ? 'background-color: #d1fae5; color: #065f46;'
+                        : 'background-color: #f3f4f6; color: #374151;';
+                      return `
+                        <tr>
+                          <td style=\"padding: 10px; border: 1px solid #d1d5db; font-size: 12px;\">${item.size || '-'}<\/td>
+                          <td style=\"padding: 10px; border: 1px solid #d1d5db; font-size: 12px;\">${item.price || '-'}<\/td>
+                          <td style=\"padding: 10px; border: 1px solid #d1d5db; font-size: 12px;\"><span style=\"${stockClass} padding: 4px 8px; border-radius: 12px; font-size: 10px; display: inline-block;\">${item.stock || '-'}<\/span><\/td>
+                        <\/tr>`;
+                    }).join('');
+
+                    // Off-screen container for html2pdf rendering
+                    const tempDiv = document.createElement('div');
+                    tempDiv.id = 'price-list-pdf-temp';
+                    tempDiv.style.width = '794px';
+                    tempDiv.style.padding = '20px';
+                    tempDiv.style.fontFamily = 'Arial, sans-serif';
+                    tempDiv.style.backgroundColor = '#ffffff';
+                    // Keep it in the DOM flow and on-screen (some environments render blank if fully off-screen)
+                    tempDiv.style.position = 'fixed';
+                    tempDiv.style.top = '0px';
+                    tempDiv.style.left = '0px';
+                    tempDiv.style.zIndex = '-1';
+                    tempDiv.style.opacity = '0.01';
+                    tempDiv.style.visibility = 'visible';
+                    tempDiv.innerHTML = `
+                      <div style=\"text-align: center; margin-bottom: 16px;\">
+                        <h1 style=\"color: #2563eb; margin: 0 0 8px 0; font-size: 22px;\">${productData.title} - Price List<\/h1>
+                        <p style=\"color: #6b7280; font-size: 12px; margin: 0;\">Generated on ${new Date().toLocaleDateString()}<\/p>
+                      <\/div>
+                      <table style=\"width: 100%; border-collapse: collapse; margin-top: 12px;\">
                             <thead>
                               <tr>
-                                <th>Image</th>
-                                <th>Size</th>
-                                <th>Price per Meter</th>
-                                <th>Stock Status</th>
-                                <th>Add Images</th>
-                              </tr>
-                            </thead>
+                            <th style=\"padding: 10px; border: 1px solid #d1d5db; background-color: #f3f4f6; font-weight: 600; color: #374151; text-align: left; font-size: 12px;\">Size<\/th>
+                            <th style=\"padding: 10px; border: 1px solid #d1d5db; background-color: #f3f4f6; font-weight: 600; color: #374151; text-align: left; font-size: 12px;\">Price per Meter<\/th>
+                            <th style=\"padding: 10px; border: 1px solid #d1d5db; background-color: #f3f4f6; font-weight: 600; color: #374151; text-align: left; font-size: 12px;\">Stock Status<\/th>
+                          <\/tr>
+                        <\/thead>
                             <tbody>
-                              ${getProductData(selectedProduct).priceList.map(item => 
-                                `<tr><td><img src="${item.image}" alt="${getProductData(selectedProduct).title} ${item.size}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" /></td><td>${item.size}</td><td>${item.price}</td><td>${item.stock}</td><td>${item.stock === "Available" ? "<button className='w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center text-gray-300 cursor-not-allowed' title='Add images (coming soon)' disabled><Plus className='h-4 w-4' /></button>" : ""}</td></tr>`
-                              ).join('')}
-                            </tbody>
-                          </table>
-                        </body>
-                        </html>
-                      `;
-                      const blob = new Blob([htmlContent], { type: 'text/html' });
-                      const url = window.URL.createObjectURL(blob);
-                      const link = document.createElement('a');
-                      link.href = url;
-                      link.download = `${getProductData(selectedProduct).title.toLowerCase().replace(/\s+/g, '-')}-price-list.html`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      window.URL.revokeObjectURL(url);
+                          ${rows}
+                        <\/tbody>
+                      <\/table>`;
+
+                    document.body.appendChild(tempDiv);
+                    void tempDiv.offsetHeight; // force layout
+
+                    // Small delay to ensure layout is ready
+                    await new Promise(res => setTimeout(res, 250));
+
+                    const opt = {
+                      margin: [10, 10, 10, 10],
+                      filename: `${productData.title.toLowerCase().replace(/\s+/g, '-')}-price-list.pdf`,
+                      image: { type: 'jpeg', quality: 0.98 },
+                      html2canvas: { 
+                        scale: 2, 
+                        useCORS: true, 
+                        allowTaint: true, 
+                        backgroundColor: '#ffffff', 
+                        logging: false,
+                        scrollX: 0,
+                        scrollY: 0,
+                        windowWidth: 794,
+                        windowHeight: Math.max(1123, tempDiv.scrollHeight)
+                      },
+                      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    };
+
+                    try {
+                      await html2pdf().set(opt).from(tempDiv).save();
+                    } catch (err) {
+                      console.error('Error generating PDF:', err);
+                      alert('Error generating PDF. Please try again.');
+                    } finally {
+                      setTimeout(() => {
+                        const el = document.getElementById('price-list-pdf-temp');
+                        if (el && document.body.contains(el)) document.body.removeChild(el);
+                      }, 300);
+                    }
                     }}
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
                   >
@@ -2885,49 +5823,59 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   <table className="w-full border-collapse border border-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-3 text-left font-medium text-gray-700 border border-gray-200">Size</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-700 border border-gray-200">Price per Meter</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-700 border border-gray-200">Stock Status</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-700 border border-gray-200">Image</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-700 border border-gray-200">Add Images</th>
+                        <th className="px-4 py-1.5 text-left font-medium text-gray-700 border border-gray-200 text-sm">Size</th>
+                        <th className="px-4 py-1.5 text-left font-medium text-gray-700 border border-gray-200 text-sm">Price per Meter</th>
+                        <th className="px-4 py-1.5 text-left font-medium text-gray-700 border border-gray-200 text-sm">Stock Status</th>
+                        <th className="px-4 py-1.5 text-left font-medium text-gray-700 border border-gray-200 text-sm">img/vid</th>
+                        <th className="px-4 py-1.5 text-left font-medium text-gray-700 border border-gray-200 text-sm">Add Images</th>
                       </tr>
                     </thead>
                     <tbody>
                       {getProductData(selectedProduct).priceList.map((item, index) => (
                         <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 border border-gray-200 text-sm font-medium">{item.size}</td>
-                          <td className="px-4 py-3 border border-gray-200 text-sm text-blue-600 font-semibold">{item.price}</td>
-                          <td className="px-4 py-3 border border-gray-200 text-sm">
-                            <span className={`px-2 py-1 rounded-full text-xs ${
+                          <td className="px-4 py-1.5 border border-gray-200 text-sm font-medium">{item.size}</td>
+                          <td className="px-4 py-1.5 border border-gray-200 text-sm text-blue-600 font-semibold">{item.price}</td>
+                          <td className="px-4 py-1.5 border border-gray-200 text-sm">
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${
                               item.stock === "Available" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
                             }`}>
                               {item.stock}
                             </span>
                           </td>
-                          <td className="px-4 py-3 border border-gray-200">
+                          <td className="px-4 py-1.5 border border-gray-200">
                             <div 
-                              className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors" 
-                              title={((productImages[selectedProduct]?.[index]?.length > 0)) ? "Click to view images" : "No image uploaded"}
+                              className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors" 
+                              title={((productImages[selectedProduct]?.[index]?.length > 0)) ? "Click to view images/videos" : "No image/video uploaded"}
                               onClick={() => handleImageClick(index)}
                             >
-                              {(productImages[selectedProduct]?.[index]?.length > 0) ? (
-                                <img 
-                                  src={productImages[selectedProduct][index][productImages[selectedProduct][index].length - 1]} 
+                              {(productImages[selectedProduct]?.[index]?.length > 0) ? (() => {
+                                const lastFile = productImages[selectedProduct][index][productImages[selectedProduct][index].length - 1];
+                                const isVideo = lastFile.startsWith('data:video/') || /\.(mp4|webm|ogg|mov|avi|wmv|flv|mkv)$/i.test(lastFile);
+                                return isVideo ? (
+                                  <video 
+                                    src={lastFile}
+                                    className="w-full h-full object-cover rounded-md"
+                                    muted
+                                  />
+                                ) : (
+                                  <img 
+                                    src={lastFile} 
                                   alt={`${item.size} image`}
                                   className="w-full h-full object-cover rounded-md"
                                 />
-                              ) : (
-                                <Image className="h-4 w-4 text-gray-400" />
+                                );
+                              })() : (
+                                <Image className="h-3.5 w-3.5 text-gray-400" />
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3 border border-gray-200">
+                          <td className="px-4 py-1.5 border border-gray-200">
                             <button 
-                              className="w-10 h-10 bg-blue-100 rounded-md flex items-center justify-center text-blue-600 hover:bg-blue-200 transition-colors" 
-                              title="Add image"
+                              className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center text-blue-600 hover:bg-blue-200 transition-colors" 
+                              title="Add image/video"
                               onClick={() => handleImageUpload(index)}
                             >
-                              <Plus className="h-4 w-4" />
+                              <Plus className="h-3.5 w-3.5" />
                             </button>
                           </td>
                         </tr>
@@ -3057,7 +6005,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               {/* Hidden file input for image upload */}
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 onChange={handleFileSelect}
                 className="hidden"
                 id="image-upload-input"
@@ -3067,8 +6015,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               {isImageUploadOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                   <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                    <h3 className="text-lg font-semibold mb-4">Upload Image</h3>
-                    <p className="text-gray-600 mb-4">Select an image file to upload for this cable size.</p>
+                    <h3 className="text-lg font-semibold mb-4">Upload Image/Video</h3>
+                    <p className="text-gray-600 mb-4">Select an image or video file to upload for this cable size.</p>
                     <div className="flex gap-3">
                       <button
                         onClick={() => {
@@ -3100,8 +6048,30 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 
                 const tableKeyOrders = {
                   'PHASE Φ': ['sqmm','strands','conductorDia','insulationThickness','insulatedCoreDia','maxResistance'],
-                  'MESSENGER Φ': ['sqmm','strands','conductorDia','insulationThickness','maxResistance','maxBreakingLoad']
+                  'MESSENGER Φ': ['sqmm','strands','conductorDia','insulationThickness','maxResistance','maxBreakingLoad'],
+                  'ACSR CONDUCTOR SPECIFICATIONS': ['code', 'alArea', 'alStrand', 'steelStrand', 'dcResistance', 'acResistance65', 'acResistance75', 'current65', 'current75']
                 };
+                
+                // Shortened headers for ACSR table
+                const getShortHeader = (originalHeader, tableTitle) => {
+                  if (tableTitle !== 'ACSR CONDUCTOR SPECIFICATIONS') return originalHeader;
+                  
+                  const headerMap = {
+                    'ACSR Code': 'ACSR\nCode',
+                    'Nom. Aluminium Area (mm²)': 'Nom. Al\nArea\n(mm²)',
+                    'Stranding and Wire Diameter - Aluminium (nos/mm)': 'Stranding & Wire\nDia - Al\n(nos/mm)',
+                    'Stranding and Wire Diameter - Steel (nos/mm)': 'Stranding & Wire\nDia - Steel\n(nos/mm)',
+                    'DC Resistance at 20°C (Ω/km)': 'DC R\n@20°C\n(Ω/km)',
+                    'AC Resistance at 65°C (Ω/km)': 'AC R\n@65°C\n(Ω/km)',
+                    'AC Resistance at 75°C (Ω/km)': 'AC R\n@75°C\n(Ω/km)',
+                    'Current Capacity at 65°C (Amps)': 'Current\n@65°C\n(Amps)',
+                    'Current Capacity at 75°C (Amps)': 'Current\n@75°C\n(Amps)'
+                  };
+                  
+                  return headerMap[originalHeader] || originalHeader;
+                };
+                
+                const isAcsrTable = techTables.tables.some(t => t.title === 'ACSR CONDUCTOR SPECIFICATIONS');
                 
                 return (
                   <div className="mb-8">
@@ -3109,16 +6079,23 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       <Wrench className="h-5 w-5 text-blue-600" />
                       Technical Data
                     </h3>
-                    <div className="space-y-6">
-                      {techTables.tables.map((tbl, idx) => (
+                    <div className="space-y-4">
+                      {techTables.tables.map((tbl, idx) => {
+                        const isAcsr = tbl.title === 'ACSR CONDUCTOR SPECIFICATIONS';
+                        const isPhaseOrMessenger = tbl.title === 'PHASE Φ' || tbl.title === 'MESSENGER Φ';
+                        return (
                         <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden">
-                          <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 font-semibold text-gray-800">{tbl.title}</div>
-                          <div className="overflow-x-auto">
-                            <table className="min-w-full bg-white">
+                            <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 font-semibold text-sm text-gray-800">{tbl.title}</div>
+                            <div className={isAcsr ? 'overflow-x-auto' : ''}>
+                              <table className={`${isPhaseOrMessenger ? 'w-full table-fixed' : 'min-w-full'} bg-white`}>
                               <thead>
                                 <tr>
                                   {tbl.columns.map((col, cIdx) => (
-                                    <th key={cIdx} className="px-4 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">{col}</th>
+                                      <th key={cIdx} className={`${isPhaseOrMessenger ? 'px-1.5 py-2 text-center' : 'px-3 py-2 text-left'} text-xs font-semibold text-gray-700 border border-gray-200 ${isAcsr ? 'leading-tight text-center' : 'whitespace-nowrap'}`} style={isAcsr ? { whiteSpace: 'normal' } : {}}>
+                                        {isAcsr ? getShortHeader(col, tbl.title).split('\n').map((line, i) => (
+                                          <div key={i}>{line}</div>
+                                        )) : col}
+                                      </th>
                                   ))}
                                 </tr>
                               </thead>
@@ -3128,7 +6105,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   return (
                                     <tr key={rIdx} className="hover:bg-gray-50">
                                       {order.map((key, kIdx) => (
-                                        <td key={kIdx} className="px-4 py-2 text-sm text-gray-800 border border-gray-200">{row[key]}</td>
+                                          <td key={kIdx} className={`${isPhaseOrMessenger ? 'px-1.5 py-2 text-center' : 'px-3 py-2'} text-sm text-gray-800 border border-gray-200 ${isAcsr ? 'text-center' : ''} whitespace-nowrap`}>{row[key]}</td>
                                       ))}
                                     </tr>
                                   );
@@ -3137,11 +6114,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             </table>
                           </div>
                         </div>
-                      ))}
-                      {techTables.note && (
-                        <div className="text-xs text-gray-600">NOTE: {techTables.note}</div>
-                      )}
+                        );
+                      })}
                     </div>
+                      {techTables.note && (
+                      <div className="text-xs text-gray-600 mt-3">NOTE: {techTables.note}</div>
+                      )}
                   </div>
                 );
               })()}
@@ -3153,11 +6131,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   Costing Calculator
                 </h3>
                 <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="flex justify-end items-center px-3 py-2 bg-gray-50 border-b">
-                    <button className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700" onClick={() => {/* TODO: compute Costing */}}>
-                      Calculate
-                    </button>
-                  </div>
                   <div className="overflow-x-auto">
                     <table className="min-w-full bg-white">
                       <thead>
@@ -3177,18 +6150,45 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         <tr className="hover:bg-gray-50">
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PHASE</td>
                           <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" defaultValue="3" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            <div className="flex items-center gap-1">
+                              <input type="number" value={abPhaseInputs.cores}
+                                onChange={(e) => setAbPhaseInputs(v => ({ ...v, cores: Number(e.target.value) }))}
+                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              {reverseMode && targetSalePrice && targetProfitPercent && (
+                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                  {abPhaseInputs.cores}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" defaultValue="7" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            <div className="flex items-center gap-1">
+                              <input type="number" value={abPhaseInputs.strands}
+                                onChange={(e) => setAbPhaseInputs(v => ({ ...v, strands: Number(e.target.value) }))}
+                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              {reverseMode && targetSalePrice && targetProfitPercent && (
+                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                  {abPhaseInputs.strands}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" step="0.01" defaultValue="2.12" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            <div className="flex items-center gap-1">
+                              <input type="number" step="0.01" value={abPhaseInputs.strandSize}
+                                onChange={(e) => setAbPhaseInputs(v => ({ ...v, strandSize: Number(e.target.value) }))}
+                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              {reverseMode && targetSalePrice && targetProfitPercent && (
+                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                  {abPhaseInputs.strandSize.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">7.091</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">25 SQMM</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">203/KG</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">54775</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abPhaseCalcus.toFixed(3)}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhaseGauge)} SQMM`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhaseKgPerM)}/KG`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow1)}</td>
                         </tr>
                         {/* PH INN INS Row */}
                         <tr className="hover:bg-gray-50">
@@ -3196,40 +6196,73 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
                           <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" step="0.01" defaultValue="1.20" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            <input type="number" step="0.01" value={abPhInnIns.thickness}
+                              onChange={(e) => setAbPhInnIns({ thickness: Number(e.target.value) })}
+                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">6.36 mm</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">OD 8.76</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">80/KG</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">9640</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abPhInnCalcus.toFixed(3)}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abPhInnGauge.toFixed(2)}`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhInnKgPerM)}/KG`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow2)}</td>
                         </tr>
                         {/* PH OUT INS Row */}
                         <tr className="hover:bg-gray-50">
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PH OUT INS</td>
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">8.76 mm</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">OD 8.76</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0/KG</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0</td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" step="0.01" value={abPhOutIns.thickness}
+                              onChange={(e) => setAbPhOutIns({ thickness: Number(e.target.value) })}
+                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abPhInnGauge.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abPhOutGauge.toFixed(2)}`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhOutKgPerM)}/KG`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow3)}</td>
                         </tr>
                         {/* STREET LIGHT Row */}
                         <tr className="hover:bg-gray-50">
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STREET LIGHT</td>
                           <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" defaultValue="1" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            <div className="flex items-center gap-1">
+                              <input type="number" value={abStreetInputs.cores}
+                                onChange={(e) => setAbStreetInputs(v => ({ ...v, cores: Number(e.target.value) }))}
+                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              {reverseMode && targetSalePrice && targetProfitPercent && (
+                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                  {abStreetInputs.cores}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" defaultValue="7" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            <div className="flex items-center gap-1">
+                              <input type="number" value={abStreetInputs.strands}
+                                onChange={(e) => setAbStreetInputs(v => ({ ...v, strands: Number(e.target.value) }))}
+                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              {reverseMode && targetSalePrice && targetProfitPercent && (
+                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                  {abStreetInputs.strands}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" step="0.01" defaultValue="1.70" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            <div className="flex items-center gap-1">
+                              <input type="number" step="0.01" value={abStreetInputs.strandSize}
+                                onChange={(e) => setAbStreetInputs(v => ({ ...v, strandSize: Number(e.target.value) }))}
+                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              {reverseMode && targetSalePrice && targetProfitPercent && (
+                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                  {abStreetInputs.strandSize.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">7.091</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">16 SQMM</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">43/KG</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">11740</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abStreetCalcus.toFixed(3)}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStreetGauge)} SQMM`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStreetKgPerM)}/KG`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow4)}</td>
                         </tr>
                         {/* STL INN INS Row */}
                         <tr className="hover:bg-gray-50">
@@ -3237,62 +6270,103 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
                           <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" step="0.01" defaultValue="1.20" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            <input type="number" step="0.01" value={stlInnIns.thickness}
+                              onChange={(e) => setStlInnIns({ thickness: Number(e.target.value) })}
+                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">5.10 mm</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">OD 7.50</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">22/KG</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2678</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abStlInnCalcus.toFixed(3)}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${stlInnGauge.toFixed(2)}`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStlInnKgPerM)}/KG`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow5)}</td>
                         </tr>
                         {/* STL OUT INS Row */}
                         <tr className="hover:bg-gray-50">
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STL OUT INS</td>
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">7.50 mm</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">OD 7.50</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0/KG</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0</td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" step="0.01" value={stlOutIns.thickness}
+                              onChange={(e) => setStlOutIns({ thickness: Number(e.target.value) })}
+                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{stlInnGauge.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${stlOutGauge.toFixed(2)}`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStlOutKgPerM)}/KG`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow6)}</td>
                         </tr>
                         {/* MESSENGER Row */}
                         <tr className="hover:bg-gray-50">
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MESSENGER</td>
                           <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" defaultValue="1" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            <div className="flex items-center gap-1">
+                              <input type="number" value={abMessengerInputs.cores}
+                                onChange={(e) => setAbMessengerInputs(v => ({ ...v, cores: Number(e.target.value) }))}
+                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              {reverseMode && targetSalePrice && targetProfitPercent && (
+                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                  {abMessengerInputs.cores}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" defaultValue="7" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            <div className="flex items-center gap-1">
+                              <input type="number" value={abMessengerInputs.strands}
+                                onChange={(e) => setAbMessengerInputs(v => ({ ...v, strands: Number(e.target.value) }))}
+                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              {reverseMode && targetSalePrice && targetProfitPercent && (
+                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                  {abMessengerInputs.strands}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" step="0.01" defaultValue="2.12" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            <div className="flex items-center gap-1">
+                              <input type="number" step="0.01" value={abMessengerInputs.strandSize}
+                                onChange={(e) => setAbMessengerInputs(v => ({ ...v, strandSize: Number(e.target.value) }))}
+                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              {reverseMode && targetSalePrice && targetProfitPercent && (
+                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                  {abMessengerInputs.strandSize.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">7.091</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">25 SQMM</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">68/KG</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">18258</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abMessengerCalcus.toFixed(3)}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMessengerGauge)} SQMM`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMessengerKgPerM)}/KG`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow7)}</td>
                         </tr>
                         {/* MSN INN INS Row */}
                         <tr className="hover:bg-gray-50">
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MSN INN INS</td>
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">6.36 mm</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">OD 6.36</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0/KG</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0</td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" step="0.01" value={abMsnInn.thickness}
+                              onChange={(e) => setAbMsnInn({ thickness: Number(e.target.value) })}
+                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abMsnInnCalcus.toFixed(3)}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abMsnInnGauge.toFixed(2)}`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMsnInnKgPerM)}/KG`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow8)}</td>
                         </tr>
                         {/* MSN OUT INS Row */}
                         <tr className="hover:bg-gray-50">
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MSN OUT INS</td>
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">6.36 mm</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">OD 6.36</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0/KG</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0</td>
+                          <td className="px-3 py-2 border border-gray-200">
+                            <input type="number" step="0.01" value={abMsnOut.thickness}
+                              onChange={(e) => setAbMsnOut({ thickness: Number(e.target.value) })}
+                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abMsnInnGauge.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abMsnOutGauge.toFixed(2)}`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMsnOutKgPerM)}/KG`}</td>
+                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow9)}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -3306,19 +6380,47 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       <div className="space-y-1">
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-600">ALUMINIUM:</span>
-                          <input type="number" step="0.01" defaultValue="270.00" className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                          <div className="flex items-center gap-1">
+                            <input type="number" step="0.01" value={aluminiumRate} onChange={(e)=>setAluminiumRate(Number(e.target.value))} className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                            {reverseMode && targetSalePrice && targetProfitPercent && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                {effectiveAluminiumRate.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-600">ALLOY:</span>
-                          <input type="number" step="0.01" defaultValue="270.00" className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                          <div className="flex items-center gap-1">
+                            <input type="number" step="0.01" value={alloyRate} onChange={(e)=>setAlloyRate(Number(e.target.value))} className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                            {reverseMode && targetSalePrice && targetProfitPercent && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                {effectiveAlloyRate.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-600">INNER INSU:</span>
-                          <input type="number" step="0.01" defaultValue="120.00" className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                          <div className="flex items-center gap-1">
+                            <input type="number" step="0.01" value={innerInsuRate} onChange={(e)=>setInnerInsuRate(Number(e.target.value))} className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                            {reverseMode && targetSalePrice && targetProfitPercent && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                {effectiveInnerInsuRate.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-600">OUTER INSU:</span>
-                          <input type="number" step="0.01" defaultValue="0.00" className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                          <div className="flex items-center gap-1">
+                            <input type="number" step="0.01" value={outerInsuRate} onChange={(e)=>setOuterInsuRate(Number(e.target.value))} className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                            {reverseMode && targetSalePrice && targetProfitPercent && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                {effectiveOuterInsuRate.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -3329,23 +6431,23 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       <div className="space-y-1">
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-600">CABLE WT:</span>
-                          <span className="text-xs text-gray-800 font-semibold">417 KG</span>
+                          <span className="text-xs text-gray-800 font-semibold">{`${cableWt} KG`}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-600">ALUMINUM WT:</span>
-                          <span className="text-xs text-gray-800 font-semibold">246 KG</span>
+                          <span className="text-xs text-gray-800 font-semibold">{`${aluminiumWt} KG`}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-600">ALLOY WT:</span>
-                          <span className="text-xs text-gray-800 font-semibold">68 KG</span>
+                          <span className="text-xs text-gray-800 font-semibold">{`${alloyWt} KG`}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-600">INN XLPE WT:</span>
-                          <span className="text-xs text-gray-800 font-semibold">103 KG</span>
+                          <span className="text-xs text-gray-800 font-semibold">{`${innerXlpeWt} KG`}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-600">OUT XLPE WT:</span>
-                          <span className="text-xs text-gray-800 font-semibold">0 KG</span>
+                          <span className="text-xs text-gray-800 font-semibold">{`${outerXlpeWt} KG`}</span>
                         </div>
                       </div>
                     </div>
@@ -3354,30 +6456,63 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       <h4 className="font-semibold text-gray-800 text-sm">Pricing & Details</h4>
                       <div className="space-y-1">
                         <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">DRUM 2X:</span>
-                          <div className="flex items-center">
-                            <input type="number" defaultValue="5000" className="w-16 text-xs text-blue-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
-                            <ChevronDown className="h-3 w-3 text-gray-400 ml-1" />
+                          <div className="flex items-center gap-1">
+                            <select 
+                              value={drumType}
+                              onChange={(e)=>setDrumType(e.target.value)}
+                              className="text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent cursor-pointer"
+                            >
+                              <option value="COIL">COIL</option>
+                              <option value="DRUM 3.5 FT">DRUM 3.5 FT</option>
+                              <option value="DRUM 4.5 FT">DRUM 4.5 FT</option>
+                              <option value="DRUM 2X">DRUM 2X</option>
+                              <option value="DRUM">DRUM</option>
+                            </select>
                           </div>
+                          <span className="text-xs text-gray-800 font-semibold">{Math.round(drumCost)}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-600">FREIGHT:</span>
-                          <input type="number" step="0.01" defaultValue="0" className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                          <input type="number" step="0.01" defaultValue="0" className="w-20 text-right text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-600">LENGTH:</span>
-                          <div className="flex items-center">
-                            <input type="number" defaultValue="1000" className="w-16 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                            <div className="flex items-center justify-end w-28">
+                              <input type="number" value={lengthMeters} onChange={(e)=>setLengthMeters(Number(e.target.value))} className="w-16 text-right text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
                             <span className="text-xs text-red-600 font-semibold ml-1">MTR</span>
                           </div>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-600">SALE PRICE:</span>
-                          <span className="text-xs text-green-600 font-semibold">₹ 122.51</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-green-600 font-semibold">{`₹ ${salePrice.toFixed(2)}`}</span>
+                            <input 
+                              type="number" 
+                              step="0.01" 
+                              value={targetSalePrice || ''} 
+                              onChange={(e)=>setTargetSalePrice(Number(e.target.value))} 
+                              onFocus={() => setReverseMode(true)}
+                              className="w-20 text-xs text-red-600 font-semibold border border-gray-300 rounded px-1 focus:ring-1 focus:ring-blue-500 focus:outline-none" 
+                              placeholder="Target ₹"
+                              title="Enter target sale price for reverse calculation"
+                            />
+                          </div>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-600">PROFIT:</span>
-                          <span className="text-xs text-green-600 font-semibold">20 %</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-green-600 font-semibold">{`${profitPercent.toFixed(0)} %`}</span>
+                            <input 
+                              type="number" 
+                              step="0.01" 
+                              value={targetProfitPercent || ''} 
+                              onChange={(e)=>setTargetProfitPercent(Number(e.target.value))} 
+                              onFocus={() => setReverseMode(true)}
+                              className="w-20 text-xs text-red-600 font-semibold border border-gray-300 rounded px-1 focus:ring-1 focus:ring-blue-500 focus:outline-none" 
+                              placeholder="Target %"
+                              title="Enter target profit % for reverse calculation"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -3394,11 +6529,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   Reduction Gauge Calculator
                 </h3>
                 <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="flex justify-end items-center px-3 py-2 bg-gray-50 border-b">
-                    <button className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700" onClick={() => {/* TODO: compute Reduction Gauge */}}>
-                      Calculate
-                    </button>
-                  </div>
                   <div className="overflow-x-auto">
                     <table className="min-w-full bg-white">
                       <thead>
@@ -3417,39 +6547,59 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         <tr className="hover:bg-gray-50">
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PHASE</td>
                           <td className="px-3 py-2 border border-gray-200">
-                            <input type="text" defaultValue="25 SQMM" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            <input
+                              type="text"
+                              value={rgPhaseArea}
+                              onChange={(e)=>setRgPhaseArea(e.target.value)}
+                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none"
+                            />
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">7</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">2.02 MM</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">1.30 MM</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">8.67 MM</td>
+                          <td rowSpan={3} className="px-3 py-2 align-middle text-sm border border-gray-200">
+                            <input
+                              type="number"
+                              value={rgReduction}
+                              onChange={(e) => setRgReduction(Number(e.target.value))}
+                              className="w-20 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none"
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgPhaseStrand}</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgPhaseWire > 0 ? `${rgPhaseWire.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgPhaseInsulation > 0 ? `${rgPhaseInsulation.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgPhaseOuterDia > 0 ? `${rgPhaseOuterDia.toFixed(2)} MM` : '-'}</td>
                         </tr>
                         {/* STREET LIGHT Row */}
                         <tr className="hover:bg-gray-50">
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STREET LIGHT</td>
                           <td className="px-3 py-2 border border-gray-200">
-                            <input type="text" defaultValue="16 SQMM" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            <input
+                              type="text"
+                              value={rgStreetArea}
+                              onChange={(e)=>setRgStreetArea(e.target.value)}
+                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none"
+                            />
                           </td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" defaultValue="10" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                          </td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">7</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">1.62 MM</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">1.30 MM</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">7.46 MM</td>
+                          
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgStreetStrand}</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgStreetWire > 0 ? `${rgStreetWire.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgStreetInsulation > 0 ? `${rgStreetInsulation.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgStreetOuterDia > 0 ? `${rgStreetOuterDia.toFixed(2)} MM` : '-'}</td>
                         </tr>
                         {/* MESSENGER Row */}
                         <tr className="hover:bg-gray-50">
                           <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MESSENGER</td>
                           <td className="px-3 py-2 border border-gray-200">
-                            <input type="text" defaultValue="25 SQMM" className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            <input
+                              type="text"
+                              value={rgMessengerArea}
+                              onChange={(e)=>setRgMessengerArea(e.target.value)}
+                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none"
+                            />
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">7</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">2.02 MM</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">1.30 MM</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">8.67 MM</td>
+                          
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgMessengerStrand}</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgMessengerWire > 0 ? `${rgMessengerWire.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgMessengerInsulation > 0 ? `${rgMessengerInsulation.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgMessengerOuterDia > 0 ? `${rgMessengerOuterDia.toFixed(2)} MM` : '-'}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -3468,11 +6618,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   Wire Selection Calculator
                 </h3>
                 <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="flex justify-end items-center px-3 py-2 bg-gray-50 border-b">
-                    <button className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700" onClick={() => {/* TODO: compute Wire Selection */}}>
-                      Calculate
-                    </button>
-                  </div>
                   <div className="overflow-x-auto">
                     <table className="min-w-full bg-white">
                       <thead>
@@ -3488,34 +6633,37 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       <tbody>
                         <tr className="hover:bg-gray-50">
                           <td className="px-3 py-2 border border-gray-200">
+                            <select
+                              value={wsPhase}
+                              onChange={(e)=>setWsPhase(Number(e.target.value))}
+                              className="text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent"
+                            >
+                              <option value={1}>1</option>
+                              <option value={3}>3</option>
+                            </select>
+                          </td>
+                          <td className="px-3 py-2 border border-gray-200">
                             <div className="flex items-center">
-                              <input type="number" defaultValue="3" className="w-16 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                              <ChevronDown className="h-4 w-4 text-gray-400 ml-1" />
+                              <input type="number" step="0.01" value={wsPower} onChange={(e)=>setWsPower(Number(e.target.value))} className="w-20 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              <select value={wsPowerUnit} onChange={(e)=>setWsPowerUnit(e.target.value)} className="ml-2 text-xs text-red-600 border-0 focus:ring-0 focus:outline-none bg-transparent font-semibold">
+                                <option value="HP">HP</option>
+                                <option value="KW">KW</option>
+                                <option value="WATT">WATT</option>
+                              </select>
                             </div>
                           </td>
                           <td className="px-3 py-2 border border-gray-200">
                             <div className="flex items-center">
-                              <input type="number" step="0.01" defaultValue="20.00" className="w-20 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                              <select className="ml-2 text-xs text-red-600 border-0 focus:ring-0 focus:outline-none bg-transparent font-semibold">
-                                <option>HP</option>
-                                <option>KW</option>
+                              <input type="number" value={wsLength} onChange={(e)=>setWsLength(Number(e.target.value))} className="w-20 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              <select value={wsLengthUnit} onChange={(e)=>setWsLengthUnit(e.target.value)} className="ml-2 text-xs text-red-600 border-0 focus:ring-0 focus:outline-none bg-transparent font-semibold">
+                                <option value="MTR">MTR</option>
+                                <option value="FT">FT</option>
                               </select>
-                              <ChevronDown className="h-4 w-4 text-gray-400 ml-1" />
                             </div>
                           </td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <div className="flex items-center">
-                              <input type="number" defaultValue="500" className="w-20 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                              <select className="ml-2 text-xs text-red-600 border-0 focus:ring-0 focus:outline-none bg-transparent font-semibold">
-                                <option>MTR</option>
-                                <option>FT</option>
-                              </select>
-                              <ChevronDown className="h-4 w-4 text-gray-400 ml-1" />
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">29.08</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">20.21</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">25 SQMM</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{wsCurrent.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{wsActualGauge.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{wsWireSize}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -3577,7 +6725,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               )}
 
               {/* Technical Data Section - Only for Product Cards (exclude AAAC and PVC Submersible to avoid duplication) */}
-              {selectedProduct !== "All Aluminium Alloy Conductor" && selectedProduct !== "PVC Insulated Submersible Cable" && selectedProduct !== "Multi Core XLPE Insulated Aluminium Unarmoured Cable" && getProductData(selectedProduct).technicalData && Object.keys(getProductData(selectedProduct).technicalData).length > 0 && (
+              {selectedProduct !== "All Aluminium Alloy Conductor" && selectedProduct !== "PVC Insulated Submersible Cable" && selectedProduct !== "Multi Core XLPE Insulated Aluminium Unarmoured Cable" && selectedProduct !== "Multistrand Single Core Copper Cable" && selectedProduct !== "Multi Core Copper Cable" && selectedProduct !== "PVC Insulated Single Core Aluminium Cable" && selectedProduct !== "PVC Insulated Multicore Aluminium Cable" && selectedProduct !== "Submersible Winding Wire" && selectedProduct !== "Twin Twisted Copper Wire" && selectedProduct !== "Speaker Cable" && selectedProduct !== "CCTV Cable" && selectedProduct !== "LAN Cable" && selectedProduct !== "Automobile Cable" && selectedProduct !== "PV Solar Cable" && selectedProduct !== "Co Axial Cable" && selectedProduct !== "Uni-tube Unarmoured Optical Fibre Cable" && selectedProduct !== "Armoured Unarmoured PVC Insulated Copper Control Cable" && selectedProduct !== "Telecom Switch Board Cables" && selectedProduct !== "Multi Core PVC Insulated Aluminium Unarmoured Cable" && selectedProduct !== "Multi Core XLPE Insulated Aluminium Armoured Cable" && selectedProduct !== "Multi Core PVC Insulated Aluminium Armoured Cable" && selectedProduct !== "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable" && selectedProduct !== "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable" && selectedProduct !== "Paper Cover Aluminium Conductor" && getProductData(selectedProduct).technicalData && Object.keys(getProductData(selectedProduct).technicalData).length > 0 && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Wrench className="h-5 w-5 text-blue-600" />
@@ -3668,7 +6816,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               {getProductData(selectedProduct).priceList && getProductData(selectedProduct).priceList.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Approvals */}
-                <div className="p-4 border border-gray-200 rounded-lg">
+                <div className="p-4 border border-gray-200 rounded-lg" data-section="approvals">
                   <div className="flex items-center gap-2 mb-3">
                     <CheckCircle className="h-5 w-5 text-blue-600" />
                     <h4 className="font-semibold text-gray-900">Approvals</h4>
@@ -3677,30 +6825,32 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     {(() => {
                       // Map PDFs to products
                       const pdfMappings = {
-                        "Aerial Bunch Cable": "aerial bunch cable, bis certificate .pdf",
-                        "All Aluminium Alloy Conductor": "all aluminium alloy conductor,bis certificate .pdf",
-                        "Aluminium Conductor Galvanized Steel Reinforced": "aluminium conductor galvanised steel reinforced, bis certificate.pdf",
-                        "Multi Core XLPE Insulated Aluminium Unarmoured Cable": "multicore xlpe insulated aluminium unrmoured cable,bis certificate.pdf",
-                        "PVC Insulated Submersible Cable": "pvc insulated submersible cable, bis certificate .pdf"
+                        "Aerial Bunch Cable": "aerial bunch cable, bis liscence .pdf",
+                        "All Aluminium Alloy Conductor": "all aluminium alloy conductor,bis liscence.pdf",
+                        "Aluminium Conductor Galvanized Steel Reinforced": "aluminium conductor galvanised steel reinforced, bis liscence.pdf",
+                        "Multi Core XLPE Insulated Aluminium Unarmoured Cable": "multicore xlpe insulated aluminium unrmoured cable,bis liscence.pdf",
+                        "PVC Insulated Submersible Cable": "pvc insulated submersible cable, bis liscence .pdf",
+                        "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable": "single core xlpe insulated aluminium:copper armoured:unarmoured cable bis liscence.pdf"
                       };
                       
-                      // List of products that actually have certificates uploaded and available
+                      // List of products that actually have licenses uploaded and available
                       // Buttons will be disabled for products not in this list
                       const availableCertificates = [
                         "Aerial Bunch Cable",
                         "All Aluminium Alloy Conductor",
                         "Aluminium Conductor Galvanized Steel Reinforced",
-                        "Multi Core XLPE Insulated Aluminium Unarmoured Cable"
-                        // "PVC Insulated Submersible Cable" - certificate not uploaded yet, buttons will be disabled
+                        "Multi Core XLPE Insulated Aluminium Unarmoured Cable",
+                        "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable"
+                        // "PVC Insulated Submersible Cable" - license not uploaded yet, buttons will be disabled
                       ];
                       
                       const productName = selectedProduct; // Use the original product name from tools array
                       const relevantPdfs = [];
                       
-                      // Show BIS certificate for all products in pdfMappings, but buttons will be disabled if not in availableCertificates
+                      // Show BIS license for all products in pdfMappings, but buttons will be disabled if not in availableCertificates
                       if (pdfMappings[productName]) {
                         relevantPdfs.push({
-                          type: `BIS Certification - ${productName}`,
+                          type: `BIS License - ${productName}`,
                           status: "Valid",
                           expiry: "2025-12-31",
                           file: pdfMappings[productName],
@@ -3740,12 +6890,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                     const response = await fetch(pdfUrl, { method: 'HEAD' });
                                     if (response.ok) {
                                       console.log('Downloading PDF:', pdfUrl);
-                                      const link = document.createElement('a');
-                                      link.href = pdfUrl;
-                                      link.download = approval.file;
-                                      document.body.appendChild(link);
-                                      link.click();
-                                      document.body.removeChild(link);
+                                  const link = document.createElement('a');
+                                  link.href = pdfUrl;
+                                  link.download = approval.file;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
                                     } else {
                                       alert('Certificate not available for download. The file does not exist.');
                                     }
@@ -3785,9 +6935,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                     const response = await fetch(pdfUrl, { method: 'HEAD' });
                                     if (response.ok) {
                                       console.log('Opening PDF:', pdfUrl);
-                                      const newWindow = window.open(pdfUrl, '_blank');
-                                      if (!newWindow) {
-                                        alert('Please allow pop-ups for this site to view the PDF');
+                                  const newWindow = window.open(pdfUrl, '_blank');
+                                  if (!newWindow) {
+                                    alert('Please allow pop-ups for this site to view the PDF');
                                       }
                                     } else {
                                       alert('Certificate not available for viewing. The file does not exist.');
@@ -3824,7 +6974,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
 
                 {/* Licenses */}
-                <div className="p-4 border border-gray-200 rounded-lg">
+                <div className="p-4 border border-gray-200 rounded-lg" data-section="license">
                   <div className="flex items-center gap-2 mb-3">
                     <Shield className="h-5 w-5 text-blue-600" />
                     <h4 className="font-semibold text-gray-900">Licenses</h4>
@@ -3857,7 +7007,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   </div>
                 </div>
                 {/* GTP */}
-                <div className="p-4 border border-gray-200 rounded-lg">
+                <div className="p-4 border border-gray-200 rounded-lg" data-section="gtp">
                   <div className="flex items-center gap-2 mb-3">
                     <Wrench className="h-5 w-5 text-blue-600" />
                     <h4 className="font-semibold text-gray-900">GTP</h4>
@@ -3894,7 +7044,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   </div>
                 </div>
                 {/* Type Test */}
-                <div className="p-4 border border-gray-200 rounded-lg">
+                <div className="p-4 border border-gray-200 rounded-lg" data-section="type-test">
                   <div className="flex items-center gap-2 mb-3">
                     <FileText className="h-5 w-5 text-blue-600" />
                     <h4 className="font-semibold text-gray-900">Type Test</h4>
@@ -3925,6 +7075,41 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             {test.result}
                           </span>
                           <span className="text-xs text-gray-500">{test.certificate}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Process Chart */}
+                <div className="p-4 border border-gray-200 rounded-lg" data-section="process-chart">
+                  <div className="flex items-center gap-2 mb-3">
+                    <BarChart3 className="h-5 w-5 text-blue-600" />
+                    <h4 className="font-semibold text-gray-900">Process Chart</h4>
+                  </div>
+                  <div className="space-y-2">
+                    {[
+                      { chart: "Manufacturing Process Flow", status: "Available", lastUpdated: "2024-01-10", file: "Manufacturing_Process_Flow_Chart.pdf" },
+                      { chart: "Quality Control Process", status: "Available", lastUpdated: "2024-01-12", file: "Quality_Control_Process_Chart.pdf" }
+                    ].map((chart, index) => (
+                      <div key={index} className="p-2 bg-gray-50 rounded text-sm">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="font-medium">{chart.chart}</div>
+                          <div className="flex gap-2">
+                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
+                              <Download className="h-4 w-4" />
+                            </span>
+                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
+                              <Eye className="h-4 w-4" />
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            chart.status === "Available" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                          }`}>
+                            {chart.status}
+                          </span>
+                          <span className="text-xs text-gray-500">{chart.lastUpdated}</span>
                         </div>
                       </div>
                     ))}
@@ -3973,6 +7158,193 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
           </div>
         </div>
       )}
+
+      {/* Helping Calculators Modal */}
+      {isHelpingCalcOpen && helpingCalcType === 'technical' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="w-full max-w-6xl max-h-[90vh] overflow-y-auto bg-white rounded-lg">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Technical Calculations</h3>
+              <button onClick={closeHelpingCalc} className="text-gray-400 hover:text-gray-600">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-4 space-y-6">
+              {/* AERIAL BUNCHED CABLE PARAMETERS */}
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
+                  <h5 className="text-sm font-semibold text-gray-900">AERIAL BUNCHED CABLE PARAMETERS CALCULATOR</h5>
+                </div>
+                <div className="p-4">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-xs border border-gray-300">
+                      <thead>
+                        <tr className="bg-black text-white">
+                          <th className="px-2 py-2 border border-gray-300">CORES</th>
+                          <th className="px-2 py-2 border border-gray-300">X-SELECTION AREA</th>
+                          <th className="px-2 py-2 border border-gray-300">REDUCTION (%)</th>
+                          <th className="px-2 py-2 border border-gray-300">NO OF STRANDS</th>
+                          <th className="px-2 py-2 border border-gray-300">WIRE SIZE OF GAUGE</th>
+                          <th className="px-2 py-2 border border-gray-300">SELECTIONAL AREA</th>
+                          <th className="px-2 py-2 border border-gray-300">INSULATION THICKNESS</th>
+                          <th className="px-2 py-2 border border-gray-300">OD OF CABLE</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* Row 1 - PHASE (reduction cell starts here with rowSpan=3) */}
+                        <tr className="bg-white">
+                          <td className="px-2 py-2 border border-gray-300 font-medium text-gray-800">{tcAerialParams[0]?.core}</td>
+                          <td className="px-2 py-2 border border-gray-300">
+                            <input type="text" value={tcAerialParams[0]?.xSelectionArea} onChange={(e)=>{ const v=e.target.value; setTcAerialParams(prev=>{ const next=[...prev]; next[0]={...prev[0], xSelectionArea:v}; return next;}); }} className="w-28 text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          {/* Reduction merged starting here via rowSpan */}
+                          <td rowSpan={3} className="px-2 py-2 border border-gray-300 align-middle">
+                            <input type="number" value={tcReductionPercent} onChange={(e)=>setTcReductionPercent(Number(e.target.value))} className="w-16 text-center text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{phaseNoOfStrands}</td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{phaseWireSize > 0 ? `${phaseWireSize.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{phaseSelectionalArea > 0 ? `${Math.round(phaseSelectionalArea)} SQMM` : '-'}</td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{phaseInsulationThickness > 0 ? `${phaseInsulationThickness.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{phaseOdOfCable > 0 ? `${phaseOdOfCable.toFixed(2)} MM` : '-'}</td>
+                        </tr>
+                        {/* Row 2 - ST LIGHT (skip reduction column since merged above) */}
+                        <tr className="bg-white">
+                          <td className="px-2 py-2 border border-gray-300 font-medium text-gray-800">{tcAerialParams[1]?.core}</td>
+                          <td className="px-2 py-2 border border-gray-300">
+                            <input type="text" value={tcAerialParams[1]?.xSelectionArea} onChange={(e)=>{ const v=e.target.value; setTcAerialParams(prev=>{ const next=[...prev]; next[1]={...prev[1], xSelectionArea:v}; return next;}); }} className="w-28 text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{streetNoOfStrands}</td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{streetWireSize > 0 ? `${streetWireSize.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{streetSelectionalArea > 0 ? `${Math.round(streetSelectionalArea)} SQMM` : '-'}</td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{streetInsulationThickness > 0 ? `${streetInsulationThickness.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{streetOdOfCable > 0 ? `${streetOdOfCable.toFixed(2)} MM` : '-'}</td>
+                        </tr>
+                        {/* Row 3 - MESSENGER (skip reduction column) */}
+                        <tr className="bg-white">
+                          <td className="px-2 py-2 border border-gray-300 font-medium text-gray-800">{tcAerialParams[2]?.core}</td>
+                          <td className="px-2 py-2 border border-gray-300">
+                            <input type="text" value={tcAerialParams[2]?.xSelectionArea} onChange={(e)=>{ const v=e.target.value; setTcAerialParams(prev=>{ const next=[...prev]; next[2]={...prev[2], xSelectionArea:v}; return next;}); }} className="w-28 text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                          </td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{messengerNoOfStrands}</td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{messengerWireSize > 0 ? `${messengerWireSize.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{messengerSelectionalArea > 0 ? `${Math.round(messengerSelectionalArea)} SQMM` : '-'}</td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{messengerInsulationThickness > 0 ? `${messengerInsulationThickness.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{messengerOdOfCable > 0 ? `${messengerOdOfCable.toFixed(2)} MM` : '-'}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* CURRENT CARRYING CAPACITY & RESISTANCE CALCULATOR */}
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
+                  <h5 className="text-sm font-semibold text-gray-900">CURRENT CARRYING CAPACITY & RESISTANCE CALCULATOR</h5>
+                  <p className="text-[11px] text-gray-600">CURRENT CARRYING CAPACITY & RESISTANCE ACCORDING TO INDIAN STANDARDS</p>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div className="grid grid-cols-1 gap-2">
+                    <div className="flex items-center gap-2">
+                      <select value={tcConductorType} onChange={(e)=>setTcConductorType(e.target.value)} className="flex-1 px-2 py-1 border border-gray-300 rounded">
+                        <option>AAAC Conductor</option>
+                        <option>AB Cable</option>
+                        <option>ACSR Conductor</option>
+                        <option>Submersible Flat Cable</option>
+                        <option>Copper House Wire</option>
+                        <option>Agricultural Wire</option>
+                      </select>
+                      <input value={tcStandard} onChange={(e)=>setTcStandard(e.target.value)} className="flex-1 px-2 py-1 border border-gray-300 rounded" />
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-xs border border-gray-300">
+                        <thead>
+                          <tr className="bg-black text-white">
+                            <th className="px-2 py-2 border">SELECTION AREA</th>
+                            <th className="px-2 py-2 border">CCC (Amps/km)</th>
+                            <th className="px-2 py-2 border">At °C (Amps)</th>
+                            <th className="px-2 py-2 border">AC RESISTANCE (Ω/km)</th>
+                            <th className="px-2 py-2 border">At °C (Amps)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="bg-white">
+                            <td className="px-2 py-2 border"><input value={tcSelectionArea} onChange={(e)=>setTcSelectionArea(e.target.value)} className="w-28 text-center text-blue-700 font-semibold border-0 focus:ring-0 focus:outline-none" /></td>
+                            <td className="px-2 py-2 border"><input value={tcCCCAmpsKm} onChange={(e)=>setTcCCCAmpsKm(e.target.value)} className="w-20 text-center border-0 focus:ring-0 focus:outline-none" /></td>
+                            <td className="px-2 py-2 border"><input value={tcAtCAmp1} onChange={(e)=>setTcAtCAmp1(e.target.value)} className="w-20 text-center border-0 focus:ring-0 focus:outline-none" /></td>
+                            <td className="px-2 py-2 border"><input value={tcACResistance} onChange={(e)=>setTcACResistance(e.target.value)} className="w-24 text-center border-0 focus:ring-0 focus:outline-none" /></td>
+                            <td className="px-2 py-2 border"><input value={tcAtCAmp2} onChange={(e)=>setTcAtCAmp2(e.target.value)} className="w-20 text-center border-0 focus:ring-0 focus:outline-none" /></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* AAAC CONDUCTOR PARAMETERS */}
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm"><h5 className="text-sm font-semibold text-gray-900">AAAC CONDUCTOR PARAMETERS CALCULATOR</h5></div>
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <select value={aaacSelected} onChange={(e)=>setAaacSelected(e.target.value)} className="w-60 px-2 py-1 border border-gray-300 rounded">{aaacOptions.map(o => (<option key={o.name}>{o.name}</option>))}</select>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-xs border border-gray-300">
+                      <thead>
+                        <tr className="bg-black text-white">
+                          <th className="px-2 py-2 border">CONDUCTOR CODE</th>
+                          <th className="px-2 py-2 border">SELECTIONAL AREA<br/>mm²</th>
+                          <th className="px-2 py-2 border">STRANDING & WIRE DIA.<br/>nos/mm</th>
+                          <th className="px-2 py-2 border">DC RESISTANCE<br/>(N) NORMAL<br/>Ω/km</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="px-2 py-2 border text-center text-gray-800 font-medium">{aaacCurrent.code}</td>
+                          <td className="px-2 py-2 border text-center text-blue-700 font-semibold">{aaacCurrent.area}</td>
+                          <td className="px-2 py-2 border text-center text-blue-700 font-semibold">{aaacCurrent.strandDia}</td>
+                          <td className="px-2 py-2 border text-center text-blue-700 font-semibold">{aaacCurrent.dcResistance}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* ACSR CONDUCTOR PARAMETERS */}
+              <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm"><h5 className="text-sm font-semibold text-gray-900">ACSR CONDUCTOR PARAMETERS CALCULATOR</h5></div>
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <select value={acsrSelected} onChange={(e)=>setAcsrSelected(e.target.value)} className="w-60 px-2 py-1 border border-gray-300 rounded">{acsrOptions.map(o => (<option key={o.name}>{o.name}</option>))}</select>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-xs border border-gray-300">
+                      <thead>
+                        <tr className="bg-black text-white">
+                          <th className="px-2 py-2 border">CONDUCTOR CODE</th>
+                          <th className="px-2 py-2 border">SELECTIONAL AREA<br/>mm²</th>
+                          <th className="px-2 py-2 border">STRANDING & WIRE DIA.</th>
+                          <th className="px-2 py-2 border">DC RESISTANCE<br/>At 20°C<br/>Ω/km</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="px-2 py-2 border text-center text-gray-800 font-medium">{acsrCurrent.code}</td>
+                          <td className="px-2 py-2 border text-center text-blue-700 font-semibold">{acsrCurrent.area}</td>
+                          <td className="px-2 py-2 border text-center text-blue-700 font-semibold"><div className="grid grid-cols-2 gap-2"><div><div className="text-[10px] text-gray-600">Aluminium</div><div>{acsrCurrent.alStrandDia}</div></div><div><div className="text-[10px] text-gray-600">Steel</div><div>{acsrCurrent.steelStrandDia}</div></div></div></td>
+                          <td className="px-2 py-2 border text-center text-blue-700 font-semibold">{acsrCurrent.dcResistance20}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {isFileViewerOpen && Array.isArray(selectedFile) && selectedFile.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-lg">
@@ -3983,36 +7355,129 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     <FileText className="h-6 w-6 text-blue-600" />
                   </div>
                   <div>
-                  <h2 className="text-xl font-bold text-gray-900">Image Preview</h2>
+                  <h2 className="text-xl font-bold text-gray-900">Image/Video Preview</h2>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={async () => {
+                      if (!selectedFile || selectedFile.length === 0 || currentSlide >= selectedFile.length) return;
+                      const imageUrl = selectedFile[currentSlide];
+                      try {
+                        let blob;
+                        let extension = 'jpg';
+                        
+                        if (imageUrl.startsWith('data:video/')) {
+                          // Handle data URL (base64 video)
+                          const base64Response = await fetch(imageUrl);
+                          blob = await base64Response.blob();
+                          // Extract extension from data URL if available
+                          const mimeMatch = imageUrl.match(/data:video\/([^;]+)/);
+                          if (mimeMatch) {
+                            extension = mimeMatch[1];
+                          }
+                        } else if (imageUrl.startsWith('data:image/')) {
+                          // Handle data URL (base64 image)
+                          const base64Response = await fetch(imageUrl);
+                          blob = await base64Response.blob();
+                          // Extract extension from data URL if available
+                          const mimeMatch = imageUrl.match(/data:image\/([^;]+)/);
+                          if (mimeMatch) {
+                            extension = mimeMatch[1];
+                          }
+                        } else {
+                          // Handle regular URL
+                          const response = await fetch(imageUrl);
+                          blob = await response.blob();
+                          // Extract extension from URL or blob type
+                          const urlMatch = imageUrl.match(/\.([a-z]{3,4})(?:\?|$)/i);
+                          if (urlMatch) {
+                            extension = urlMatch[1];
+                          } else if (blob.type) {
+                            extension = blob.type.split('/')[1] || 'jpg';
+                          }
+                        }
+                        
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        const isVideo = imageUrl.startsWith('data:video/') || /\.(mp4|webm|ogg|mov|avi|wmv|flv|mkv)$/i.test(imageUrl);
+                        link.download = `${isVideo ? 'video' : 'image'}-${currentSlide + 1}.${extension}`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                      } catch (error) {
+                        console.error('Error downloading image:', error);
+                      }
+                    }}
+                    className="text-blue-500 hover:text-blue-600 transition-colors"
+                    title="Download this image/video"
+                  >
+                    <Download className="h-6 w-6" />
+                  </button>
+                  <button
+                    onClick={handleImageDeleteFromModal}
+                    className="text-red-500 hover:text-red-600 transition-colors"
+                    title="Delete this image"
+                  >
+                    <Trash2 className="h-6 w-6" />
+                  </button>
                 <button onClick={closeFileViewer} className="text-gray-400 hover:text-gray-600">
                   <X className="h-6 w-6" />
                 </button>
+                </div>
               </div>
             </div>
 
             <div className="p-6 overflow-auto max-h-[70vh]">
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Image Preview</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Image/Video Preview</h3>
                 <div className="border border-gray-200 rounded-lg p-6 bg-white">
                   <div className="relative flex items-center justify-center">
                       <button 
                       onClick={() => setCurrentSlide(s => Math.max(0, s - 1))}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow z-10"
                       disabled={currentSlide === 0}
                       aria-label="Previous"
                     >
                       ‹
                       </button>
-                    <img 
-                      src={selectedFile[currentSlide]}
+                    {(() => {
+                      const currentFile = selectedFile[currentSlide];
+                      const isVideo = currentFile.startsWith('data:video/') || /\.(mp4|webm|ogg|mov|avi|wmv|flv|mkv)$/i.test(currentFile);
+                      return isVideo ? (
+                        <video 
+                          key={`video-${currentSlide}`}
+                          src={currentFile}
+                          controls
+                          preload="auto"
+                          playsInline
+                          autoPlay={false}
+                          muted={false}
+                          className="max-w-full max-h-[60vh] object-contain mx-auto rounded-lg shadow-sm"
+                          style={{ maxWidth: '100%', maxHeight: '60vh' }}
+                          onError={(e) => {
+                            console.error('Video playback error:', e);
+                            console.error('Video src type:', currentFile.substring(0, 50));
+                          }}
+                          onLoadedData={() => {
+                            console.log('Video loaded successfully');
+                          }}
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      ) : (
+                        <img 
+                          src={currentFile}
                       alt={`Preview ${currentSlide + 1}`}
                       className="max-w-full max-h-[60vh] object-contain mx-auto rounded-lg shadow-sm"
                     />
+                      );
+                    })()}
                       <button 
                       onClick={() => setCurrentSlide(s => Math.min(selectedFile.length - 1, s + 1))}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow z-10"
                       disabled={currentSlide >= selectedFile.length - 1}
                       aria-label="Next"
                     >
@@ -4334,121 +7799,500 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               </button>
             </div>
             <div className="p-6">
-              <div className="space-y-4">
+              <div className="space-y-3">
+                {/* Anshul Gupta - Managing Director */}
                 <div className={`p-4 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
                 }`}>
-                  <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-3 mb-2">
                     <div className={`p-2 rounded-lg ${
                       isDarkMode ? 'bg-blue-900' : 'bg-blue-100'
                     }`}>
-                      <Mail className={`h-5 w-5 ${
+                      <User className={`h-5 w-5 ${
                         isDarkMode ? 'text-blue-400' : 'text-blue-600'
                       }`} />
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <h3 className={`font-semibold ${
                         isDarkMode ? 'text-white' : 'text-gray-900'
-                      }`}>General Inquiries</h3>
+                      }`}>Anshul Gupta</h3>
                       <p className={`text-sm ${
                         isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                      }`}>For general information and inquiries</p>
+                      }`}>Managing Director</p>
                     </div>
                   </div>
-                  <div className={`text-lg font-mono ${
-                    isDarkMode ? 'text-blue-300' : 'text-blue-600'
-                  }`}>
-                    info@anodeelectric.com
-                  </div>
+                  <a 
+                    href="mailto:MD@anocab.in" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-blue-300 hover:text-blue-200' : 'text-blue-600 hover:text-blue-700'
+                    }`}
+                  >
+                    MD@anocab.in
+                  </a>
                 </div>
 
+                {/* Suraj Gehani - Chief Executive Officer */}
                 <div className={`p-4 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
                 }`}>
-                  <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-3 mb-2">
                     <div className={`p-2 rounded-lg ${
                       isDarkMode ? 'bg-green-900' : 'bg-green-100'
                     }`}>
-                      <Mail className={`h-5 w-5 ${
+                      <User className={`h-5 w-5 ${
                         isDarkMode ? 'text-green-400' : 'text-green-600'
                       }`} />
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <h3 className={`font-semibold ${
                         isDarkMode ? 'text-white' : 'text-gray-900'
-                      }`}>Sales Department</h3>
+                      }`}>Suraj Gehani</h3>
                       <p className={`text-sm ${
                         isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                      }`}>For sales inquiries and quotations</p>
+                      }`}>Chief Executive Officer</p>
                     </div>
                   </div>
-                  <div className={`text-lg font-mono ${
-                    isDarkMode ? 'text-green-300' : 'text-green-600'
-                  }`}>
-                    sales@anodeelectric.com
-                  </div>
+                  <a 
+                    href="mailto:CEO@anocab.in" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-green-300 hover:text-green-200' : 'text-green-600 hover:text-green-700'
+                    }`}
+                  >
+                    CEO@anocab.in
+                  </a>
                 </div>
 
+                {/* Akash Gupta - General Manager */}
                 <div className={`p-4 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
                 }`}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`p-2 rounded-lg ${
-                      isDarkMode ? 'bg-orange-900' : 'bg-orange-100'
-                    }`}>
-                      <Mail className={`h-5 w-5 ${
-                        isDarkMode ? 'text-orange-400' : 'text-orange-600'
-                      }`} />
-                    </div>
-                    <div>
-                      <h3 className={`font-semibold ${
-                        isDarkMode ? 'text-white' : 'text-gray-900'
-                      }`}>Technical Support</h3>
-                      <p className={`text-sm ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                      }`}>For technical assistance and support</p>
-                    </div>
-                  </div>
-                  <div className={`text-lg font-mono ${
-                    isDarkMode ? 'text-orange-300' : 'text-orange-600'
-                  }`}>
-                    support@anodeelectric.com
-                  </div>
-                </div>
-
-                <div className={`p-4 rounded-lg border ${
-                  isDarkMode 
-                    ? 'bg-gray-700 border-gray-600' 
-                    : 'bg-gray-50 border-gray-200'
-                }`}>
-                  <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-3 mb-2">
                     <div className={`p-2 rounded-lg ${
                       isDarkMode ? 'bg-purple-900' : 'bg-purple-100'
                     }`}>
-                      <Mail className={`h-5 w-5 ${
+                      <User className={`h-5 w-5 ${
                         isDarkMode ? 'text-purple-400' : 'text-purple-600'
                       }`} />
-                    </div>
-                    <div>
+                  </div>
+                    <div className="flex-1">
                       <h3 className={`font-semibold ${
                         isDarkMode ? 'text-white' : 'text-gray-900'
-                      }`}>Accounts Department</h3>
+                      }`}>Akash Gupta</h3>
                       <p className={`text-sm ${
                         isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                      }`}>For billing and account related queries</p>
+                      }`}>General Manager</p>
                     </div>
                   </div>
-                  <div className={`text-lg font-mono ${
-                    isDarkMode ? 'text-purple-300' : 'text-purple-600'
-                  }`}>
-                    accounts@anodeelectric.com
+                  <a 
+                    href="mailto:GM@anocab.in" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-purple-300 hover:text-purple-200' : 'text-purple-600 hover:text-purple-700'
+                    }`}
+                  >
+                    GM@anocab.in
+                  </a>
+                </div>
+
+                {/* Anushree Namdeo - CM */}
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-pink-900' : 'bg-pink-100'
+                    }`}>
+                      <User className={`h-5 w-5 ${
+                        isDarkMode ? 'text-pink-400' : 'text-pink-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Anushree Namdeo</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>CM</p>
+                    </div>
                   </div>
+                  <a 
+                    href="mailto:CM@anocab.in" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-pink-300 hover:text-pink-200' : 'text-pink-600 hover:text-pink-700'
+                    }`}
+                  >
+                    CM@anocab.in
+                  </a>
+                </div>
+
+                {/* Chief Financial Officer - CFO */}
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-yellow-900' : 'bg-yellow-100'
+                    }`}>
+                      <User className={`h-5 w-5 ${
+                        isDarkMode ? 'text-yellow-400' : 'text-yellow-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Chief Financial Officer</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>CFO</p>
+                    </div>
+                  </div>
+                  <a 
+                    href="mailto:CFO@anocab.in" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-yellow-300 hover:text-yellow-200' : 'text-yellow-600 hover:text-yellow-700'
+                    }`}
+                  >
+                    CFO@anocab.in
+                  </a>
+                </div>
+
+                {/* Saurabh Jhariya - Area Sales Manager */}
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-indigo-900' : 'bg-indigo-100'
+                    }`}>
+                      <User className={`h-5 w-5 ${
+                        isDarkMode ? 'text-indigo-400' : 'text-indigo-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Saurabh Jhariya</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>Area Sales Manager</p>
+                    </div>
+                  </div>
+                  <a 
+                    href="mailto:admin@anocab.in" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-indigo-300 hover:text-indigo-200' : 'text-indigo-600 hover:text-indigo-700'
+                    }`}
+                  >
+                    admin@anocab.in
+                  </a>
+                </div>
+
+                {/* Deepshikha Jhariya - Junior Accountant */}
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-teal-900' : 'bg-teal-100'
+                    }`}>
+                      <User className={`h-5 w-5 ${
+                        isDarkMode ? 'text-teal-400' : 'text-teal-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Deepshikha Jhariya</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>Junior Accountant</p>
+                    </div>
+                  </div>
+                  <a 
+                    href="mailto:deepshikha@anocab.com" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-teal-300 hover:text-teal-200' : 'text-teal-600 hover:text-teal-700'
+                    }`}
+                  >
+                    deepshikha@anocab.com
+                  </a>
+                </div>
+
+                {/* Rajvansh Samal - Production Planning Controller */}
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-orange-900' : 'bg-orange-100'
+                    }`}>
+                      <User className={`h-5 w-5 ${
+                        isDarkMode ? 'text-orange-400' : 'text-orange-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Rajvansh Samal</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>Production Planning Controller</p>
+                    </div>
+                  </div>
+                  <a 
+                    href="mailto:rajvansh@anocab.com" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-orange-300 hover:text-orange-200' : 'text-orange-600 hover:text-orange-700'
+                    }`}
+                  >
+                    rajvansh@anocab.com
+                  </a>
+                </div>
+
+                {/* Tukesh Bisen - Senior Supervisor */}
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-cyan-900' : 'bg-cyan-100'
+                    }`}>
+                      <User className={`h-5 w-5 ${
+                        isDarkMode ? 'text-cyan-400' : 'text-cyan-600'
+                      }`} />
+                  </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Tukesh Bisen</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>Senior Supervisor</p>
+                    </div>
+                  </div>
+                  <a 
+                    href="mailto:tukesh@anocab.com" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-cyan-300 hover:text-cyan-200' : 'text-cyan-600 hover:text-cyan-700'
+                    }`}
+                  >
+                    tukesh@anocab.com
+                  </a>
+                </div>
+
+                {/* Abhishek Namdeo - Employee */}
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-amber-900' : 'bg-amber-100'
+                    }`}>
+                      <User className={`h-5 w-5 ${
+                        isDarkMode ? 'text-amber-400' : 'text-amber-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Abhishek Namdeo</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>Employee</p>
+                    </div>
+                  </div>
+                  <a 
+                    href="mailto:acnt.anocab@gmail.com" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-amber-300 hover:text-amber-200' : 'text-amber-600 hover:text-amber-700'
+                    }`}
+                  >
+                    acnt.anocab@gmail.com
+                  </a>
+                </div>
+
+                {/* Vivian James - Security */}
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-red-900' : 'bg-red-100'
+                    }`}>
+                      <User className={`h-5 w-5 ${
+                        isDarkMode ? 'text-red-400' : 'text-red-600'
+                      }`} />
+                  </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Vivian James</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>Security</p>
+                </div>
+              </div>
+                  <a 
+                    href="mailto:vivian@anocab.com" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-red-300 hover:text-red-200' : 'text-red-600 hover:text-red-700'
+                    }`}
+                  >
+                    vivian@anocab.com
+                  </a>
+            </div>
+
+                {/* Sameer Giri - COO */}
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-violet-900' : 'bg-violet-100'
+                    }`}>
+                      <User className={`h-5 w-5 ${
+                        isDarkMode ? 'text-violet-400' : 'text-violet-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Sameer Giri</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>COO</p>
+                    </div>
+                  </div>
+                  <a 
+                    href="mailto:COO@anocab.in" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-violet-300 hover:text-violet-200' : 'text-violet-600 hover:text-violet-700'
+                    }`}
+                  >
+                    COO@anocab.in
+                  </a>
+                </div>
+
+                {/* Himanshu Sen - Sales Executive */}
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-emerald-900' : 'bg-emerald-100'
+                    }`}>
+                      <User className={`h-5 w-5 ${
+                        isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Himanshu Sen</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>Sales Executive</p>
+                    </div>
+                  </div>
+                  <a 
+                    href="mailto:himanshusen@anocab.com" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-emerald-300 hover:text-emerald-200' : 'text-emerald-600 hover:text-emerald-700'
+                    }`}
+                  >
+                    himanshusen@anocab.com
+                  </a>
+                </div>
+
+                {/* Vaishnavi Rajbhar - Sales Executive */}
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-rose-900' : 'bg-rose-100'
+                    }`}>
+                      <User className={`h-5 w-5 ${
+                        isDarkMode ? 'text-rose-400' : 'text-rose-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Vaishnavi Rajbhar</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>Sales Executive</p>
+                    </div>
+                  </div>
+                  <a 
+                    href="mailto:VAISHNAVI@anocab.com" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-rose-300 hover:text-rose-200' : 'text-rose-600 hover:text-rose-700'
+                    }`}
+                  >
+                    VAISHNAVI@anocab.com
+                  </a>
+                </div>
+
+                {/* Radhika Jhariya - Sales Executive */}
+                <div className={`p-4 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`p-2 rounded-lg ${
+                      isDarkMode ? 'bg-sky-900' : 'bg-sky-100'
+                    }`}>
+                      <User className={`h-5 w-5 ${
+                        isDarkMode ? 'text-sky-400' : 'text-sky-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Radhika Jhariya</h3>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>Sales Executive</p>
+                    </div>
+                  </div>
+                  <a 
+                    href="mailto:radhika@anocab.com" 
+                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                      isDarkMode ? 'text-sky-300 hover:text-sky-200' : 'text-sky-600 hover:text-sky-700'
+                    }`}
+                  >
+                    radhika@anocab.com
+                  </a>
                 </div>
               </div>
             </div>
@@ -4458,14 +8302,14 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
 
       {/* Business Card Modal */}
       {isBusinessCardOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeBusinessCard}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeBusinessCard} key="business-card-modal-v2">
           <div 
             className={`rounded-lg shadow-2xl overflow-hidden border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex flex-col max-w-md w-full bg-white`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header with Actions */}
             <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
-              <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Business Card</h3>
+              <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Anocab Business Card</h3>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => downloadBusinessCard('image')}
@@ -4493,56 +8337,264 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
 
             {/* Business Card Content - for download */}
             <div className="py-8 px-4">
-              <div ref={businessCardRef} className="w-96 bg-white rounded-lg shadow-2xl overflow-hidden border border-gray-200 flex flex-col mx-auto">
-              {/* Header with Logo */}
-              <div className="bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 px-6 py-5 flex items-center justify-between">
-                <div>
-                  <h2 className="text-white text-sm font-bold tracking-wide">ANODE ELECTRICAL</h2>
-                  <p className="text-slate-300 text-xs italic">A Positive Connection...</p>
-                </div>
+              <div ref={businessCardRef} className="w-[320px] bg-white rounded-lg shadow-2xl overflow-hidden border border-gray-200 flex flex-col mx-auto" style={{ minHeight: '500px' }}>
+              {/* Top Section - Logo */}
+              <div className="px-6 py-5 flex flex-col items-center bg-white">
                 <img
                   src="/images/Anocab logo.png"
                   alt="Anocab Logo"
-                  className="h-8 object-contain opacity-90"
-                  style={{ filter: "brightness(0.9) saturate(0.8)" }}
-                />
-              </div>
-
-              {/* Main Content */}
-              <div className="flex-1 px-6 py-4 flex items-center gap-4 bg-white">
-                <img
-                  src="/images/profiles/ABHAY.png"
-                  alt="Abhay Tiwari"
-                  className="w-16 h-16 rounded border-2 border-blue-600 object-cover flex-shrink-0"
+                  className="h-32 w-auto object-contain"
                   onError={(e) => {
-                    e.currentTarget.src = '/images/default-avatar.png';
+                    console.error('Logo failed to load:', e);
+                    e.currentTarget.style.display = 'none';
                   }}
                 />
-
-                <div className="flex-1">
-                  <h1 className="text-lg font-bold text-slate-900">Abhay Tiwari</h1>
-                  <p className="text-blue-600 font-semibold text-sm">Intern</p>
-                  <p className="text-xs text-slate-600 mt-1">Electrical Systems & Design</p>
-                </div>
               </div>
 
-              {/* Footer with Contact */}
-              <div className="bg-slate-50 px-6 py-3 border-t border-gray-200">
-                <div className="grid grid-cols-3 gap-3 text-xs text-slate-700">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-blue-600 text-xs mb-1">📧</p>
-                    <p className="text-xs text-slate-600 break-words leading-tight">abhu9513@gmail.com</p>
+              {/* Middle Section - Name, Title, and QR Code */}
+              <div className="px-6 py-3 flex items-start justify-between bg-white">
+                <div className="flex-1 pr-3">
+                  <h1 className="text-2xl font-bold text-black mb-1 leading-tight" style={{ fontFamily: 'serif' }}>Saurabh Jhariya</h1>
+                  <p className="text-base text-black" style={{ fontFamily: 'serif' }}>(Sales Head)</p>
+                </div>
+                <img
+                  src="/images/QRs/SAURABH.jpg"
+                  alt="QR Code"
+                  className="w-20 h-20 object-contain flex-shrink-0 border border-gray-300 bg-white"
+                  onError={(e) => {
+                    console.error('QR Code failed to load:', e);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </div>
+
+              {/* Bottom Section - Company Name and Contact Details */}
+              <div className="px-6 py-5 bg-white border-t border-gray-100 mt-auto">
+                <h2 className="text-xl font-bold text-black text-center mb-4" style={{ fontFamily: "'Playfair Display', 'Cormorant Garamond', 'Bodoni Moda', 'Didot', serif", fontWeight: 700, letterSpacing: '0.02em' }}>Anode Electric Pvt. Ltd.</h2>
+                  <div className="space-y-2.5 text-sm">
+                    <div className="flex items-start gap-2">
+                      <Phone className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                      <span className="text-teal-700 font-mono text-xs">6262002116</span>
+                </div>
+                    <div className="flex items-start gap-2">
+                      <Mail className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                      <span className="text-teal-700 font-mono text-xs">Saurabh@anocab.com</span>
+              </div>
+                    <div className="flex items-start gap-2">
+                      <Globe className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                      <span className="text-teal-700 font-mono text-xs">www.anocab.com</span>
                   </div>
-                  <div>
-                    <p className="font-semibold text-blue-600 text-xs mb-1">📱</p>
-                    <p className="text-xs text-slate-600">0000000000</p>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-teal-700 font-mono text-xs leading-tight">Plot No. 10, IT Park, Bargi Hills, Jabalpur, M.P.</span>
                   </div>
-                  <div>
-                    <p className="font-semibold text-blue-600 text-xs mb-1">📍</p>
-                    <p className="text-xs text-slate-600">Jabalpur, MP</p>
+                  <div className="flex items-start gap-2">
+                    <Phone className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-teal-700 font-mono text-xs">1800 27000 75</span>
                   </div>
+                  <div className="h-4"></div>
                 </div>
               </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Samriddhi Industries Business Card Modal */}
+      {isSamriddhiBusinessCardOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeSamriddhiBusinessCard} key="samriddhi-business-card-modal">
+          <div 
+            className={`rounded-lg shadow-2xl overflow-hidden border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex flex-col max-w-md w-full bg-white`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header with Actions */}
+            <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
+              <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Samriddhi Business Card</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => downloadSamriddhiBusinessCard('image')}
+                  className="p-2 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors"
+                  title="Download as Image"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => downloadSamriddhiBusinessCard('pdf')}
+                  className="p-2 rounded-lg hover:bg-green-100 text-green-600 transition-colors"
+                  title="Download as PDF"
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={closeSamriddhiBusinessCard}
+                  className="p-2 rounded-lg hover:bg-red-100 text-red-600 transition-colors"
+                  title="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                  </div>
+                  </div>
+
+            {/* Business Card Content - for download */}
+            <div className="py-8 px-4">
+              <div ref={samriddhiBusinessCardRef} className="w-[320px] bg-white rounded-lg shadow-2xl overflow-hidden border border-gray-200 flex flex-col mx-auto" style={{ minHeight: '500px' }}>
+              {/* Top Section - JEO Logo (Top Left) */}
+              <div className="px-6 pt-5 pb-2 flex items-start bg-white">
+                <img
+                  src="/images/Samriddhi 1 logo.png"
+                  alt="JEO Wires & Cables Logo"
+                  className="h-16 w-auto object-contain"
+                  onError={(e) => {
+                    console.error('JEO Logo failed to load:', e);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                  </div>
+
+              {/* Middle Section - Name, Title, QR Code, and Samriddhi Logo */}
+              <div className="px-6 py-3 bg-white">
+                {/* Name, Title, and QR Code Row */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1 pr-3">
+                    <h1 className="text-2xl font-bold text-black mb-1 leading-tight" style={{ fontFamily: 'serif' }}>Saurabh Jhariya</h1>
+                    <p className="text-base text-black" style={{ fontFamily: 'serif' }}>(Sales Head)</p>
+                </div>
+                  <img
+                    src="/images/QRs/SAURABH.jpg"
+                    alt="QR Code"
+                    className="w-20 h-20 object-contain flex-shrink-0 border border-gray-300 bg-white"
+                    onError={(e) => {
+                      console.error('QR Code failed to load:', e);
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+              </div>
+                
+                {/* Samriddhi Industries Logo (Centered) */}
+                <div className="flex justify-center mb-4">
+                  <img
+                    src="/images/Samriddhi logo.png"
+                    alt="Samriddhi Industries Logo"
+                    className="h-32 w-auto object-contain"
+                    onError={(e) => {
+                      console.error('Samriddhi Logo failed to load:', e);
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+              </div>
+            </div>
+
+              {/* Bottom Section - Contact Details */}
+              <div className="px-6 py-5 bg-white border-t border-gray-100 mt-auto">
+                <div className="space-y-2.5 text-sm">
+                  <div className="flex items-start gap-2">
+                    <Phone className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-teal-700 font-mono text-xs">6262002116</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Mail className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-teal-700 font-mono text-xs">Saurabh@anocab.com</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Globe className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-teal-700 font-mono text-xs">www.anocab.com</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-teal-700 font-mono text-xs leading-tight">W. No 73 infront of Dadda Nagar, Karmeta Road, Jabalpur, 482002</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Phone className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                    <span className="text-teal-700 font-mono text-xs">1800 27000 75</span>
+                  </div>
+                  <div className="h-4"></div>
+                </div>
+              </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approvals Modal */}
+      {isApprovalsOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeApprovals}>
+          <div 
+            className={`rounded-lg shadow-2xl overflow-hidden border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex flex-col max-w-md w-full bg-white`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+              <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Approvals</h3>
+              <button 
+                onClick={closeApprovals}
+                className="p-2 rounded-lg hover:bg-red-100 text-red-600 transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <div className="space-y-3">
+                {/* CHHATTISGARH */}
+                <button
+                  onClick={() => openApprovalPdf('CHHATTISGARH')}
+                  className={`w-full p-4 rounded-lg border-2 transition-all duration-200 ${
+                    isDarkMode 
+                      ? 'border-gray-600 bg-gray-700 hover:bg-gray-600 hover:border-gray-500' 
+                      : 'border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <h4 className={`text-lg font-semibold ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>CHHATTISGARH</h4>
+                    <FileText className={`h-5 w-5 ${
+                      isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                    }`} />
+                  </div>
+                </button>
+
+                {/* MADHYA PRADESH */}
+                <button
+                  onClick={() => openApprovalPdf('MADHYA PRADESH')}
+                  className={`w-full p-4 rounded-lg border-2 transition-all duration-200 ${
+                    isDarkMode 
+                      ? 'border-gray-600 bg-gray-700 hover:bg-gray-600 hover:border-gray-500' 
+                      : 'border-green-200 bg-green-50 hover:bg-green-100 hover:border-green-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <h4 className={`text-lg font-semibold ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>MADHYA PRADESH</h4>
+                    <FileText className={`h-5 w-5 ${
+                      isDarkMode ? 'text-green-400' : 'text-green-600'
+                    }`} />
+                  </div>
+                </button>
+
+                {/* MAHARASHTRA */}
+                <button
+                  onClick={() => openApprovalPdf('MAHARASHTRA')}
+                  className={`w-full p-4 rounded-lg border-2 transition-all duration-200 ${
+                    isDarkMode 
+                      ? 'border-gray-600 bg-gray-700 hover:bg-gray-600 hover:border-gray-500' 
+                      : 'border-purple-200 bg-purple-50 hover:bg-purple-100 hover:border-purple-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <h4 className={`text-lg font-semibold ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>MAHARASHTRA</h4>
+                    <FileText className={`h-5 w-5 ${
+                      isDarkMode ? 'text-purple-400' : 'text-purple-600'
+                    }`} />
+                  </div>
+                </button>
               </div>
             </div>
           </div>

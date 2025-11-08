@@ -2026,7 +2026,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
       );
     }
     
-   
+  // cleaned merge markers
     if (advancedFilters.dateFrom) {
       result = result.filter(customer => {
         const customerDate = new Date(customer.date);
