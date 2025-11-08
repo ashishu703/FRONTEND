@@ -21,7 +21,7 @@ FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Builder stage se 'build' folder ko Nginx ke server directory mein copy karein
-COPY --from=builder /app/build /usr/share/nginx/html
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Container port 80 ko expose karein (hum ise bahar se 3200 se connect karenge)
 EXPOSE 80
