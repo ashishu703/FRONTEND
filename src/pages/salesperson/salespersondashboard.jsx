@@ -1,7 +1,7 @@
 "use client"
 
 import { TrendingUp, CheckCircle, Clock, CreditCard, UserPlus, CalendarCheck, ArrowUp, XCircle, PhoneOff, Target, BarChart3, PieChart as PieChartIcon, Activity, Award, TrendingDown, ArrowRightLeft, Calendar, FileText, FileCheck, FileX, Receipt, ShoppingCart, DollarSign, RefreshCw } from "lucide-react"
-import { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import apiClient from '../../utils/apiClient'
 import { API_ENDPOINTS } from '../../api/admin_api/api'
 import quotationService from '../../api/admin_api/quotationService'
@@ -170,14 +170,14 @@ function AreaChart({ data, height = 250, isDarkMode = false }) {
   const receivedPoints = data.map((item, index) => {
     const x = data.length > 1 ? ((index / (data.length - 1)) * (100 - padding * 2)) + padding : 50
     const y = 100 - bottomPadding - (((item.received || 0) / maxValue) * (100 - topPadding - bottomPadding))
-    return { x: `${x}%`, y: `${y}%`, value: item.received || 0 }
+    return { x, y, value: item.received || 0 }
   })
 
   const advancePoints = data.map((item, index) => {
     const x = data.length > 1 ? ((index / (data.length - 1)) * (100 - padding * 2)) + padding : 50
     const baseY = 100 - bottomPadding - (((item.received || 0) / maxValue) * (100 - topPadding - bottomPadding))
     const advanceY = baseY - (((item.advance || 0) / maxValue) * (100 - topPadding - bottomPadding))
-    return { x: `${x}%`, y: `${advanceY}%`, value: item.advance || 0 }
+    return { x, y: advanceY, value: item.advance || 0 }
   })
 
   const duePoints = data.map((item, index) => {
@@ -185,7 +185,7 @@ function AreaChart({ data, height = 250, isDarkMode = false }) {
     const baseY = 100 - bottomPadding - (((item.received || 0) / maxValue) * (100 - topPadding - bottomPadding))
     const advanceY = baseY - (((item.advance || 0) / maxValue) * (100 - topPadding - bottomPadding))
     const dueY = advanceY - (((item.due || 0) / maxValue) * (100 - topPadding - bottomPadding))
-    return { x: `${x}%`, y: `${dueY}%`, value: item.due || 0 }
+    return { x, y: dueY, value: item.due || 0 }
   })
 
   // Create area paths
@@ -193,7 +193,7 @@ function AreaChart({ data, height = 250, isDarkMode = false }) {
     const path = points.map((point, index) => 
       `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
     ).join(' ')
-    return `${path} L ${points[points.length - 1].x} ${bottomY}% L ${points[0].x} ${bottomY}% Z`
+    return `${path} L ${points[points.length - 1].x} ${bottomY} L ${points[0].x} ${bottomY} Z`
   }
 
   const receivedPath = createAreaPath(receivedPoints, 100 - bottomPadding)
@@ -202,7 +202,7 @@ function AreaChart({ data, height = 250, isDarkMode = false }) {
 
   return (
     <div className="w-full relative overflow-hidden" style={{ height, maxWidth: '100%' }}>
-      <svg className="absolute w-full h-full" preserveAspectRatio="none" style={{ maxWidth: '100%' }}>
+      <svg className="absolute w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ maxWidth: '100%' }}>
         {/* Grid lines */}
         {[0, 1, 2, 3, 4].map(i => {
           const yPos = topPadding + ((100 - topPadding - bottomPadding) / 4) * i
@@ -429,19 +429,19 @@ function HorizontalBarChart({ data, height = 200, isDarkMode = false }) {
 }
 
 function LineChart({ data, height = 250, isDarkMode = false }) {
+  const [hoverIndex, setHoverIndex] = useState(null)
   const maxValue = Math.max(...data.map(item => item.value), 1)
-  const chartHeight = height - 40
   const padding = 20
   
   // Calculate points for the line
   const points = data.map((item, index) => {
     const x = ((index / (data.length - 1 || 1)) * (100 - (padding * 2) / 10)) + (padding / 10)
     const y = 100 - ((item.value / maxValue) * (100 - (padding * 2)))
-    return { x: `${x}%`, y: `${y}%`, value: item.value, label: item.label }
+    return { xPercent: x, yPercent: y, value: item.value, originalValue: item.originalValue ?? item.value, label: item.label }
   })
 
   const pathData = points.map((point, index) => 
-    `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
+    `${index === 0 ? 'M' : 'L'} ${point.xPercent}% ${point.yPercent}%`
   ).join(' ')
 
   return (
@@ -474,12 +474,14 @@ function LineChart({ data, height = 250, isDarkMode = false }) {
         {points.map((point, index) => (
           <circle
             key={index}
-            cx={point.x}
-            cy={point.y}
+            cx={`${point.xPercent}%`}
+            cy={`${point.yPercent}%`}
             r="4"
             fill={data[index]?.color || '#3b82f6'}
             stroke="white"
             strokeWidth="2"
+            onMouseEnter={() => setHoverIndex(index)}
+            onMouseLeave={() => setHoverIndex(null)}
           />
         ))}
       </svg>
@@ -492,6 +494,22 @@ function LineChart({ data, height = 250, isDarkMode = false }) {
           </span>
         ))}
       </div>
+
+      {/* Tooltip */}
+      {hoverIndex != null && (
+        <div
+          className={`absolute rounded-md shadow-md p-2 text-xs ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}
+          style={{
+            left: `calc(${points[hoverIndex].xPercent}% - 60px)`,
+            top: `calc(${points[hoverIndex].yPercent}% - 60px)`
+          }}
+        >
+          <div className="font-semibold mb-1">{points[hoverIndex].label}</div>
+          <div>
+            revenue : {Math.round(points[hoverIndex].originalValue).toLocaleString('en-IN')}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -843,57 +861,54 @@ export default function DashboardContent({ isDarkMode = false }) {
         return
       }
       
-      // Use bulk API to get all quotations with payments efficiently
+      // Fetch ALL quotations for all leads
       let allQuotations = []
-      let fetchedPayments = []
+      for (const leadId of leadIds) {
+        try {
+          const qRes = await quotationService.getQuotationsByCustomer(leadId)
+          const quotations = qRes?.data || []
+          allQuotations.push(...quotations)
+        } catch (err) {
+          console.warn(`Error fetching quotations for lead ${leadId}:`, err)
+        }
+      }
       
-      try {
-        const bulkResponse = await quotationService.getBulkWithPayments()
-        const bulkData = bulkResponse?.data || {}
-        
-        // Filter quotations for assigned leads only
-        const assignedLeadIdsSet = new Set(leadIds)
-        allQuotations = (bulkData.quotations || []).filter(q => 
-          q.customer_id && assignedLeadIdsSet.has(q.customer_id)
-        )
-        
-        // Filter payments to only include those for our quotations
-        const quotationIdsSet = new Set(allQuotations.map(q => q.id))
-        fetchedPayments = (bulkData.payments || []).filter(p => 
-          p.quotation_id && quotationIdsSet.has(p.quotation_id)
-        )
-      } catch (bulkErr) {
-        console.warn('Bulk API failed, falling back to individual calls:', bulkErr)
-        // Fallback to individual calls
-        allQuotations = []
-        fetchedPayments = []
-        
-        for (const leadId of leadIds) {
-          try {
-            const qRes = await quotationService.getQuotationsByCustomer(leadId)
-            const quotations = qRes?.data || []
-            allQuotations.push(...quotations)
-            
-            for (const quotation of quotations) {
-              try {
-                const pRes = await paymentService.getPaymentsByQuotation(quotation.id)
-                const payments = pRes?.data || []
-                fetchedPayments.push(...payments)
-              } catch (err) {
-                console.warn(`Error fetching payments for quotation ${quotation.id}:`, err)
-              }
+      // Fetch ALL payments from payment_history table for all assigned leads
+      // This ensures we get all payments even if deal is closed
+      const allPayments = []
+      for (const leadId of leadIds) {
+        try {
+          const paymentRes = await paymentService.getPaymentsByCustomer(leadId)
+          const payments = Array.isArray(paymentRes?.data) ? paymentRes.data : []
+          allPayments.push(...payments)
+        } catch (err) {
+          console.warn(`Error fetching payments for lead ${leadId}:`, err)
+        }
+      }
+      
+      // Also fetch payments by quotation to catch any missed payments
+      for (const quotation of allQuotations) {
+        try {
+          const pRes = await paymentService.getPaymentsByQuotation(quotation.id)
+          const payments = Array.isArray(pRes?.data) ? pRes.data : []
+          // Add payments that aren't already in allPayments
+          payments.forEach(p => {
+            const exists = allPayments.some(ap => ap.id === p.id || 
+              (ap.payment_reference && p.payment_reference && ap.payment_reference === p.payment_reference))
+            if (!exists) {
+              allPayments.push(p)
             }
-          } catch (err) {
-            console.warn(`Error fetching quotations for lead ${leadId}:`, err)
-          }
+          })
+        } catch (err) {
+          console.warn(`Error fetching payments for quotation ${quotation.id}:`, err)
         }
       }
       
       // Store payments for monthly revenue calculation
-      setAllPayments(fetchedPayments)
+      setAllPayments(allPayments)
       
-      // Use fetchedPayments variable for rest of the function
-      const allPayments = fetchedPayments
+      // Use allPayments variable for rest of the function
+      const fetchedPayments = allPayments
       
       // Fetch all PIs
       const allPIs = []
@@ -917,6 +932,10 @@ export default function DashboardContent({ isDarkMode = false }) {
         const status = (q.status || '').toLowerCase()
         return status === 'pending_approval' || status === 'pending' || status === 'draft'
       }).length
+      const rejectedQuotation = allQuotations.filter(q => {
+        const status = (q.status || '').toLowerCase()
+        return status === 'rejected'
+      }).length
       
       // Calculate PI metrics
       const totalPI = allPIs.length
@@ -928,19 +947,41 @@ export default function DashboardContent({ isDarkMode = false }) {
         const status = (pi.status || '').toLowerCase()
         return status === 'pending_approval' || status === 'pending'
       }).length
+      const rejectedPI = allPIs.filter(pi => {
+        const status = (pi.status || '').toLowerCase()
+        return status === 'rejected'
+      }).length
       
-      // Calculate payment metrics - improved calculation
-      // Filter completed/paid payments
-      const completedPayments = allPayments.filter(p => {
+      // Calculate payment metrics - improved calculation with date range filtering
+      // Filter completed/paid payments and apply date range filter if target dates are set
+      let completedPayments = allPayments.filter(p => {
         const status = (p.payment_status || p.status || '').toLowerCase()
-        return status === 'completed' || status === 'paid' || status === 'success'
+        // Only count completed/advance payments that are not refunds
+        const isRefund = p.is_refund === true || p.is_refund === 1
+        return (status === 'completed' || status === 'paid' || status === 'success' || status === 'advance') && !isRefund
       })
       
-      // Calculate total received payment (all completed payments)
+      // Apply date range filter if user has target dates
+      if (userTarget.targetStartDate && userTarget.targetEndDate) {
+        const startDate = new Date(userTarget.targetStartDate)
+        startDate.setHours(0, 0, 0, 0)
+        const endDate = new Date(userTarget.targetEndDate)
+        endDate.setHours(23, 59, 59, 999)
+        
+        completedPayments = completedPayments.filter(p => {
+          // Use payment_date if available, otherwise fall back to created_at
+          const paymentDate = p.payment_date ? new Date(p.payment_date) : (p.created_at ? new Date(p.created_at) : null)
+          if (!paymentDate) return false
+          return paymentDate >= startDate && paymentDate <= endDate
+        })
+      }
+      
+      // Calculate total received payment (all completed payments within date range)
+      // Use installment_amount as primary field (matches backend calculation)
       const totalReceivedPayment = completedPayments.reduce((sum, p) => {
         const amount = Number(
+          p.installment_amount ||  // Primary field - matches backend
           p.paid_amount || 
-          p.installment_amount || 
           p.amount || 
           p.payment_amount ||
           0
@@ -949,69 +990,103 @@ export default function DashboardContent({ isDarkMode = false }) {
       }, 0)
       
       // Calculate advance payment (first payment or payments marked as advance)
-      const advancePayments = completedPayments.filter(p => {
-        // First payment of each quotation or explicitly marked as advance
-        return p.is_advance === true || p.payment_type === 'advance' || p.installment_number === 1 || p.installment_number === 0
+      // Advance payment = first payment of each quotation OR payments with status 'advance'
+      // We need to track the first payment per quotation/lead to avoid double counting
+      const firstPaymentMap = new Map() // key: quotation_id or lead_id, value: { amount, payment_date }
+      const advancePaymentsList = [] // List of all advance payments to sum
+      
+      completedPayments.forEach(p => {
+        const key = p.quotation_id || `lead_${p.lead_id}`
+        const status = (p.payment_status || p.status || '').toLowerCase()
+        const paymentDate = p.payment_date ? new Date(p.payment_date) : (p.created_at ? new Date(p.created_at) : new Date(0))
+        const amount = Number(p.installment_amount || p.paid_amount || p.amount || p.payment_amount || 0)
+        
+        // Check if this is an advance payment
+        const isExplicitAdvance = status === 'advance' || p.is_advance === true || p.payment_type === 'advance'
+        const isFirstPayment = p.installment_number === 1 || p.installment_number === 0
+        
+        if (isExplicitAdvance) {
+          // Explicitly marked as advance - always count
+          advancePaymentsList.push(amount)
+        } else if (isFirstPayment) {
+          // First payment - check if we already have a first payment for this quotation/lead
+          if (!firstPaymentMap.has(key)) {
+            firstPaymentMap.set(key, { amount, paymentDate })
+            advancePaymentsList.push(amount)
+          } else {
+            // Compare dates - use the earliest payment as first payment
+            const existing = firstPaymentMap.get(key)
+            if (paymentDate < existing.paymentDate) {
+              // Remove old amount and add new one
+              const oldIndex = advancePaymentsList.indexOf(existing.amount)
+              if (oldIndex > -1) {
+                advancePaymentsList.splice(oldIndex, 1)
+              }
+              firstPaymentMap.set(key, { amount, paymentDate })
+              advancePaymentsList.push(amount)
+            }
+          }
+        }
       })
-      const totalAdvancePayment = advancePayments.reduce((sum, p) => {
-        const amount = Number(
-          p.paid_amount || 
-          p.installment_amount || 
-          p.amount || 
-          p.payment_amount ||
-          0
-        )
+      
+      // Sum all advance payments
+      const totalAdvancePayment = advancePaymentsList.reduce((sum, amount) => {
         return sum + (isNaN(amount) ? 0 : amount)
       }, 0)
       
       // Calculate due payments (remaining amounts from approved quotations)
+      // Calculate for ALL approved quotations with date range filtered payments
       let duePayment = 0
       let totalRevenue = 0
+      
+      // Prepare date range filter
+      let dateFilter = null
+      if (userTarget.targetStartDate && userTarget.targetEndDate) {
+        const startDate = new Date(userTarget.targetStartDate)
+        startDate.setHours(0, 0, 0, 0)
+        const endDate = new Date(userTarget.targetEndDate)
+        endDate.setHours(23, 59, 59, 999)
+        dateFilter = { startDate, endDate }
+      }
       
       for (const quotation of allQuotations) {
         const status = (quotation.status || '').toLowerCase()
         if (status === 'approved') {
-          try {
-            const summaryRes = await quotationService.getSummary(quotation.id)
-            const summary = summaryRes?.data || {}
+          const quotationTotal = Number(quotation.total_amount || quotation.total || 0)
+          if (!isNaN(quotationTotal) && quotationTotal > 0) {
+            totalRevenue += quotationTotal
             
-            // Calculate total revenue from approved quotations
-            const quotationTotal = Number(summary.total_amount || summary.total || quotation.total_amount || 0)
-            totalRevenue += isNaN(quotationTotal) ? 0 : quotationTotal
-            
-            // Calculate remaining amount
-            const remaining = Number(
-              summary.current_remaining || 
-              summary.remaining || 
-              quotation.remaining_amount ||
-              0
+            // Get payments for this quotation
+            let quotationPayments = allPayments.filter(p => 
+              p.quotation_id === quotation.id || 
+              (p.lead_id && quotation.customer_id && p.lead_id === quotation.customer_id)
             )
-            if (remaining > 0 && !isNaN(remaining)) {
-              duePayment += remaining
+            
+            // Apply date range filter if target dates are set
+            if (dateFilter) {
+              quotationPayments = quotationPayments.filter(p => {
+                const paymentDate = p.payment_date ? new Date(p.payment_date) : (p.created_at ? new Date(p.created_at) : null)
+                if (!paymentDate) return false
+                return paymentDate >= dateFilter.startDate && paymentDate <= dateFilter.endDate
+              })
             }
-          } catch (err) {
-            console.warn(`Error fetching summary for quotation ${quotation.id}:`, err)
-            // Fallback calculation
-            const quotationTotal = Number(quotation.total_amount || quotation.total || 0)
-            if (!isNaN(quotationTotal)) {
-              totalRevenue += quotationTotal
-              
-              // Get payments for this quotation
-              const quotationPayments = allPayments.filter(p => p.quotation_id === quotation.id)
-              const paidTotal = quotationPayments
-                .filter(p => {
-                  const pStatus = (p.payment_status || p.status || '').toLowerCase()
-                  return pStatus === 'completed' || pStatus === 'paid' || pStatus === 'success'
-                })
-                .reduce((sum, p) => {
-                  const amount = Number(p.paid_amount || p.installment_amount || p.amount || 0)
-                  return sum + (isNaN(amount) ? 0 : amount)
-                }, 0)
-              
-              const remaining = quotationTotal - paidTotal
-              if (remaining > 0) {
-                duePayment += remaining
-              }
+            
+            // Calculate paid amount using installment_amount
+            const paidTotal = quotationPayments
+              .filter(p => {
+                const pStatus = (p.payment_status || p.status || '').toLowerCase()
+                const isRefund = p.is_refund === true || p.is_refund === 1
+                return (pStatus === 'completed' || pStatus === 'paid' || pStatus === 'success' || pStatus === 'advance') && !isRefund
+              })
+              .reduce((sum, p) => {
+                const amount = Number(p.installment_amount || p.paid_amount || p.amount || 0)
+                return sum + (isNaN(amount) ? 0 : amount)
+              }, 0)
+            
+            // Calculate remaining amount (due payment)
+            const remaining = quotationTotal - paidTotal
+            if (remaining > 0) {
+              duePayment += remaining
             }
           }
         }
@@ -1053,9 +1128,11 @@ export default function DashboardContent({ isDarkMode = false }) {
         totalQuotation,
         approvedQuotation,
         pendingQuotation,
+        rejectedQuotation,
         totalPI,
         approvedPI,
         pendingPI,
+        rejectedPI,
         totalAdvancePayment,
         duePayment,
         totalSaleOrder,
@@ -1069,9 +1146,11 @@ export default function DashboardContent({ isDarkMode = false }) {
         totalQuotation: 0,
         approvedQuotation: 0,
         pendingQuotation: 0,
+        rejectedQuotation: 0,
         totalPI: 0,
         approvedPI: 0,
         pendingPI: 0,
+        rejectedPI: 0,
         totalAdvancePayment: 0,
         duePayment: 0,
         totalSaleOrder: 0,
@@ -1086,9 +1165,18 @@ export default function DashboardContent({ isDarkMode = false }) {
   // Load real data on mount
   useEffect(() => {
     fetchLeads()
-    fetchBusinessMetrics()
     fetchUserTarget()
+    // Fetch metrics initially (will be refetched when target dates are loaded)
+    fetchBusinessMetrics()
   }, [])
+  
+  // Fetch business metrics when user target dates change (to recalculate with date range)
+  useEffect(() => {
+    // Only refetch if we have target dates or if target was just loaded
+    if (userTarget.targetStartDate && userTarget.targetEndDate) {
+      fetchBusinessMetrics()
+    }
+  }, [userTarget.targetStartDate, userTarget.targetEndDate])
 
   // Simple status mapping function
   const mapSalesStatusToBucket = (status) => {
@@ -1108,20 +1196,22 @@ export default function DashboardContent({ isDarkMode = false }) {
     }
   }
 
-  // Filter leads by date
+  // Filter leads by date (from selected date to current date)
   const getFilteredLeads = () => {
     if (!overviewDateFilter) return leads
     
     const selectedDate = new Date(overviewDateFilter)
     const startOfDay = new Date(selectedDate)
     startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(selectedDate)
-    endOfDay.setHours(23, 59, 59, 999)
+    
+    // Current date (end of today)
+    const endDate = new Date()
+    endDate.setHours(23, 59, 59, 999)
     
     return leads.filter(lead => {
       if (!lead.created_at) return false
       const leadDate = new Date(lead.created_at)
-      return leadDate >= startOfDay && leadDate <= endOfDay
+      return leadDate >= startOfDay && leadDate <= endDate
     })
   }
 
@@ -1139,18 +1229,32 @@ export default function DashboardContent({ isDarkMode = false }) {
   const calculateMetrics = () => {
     const filteredLeads = getFilteredLeads()
     const totalLeads = filteredLeads.length
-    const convertedLeads = filteredLeads.filter(lead => mapSalesStatusToBucket(lead.sales_status) === 'converted').length
-    const pendingLeads = filteredLeads.filter(lead => mapSalesStatusToBucket(lead.sales_status) === 'not-connected').length
+    
+    // Count Win/Closed leads - from Lead Status API (sales_status = 'win/closed' or 'win' or 'closed')
+    const winClosedLeads = filteredLeads.filter(lead => {
+      const status = String(lead.sales_status || '').toLowerCase()
+      return status === 'win/closed' || status === 'win' || status === 'closed'
+    }).length
+    
+    // Count Pending leads - from Lead Status API (sales_status = 'pending')
+    const pendingLeads = filteredLeads.filter(lead => {
+      const status = String(lead.sales_status || '').toLowerCase()
+      return status === 'pending'
+    }).length
+    
     const nextMeetingLeads = filteredLeads.filter(lead => mapSalesStatusToBucket(lead.sales_status) === 'next-meeting').length
     const connectedLeads = filteredLeads.filter(lead => mapSalesStatusToBucket(lead.sales_status) === 'connected').length
     const closedLeads = filteredLeads.filter(lead => mapSalesStatusToBucket(lead.sales_status) === 'closed').length
 
-    const conversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(1) : 0
+    // Conversion Rate = (Win/Closed Leads / Total Leads) * 100
+    const conversionRate = totalLeads > 0 ? ((winClosedLeads / totalLeads) * 100).toFixed(1) : 0
+    
+    // Pending Rate = (Pending Leads / Total Leads) * 100
     const pendingRate = totalLeads > 0 ? ((pendingLeads / totalLeads) * 100).toFixed(1) : 0
 
     return {
       totalLeads,
-      convertedLeads,
+      winClosedLeads,
       pendingLeads,
       nextMeetingLeads,
       connectedLeads,
@@ -1239,18 +1343,22 @@ export default function DashboardContent({ isDarkMode = false }) {
 
   // Calculate monthly revenue trend from real payment data
   const calculateMonthlyRevenue = () => {
-    // Filter payments by date if date filter is set
+    // Filter payments by date if date filter is set (from selected date to current date)
     let paymentsToUse = allPayments
     
     if (overviewDateFilter) {
       const selectedDate = new Date(overviewDateFilter)
-      const startOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
-      const endOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0, 23, 59, 59, 999)
+      const startOfDay = new Date(selectedDate)
+      startOfDay.setHours(0, 0, 0, 0)
+      
+      // Current date (end of today)
+      const endDate = new Date()
+      endDate.setHours(23, 59, 59, 999)
       
       paymentsToUse = allPayments.filter(p => {
         const paymentDate = p.payment_date ? new Date(p.payment_date) : (p.created_at ? new Date(p.created_at) : null)
         if (!paymentDate) return false
-        return paymentDate >= startOfMonth && paymentDate <= endOfMonth
+        return paymentDate >= startOfDay && paymentDate <= endDate
       })
     }
     
@@ -1491,8 +1599,8 @@ export default function DashboardContent({ isDarkMode = false }) {
       },
       {
         title: "Total Revenue",
-        value: `₹${businessMetrics.totalRevenue.toLocaleString('en-IN')}`,
-        subtitle: "Revenue from approved quotations",
+        value: `₹${businessMetrics.totalReceivedPayment.toLocaleString('en-IN')}`,
+        subtitle: "Revenue from payment received",
         icon: CreditCard,
         color: "bg-purple-50 text-purple-600 border-purple-200",
         trend: "0%",
@@ -1506,55 +1614,99 @@ export default function DashboardContent({ isDarkMode = false }) {
 
   const overviewMetrics = overviewData.metrics
 
+  // Counts mapped directly from lead status values used in Lead Status page
+  const salesStatusCounts = React.useMemo(() => {
+    const c = { all: 0, pending: 0, running: 0, converted: 0, interested: 0, 'win/closed': 0, closed: 0, lost: 0 }
+    const filtered = getFilteredLeads()
+    c.all = filtered.length
+    filtered.forEach(l => {
+      const k = String(l.sales_status || '').toLowerCase()
+      if (c[k] != null) c[k] += 1
+    })
+    return c
+  }, [leads, overviewDateFilter])
+
+  // Follow-up specific counts (only the requested ones)
+  const followUpCounts = React.useMemo(() => {
+    const c = { 'appointment scheduled': 0, 'closed/lost': 0, 'quotation sent': 0 }
+    const filtered = getFilteredLeads()
+    filtered.forEach(l => {
+      const k = String(l.follow_up_status || '').toLowerCase()
+      if (c[k] != null) c[k] += 1
+    })
+    return c
+  }, [leads, overviewDateFilter])
+
   const leadStatuses = [
     {
       title: "Pending",
-      count: statusData['not-connected']?.toString() || "0",
+      count: salesStatusCounts.pending.toString(),
       subtitle: "Leads awaiting response",
       icon: Clock,
       color: "bg-orange-50 text-orange-600 border-orange-200",
     },
     {
-      title: "Meeting scheduled",
-      count: statusData['next-meeting']?.toString() || "0",
-      subtitle: "Upcoming meetings",
-      icon: CalendarCheck,
-      color: "bg-purple-50 text-purple-600 border-purple-200",
-    },
-    {
-      title: "Follow Up",
-      count: statusData['connected']?.toString() || "0",
-      subtitle: "Requires follow-up",
-      icon: ArrowUp,
+      title: "Running",
+      count: salesStatusCounts.running.toString(),
+      subtitle: "In progress",
+      icon: Activity,
       color: "bg-blue-50 text-blue-600 border-blue-200",
     },
     {
-      title: "Win Leads",
-      count: statusData['converted']?.toString() || "0",
+      title: "Converted",
+      count: salesStatusCounts.converted.toString(),
       subtitle: "Successful conversions",
       icon: CheckCircle,
       color: "bg-green-50 text-green-600 border-green-200",
     },
     {
-      title: "Not Interested",
-      count: "0",
-      subtitle: "Declined leads",
+      title: "Interested",
+      count: salesStatusCounts.interested.toString(),
+      subtitle: "Warm leads",
+      icon: UserPlus,
+      color: "bg-purple-50 text-purple-600 border-purple-200",
+    },
+    {
+      title: "Win/Closed",
+      count: salesStatusCounts['win/closed'].toString(),
+      subtitle: "Won or closed",
+      icon: Award,
+      color: "bg-emerald-50 text-emerald-600 border-emerald-200",
+    },
+    {
+      title: "Closed",
+      count: salesStatusCounts.closed.toString(),
+      subtitle: "Closed deals",
+      icon: FileText,
+      color: "bg-gray-50 text-gray-600 border-gray-200",
+    },
+    {
+      title: "Lost",
+      count: salesStatusCounts.lost.toString(),
+      subtitle: "Declined/failed",
       icon: XCircle,
       color: "bg-red-50 text-red-600 border-red-200",
     },
     {
-      title: "Loose Leads",
-      count: statusData['closed']?.toString() || "0",
-      subtitle: "Unreachable leads",
-      icon: PhoneOff,
-      color: "bg-gray-50 text-gray-600 border-gray-200",
+      title: "Meeting scheduled",
+      count: (followUpCounts['appointment scheduled'] || 0).toString(),
+      subtitle: "Upcoming meetings",
+      icon: CalendarCheck,
+      color: "bg-indigo-50 text-indigo-600 border-indigo-200",
     },
     {
-      title: "Transfer Leads",
-      count: "0",
-      subtitle: "Transferred to other teams",
-      icon: ArrowRightLeft,
-      color: "bg-indigo-50 text-indigo-600 border-indigo-200",
+      title: "Quotation Sent",
+      count: (followUpCounts['quotation sent'] || 0).toString(),
+      subtitle: "Proposals shared",
+      icon: FileText,
+      color: "bg-yellow-50 text-yellow-700 border-yellow-200",
+    },
+    {
+      title: "Closed/Lost (Follow-up)",
+      count: (followUpCounts['closed/lost'] || 0).toString(),
+      subtitle: "Follow-up outcome",
+      icon: PhoneOff,
+      color: "bg-gray-50 text-gray-600 border-gray-200",
     },
   ]
 
@@ -1655,7 +1807,8 @@ export default function DashboardContent({ isDarkMode = false }) {
                   ? `bg-gray-800 border-gray-600 text-white ${overviewDateFilter ? 'border-blue-400 bg-blue-900' : ''}`
                   : `bg-white ${overviewDateFilter ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`
               }`}
-              title="Filter leads by date"
+              title="Filter data from selected date to today"
+              max={new Date().toISOString().split('T')[0]}
             />
             {overviewDateFilter && (
               <button
@@ -1711,7 +1864,7 @@ export default function DashboardContent({ isDarkMode = false }) {
                 isDarkMode 
                   ? 'text-gray-300 text-gray-100' 
                   : 'text-gray-500 text-gray-700'
-              }`}>All leads {overviewDateFilter ? 'on selected date' : 'in your pipeline'}</p>
+              }`}>All leads {overviewDateFilter ? 'from selected date to today' : 'in your pipeline'}</p>
             </CardContent>
           </Card>
           {leadStatuses.map((status, index) => {
@@ -1925,7 +2078,7 @@ export default function DashboardContent({ isDarkMode = false }) {
             {/* Quotation Metrics */}
             <div className="mb-6">
               <h3 className={`text-md font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Quotations</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className={cx(
                   "border-2",
                   isDarkMode 
@@ -2009,13 +2162,41 @@ export default function DashboardContent({ isDarkMode = false }) {
                     }`}>Awaiting approval</p>
                   </CardContent>
                 </Card>
+
+                <Card className={cx(
+                  "border-2",
+                  isDarkMode 
+                    ? "bg-gray-800 border-gray-600 text-white" 
+                    : "bg-red-50 text-red-600 border-red-200"
+                )} isDarkMode={isDarkMode}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className={`text-sm font-medium font-medium ${
+                      isDarkMode 
+                        ? 'text-white text-gray-200' 
+                        : 'text-gray-800 text-gray-800'
+                    }`} isDarkMode={isDarkMode}>Rejected Quotation</CardTitle>
+                    <FileX className={`h-5 w-5  rotate-12 ${
+                      isDarkMode ? 'text-red-300' : 'text-red-600'
+                    }`} />
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold mb-1  ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>{businessMetrics.rejectedQuotation}</div>
+                    <p className={`text-xs  ${
+                      isDarkMode 
+                        ? 'text-gray-300 text-gray-100' 
+                        : 'text-gray-500 text-gray-700'
+                    }`}>Rejected quotations</p>
+                  </CardContent>
+                </Card>
               </div>
             </div>
 
             {/* PI Metrics */}
             <div className="mb-6">
               <h3 className={`text-md font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Proforma Invoices</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className={cx(
                   "border-2",
                   isDarkMode 
@@ -2097,6 +2278,34 @@ export default function DashboardContent({ isDarkMode = false }) {
                         ? 'text-gray-300 text-gray-100' 
                         : 'text-gray-500 text-gray-700'
                     }`}>Awaiting approval</p>
+                  </CardContent>
+                </Card>
+
+                <Card className={cx(
+                  "border-2",
+                  isDarkMode 
+                    ? "bg-gray-800 border-gray-600 text-white" 
+                    : "bg-red-50 text-red-600 border-red-200"
+                )} isDarkMode={isDarkMode}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className={`text-sm font-medium font-medium ${
+                      isDarkMode 
+                        ? 'text-white text-gray-200' 
+                        : 'text-gray-800 text-gray-800'
+                    }`} isDarkMode={isDarkMode}>Rejected PI</CardTitle>
+                    <FileX className={`h-5 w-5  rotate-12 ${
+                      isDarkMode ? 'text-red-300' : 'text-red-600'
+                    }`} />
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold mb-1  ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>{businessMetrics.rejectedPI}</div>
+                    <p className={`text-xs  ${
+                      isDarkMode 
+                        ? 'text-gray-300 text-gray-100' 
+                        : 'text-gray-500 text-gray-700'
+                    }`}>Rejected proforma invoices</p>
                   </CardContent>
                 </Card>
               </div>
@@ -2446,6 +2655,7 @@ export default function DashboardContent({ isDarkMode = false }) {
             <LineChart data={overviewData.monthlyRevenue.map(item => ({
               ...item,
               value: item.value / 1000,
+              originalValue: item.value,
               label: item.label
             }))} height={250} isDarkMode={isDarkMode} />
           </div>

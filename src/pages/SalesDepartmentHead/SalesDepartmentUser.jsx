@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, UserPlus, Upload, Edit, LogOut, Trash2, Hash, User, Mail, Shield, Building, Target, Calendar, MoreHorizontal, TrendingUp, AlertTriangle, LogIn } from 'lucide-react';
 import departmentUserService, { apiToUiDepartment } from '../../api/admin_api/departmentUserService';
 import { useAuth } from '../../context/AuthContext';
+import toastManager from '../../utils/ToastManager';
 
 const SalesDepartmentUser = ({ setActiveView }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -129,14 +130,15 @@ const SalesDepartmentUser = ({ setActiveView }) => {
         const achievedTarget = parseFloat(u.achievedTarget || u.achieved_target || 0);
         const remainingTarget = target - achievedTarget;
         
-        // Format dates properly for display
+        // Format dates properly for display (supports 'YYYY-MM-DD' and full ISO strings)
         const formatDateForDisplay = (dateString) => {
           if (!dateString) return null;
           try {
-            // Handle ISO date string (YYYY-MM-DD)
-            const date = new Date(dateString + 'T00:00:00'); // Add time to avoid timezone issues
+            const normalized = typeof dateString === 'string' && dateString.includes('T')
+              ? dateString
+              : `${dateString}T00:00:00`;
+            const date = new Date(normalized);
             if (isNaN(date.getTime())) return null;
-            // Format as MM/DD/YYYY consistently
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             const year = date.getFullYear();
@@ -149,8 +151,10 @@ const SalesDepartmentUser = ({ setActiveView }) => {
         const formatDateForInput = (dateString) => {
           if (!dateString) return '';
           try {
-            // Convert ISO date (YYYY-MM-DD) or any valid date string to YYYY-MM-DD for input field
-            const date = new Date(dateString + 'T00:00:00');
+            const normalized = typeof dateString === 'string' && dateString.includes('T')
+              ? dateString
+              : `${dateString}T00:00:00`;
+            const date = new Date(normalized);
             if (isNaN(date.getTime())) return '';
             return date.toISOString().split('T')[0];
           } catch {
@@ -502,8 +506,12 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                   await fetchUsers();
                   setShowAddModal(false);
                   setNewUser({ username: '', email: '', password: '', target: '', targetStartDate: '', targetDurationDays: '30', customDays: '' });
+                  toastManager.success('User created successfully');
                 } catch (err) {
-                  setError(err.message || 'Failed to create user');
+                  // Extract error message from API response
+                  const errorMessage = err?.data?.error || err?.data?.message || err?.message || 'Failed to create user';
+                  setError(errorMessage);
+                  toastManager.error(errorMessage);
                 } finally {
                   setSaving(false);
                 }
@@ -694,8 +702,12 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                   await fetchUsers();
                   setShowEditModal(false);
                   setEditingUser(null);
+                  toastManager.success('User updated successfully');
                 } catch (err) {
-                  setError(err.message || 'Failed to update user');
+                  // Extract error message from API response
+                  const errorMessage = err?.data?.error || err?.data?.message || err?.message || 'Failed to update user';
+                  setError(errorMessage);
+                  toastManager.error(errorMessage);
                 } finally {
                   setSavingEdit(false);
                 }

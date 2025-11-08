@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, Plus, Upload, RefreshCw, Edit, Eye, 
   Hash, User, Mail, Building, Shield, Tag, Clock, Settings,
-  Calendar, CheckCircle, XCircle, Download, FileText, Phone
+  Calendar, CheckCircle, XCircle, Download, FileText, Phone, X, Receipt, CreditCard
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import AddCustomerModal from './AddCustomerModal';
@@ -14,6 +14,469 @@ import quotationService from '../../api/admin_api/quotationService';
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import apiErrorHandler from '../../utils/ApiErrorHandler';
 import toastManager from '../../utils/ToastManager';
+import apiClient from '../../utils/apiClient';
+import { API_ENDPOINTS } from '../../api/admin_api/api';
+
+// Customer Timeline Component (same styling as LeadStatus.jsx)
+const CustomerTimeline = ({ lead, onClose, onQuotationView, onPIView, setSelectedQuotation, setShowQuotationModal, toastManager }) => {
+  if (!lead) return null;
+
+  const [latestQuotation, setLatestQuotation] = useState(null);
+  const [latestPI, setLatestPI] = useState(null);
+  const [payments, setPayments] = useState([]);
+  const [paymentSummary, setPaymentSummary] = useState(null);
+  const [history, setHistory] = useState([]);
+
+  // Compact Indian date-time like "03 Nov 2025, 04:05 AM"
+  const formatIndianDateTime = (dateStr, timeStr, createdAt) => {
+    try {
+      if (dateStr || timeStr) {
+        const date = dateStr ? new Date(dateStr) : new Date(createdAt || Date.now());
+        if (timeStr) {
+          const [hh, mm] = String(timeStr).split(':');
+          date.setHours(Number(hh || 0), Number(mm || 0), 0, 0);
+        }
+        return date.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      }
+      if (createdAt) return new Date(createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (_) {}
+    return '';
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadDocs() {
+      try {
+        if (!lead?.id) return;
+        // Load lead history
+        try {
+          const hRes = await apiClient.get(API_ENDPOINTS.SALESPERSON_LEAD_HISTORY(lead.id));
+          if (!cancelled) setHistory(hRes?.data?.data || hRes?.data || []);
+        } catch (_) {}
+        const qRes = await quotationService.getQuotationsByCustomer(lead.id);
+        const qList = (qRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        const q = qList[0] || null;
+        if (!cancelled) setLatestQuotation(q);
+        if (q?.id) {
+          const piRes = await proformaInvoiceService.getPIsByQuotation(q.id);
+          const piList = (piRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          if (!cancelled) setLatestPI(piList[0] || null);
+          const payRes = await apiClient.get(`/api/payments/quotation/${q.id}`);
+          if (!cancelled) setPayments(payRes?.data || []);
+          const sumRes = await apiClient.get(`/api/quotations/${q.id}/summary`);
+          if (!cancelled) setPaymentSummary(sumRes?.data || null);
+        } else if (!cancelled) {
+          setLatestPI(null);
+          setPayments([]);
+          setPaymentSummary(null);
+        }
+      } catch (e) {
+        console.warn('Failed to load quotation/PI for lead preview', e);
+      }
+    }
+    loadDocs();
+    return () => { cancelled = true; };
+  }, [lead?.id]);
+
+  const groupedHistory = React.useMemo(() => {
+    const items = [...history]
+      .sort((a, b) => new Date(a.created_at || a.follow_up_date || 0) - new Date(b.created_at || b.follow_up_date || 0));
+    const groups = {};
+    items.forEach((h) => {
+      const d = new Date(h.follow_up_date || h.created_at || Date.now());
+      const key = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(h);
+    });
+    // Ensure the Customer Created day appears at top if different from first history item
+    if (lead?.created_at) {
+      const createdKey = new Date(lead.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      if (!groups[createdKey]) groups[createdKey] = [];
+    }
+    return groups;
+  }, [history, lead?.created_at]);
+
+  return (
+    <div className="fixed top-0 right-0 h-screen z-50" style={{ right: 0, width: 'fit-content', maxWidth: '349px', minWidth: '244px' }}>
+      <div className="bg-white h-screen flex flex-col shadow-xl border-l border-gray-200" style={{ width: 'fit-content', maxWidth: '349px', minWidth: '244px' }}>
+        {/* Sticky Header */}
+        <div className="flex justify-between items-center p-2 border-b border-gray-200 sticky top-0 bg-white z-10">
+          <h3 className="text-sm font-semibold text-gray-900">Customer Timeline</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Scrollable Body - Show all content, hide scrollbar */}
+        <div className="flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 50px)', scrollbarWidth: 'none', msOverflowStyle: 'none', padding: '4px' }}>
+          <style>{`
+            div::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
+          {/* Customer Details */}
+          <div style={{ marginBottom: '4px' }}>
+            <h4 className="text-xs font-bold text-gray-900" style={{ marginBottom: '2px' }}>Customer Details</h4>
+            <div className="text-[11px]" style={{ gap: '1px' }}>
+              <div>
+                <span className="font-medium text-gray-600">Customer Name:</span>
+                <span className="ml-1.5 text-gray-900">{lead.customer || lead.name || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Business Name:</span>
+                <span className="ml-1.5 text-gray-900">{lead.business || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Contact No:</span>
+                <span className="ml-1.5 text-gray-900">{lead.phone || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Email Address:</span>
+                <span className="ml-1.5 text-gray-900">{lead.email || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Timeline */}
+          <div style={{ marginTop: '4px' }}>
+            <h4 className="text-xs font-bold text-gray-900" style={{ marginBottom: '2px' }}>Timeline</h4>
+
+            {/* Customer Created as first chat bubble */}
+            <div className="flex justify-center" style={{ marginTop: '2px' }}>
+              <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                {new Date(lead.created_at || lead.createdAt || Date.now()).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}
+              </span>
+            </div>
+            <div className="flex justify-start" style={{ marginTop: '2px' }}>
+              <div className="max-w-[85%] rounded-lg rounded-tl-none bg-green-50 border border-green-200 p-1.5">
+                <div className="flex items-center gap-1.5" style={{ marginBottom: '1px' }}>
+                  <CheckCircle className="h-3 w-3 text-green-600" />
+                  <span className="text-[11px] font-medium text-gray-900">Customer Created</span>
+                  <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-green-100 text-green-800">COMPLETED</span>
+                </div>
+                <div className="text-[10px] text-gray-600">Lead ID: LD-{lead.id}</div>
+              </div>
+            </div>
+
+            {/* Follow ups grouped by date, chat style bubbles */}
+            {Object.keys(groupedHistory).sort((a,b) => new Date(a) - new Date(b)).map((dateKey) => (
+              <div key={dateKey} style={{ marginTop: '4px' }}>
+                <div className="flex justify-center">
+                  <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">{dateKey}</span>
+                </div>
+                <div style={{ marginTop: '2px', gap: '2px' }}>
+                  {groupedHistory[dateKey].map((h, idx) => {
+                    const right = Boolean(h.sales_status && (h.sales_status.toLowerCase() === 'win' || h.sales_status.toLowerCase() === 'converted'));
+                    return (
+                      <div key={`${h.id || idx}`} className={right ? 'flex justify-end' : 'flex justify-start'}>
+                        <div className={right ? 'max-w-[85%] rounded-lg rounded-tr-none bg-blue-50 border border-blue-200 p-1.5' : 'max-w-[85%] rounded-lg rounded-tl-none bg-white border border-gray-200 p-1.5'} style={{ marginBottom: '2px' }}>
+                          <div className="flex items-center gap-1.5" style={{ marginBottom: '1px' }}>
+                            <span className="text-[10px] font-medium text-gray-700">Follow Up</span>
+                            {h.sales_status && (
+                              <span className="ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded bg-yellow-100 text-yellow-800">{String(h.sales_status).toUpperCase()}</span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-gray-800">
+                            <div style={{ marginBottom: '1px' }}><span className="font-medium">Status:</span> {h.follow_up_status || '—'}</div>
+                            {h.follow_up_remark && (
+                              <div style={{ marginBottom: '1px' }}><span className="font-medium">Remark:</span> {h.follow_up_remark}</div>
+                            )}
+                            {(h.follow_up_date || h.follow_up_time || h.created_at) && (
+                              <div className="text-[9px] text-gray-500">{formatIndianDateTime(h.follow_up_date, h.follow_up_time, h.created_at)}</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* Quotation Status - Chat Style with Actions */}
+            {latestQuotation && (
+              <>
+                <div className="flex justify-center" style={{ marginTop: '4px' }}>
+                  <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                    {latestQuotation?.quotation_date ? new Date(latestQuotation.quotation_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-start" style={{ marginTop: '2px' }}>
+                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-yellow-50 border border-yellow-200 p-1.5">
+                    <div className="flex items-center gap-1.5" style={{ marginBottom: '1px' }}>
+                      <FileText className="h-3 w-3 text-yellow-600" />
+                      <span className="text-[11px] font-medium text-gray-900">Quotation Status</span>
+                      <span className={`ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded ${
+                        (latestQuotation?.status || '').toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
+                        (latestQuotation?.status || '').toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
+                        (latestQuotation?.status ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800')
+                      }`}>
+                        {(latestQuotation?.status || 'PENDING').toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-gray-700" style={{ marginBottom: '2px' }}>
+                      <div>No.: {latestQuotation?.quotation_number || 'N/A'}</div>
+                    </div>
+                    {/* Action Buttons for Pending Quotations - Only show for pending status, hide for approved/rejected */}
+                    {((latestQuotation?.status || '').toLowerCase() === 'pending' || 
+                      (latestQuotation?.status || '').toLowerCase() === 'pending_verification' ||
+                      (latestQuotation?.submitted_for_verification_at && 
+                       (latestQuotation?.status || '').toLowerCase() !== 'approved' && 
+                       (latestQuotation?.status || '').toLowerCase() !== 'rejected')) && (
+                      <div className="flex flex-wrap gap-1" style={{ marginTop: '2px' }}>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await quotationService.approveQuotation(latestQuotation.id, '');
+                              if (res?.success) {
+                                toastManager.success('Quotation approved successfully');
+                                // Update quotation status immediately to hide buttons
+                                setLatestQuotation(prev => prev ? { ...prev, status: 'approved' } : null);
+                                // Refresh quotation data from server
+                                const qRes = await quotationService.getQuotationsByCustomer(lead.id);
+                                const qList = (qRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                                setLatestQuotation(qList[0] || null);
+                              }
+                            } catch (e) {
+                              toastManager.error('Failed to approve quotation');
+                            }
+                          }}
+                          className="text-[9px] px-2 py-0.5 bg-green-600 text-white rounded hover:bg-green-700 font-medium"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={async () => {
+                            const reason = prompt('Please enter rejection reason:');
+                            if (!reason) return;
+                            try {
+                              const res = await quotationService.rejectQuotation(latestQuotation.id, reason);
+                              if (res?.success) {
+                                toastManager.success('Quotation rejected');
+                                // Update quotation status immediately to hide buttons
+                                setLatestQuotation(prev => prev ? { ...prev, status: 'rejected' } : null);
+                                // Refresh quotation data from server
+                                const qRes = await quotationService.getQuotationsByCustomer(lead.id);
+                                const qList = (qRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                                setLatestQuotation(qList[0] || null);
+                              }
+                            } catch (e) {
+                              toastManager.error('Failed to reject quotation');
+                            }
+                          }}
+                          className="text-[9px] px-2 py-0.5 bg-red-600 text-white rounded hover:bg-red-700 font-medium"
+                        >
+                          Reject
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const qRes = await quotationService.getCompleteData(latestQuotation.id);
+                              console.log('Quotation API Response:', qRes);
+                              if (qRes?.success) {
+                                // API returns { success: true, data: { quotation: {...}, items: [...] } }
+                                const quotationData = qRes.data?.quotation || qRes.data;
+                                console.log('Quotation data to pass:', quotationData);
+                                if (quotationData) {
+                                  // Try callback first, then fallback to direct state
+                                  if (onQuotationView) {
+                                    onQuotationView(quotationData);
+                                  } else if (setSelectedQuotation && setShowQuotationModal) {
+                                    setSelectedQuotation(quotationData);
+                                    setShowQuotationModal(true);
+                                  } else {
+                                    console.error('No way to display quotation - missing callbacks and state setters');
+                                    if (toastManager) {
+                                      toastManager.error('Unable to display quotation - missing handlers');
+                                    }
+                                  }
+                                } else {
+                                  if (toastManager) {
+                                    toastManager.error('Quotation data not found in response');
+                                  }
+                                }
+                              } else {
+                                toastManager.error('Failed to load quotation: ' + (qRes?.message || 'Unknown error'));
+                              }
+                            } catch (e) {
+                              console.error('Error loading quotation:', e);
+                              toastManager.error('Failed to load quotation: ' + (e?.message || 'Unknown error'));
+                            }
+                          }}
+                          className="text-[9px] px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium"
+                        >
+                          View
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* PI Status - Chat Style with Actions */}
+            {latestPI && (
+              <>
+                <div className="flex justify-center" style={{ marginTop: '4px' }}>
+                  <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                    {latestPI?.created_at ? new Date(latestPI.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-start" style={{ marginTop: '2px' }}>
+                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-orange-50 border border-orange-200 p-1.5">
+                    <div className="flex items-center gap-1.5" style={{ marginBottom: '1px' }}>
+                      <Receipt className="h-3 w-3 text-orange-600" />
+                      <span className="text-[11px] font-medium text-gray-900">PI Status</span>
+                      <span className={`ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded ${
+                        (latestPI?.status || '').toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
+                        (latestPI?.status || '').toLowerCase() === 'pending_approval' ? 'bg-yellow-100 text-yellow-800' :
+                        (latestPI?.status ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800')
+                      }`}>
+                        {(latestPI?.status || 'PENDING').toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-gray-700" style={{ marginBottom: '2px' }}>
+                      <div>No.: {latestPI?.pi_number || 'N/A'}</div>
+                    </div>
+                    {/* Action Buttons for Pending PIs - Only show for pending status, hide for approved/rejected */}
+                    {((latestPI?.status || '').toLowerCase() === 'pending' || 
+                      (latestPI?.status || '').toLowerCase() === 'pending_approval') &&
+                      (latestPI?.status || '').toLowerCase() !== 'approved' &&
+                      (latestPI?.status || '').toLowerCase() !== 'rejected' && (
+                      <div className="flex flex-wrap gap-1" style={{ marginTop: '2px' }}>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await proformaInvoiceService.updatePI(latestPI.id, { status: 'approved' });
+                              if (res?.success) {
+                                toastManager.success('PI approved successfully');
+                                // Update PI status immediately to hide buttons
+                                setLatestPI(prev => prev ? { ...prev, status: 'approved' } : null);
+                                // Refresh PI data from server
+                                if (latestQuotation?.id) {
+                                  const piRes = await proformaInvoiceService.getPIsByQuotation(latestQuotation.id);
+                                  const piList = (piRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                                  setLatestPI(piList[0] || null);
+                                }
+                              }
+                            } catch (e) {
+                              toastManager.error('Failed to approve PI');
+                            }
+                          }}
+                          className="text-[9px] px-2 py-0.5 bg-green-600 text-white rounded hover:bg-green-700 font-medium"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={async () => {
+                            const reason = prompt('Please enter rejection reason:');
+                            if (!reason) return;
+                            try {
+                              const res = await proformaInvoiceService.updatePI(latestPI.id, { 
+                                status: 'rejected',
+                                rejection_reason: reason 
+                              });
+                              if (res?.success) {
+                                toastManager.success('PI rejected');
+                                // Update PI status immediately to hide buttons
+                                setLatestPI(prev => prev ? { ...prev, status: 'rejected' } : null);
+                                // Refresh PI data from server
+                                if (latestQuotation?.id) {
+                                  const piRes = await proformaInvoiceService.getPIsByQuotation(latestQuotation.id);
+                                  const piList = (piRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                                  setLatestPI(piList[0] || null);
+                                }
+                              }
+                            } catch (e) {
+                              toastManager.error('Failed to reject PI');
+                            }
+                          }}
+                          className="text-[9px] px-2 py-0.5 bg-red-600 text-white rounded hover:bg-red-700 font-medium"
+                        >
+                          Reject
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (onPIView) {
+                              onPIView(latestPI);
+                            }
+                          }}
+                          className="text-[9px] px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium"
+                        >
+                          View
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Payment Status - Chat Style */}
+            {paymentSummary && (
+              <>
+                <div className="flex justify-center" style={{ marginTop: '4px' }}>
+                  <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                    {payments.length > 0 && payments[0]?.payment_date ? new Date(payments[0].payment_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'Today'}
+                  </span>
+                </div>
+                <div className="flex justify-start" style={{ marginTop: '2px' }}>
+                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-purple-50 border border-purple-200 p-1.5">
+                    <div className="flex items-center gap-1.5" style={{ marginBottom: '1px' }}>
+                      <CreditCard className="h-3 w-3 text-purple-600" />
+                      <span className="text-[11px] font-medium text-gray-900">Payment Status</span>
+                      <span className={`ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded ${
+                        paymentSummary && paymentSummary.remaining <= 0 ? 'bg-green-100 text-green-800' :
+                        paymentSummary && paymentSummary.paid > 0 ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {paymentSummary && paymentSummary.remaining <= 0 ? 'COMPLETED' :
+                         paymentSummary && paymentSummary.paid > 0 ? 'PARTIAL' : 'PENDING'}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-gray-700" style={{ gap: '1px' }}>
+                      <div className="font-medium text-gray-900" style={{ marginBottom: '1px' }}>Total: ₹{Number(paymentSummary.total || 0).toLocaleString('en-IN')}</div>
+                      <div className="text-green-700" style={{ marginBottom: '1px' }}>Paid: ₹{Number(paymentSummary.paid || 0).toLocaleString('en-IN')}</div>
+                      <div className="text-red-700" style={{ marginBottom: '1px' }}>Due: ₹{Number(paymentSummary.remaining || 0).toLocaleString('en-IN')}</div>
+                      {payments.length > 0 && (
+                        <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid #e5e7eb' }}>
+                          <div className="font-medium text-gray-700 text-[9px]" style={{ marginBottom: '2px' }}>Payment History:</div>
+                          {payments.map((payment, idx) => (
+                            <div key={payment.id} className="text-[9px] p-1.5 bg-gray-50 rounded" style={{ marginBottom: '2px' }}>
+                              <div className="flex justify-between">
+                                <span className="font-medium">Advance Payment #{idx + 1}</span>
+                                <span className="text-green-700 font-medium">₹{Number(payment.installment_amount || 0).toLocaleString('en-IN')}</span>
+                              </div>
+                              <div className="text-gray-500 mt-0.5">
+                                Method: {payment.payment_method || 'N/A'}
+                              </div>
+                              <div className="text-gray-500">
+                                Date: {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-GB') : 'N/A'}
+                              </div>
+                              {payment.quotation_number && (
+                                <div className="text-gray-500">Quotation: {payment.quotation_number}</div>
+                              )}
+                              {payment.pi_number && (
+                                <div className="text-gray-500">PI: {payment.pi_number}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const LeadsSimplified = () => {
   const [leadsData, setLeadsData] = useState([]);
@@ -30,6 +493,16 @@ const LeadsSimplified = () => {
   const [importing, setImporting] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewLead, setPreviewLead] = useState(null);
+  const [showCustomerTimeline, setShowCustomerTimeline] = useState(false);
+  const [timelineLead, setTimelineLead] = useState(null);
+  const [quotationCounts, setQuotationCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
+  const [piCounts, setPiCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
+  const [loadingCounts, setLoadingCounts] = useState(false);
+  const [statusFilter, setStatusFilter] = useState({ type: null, status: null }); // { type: 'quotation' | 'pi', status: 'pending' | 'approved' | 'rejected' }
+  const [assignmentFilter, setAssignmentFilter] = useState(null); // 'assigned' | 'unassigned' | null
+  const [filteredQuotations, setFilteredQuotations] = useState({ pending: [], approved: [], rejected: [] });
+  const [filteredPIs, setFilteredPIs] = useState({ pending: [], approved: [], rejected: [] });
+  const [filteredCustomerIds, setFilteredCustomerIds] = useState(new Set());
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -484,6 +957,10 @@ const LeadsSimplified = () => {
     const lines = csvText.split('\n');
     const headers = lines[0].split(',').map(h => h.trim());
     const data = [];
+    const isBlank = (v) => {
+      const s = (v || '').toString().trim().toLowerCase();
+      return s === '' || s === 'n/a' || /^-+$/.test(s);
+    };
     
     for (let i = 1; i < lines.length; i++) {
       if (lines[i].trim()) {
@@ -492,7 +969,12 @@ const LeadsSimplified = () => {
         headers.forEach((header, index) => {
           row[header] = values[index] || '';
         });
-        data.push(row);
+        // Keep only meaningful rows (at least name or mobile present)
+        const name = row['Customer Name'] || row['customer'] || '';
+        const mobile = row['Mobile Number'] || row['phone'] || '';
+        if (!(isBlank(name) && isBlank(mobile))) {
+          data.push(row);
+        }
       }
     }
     return data;
@@ -509,6 +991,10 @@ const LeadsSimplified = () => {
         const parsedData = parseCSV(csvText);
         setImportPreview(parsedData);
         setShowImportModal(true);
+        // Allow selecting the same file name again later
+        if (importFileInputRef.current) {
+          importFileInputRef.current.value = '';
+        }
       };
       reader.readAsText(file);
     } else {
@@ -557,43 +1043,33 @@ const LeadsSimplified = () => {
     }
 
     setImporting(true);
-    let successCount = 0;
-    let errorCount = 0;
 
     try {
-      for (const row of importPreview) {
-        try {
-          const leadData = {
-            customer: row['Customer Name'] || null,
-            phone: row['Mobile Number'] || null,
-            email: row['Email'] || null,
-            address: row['Address'] || null,
-            business: row['Business Name'] || null,
-            leadSource: row['Lead Source'] || null,
-            category: row['Business Category'] || 'N/A',
-            salesStatus: 'PENDING',
-            gstNo: row['GST Number'] || null,
-            productNames: row['Product Names (comma separated)'] || 'N/A',
-            state: row['State'] || null,
-            assignedSalesperson: row['Assigned Salesperson'] || null,
-            assignedTelecaller: row['Assigned Telecaller'] || null,
-            whatsapp: row['WhatsApp Number'] || row['Mobile Number'] || null,
-            date: formatDate(row['Date (YYYY-MM-DD)']),
-            createdAt: new Date().toISOString().split('T')[0],
-            telecallerStatus: 'INACTIVE',
-            paymentStatus: 'PENDING',
-            connectedStatus: 'pending',
-            finalStatus: 'open',
-            customerType: 'business'
-          };
+      const leadsPayload = importPreview.map((row) => ({
+        customer: row['Customer Name'] || null,
+        phone: row['Mobile Number'] || null,
+        email: row['Email'] || null,
+        address: row['Address'] || null,
+        business: row['Business Name'] || null,
+        leadSource: row['Lead Source'] || null,
+        category: row['Business Category'] || 'N/A',
+        salesStatus: 'PENDING',
+        gstNo: row['GST Number'] || null,
+        productNames: row['Product Names (comma separated)'] || 'N/A',
+        state: row['State'] || null,
+        assignedSalesperson: row['Assigned Salesperson'] || null,
+        assignedTelecaller: row['Assigned Telecaller'] || null,
+        whatsapp: row['WhatsApp Number'] || row['Mobile Number'] || null,
+        date: formatDate(row['Date (YYYY-MM-DD)']),
+        createdAt: new Date().toISOString().split('T')[0],
+        telecallerStatus: 'INACTIVE',
+        paymentStatus: 'PENDING',
+        connectedStatus: 'pending',
+        finalStatus: 'open',
+        customerType: 'business'
+      }));
 
-          await departmentHeadService.createLead(leadData);
-          successCount++;
-        } catch (error) {
-          console.error('Error importing lead:', error);
-          errorCount++;
-        }
-      }
+      const resp = await departmentHeadService.importLeads(leadsPayload);
 
       // Refresh leads data
       const response = await departmentHeadService.getAllLeads();
@@ -601,15 +1077,35 @@ const LeadsSimplified = () => {
         const transformedData = transformApiData(response.data);
         setLeadsData(transformedData);
       }
-
-      toastManager.success(`Import completed! ${successCount} leads imported successfully, ${errorCount} failed`);
+      const inserted = resp?.data?.importedCount ?? leadsPayload.length;
+      const duplicates = resp?.data?.duplicatesCount ?? 0;
+      const msg = duplicates > 0
+        ? `Import completed! ${inserted} added, ${duplicates} duplicate(s) skipped`
+        : `Import completed! ${inserted} leads processed`;
+      toastManager.success(msg);
       setShowImportModal(false);
       setImportPreview([]);
       setImportFile(null);
+      if (importFileInputRef.current) {
+        importFileInputRef.current.value = '';
+      }
     } catch (error) {
       apiErrorHandler.handleError(error, 'import leads');
     } finally {
       setImporting(false);
+    }
+  };
+
+  // Format a datetime to IST (DD/MM/YYYY HH:mm)
+  const formatToIST = (value) => {
+    if (!value) return 'N/A';
+    try {
+      const d = new Date(value);
+      const date = d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
+      const time = d.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
+      return `${date} ${time}`;
+    } catch (e) {
+      return String(value);
     }
   };
 
@@ -625,7 +1121,8 @@ const LeadsSimplified = () => {
       productNamesText: lead.product_names,
       category: lead.category,
       salesStatus: lead.sales_status,
-      createdAt: lead.created,
+      salesStatusRemark: lead.sales_status_remark || null,
+      createdAt: formatToIST(lead.created_at),
       assignedSalesperson: lead.assigned_salesperson,
       assignedTelecaller: lead.assigned_telecaller,
       telecallerStatus: lead.telecaller_status,
@@ -636,40 +1133,127 @@ const LeadsSimplified = () => {
       state: lead.state,
       customerType: lead.customer_type,
       date: lead.date,
-      connectedStatus: lead.connected_status,
+      // Normalized follow-up fields (prefer salesperson values if present)
+      followUpStatus: lead.follow_up_status || lead.connected_status || lead.telecaller_status,
+      // keep legacy key for any parts still reading connectedStatus
+      connectedStatus: lead.follow_up_status || lead.connected_status || lead.telecaller_status,
+      followUpRemark: lead.follow_up_remark || null,
       finalStatus: lead.final_status,
       whatsapp: lead.whatsapp,
       createdBy: lead.created_by,
-      created_at: lead.created_at,
-      updated_at: lead.updated_at
+      created_at: formatToIST(lead.created_at),
+      updated_at: formatToIST(lead.updated_at)
     }));
+  };
+
+  // Fetch leads function
+  const fetchLeads = async () => {
+    try {
+      setLoading(true);
+      const params = { page, limit };
+      if (searchTerm && searchTerm.trim() !== '') {
+        params.search = searchTerm.trim();
+      }
+      const response = await departmentHeadService.getAllLeads(params);
+      if (response && response.data) {
+        const transformedData = transformApiData(response.data);
+        setLeadsData(transformedData);
+        if (response.pagination) {
+          setTotal(Number(response.pagination.total) || 0);
+        }
+      }
+    } catch (error) {
+      apiErrorHandler.handleError(error, 'fetch leads');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch quotation and PI counts
+  const fetchQuotationAndPICounts = async () => {
+    try {
+      setLoadingCounts(true);
+      
+      // Fetch quotations pending verification (submitted by salespersons)
+      const pendingVerificationRes = await apiClient.get('/api/quotations/pending-verification').catch(() => ({ data: { data: [] } }));
+      const pendingVerificationQuotations = pendingVerificationRes?.data?.data || pendingVerificationRes?.data || [];
+      
+      // Fetch all quotations by status
+      const [pendingQRes, approvedQRes, rejectedQRes] = await Promise.all([
+        apiClient.get('/api/quotations/status/pending').catch(() => ({ data: { data: [] } })),
+        apiClient.get('/api/quotations/status/approved').catch(() => ({ data: { data: [] } })),
+        apiClient.get('/api/quotations/status/rejected').catch(() => ({ data: { data: [] } }))
+      ]);
+      
+      const pendingQuotations = pendingQRes?.data?.data || pendingQRes?.data || [];
+      const approvedQuotations = approvedQRes?.data?.data || approvedQRes?.data || [];
+      const rejectedQuotations = rejectedQRes?.data?.data || rejectedQRes?.data || [];
+      
+      // Also check for "sent_for_approval" status
+      const sentForApprovalRes = await apiClient.get('/api/quotations/status/sent_for_approval').catch(() => ({ data: { data: [] } }));
+      const sentForApprovalQuotations = sentForApprovalRes?.data?.data || sentForApprovalRes?.data || [];
+      
+      // Combine pending verification (submitted by salespersons) with other pending
+      // Filter out duplicates by quotation ID
+      const allPendingIds = new Set();
+      const allPendingQuotations = [];
+      
+      [...pendingVerificationQuotations, ...pendingQuotations, ...sentForApprovalQuotations].forEach(q => {
+        if (q.id && !allPendingIds.has(q.id)) {
+          allPendingIds.add(q.id);
+          allPendingQuotations.push(q);
+        }
+      });
+      
+      setQuotationCounts({
+        pending: allPendingQuotations.length,
+        approved: approvedQuotations.length,
+        rejected: rejectedQuotations.length
+      });
+      
+      // Store all quotations for filtering
+      setFilteredQuotations({
+        pending: allPendingQuotations,
+        approved: approvedQuotations,
+        rejected: rejectedQuotations
+      });
+      
+      // Fetch all PIs
+      const piResponse = await departmentHeadService.getAllPIs();
+      const allPIs = piResponse?.data || [];
+      
+      // Count PIs by status
+      const pendingPIs = allPIs.filter(pi => {
+        const status = (pi.status || '').toLowerCase();
+        return status === 'pending' || status === 'pending_approval' || status === 'sent_for_approval';
+      });
+      const approvedPIs = allPIs.filter(pi => (pi.status || '').toLowerCase() === 'approved');
+      const rejectedPIs = allPIs.filter(pi => (pi.status || '').toLowerCase() === 'rejected');
+      
+      setPiCounts({
+        pending: pendingPIs.length,
+        approved: approvedPIs.length,
+        rejected: rejectedPIs.length
+      });
+      
+      // Store all PIs for filtering
+      setFilteredPIs({
+        pending: pendingPIs,
+        approved: approvedPIs,
+        rejected: rejectedPIs
+      });
+    } catch (error) {
+      console.error('Error fetching quotation and PI counts:', error);
+    } finally {
+      setLoadingCounts(false);
+    }
   };
 
   // Fetch leads when page, limit, or search changes
   useEffect(() => {
-    const fetchLeads = async () => {
-      try {
-        setLoading(true);
-        const params = { page, limit };
-        if (searchTerm && searchTerm.trim() !== '') {
-          params.search = searchTerm.trim();
-        }
-        const response = await departmentHeadService.getAllLeads(params);
-        if (response && response.data) {
-          const transformedData = transformApiData(response.data);
-          setLeadsData(transformedData);
-          if (response.pagination) {
-            setTotal(Number(response.pagination.total) || 0);
-          }
-        }
-      } catch (error) {
-        apiErrorHandler.handleError(error, 'fetch leads');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchLeads();
+    fetchQuotationAndPICounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, searchTerm]);
 
   // Load department usernames when edit modal opens
@@ -804,15 +1388,97 @@ const LeadsSimplified = () => {
     });
   };
 
-  // Filter leads based on search
+  // Filter leads based on search, status filter, and assignment filter
   const filteredLeads = leadsData.filter(lead => {
     const matchesSearch = !searchTerm || 
       lead.customer?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.business?.toLowerCase().includes(searchTerm.toLowerCase());
 
+    // Filter by assignment status (assigned/unassigned)
+    if (assignmentFilter) {
+      const isAssigned = isLeadAssigned(lead);
+      if (assignmentFilter === 'assigned' && !isAssigned) {
+        return false;
+      }
+      if (assignmentFilter === 'unassigned' && isAssigned) {
+        return false;
+      }
+    }
+
+    // Filter by quotation/PI status if active
+    if (statusFilter.type && statusFilter.status && filteredCustomerIds.size > 0) {
+      // quotations.customer_id (INTEGER) matches department_head_leads.id (INTEGER)
+      const leadId = Number(lead.id);
+      const leadIdStr = String(lead.id);
+      
+      // Check both numeric and string formats
+      const matches = (!isNaN(leadId) && filteredCustomerIds.has(leadId)) || 
+                     filteredCustomerIds.has(leadIdStr);
+      
+      if (!matches) {
+        return false;
+      }
+    }
+
     return matchesSearch;
   });
+  
+  // Calculate assigned and unassigned counts
+  const assignedCount = leadsData.filter(lead => isLeadAssigned(lead)).length;
+  const unassignedCount = leadsData.filter(lead => !isLeadAssigned(lead)).length;
+
+  // Handle badge click to filter leads
+  const handleBadgeClick = async (type, status) => {
+    if (statusFilter.type === type && statusFilter.status === status) {
+      // Clicking same badge again - clear filter
+      setStatusFilter({ type: null, status: null });
+      setFilteredCustomerIds(new Set());
+      return;
+    }
+    
+    setStatusFilter({ type, status });
+    
+    // If filtering by PI, we need to get customer IDs from quotations
+    if (type === 'pi') {
+      const relevantPIs = filteredPIs[status] || [];
+      const quotationIds = relevantPIs.map(pi => pi.quotation_id).filter(Boolean);
+      
+      // Fetch quotations to get customer IDs
+      const customerIds = new Set();
+      for (const qId of quotationIds) {
+        try {
+          const qRes = await quotationService.getQuotation(qId);
+          if (qRes?.data?.customer_id !== null && qRes?.data?.customer_id !== undefined) {
+            const id = Number(qRes.data.customer_id);
+            if (!isNaN(id)) {
+              customerIds.add(id);
+              customerIds.add(String(id)); // Also add as string for flexibility
+            }
+          }
+        } catch (e) {
+          console.warn('Error fetching quotation:', e);
+        }
+      }
+      
+      setFilteredCustomerIds(customerIds);
+    } else if (type === 'quotation') {
+      const relevantQuotations = filteredQuotations[status] || [];
+      // quotations.customer_id (INTEGER) matches department_head_leads.id (INTEGER)
+      const customerIds = new Set();
+      relevantQuotations.forEach(q => {
+        if (q.customer_id !== null && q.customer_id !== undefined) {
+          // Convert to number for proper comparison with lead.id (which is INTEGER)
+          const id = Number(q.customer_id);
+          if (!isNaN(id)) {
+            customerIds.add(id);
+            customerIds.add(String(id)); // Also add as string for flexibility
+          }
+        }
+      });
+      setFilteredCustomerIds(customerIds);
+    }
+  };
 
   // Handle customer creation
   const handleCustomerSave = async (customerData) => {
@@ -1111,26 +1777,55 @@ const LeadsSimplified = () => {
 
   // Get status badge
   const getStatusBadge = (status, type) => {
-    const statusConfig = {
-      'sales': {
-        'PENDING': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' },
-        'IN_PROGRESS': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'IN PROGRESS' },
-        'COMPLETED': { bg: 'bg-green-100', text: 'text-green-800', label: 'COMPLETED' }
-      },
-      'telecaller': {
-        'ACTIVE': { bg: 'bg-green-100', text: 'text-green-800', label: 'ACTIVE' },
-        'INACTIVE': { bg: 'bg-red-100', text: 'text-red-800', label: 'INACTIVE' }
-      },
-      'payment': {
-        'PENDING': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' },
-        'IN_PROGRESS': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'IN PROGRESS' },
-        'COMPLETED': { bg: 'bg-green-100', text: 'text-green-800', label: 'COMPLETED' }
-      }
+    const normalized = (status || '').toString();
+    const upper = normalized.toUpperCase();
+    const lower = normalized.toLowerCase();
+
+    // Sales status mapping (support old DH enums + salesperson enums)
+    const salesMap = {
+      'PENDING': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' },
+      'IN_PROGRESS': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'IN PROGRESS' },
+      'COMPLETED': { bg: 'bg-green-100', text: 'text-green-800', label: 'COMPLETED' },
+      // Salesperson page values (lowercase)
+      'pending': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' },
+      'running': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'RUNNING' },
+      'converted': { bg: 'bg-green-100', text: 'text-green-800', label: 'CONVERTED' },
+      'interested': { bg: 'bg-purple-100', text: 'text-purple-800', label: 'INTERESTED' },
+      'loose': { bg: 'bg-red-100', text: 'text-red-800', label: 'LOOSE' },
+      'win/closed': { bg: 'bg-emerald-100', text: 'text-emerald-800', label: 'WIN/CLOSED' },
+      'win lead': { bg: 'bg-emerald-100', text: 'text-emerald-800', label: 'WIN LEAD' },
+      'lost': { bg: 'bg-red-100', text: 'text-red-800', label: 'LOST' },
+      'closed': { bg: 'bg-red-100', text: 'text-red-800', label: 'CLOSED' },
+      'lost/closed': { bg: 'bg-red-100', text: 'text-red-800', label: 'LOST/CLOSED' }
     };
 
-    const typeConfig = statusConfig[type] || statusConfig['sales'];
-    const config = typeConfig[status] || typeConfig['PENDING'];
-  return (
+    // Follow-up mapping – reuse salesperson follow-up statuses for DH view
+    const followUpMap = {
+      'ACTIVE': { bg: 'bg-green-100', text: 'text-green-800', label: 'ACTIVE' },
+      'INACTIVE': { bg: 'bg-red-100', text: 'text-red-800', label: 'INACTIVE' },
+      'appointment scheduled': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'APPOINTMENT SCHEDULED' },
+      'not interested': { bg: 'bg-red-100', text: 'text-red-800', label: 'NOT INTERESTED' },
+      'interested': { bg: 'bg-green-100', text: 'text-green-800', label: 'INTERESTED' },
+      'quotation sent': { bg: 'bg-purple-100', text: 'text-purple-800', label: 'QUOTATION SENT' },
+      'negotiation': { bg: 'bg-orange-100', text: 'text-orange-800', label: 'NEGOTIATION' },
+      'close order': { bg: 'bg-emerald-100', text: 'text-emerald-800', label: 'CLOSE ORDER' },
+      'closed/lost': { bg: 'bg-gray-100', text: 'text-gray-800', label: 'CLOSED/LOST' },
+      'call back request': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'CALL BACK REQUEST' },
+      'unreachable/call not connected': { bg: 'bg-red-100', text: 'text-red-800', label: 'UNREACHABLE' },
+      'currently not required': { bg: 'bg-gray-100', text: 'text-gray-800', label: 'NOT REQUIRED' },
+      'not relevant': { bg: 'bg-gray-100', text: 'text-gray-800', label: 'NOT RELEVANT' },
+      'pending': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' }
+    };
+
+    const paymentMap = {
+      'PENDING': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' },
+      'IN_PROGRESS': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'IN PROGRESS' },
+      'COMPLETED': { bg: 'bg-green-100', text: 'text-green-800', label: 'COMPLETED' }
+    };
+
+    const typeMap = type === 'telecaller' ? followUpMap : type === 'payment' ? paymentMap : salesMap;
+    const config = typeMap[upper] || typeMap[lower] || typeMap['PENDING'] || { bg: 'bg-gray-100', text: 'text-gray-800', label: normalized || 'PENDING' };
+    return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
         {config.label}
       </span>
@@ -1138,7 +1833,21 @@ const LeadsSimplified = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div
+      className={`space-y-6 transition-all duration-300 ${showCustomerTimeline ? 'pl-6' : 'p-6'}`}
+      style={{
+        width: showCustomerTimeline ? 'calc(98% - 200px)' : '100%',
+        marginRight: 0,
+        paddingRight: showCustomerTimeline ? 0 : '1.5rem',
+        paddingLeft: '1.5rem',
+        boxSizing: 'border-box',
+        overflow: 'visible',
+        position: 'relative',
+        marginLeft: 0,
+        maxWidth: showCustomerTimeline ? 'calc(98% - 200px)' : '100%',
+        flexShrink: 0
+      }}
+    >
       {/* Search and Actions */}
       <div className="flex items-center justify-between space-x-4">
         <div className="flex-1 max-w-md">
@@ -1183,24 +1892,7 @@ const LeadsSimplified = () => {
             </button>
               
             <button
-            onClick={async () => {
-              try {
-                setLoading(true);
-                const params = { page, limit };
-                if (searchTerm && searchTerm.trim() !== '') params.search = searchTerm.trim();
-                const response = await departmentHeadService.getAllLeads(params);
-                if (response && response.data) {
-                  const transformedData = transformApiData(response.data);
-                  setLeadsData(transformedData);
-                  if (response.pagination) setTotal(Number(response.pagination.total) || 0);
-                  toastManager.success('Data refreshed successfully');
-                }
-              } catch (error) {
-                apiErrorHandler.handleError(error, 'refresh leads');
-              } finally {
-                setLoading(false);
-              }
-            }}
+            onClick={fetchLeads}
             className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <RefreshCw className="w-4 h-4" />
@@ -1209,10 +1901,168 @@ const LeadsSimplified = () => {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      {/* Quotation and PI Status Badges */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+        <div className="flex flex-wrap gap-4">
+          {/* Quotation Status Badges */}
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-semibold text-gray-700">Quotation:</span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleBadgeClick('quotation', 'pending')}
+                className={`px-3 py-1 text-xs font-medium rounded-full border transition-all cursor-pointer ${
+                  statusFilter.type === 'quotation' && statusFilter.status === 'pending'
+                    ? 'bg-yellow-200 text-yellow-900 border-yellow-300 ring-2 ring-yellow-400'
+                    : 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200'
+                }`}
+              >
+                Sent for Approval ({loadingCounts ? '...' : quotationCounts.pending})
+              </button>
+              <button
+                onClick={() => handleBadgeClick('quotation', 'approved')}
+                className={`px-3 py-1 text-xs font-medium rounded-full border transition-all cursor-pointer ${
+                  statusFilter.type === 'quotation' && statusFilter.status === 'approved'
+                    ? 'bg-green-200 text-green-900 border-green-300 ring-2 ring-green-400'
+                    : 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200'
+                }`}
+              >
+                Approved ({loadingCounts ? '...' : quotationCounts.approved})
+              </button>
+              <button
+                onClick={() => handleBadgeClick('quotation', 'rejected')}
+                className={`px-3 py-1 text-xs font-medium rounded-full border transition-all cursor-pointer ${
+                  statusFilter.type === 'quotation' && statusFilter.status === 'rejected'
+                    ? 'bg-red-200 text-red-900 border-red-300 ring-2 ring-red-400'
+                    : 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200'
+                }`}
+              >
+                Rejected ({loadingCounts ? '...' : quotationCounts.rejected})
+              </button>
+            </div>
+          </div>
+
+          {/* PI Status Badges */}
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-semibold text-gray-700">PI:</span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleBadgeClick('pi', 'pending')}
+                className={`px-3 py-1 text-xs font-medium rounded-full border transition-all cursor-pointer ${
+                  statusFilter.type === 'pi' && statusFilter.status === 'pending'
+                    ? 'bg-yellow-200 text-yellow-900 border-yellow-300 ring-2 ring-yellow-400'
+                    : 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200'
+                }`}
+              >
+                Sent for Approval ({loadingCounts ? '...' : piCounts.pending})
+              </button>
+              <button
+                onClick={() => handleBadgeClick('pi', 'approved')}
+                className={`px-3 py-1 text-xs font-medium rounded-full border transition-all cursor-pointer ${
+                  statusFilter.type === 'pi' && statusFilter.status === 'approved'
+                    ? 'bg-green-200 text-green-900 border-green-300 ring-2 ring-green-400'
+                    : 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200'
+                }`}
+              >
+                Approved ({loadingCounts ? '...' : piCounts.approved})
+              </button>
+              <button
+                onClick={() => handleBadgeClick('pi', 'rejected')}
+                className={`px-3 py-1 text-xs font-medium rounded-full border transition-all cursor-pointer ${
+                  statusFilter.type === 'pi' && statusFilter.status === 'rejected'
+                    ? 'bg-red-200 text-red-900 border-red-300 ring-2 ring-red-400'
+                    : 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200'
+                }`}
+              >
+                Rejected ({loadingCounts ? '...' : piCounts.rejected})
+              </button>
+            </div>
+          </div>
+
+          {/* Assignment Status Badges */}
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-semibold text-gray-700">Assignment:</span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => {
+                  if (assignmentFilter === 'assigned') {
+                    setAssignmentFilter(null);
+                  } else {
+                    setAssignmentFilter('assigned');
+                  }
+                }}
+                className={`px-3 py-1 text-xs font-medium rounded-full border transition-all cursor-pointer ${
+                  assignmentFilter === 'assigned'
+                    ? 'bg-blue-200 text-blue-900 border-blue-300 ring-2 ring-blue-400'
+                    : 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200'
+                }`}
+              >
+                Assigned ({assignedCount})
+              </button>
+              <button
+                onClick={() => {
+                  if (assignmentFilter === 'unassigned') {
+                    setAssignmentFilter(null);
+                  } else {
+                    setAssignmentFilter('unassigned');
+                  }
+                }}
+                className={`px-3 py-1 text-xs font-medium rounded-full border transition-all cursor-pointer ${
+                  assignmentFilter === 'unassigned'
+                    ? 'bg-gray-200 text-gray-900 border-gray-300 ring-2 ring-gray-400'
+                    : 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200'
+                }`}
+              >
+                Unassigned ({unassignedCount})
+              </button>
+            </div>
+          </div>
+        </div>
+        {((statusFilter.type && statusFilter.status) || assignmentFilter) && (
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs text-gray-600">
+              Filtering by: {statusFilter.type && statusFilter.status && `${statusFilter.type === 'quotation' ? 'Quotation' : 'PI'} - ${statusFilter.status}`}
+              {statusFilter.type && statusFilter.status && assignmentFilter && ' | '}
+              {assignmentFilter && `Assignment - ${assignmentFilter === 'assigned' ? 'Assigned' : 'Unassigned'}`}
+            </span>
+            <button
+              onClick={() => {
+                setStatusFilter({ type: null, status: null });
+                setAssignmentFilter(null);
+                setFilteredCustomerIds(new Set());
+              }}
+              className="text-xs text-blue-600 hover:text-blue-800 underline"
+            >
+              Clear Filter
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Table - Full width when sidebar open */}
+      <div
+        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+        style={{
+          marginRight: 0,
+          marginLeft: 0,
+          width: '100%',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+          borderTopRightRadius: showCustomerTimeline ? 0 : '0.5rem',
+          borderBottomRightRadius: showCustomerTimeline ? 0 : '0.5rem',
+          borderRight: showCustomerTimeline ? 'none' : '1px solid #e5e7eb'
+        }}
+      >
+        <div
+          className="overflow-x-auto"
+          style={{
+            marginRight: 0,
+            paddingRight: 0,
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box'
+          }}
+        >
+          <table className="w-full" style={{ width: '100%', tableLayout: 'auto', borderCollapse: 'collapse', margin: 0 }}>
              <thead className="bg-gray-50 border-b border-gray-200">
                <tr>
                  <th className="px-4 py-3">
@@ -1438,14 +2288,24 @@ const LeadsSimplified = () => {
                   {visibleColumns.state && (
                     <td className="px-4 py-4 text-sm text-gray-900">{lead.state}</td>
                   )}
-                  {visibleColumns.followUpStatus && (
-                    <td className="px-4 py-4">
-                      {getStatusBadge(lead.connectedStatus || lead.telecallerStatus, 'telecaller')}
-                    </td>
-                  )}
+                {visibleColumns.followUpStatus && (
+                  <td className="px-4 py-4">
+                    <div className="space-y-1">
+                      {getStatusBadge(lead.followUpStatus || lead.connectedStatus || lead.telecallerStatus, 'telecaller')}
+                      {lead.followUpRemark && (
+                        <div className="text-xs text-gray-600 italic">"{lead.followUpRemark}"</div>
+                      )}
+                    </div>
+                  </td>
+                )}
                   {visibleColumns.salesStatus && (
                     <td className="px-4 py-4">
-                      {getStatusBadge(lead.salesStatus, 'sales')}
+                      <div className="space-y-1">
+                        {getStatusBadge(lead.salesStatus, 'sales')}
+                        {lead.salesStatusRemark && (
+                          <div className="text-xs text-gray-600 italic">"{lead.salesStatusRemark}"</div>
+                        )}
+                      </div>
                     </td>
                   )}
                   {visibleColumns.assignedSalesperson && (
@@ -1492,15 +2352,12 @@ const LeadsSimplified = () => {
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={async () => {
-                          setPreviewLead(lead);
-                          setActiveTab('overview');
-                          setShowPreviewModal(true);
-                          // Fetch PIs for quotations of this lead
-                          await fetchPIsForLead(lead);
+                        onClick={() => {
+                          setTimelineLead(lead);
+                          setShowCustomerTimeline(true);
                         }}
                         className="text-green-600 hover:text-green-900"
-                        title="View Lead"
+                        title="View Customer Timeline"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -1734,7 +2591,10 @@ const LeadsSimplified = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Follow Up Status</label>
-                    <p className="text-gray-900 font-semibold">{previewLead.connectedStatus || previewLead.telecallerStatus || 'N/A'}</p>
+                    <p className="text-gray-900 font-semibold">{previewLead.followUpStatus || previewLead.telecallerStatus || 'N/A'}</p>
+                    {previewLead.followUpRemark && (
+                      <p className="text-xs text-gray-600 italic mt-0.5">"{previewLead.followUpRemark}"</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Assigned Salesperson</label>
@@ -2415,6 +3275,34 @@ const LeadsSimplified = () => {
         viewingCustomerId={null}
         onPICreated={null}
       />
+
+      {/* Customer Timeline Panel - Fixed position, no gap */}
+      {showCustomerTimeline && timelineLead && (
+        <div style={{ position: 'fixed', top: 0, right: 0, width: 'fit-content', maxWidth: '349px', minWidth: '244px', height: '100vh', zIndex: 50, marginLeft: 0, marginRight: 0, paddingLeft: 0, paddingRight: 0, borderLeft: '1px solid #e5e7eb' }}>
+          <CustomerTimeline
+            lead={timelineLead}
+            onClose={() => {
+              setShowCustomerTimeline(false);
+              setTimelineLead(null);
+            }}
+            onQuotationView={(quotation) => {
+              if (quotation) {
+                setSelectedQuotation(quotation);
+                setShowQuotationModal(true);
+              } else {
+                toastManager.error('Quotation data is missing');
+              }
+            }}
+            onPIView={(pi) => {
+              setPiPreviewData(pi);
+              setShowPIPreview(true);
+            }}
+            setSelectedQuotation={setSelectedQuotation}
+            setShowQuotationModal={setShowQuotationModal}
+            toastManager={toastManager}
+          />
+        </div>
+      )}
 
     </div>
   );

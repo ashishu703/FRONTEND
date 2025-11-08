@@ -140,6 +140,12 @@ export default function CustomerListContent({ isDarkMode = false }) {
     productType: false,
     dateRange: false
   })
+  // Header row compact filters
+  const [showFilters, setShowFilters] = React.useState(false)
+  const [filters, setFilters] = React.useState({ salesStatus: '' })
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+  }
   
   // Close filter panel when clicking outside
   React.useEffect(() => {
@@ -1312,34 +1318,36 @@ export default function CustomerListContent({ isDarkMode = false }) {
         }
         
         if (importedCustomers.length > 0) {
-          // Upload imported leads to API
+          // Upload imported leads to API (salesperson import -> DH reflect)
           try {
-            for (const customer of importedCustomers) {
-              const formData = new FormData();
-              formData.append('name', customer.name);
-              formData.append('phone', customer.phone.replace(/\D/g, '').slice(-10));
-              formData.append('whatsapp', customer.whatsapp ? customer.whatsapp.replace('+91','').replace(/\D/g, '').slice(-10) : customer.phone.replace(/\D/g, '').slice(-10));
-              formData.append('email', customer.email === 'N/A' ? '' : customer.email);
-              formData.append('business', customer.business || 'N/A');
-              formData.append('address', customer.address || 'N/A');
-              formData.append('state', customer.state || 'N/A');
-              formData.append('gst_no', customer.gstNo === 'N/A' ? '' : customer.gstNo);
-              formData.append('product_type', customer.productName || 'N/A');
-              formData.append('lead_source', customer.enquiryBy || 'N/A');
-              formData.append('customer_type', customer.customerType || 'N/A');
-              formData.append('date', customer.date);
-              formData.append('sales_status', customer.salesStatus || 'follow up');
-              formData.append('sales_status_remark', customer.salesStatusRemark || 'Imported from CSV');
-              
-              await apiClient.postFormData(API_ENDPOINTS.LEADS_CREATE(), formData);
-            }
-            
+            const leadsPayload = importedCustomers.map((c) => ({
+              name: c.name,
+              phone: String(c.phone || '').replace(/\D/g, '').slice(-10),
+              whatsapp: c.whatsapp ? String(c.whatsapp).replace('+91','').replace(/\D/g, '').slice(-10) : String(c.phone || '').replace(/\D/g, '').slice(-10),
+              email: c.email === 'N/A' ? '' : c.email,
+              business: c.business || 'N/A',
+              address: c.address || 'N/A',
+              state: c.state || 'N/A',
+              gst_no: c.gstNo === 'N/A' ? '' : c.gstNo,
+              product_type: c.productName || 'N/A',
+              lead_source: c.enquiryBy || 'N/A',
+              customer_type: c.customerType || 'N/A',
+              date: c.date || null,
+              sales_status: c.salesStatus || 'pending',
+              sales_status_remark: c.salesStatusRemark || 'Imported from CSV',
+            }));
+
+            const resp = await apiClient.post(API_ENDPOINTS.SALESPERSON_IMPORT_LEADS(), { leads: leadsPayload });
+
             // Refresh leads from API after successful import
             await handleRefresh();
-            
-            const successMessage = errors.length > 0 
-              ? `Successfully imported ${importedCustomers.length} leads. ${errors.length} rows had errors and were skipped.`
-              : `Successfully imported ${importedCustomers.length} leads`;
+
+            const duplicates = resp?.data?.duplicatesCount || 0;
+            const created = resp?.data?.created || importedCustomers.length;
+            const baseMsg = `Successfully imported ${created} lead(s)`;
+            const dupMsg = duplicates > 0 ? `, ${duplicates} duplicate(s) skipped` : '';
+            const csvErrMsg = errors.length > 0 ? `. ${errors.length} row(s) had CSV errors and were skipped.` : '';
+            const successMessage = baseMsg + dupMsg + csvErrMsg;
             alert(successMessage);
             setShowImportModal(false);
             setImportFile(null);
@@ -1867,6 +1875,30 @@ export default function CustomerListContent({ isDarkMode = false }) {
         transferredLeads: newCustomerData.transferredLeads || 0,
         transferredFrom: newCustomerData.transferredFrom || null,
         transferredTo: newCustomerData.transferredTo || null,
+      }
+
+      // Persist new lead to backend so DH can see it immediately
+      try {
+        await apiClient.post(API_ENDPOINTS.SALESPERSON_CREATE_LEAD(), {
+          name: newCustomer.name,
+          phone: String(newCustomer.phone || '').replace(/\D/g, '').slice(-10),
+          whatsapp: newCustomer.whatsapp ? String(newCustomer.whatsapp).replace('+91','').replace(/\D/g, '').slice(-10) : null,
+          email: newCustomer.email === 'N/A' ? '' : newCustomer.email,
+          business: newCustomer.business || 'N/A',
+          address: newCustomer.address || 'N/A',
+          state: newCustomer.state || 'N/A',
+          gst_no: newCustomer.gstNo === 'N/A' ? '' : newCustomer.gstNo,
+          product_type: newCustomer.productName || 'N/A',
+          lead_source: newCustomer.enquiryBy || 'N/A',
+          customer_type: newCustomer.customerType || 'N/A',
+          date: newCustomer.date || null,
+          sales_status: newCustomer.salesStatus || 'pending',
+          sales_status_remark: newCustomer.salesStatusRemark || '',
+        });
+        // Refresh assigned list to pull canonical data
+        await handleRefresh();
+      } catch (e) {
+        console.error('Failed to create salesperson lead (server). Keeping local copy.', e);
       }
       
       setCustomers(prev => [...prev, newCustomer])

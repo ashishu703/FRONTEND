@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Download, User, DollarSign, Clock, Calendar, Link, Copy, Eye, MoreHorizontal, CreditCard, AlertCircle, CheckCircle, XCircle, ChevronDown, Edit, Plus, Package } from 'lucide-react';
 import paymentService from '../../api/admin_api/paymentService';
+import quotationService from '../../api/admin_api/quotationService';
+import departmentHeadService from '../../api/admin_api/departmentHeadService';
+import apiClient from '../../utils/apiClient';
+import { API_ENDPOINTS } from '../../api/admin_api/api';
 
 const PaymentsDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,7 +29,15 @@ const PaymentsDashboard = () => {
     paymentLink: ''
   });
   
+  // Date range filter
+  const [dateRange, setDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
+  const [showDateRangeFilter, setShowDateRangeFilter] = useState(false);
+  
   const [payments, setPayments] = useState([]);
+  const [allPaymentsData, setAllPaymentsData] = useState([]); // Store all payments before filtering
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -34,66 +46,212 @@ const PaymentsDashboard = () => {
     pages: 0
   });
 
-  const mapDbPaymentToRow = (p) => ({
-    id: p.id,
-    leadId: p.lead_id,
-    productName: p.product_name || 'N/A',
-    customer: {
-      name: p.customer_name || p.lead_customer_name || 'N/A',
-      email: p.lead_email || 'N/A',
-      phone: p.lead_phone || 'N/A'
-    },
-    // installment_amount is amount paid in this record
-    amount: Number(p.installment_amount || 0),
-    totalAmount: Number(p.total_quotation_amount || 0),
-    dueAmount: Number(p.remaining_amount || 0),
-    status: (p.payment_status || '').toLowerCase() === 'completed' ? 'Paid'
-      : (p.payment_status || '').toLowerCase() === 'pending' ? 'Pending'
-      : (p.payment_status || '').toLowerCase() === 'failed' ? 'Failed'
-      : (p.payment_status || '').toLowerCase() === 'refunded' ? 'Refunded'
-      : (p.payment_status || '').toLowerCase() === 'cancelled' ? 'Cancelled'
-      : 'Pending',
-    created: p.payment_date ? new Date(p.payment_date).toLocaleString() : '' ,
-    paymentLink: p.payment_receipt_url || ''
-  });
-
-  const fetchAllPayments = async (page = 1, search = '', status = 'All Status') => {
+  // Fetch all payments for all leads under department head
+  const fetchAllPayments = async () => {
     try {
       setLoading(true);
-      const res = await paymentService.getAllPayments({
-        page,
-        limit: 50,
-        search: search.trim(),
-        status
+      
+      // Fetch all leads under department head
+      const leadsResponse = await departmentHeadService.getAllLeads();
+      const allLeads = leadsResponse?.data || [];
+      const leadIds = allLeads.map(lead => lead.id);
+      
+      // Create a map of lead ID to lead data
+      const leadsMap = {};
+      allLeads.forEach(lead => {
+        leadsMap[lead.id] = lead;
       });
       
-      if (res?.data) {
-        const rows = Array.isArray(res.data) ? res.data.map(mapDbPaymentToRow) : [];
-        setPayments(rows);
-        setPagination(res.pagination || { page: 1, limit: 50, total: 0, pages: 0 });
-      } else {
-        setPayments([]);
-        setPagination({ page: 1, limit: 50, total: 0, pages: 0 });
+      // Fetch ALL quotations for all leads
+      const allQuotations = [];
+      for (const leadId of leadIds) {
+        try {
+          const qRes = await quotationService.getQuotationsByCustomer(leadId);
+          const quotations = Array.isArray(qRes?.data) ? qRes.data : [];
+          allQuotations.push(...quotations);
+        } catch (err) {
+          console.warn(`Error fetching quotations for lead ${leadId}:`, err);
+        }
       }
+      
+      // Fetch ALL payments from payment_history table for all leads
+      const allPayments = [];
+      for (const leadId of leadIds) {
+        try {
+          const paymentRes = await paymentService.getPaymentsByCustomer(leadId);
+          const payments = Array.isArray(paymentRes?.data) ? paymentRes.data : [];
+          allPayments.push(...payments);
+        } catch (err) {
+          console.warn(`Error fetching payments for lead ${leadId}:`, err);
+        }
+      }
+      
+      // Also fetch payments by quotation to catch any missed payments
+      for (const quotation of allQuotations) {
+        try {
+          const pRes = await paymentService.getPaymentsByQuotation(quotation.id);
+          const payments = Array.isArray(pRes?.data) ? pRes.data : [];
+          // Add payments that aren't already in allPayments
+          payments.forEach(p => {
+            const exists = allPayments.some(ap => ap.id === p.id || 
+              (ap.payment_reference && p.payment_reference && ap.payment_reference === p.payment_reference));
+            if (!exists) {
+              allPayments.push(p);
+            }
+          });
+        } catch (err) {
+          console.warn(`Error fetching payments for quotation ${quotation.id}:`, err);
+        }
+      }
+      
+      // Group payments by quotation_id and lead_id
+      const paymentMap = new Map(); // key: quotation_id or lead_id, value: { quotation, lead, payments }
+      
+      // Process all quotations
+      allQuotations.forEach(quotation => {
+        const lead = leadsMap[quotation.customer_id] || {};
+        const key = quotation.id || `lead_${quotation.customer_id}`;
+        if (!paymentMap.has(key)) {
+          paymentMap.set(key, {
+            quotation,
+            lead,
+            payments: []
+          });
+        }
+      });
+      
+      // Add payments to the map
+      allPayments.forEach(payment => {
+        const key = payment.quotation_id || `lead_${payment.lead_id}`;
+        if (paymentMap.has(key)) {
+          paymentMap.get(key).payments.push(payment);
+        } else {
+          // Payment without quotation - create entry for lead
+          const lead = leadsMap[payment.lead_id] || {};
+          paymentMap.set(key, {
+            quotation: null,
+            lead,
+            payments: [payment]
+          });
+        }
+      });
+      
+      // Build individual payment records (not grouped)
+      const paymentTrackingData = [];
+      
+      // Create a map to store quotation totals and paid amounts for status calculation
+      const quotationTotalsMap = new Map();
+      const quotationPaidMap = new Map();
+      
+      paymentMap.forEach(({ quotation, lead, payments }) => {
+        // Filter out refunds
+        const validPayments = payments.filter(p => !p.is_refund);
+        
+        const quotationId = quotation?.id || `lead_${quotation?.customer_id || lead.id}`;
+        const quotationTotal = quotation ? Number(quotation.total_amount || 0) : 0;
+        
+        // Calculate total paid for this quotation
+        const totalPaid = validPayments
+          .filter(p => {
+            const status = (p.payment_status || '').toLowerCase();
+            return status === 'completed' || status === 'paid' || status === 'success' || status === 'advance';
+          })
+          .reduce((sum, p) => sum + Number(p.installment_amount || p.paid_amount || 0), 0);
+        
+        quotationTotalsMap.set(quotationId, quotationTotal);
+        quotationPaidMap.set(quotationId, totalPaid);
+      });
+      
+      // Now create individual payment records
+      allPayments.forEach(payment => {
+        // Filter out refunds
+        if (payment.is_refund) return;
+        
+        const status = (payment.payment_status || '').toLowerCase();
+        const isValidPayment = status === 'completed' || status === 'paid' || status === 'success' || status === 'advance';
+        
+        if (!isValidPayment) return;
+        
+        // Find the lead and quotation for this payment
+        const lead = leadsMap[payment.lead_id] || {};
+        const quotation = allQuotations.find(q => q.id === payment.quotation_id) || null;
+        const quotationId = payment.quotation_id || `lead_${payment.lead_id}`;
+        
+        const quotationTotal = quotationTotalsMap.get(quotationId) || 0;
+        const totalPaidForQuotation = quotationPaidMap.get(quotationId) || 0;
+        const remainingAmount = Math.max(0, quotationTotal - totalPaidForQuotation);
+        
+        // Determine payment status for this individual payment
+        let paymentStatus = 'Due';
+        let displayStatus = 'Due';
+        
+        if (quotationTotal > 0) {
+          if (totalPaidForQuotation >= quotationTotal) {
+            paymentStatus = 'Paid';
+            displayStatus = 'Paid';
+          } else if (totalPaidForQuotation > 0) {
+            paymentStatus = 'Advance';
+            displayStatus = 'Advance';
+          } else {
+            paymentStatus = 'Due';
+            displayStatus = 'Due';
+          }
+        } else if (totalPaidForQuotation > 0) {
+          paymentStatus = 'Advance';
+          displayStatus = 'Advance';
+        }
+        
+        const leadIdNum = quotation ? (quotation.customer_id || lead.id) : (lead.id || payment.lead_id);
+        const paymentAmount = Number(payment.installment_amount || payment.paid_amount || 0);
+        
+        paymentTrackingData.push({
+          id: payment.id || `payment_${payment.lead_id}_${payment.quotation_id}_${Date.now()}`,
+          leadId: leadIdNum,
+          leadIdDisplay: `LD-${leadIdNum}`,
+          customer: {
+            name: quotation?.customer_name || lead.customer || lead.name || payment.customer_name || 'N/A',
+            email: lead.email || payment.lead_email || 'N/A',
+            phone: lead.phone || payment.lead_phone || 'N/A'
+          },
+          productName: lead.product_type || quotation?.items?.[0]?.description || payment.product_name || 'N/A',
+          amount: paymentAmount, // Individual payment amount
+          totalAmount: quotationTotal, // Total quotation amount
+          dueAmount: remainingAmount, // Remaining amount for the quotation
+          status: displayStatus,
+          paymentStatus: paymentStatus,
+          created: payment.payment_date ? new Date(payment.payment_date).toLocaleString() : (payment.created_at ? new Date(payment.created_at).toLocaleString() : ''),
+          paymentDate: payment.payment_date || payment.created_at, // For date filtering
+          paymentLink: payment.payment_receipt_url || '',
+          quotationId: quotation?.quotation_number || (quotation ? `QT-${quotation.id}` : 'N/A'),
+          // Store for reference
+          leadData: lead,
+          quotationData: quotation,
+          paymentData: payment
+        });
+      });
+      
+      // Sort by Lead ID (numeric) first, then by payment date (most recent first)
+      paymentTrackingData.sort((a, b) => {
+        const aLeadId = Number(a.leadId) || 0;
+        const bLeadId = Number(b.leadId) || 0;
+        
+        if (aLeadId !== bLeadId) {
+          return aLeadId - bLeadId; // Sort by Lead ID ascending
+        }
+        
+        // If same Lead ID, sort by payment date (most recent first)
+        const aDate = a.paymentDate ? new Date(a.paymentDate) : new Date(0);
+        const bDate = b.paymentDate ? new Date(b.paymentDate) : new Date(0);
+        
+        return bDate - aDate; // Most recent first within same Lead ID
+      });
+      
+      setAllPaymentsData(paymentTrackingData);
+      setPayments(paymentTrackingData);
     } catch (e) {
       console.error('Failed to load payments', e);
       setPayments([]);
       setPagination({ page: 1, limit: 50, total: 0, pages: 0 });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchPaymentsByLead = async (leadId) => {
-    if (!leadId) return;
-    try {
-      setLoading(true);
-      const res = await paymentService.getPaymentsByCustomer(leadId);
-      const rows = Array.isArray(res?.data) ? res.data.map(mapDbPaymentToRow) : Array.isArray(res?.data?.data) ? res.data.data.map(mapDbPaymentToRow) : [];
-      setPayments(rows);
-    } catch (e) {
-      console.error('Failed to load payments for lead', leadId, e);
-      setPayments([]);
     } finally {
       setLoading(false);
     }
@@ -104,43 +262,69 @@ const PaymentsDashboard = () => {
     fetchAllPayments();
   }, []);
 
-  // Calculate stats
+  // Client-side filtering based on search, status, and date range
+  const filteredPayments = allPaymentsData.filter(payment => {
+    // Search filter
+    const matchesSearch = !searchTerm || 
+      payment.leadIdDisplay?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.customer?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.customer?.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.quotationId?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Status filter
+    const matchesStatus = statusFilter === 'All Status' || payment.status === statusFilter;
+    
+    // Date range filter
+    let matchesDateRange = true;
+    if (dateRange.startDate || dateRange.endDate) {
+      if (!payment.paymentDate) {
+        matchesDateRange = false;
+      } else {
+        const paymentDate = new Date(payment.paymentDate);
+        paymentDate.setHours(0, 0, 0, 0);
+        
+        if (dateRange.startDate) {
+          const startDate = new Date(dateRange.startDate);
+          startDate.setHours(0, 0, 0, 0);
+          if (paymentDate < startDate) {
+            matchesDateRange = false;
+          }
+        }
+        
+        if (dateRange.endDate) {
+          const endDate = new Date(dateRange.endDate);
+          endDate.setHours(23, 59, 59, 999);
+          if (paymentDate > endDate) {
+            matchesDateRange = false;
+          }
+        }
+      }
+    }
+    
+    return matchesSearch && matchesStatus && matchesDateRange;
+  });
+
+  // Calculate stats based on filtered payments
   const stats = {
-    allPayments: payments.length,
-    totalValue: payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0),
-    created: payments.filter(p => p.status === 'Created').length,
-    pending: payments.filter(p => p.status === 'Pending').length,
-    paid: payments.filter(p => p.status === 'Paid').length,
-    expired: payments.filter(p => p.status === 'Expired').length
+    allPayments: filteredPayments.length,
+    totalValue: filteredPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0),
+    paid: filteredPayments.filter(p => p.status === 'Paid').length,
+    advance: filteredPayments.filter(p => p.status === 'Advance').length,
+    due: filteredPayments.filter(p => p.status === 'Due').length
   };
-
-  // Handle search and filter changes
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      fetchAllPayments(1, searchTerm, statusFilter);
-    }, 500); // Debounce search
-
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm, statusFilter]);
-
-  const filteredPayments = payments; // No client-side filtering needed since we're using server-side filtering
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'Paid':
         return 'bg-green-100 text-green-800 border-green-200';
-      case 'Failed':
+      case 'Advance':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'Due':
         return 'bg-red-100 text-red-800 border-red-200';
-      case 'Refunded':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'Cancelled':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'Expired':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'Created':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'Pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -148,20 +332,14 @@ const PaymentsDashboard = () => {
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'Pending':
-        return <Clock className="w-4 h-4" />;
       case 'Paid':
         return <CheckCircle className="w-4 h-4" />;
-      case 'Failed':
+      case 'Advance':
+        return <Clock className="w-4 h-4" />;
+      case 'Due':
         return <XCircle className="w-4 h-4" />;
-      case 'Refunded':
-        return <AlertCircle className="w-4 h-4" />;
-      case 'Cancelled':
-        return <AlertCircle className="w-4 h-4" />;
-      case 'Expired':
-        return <XCircle className="w-4 h-4" />;
-      case 'Created':
-        return <CreditCard className="w-4 h-4" />;
+      case 'Pending':
+        return <Clock className="w-4 h-4" />;
       default:
         return <AlertCircle className="w-4 h-4" />;
     }
@@ -257,7 +435,6 @@ const PaymentsDashboard = () => {
   };
 
   const handleEditPayment = (payment) => {
-    console.log('Edit payment:', payment);
     setEditingPayment(payment);
     setEditFormData({
       customerId: payment.customerId,
@@ -462,18 +639,21 @@ const PaymentsDashboard = () => {
     };
   };
 
-  // Handle click outside to close filter dropdown
+  // Handle click outside to close filter dropdowns
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showFilterDropdown && !event.target.closest('.filter-dropdown')) {
         setShowFilterDropdown(false);
+      }
+      if (showDateRangeFilter && !event.target.closest('.date-range-filter')) {
+        setShowDateRangeFilter(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showFilterDropdown]);
+  }, [showFilterDropdown, showDateRangeFilter]);
 
   const StatCard = ({ title, value, subtitle, color, bgColor, icon: Icon }) => (
     <div className={`${bgColor} rounded-lg border p-4 shadow-sm`}>
@@ -493,7 +673,7 @@ const PaymentsDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
         <StatCard
           title="All Payments"
           value={stats.allPayments}
@@ -503,33 +683,25 @@ const PaymentsDashboard = () => {
           icon={CreditCard}
         />
         <StatCard
-          title="Created"
-          value={stats.created}
-          subtitle="Created payments"
-          color="text-purple-600"
-          bgColor="bg-purple-50 border-purple-200"
-          icon={Clock}
-        />
-        <StatCard
-          title="Pending"
-          value={stats.pending}
-          subtitle="Money awaiting"
-          color="text-yellow-600"
-          bgColor="bg-yellow-50 border-yellow-200"
-          icon={Clock}
-        />
-        <StatCard
           title="Paid"
           value={stats.paid}
-          subtitle="₹0 received"
+          subtitle="Fully paid"
           color="text-green-600"
           bgColor="bg-green-50 border-green-200"
           icon={CheckCircle}
         />
         <StatCard
-          title="Expired"
-          value={stats.expired}
-          subtitle="Expired payments"
+          title="Advance"
+          value={stats.advance}
+          subtitle="Partial payments"
+          color="text-purple-600"
+          bgColor="bg-purple-50 border-purple-200"
+          icon={Clock}
+        />
+        <StatCard
+          title="Due"
+          value={stats.due}
+          subtitle="Pending payments"
           color="text-red-600"
           bgColor="bg-red-50 border-red-200"
           icon={XCircle}
@@ -550,7 +722,61 @@ const PaymentsDashboard = () => {
             />
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Date Range Filter */}
+            <div className="relative date-range-filter">
+              <button
+                onClick={() => setShowDateRangeFilter(!showDateRangeFilter)}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Date Range</span>
+                {(dateRange.startDate || dateRange.endDate) && (
+                  <span className="bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full">●</span>
+                )}
+              </button>
+              
+              {showDateRangeFilter && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-20 p-4">
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                    <input
+                      type="date"
+                      value={dateRange.startDate}
+                      onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                    <input
+                      type="date"
+                      value={dateRange.endDate}
+                      onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setDateRange({ startDate: '', endDate: '' });
+                        setShowDateRangeFilter(false);
+                      }}
+                      className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={() => setShowDateRangeFilter(false)}
+                      className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            
             <div className="relative filter-dropdown">
               <button
                 onClick={() => setShowFilterDropdown(!showFilterDropdown)}
@@ -572,28 +798,22 @@ const PaymentsDashboard = () => {
                       All Status
                     </button>
                     <button 
-                      onClick={() => { setStatusFilter('Created'); setShowFilterDropdown(false); }}
-                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${statusFilter === 'Created' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
-                    >
-                      Created
-                    </button>
-                    <button 
-                      onClick={() => { setStatusFilter('Pending'); setShowFilterDropdown(false); }}
-                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${statusFilter === 'Pending' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
-                    >
-                      Pending
-                    </button>
-                    <button 
                       onClick={() => { setStatusFilter('Paid'); setShowFilterDropdown(false); }}
                       className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${statusFilter === 'Paid' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
                     >
                       Paid
                     </button>
                     <button 
-                      onClick={() => { setStatusFilter('Expired'); setShowFilterDropdown(false); }}
-                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${statusFilter === 'Expired' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
+                      onClick={() => { setStatusFilter('Advance'); setShowFilterDropdown(false); }}
+                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${statusFilter === 'Advance' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
                     >
-                      Expired
+                      Advance
+                    </button>
+                    <button 
+                      onClick={() => { setStatusFilter('Due'); setShowFilterDropdown(false); }}
+                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${statusFilter === 'Due' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
+                    >
+                      Due
                     </button>
                   </div>
                 </div>
@@ -606,10 +826,9 @@ const PaymentsDashboard = () => {
               className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none cursor-pointer min-w-[140px]"
             >
               <option value="All Status">All Status</option>
-              <option value="Created">Created</option>
-              <option value="Pending">Pending</option>
               <option value="Paid">Paid</option>
-              <option value="Expired">Expired</option>
+              <option value="Advance">Advance</option>
+              <option value="Due">Due</option>
             </select>
             
             <button 
@@ -696,38 +915,38 @@ const PaymentsDashboard = () => {
                   <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <span className="text-xs text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
-                        {payment.leadId}
+                        {payment.leadIdDisplay || `LD-${payment.leadId}`}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div>
-                        <div className="font-medium text-gray-900 mb-1 text-xs">{payment.customer.name}</div>
+                        <div className="font-medium text-gray-900 mb-1 text-xs">{payment.customer?.name || 'N/A'}</div>
                         <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
                           <span>✉</span>
-                          <span className="truncate max-w-[200px]">{payment.customer.email}</span>
+                          <span className="truncate max-w-[200px]">{payment.customer?.email || 'N/A'}</span>
                         </div>
                         <div className="flex items-center gap-1 text-xs text-gray-600">
                           <span>📞</span>
-                          <span>{payment.customer.phone}</span>
+                          <span>{payment.customer?.phone || 'N/A'}</span>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-xs text-gray-900">{payment.productName}</span>
+                      <span className="text-xs text-gray-900">{payment.productName || 'N/A'}</span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-green-600 font-semibold text-sm bg-green-50 px-2 py-1 rounded">
-                        {formatCurrency(payment.amount)}
+                        {formatCurrency(payment.amount || 0)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className="text-green-600 font-semibold text-sm bg-green-50 px-2 py-1 rounded">
-                        {formatCurrency(Number(payment.totalAmount) - Number(payment.dueAmount))} / {formatCurrency(payment.totalAmount)}
+                        {formatCurrency(payment.amount || 0)} / {formatCurrency(payment.totalAmount || 0)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className="text-red-600 font-semibold text-sm bg-red-50 px-2 py-1 rounded">
-                        {formatCurrency(payment.dueAmount)} / {formatCurrency(payment.totalAmount)}
+                        {formatCurrency(payment.dueAmount || 0)} / {formatCurrency(payment.totalAmount || 0)}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -792,26 +1011,12 @@ const PaymentsDashboard = () => {
         {/* Table Footer */}
         <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
           <div className="text-sm text-gray-500">
-            Showing {filteredPayments.length} of {pagination.total} payments
-          </div>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => fetchAllPayments(pagination.page - 1, searchTerm, statusFilter)}
-              disabled={pagination.page <= 1}
-              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <span className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded">
-              {pagination.page} of {pagination.pages}
-            </span>
-            <button 
-              onClick={() => fetchAllPayments(pagination.page + 1, searchTerm, statusFilter)}
-              disabled={pagination.page >= pagination.pages}
-              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50"
-            >
-              Next
-            </button>
+            Showing {filteredPayments.length} of {allPaymentsData.length} payments
+            {(dateRange.startDate || dateRange.endDate) && (
+              <span className="ml-2 text-blue-600">
+                (Filtered by date range)
+              </span>
+            )}
           </div>
         </div>
       </div>

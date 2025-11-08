@@ -3,12 +3,36 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Plus, RotateCw, ChevronDown, X, Save, Edit, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
-export default function ProductToolbar({ onSearch, onAddProduct, onFilterChange, onRefresh, products = [], loading = false }) {
+export default function ProductToolbar({ onSearch, onAddProduct, onFilterChange, onRefresh, products = [], loading = false, showBadges = false }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     paymentType: '', // 'advance', 'due', or ''
-    quotationId: ''
+    quotationId: '',
+    quotationStatus: '', // 'pending_approval' | 'approved' | 'rejected' | ''
   });
+
+  const badgeDefs = [
+    { key: 'pending_approval', label: 'Quotation Sent for Approval', bg: 'bg-purple-100', text: 'text-purple-800', ring: 'ring-purple-300', type: 'quotation' },
+    { key: 'approved', label: 'Approved Quotation', bg: 'bg-green-100', text: 'text-green-800', ring: 'ring-green-300', type: 'quotation' },
+    { key: 'rejected', label: 'Rejected Quotation', bg: 'bg-rose-100', text: 'text-rose-800', ring: 'ring-rose-300', type: 'quotation' },
+    { key: 'advance', label: 'Advance Payment', bg: 'bg-blue-100', text: 'text-blue-800', ring: 'ring-blue-300', type: 'payment' },
+    { key: 'due', label: 'Due Payment', bg: 'bg-red-100', text: 'text-red-800', ring: 'ring-red-300', type: 'payment' },
+  ];
+
+  const toggleBadge = (badge) => {
+    if (badge.type === 'payment') {
+      const newVal = filters.paymentType === badge.key ? '' : badge.key;
+      const newFilters = { ...filters, paymentType: newVal };
+      setFilters(newFilters);
+      onFilterChange(newFilters);
+    } else if (badge.type === 'quotation') {
+      const newVal = filters.quotationStatus === badge.key ? '' : badge.key;
+      const newFilters = { ...filters, quotationStatus: newVal };
+      setFilters(newFilters);
+      onFilterChange(newFilters);
+    }
+  };
+
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({
@@ -142,6 +166,37 @@ export default function ProductToolbar({ onSearch, onAddProduct, onFilterChange,
         </div>
       </div>
 
+      {/* Badge Filters Row (hidden by default) */}
+      {showBadges && (
+        <div className="w-full mt-2">
+          <div className="flex gap-2 flex-nowrap overflow-x-auto whitespace-nowrap items-center bg-white rounded-md p-2 border border-gray-200">
+            {/* All Payments badge */}
+            <button
+              onClick={() => {
+                const newFilters = { ...filters, paymentType: '', quotationStatus: '' };
+                setFilters(newFilters);
+                onFilterChange(newFilters);
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 hover:ring-2 ring-gray-300 transition ${!filters.paymentType && !filters.quotationStatus ? 'ring-2' : ''}`}
+              title="All Payments"
+            >
+              All Payments
+            </button>
+
+            {badgeDefs.map(b => (
+              <button
+                key={b.key}
+                onClick={() => toggleBadge(b)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border ${b.bg} ${b.text} hover:ring-2 ${b.ring} transition ` +
+                  ((b.type === 'payment' && filters.paymentType === b.key) || (b.type === 'quotation' && filters.quotationStatus === b.key) ? 'ring-2' : '')}
+                title={`Filter: ${b.label}`}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Item Modal */}
       {showAddItemModal && (

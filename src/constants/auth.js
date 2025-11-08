@@ -28,6 +28,9 @@ export const getUserTypeForRole = (role, departmentType = null) => {
       if (departmentType === 'production' || departmentType === 'Production Department') {
         return 'production-staff';
       }
+      if (departmentType === 'marketing_sales' || departmentType === 'Marketing Department') {
+        return 'marketing-salesperson';
+      }
       return 'salesperson';
     case ROLES.SUPERADMIN:
     default:

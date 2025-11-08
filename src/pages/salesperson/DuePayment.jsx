@@ -1088,7 +1088,7 @@ export default function DuePaymentPage({ isDarkMode = false }) {
   const endIndex = startIndex + itemsPerPage;
   const paginatedPaymentTracking = filteredPaymentTracking.slice(startIndex, endIndex);
 
-  // Fetch payment tracking data
+  // Fetch payment tracking data - fetch ALL payments from payment_history table
   useEffect(() => {
     const fetchPaymentTracking = async () => {
       try {
@@ -1098,6 +1098,7 @@ export default function DuePaymentPage({ isDarkMode = false }) {
         // Fetch assigned leads for the salesperson
         const leadsResponse = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
         const leads = leadsResponse?.data || [];
+        const leadIds = leads.map(lead => lead.id);
         
         // Create a map of customer ID to lead data for quick lookup
         const leadsMap = {};
@@ -1105,30 +1106,115 @@ export default function DuePaymentPage({ isDarkMode = false }) {
           leadsMap[lead.id] = lead;
         });
         
-        // Fetch all quotations with payments in a single optimized API call
-        const bulkResponse = await quotationService.getBulkWithPayments();
-        const { quotations = [], payments = [] } = bulkResponse?.data || {};
-        
-        // Create a map of quotation ID to payments for quick lookup
-        const paymentsMap = {};
-        payments.forEach(payment => {
-          if (!paymentsMap[payment.quotation_id]) {
-            paymentsMap[payment.quotation_id] = [];
+        // Fetch ALL payments from payment_history table for all assigned leads
+        const allPayments = [];
+        for (const leadId of leadIds) {
+          try {
+            const paymentRes = await paymentService.getPaymentsByCustomer(leadId);
+            const payments = Array.isArray(paymentRes?.data) ? paymentRes.data : [];
+            allPayments.push(...payments);
+          } catch (err) {
+            console.warn(`Error fetching payments for lead ${leadId}:`, err);
           }
-          paymentsMap[payment.quotation_id].push(payment);
+        }
+        
+        // Also fetch payments by quotation to catch any missed payments
+        const allQuotations = [];
+        for (const leadId of leadIds) {
+          try {
+            const qRes = await quotationService.getQuotationsByCustomer(leadId);
+            const quotations = Array.isArray(qRes?.data) ? qRes.data : [];
+            allQuotations.push(...quotations);
+            
+            for (const quotation of quotations) {
+              try {
+                const pRes = await paymentService.getPaymentsByQuotation(quotation.id);
+                const payments = Array.isArray(pRes?.data) ? pRes.data : [];
+                payments.forEach(p => {
+                  const exists = allPayments.some(ap => ap.id === p.id || 
+                    (ap.payment_reference && p.payment_reference && ap.payment_reference === p.payment_reference));
+                  if (!exists) {
+                    allPayments.push(p);
+                  }
+                });
+              } catch (err) {
+                console.warn(`Error fetching payments for quotation ${quotation.id}:`, err);
+              }
+            }
+          } catch (err) {
+            console.warn(`Error fetching quotations for lead ${leadId}:`, err);
+          }
+        }
+        
+        // Group payments by quotation_id and lead_id
+        const paymentMap = new Map();
+        
+        allQuotations.forEach(quotation => {
+          const lead = leadsMap[quotation.customer_id] || {};
+          const key = quotation.id || `lead_${quotation.customer_id}`;
+          if (!paymentMap.has(key)) {
+            paymentMap.set(key, {
+              quotation,
+              lead,
+              payments: []
+            });
+          }
         });
         
-        // Build payment tracking data from the bulk response
-        const paymentTrackingData = quotations.map(quotation => {
-          const lead = leadsMap[quotation.customer_id] || {};
-          const quotationPayments = paymentsMap[quotation.id] || [];
+        allPayments.forEach(payment => {
+          const key = payment.quotation_id || `lead_${payment.lead_id}`;
+          if (paymentMap.has(key)) {
+            paymentMap.get(key).payments.push(payment);
+          } else {
+            const lead = leadsMap[payment.lead_id] || {};
+            paymentMap.set(key, {
+              quotation: null,
+              lead,
+              payments: [payment]
+            });
+          }
+        });
+        
+        // Build payment tracking data with correct status logic
+        const paymentTrackingData = [];
+        
+        paymentMap.forEach(({ quotation, lead, payments }) => {
+          // Filter out refunds
+          const validPayments = payments.filter(p => !p.is_refund);
           
-          const totalAmount = Number(quotation.total_amount || 0);
-          const paidAmount = Number(quotation.paid_amount || 0);
-          const remainingAmount = Number(quotation.remaining_amount || 0);
+          // Calculate payment totals using installment_amount
+          const totalPaid = validPayments
+            .filter(p => {
+              const status = (p.payment_status || '').toLowerCase();
+              return status === 'completed' || status === 'paid' || status === 'success' || status === 'advance';
+            })
+            .reduce((sum, p) => sum + Number(p.installment_amount || p.paid_amount || 0), 0);
           
-          // Get due date and purchase order from payments (delivery_date or revised_delivery_date)
-          const paymentsWithDates = quotationPayments.filter(p => p.revised_delivery_date || p.delivery_date);
+          const quotationTotal = quotation ? Number(quotation.total_amount || 0) : 0;
+          const remainingAmount = Math.max(0, quotationTotal - totalPaid);
+          
+          // Determine payment status
+          let paymentStatus = 'due';
+          let displayStatus = 'Due';
+          
+          if (quotationTotal > 0) {
+            if (totalPaid >= quotationTotal) {
+              paymentStatus = 'paid';
+              displayStatus = 'Paid';
+            } else if (totalPaid > 0) {
+              paymentStatus = 'advance';
+              displayStatus = 'Advance';
+            } else {
+              paymentStatus = 'due';
+              displayStatus = 'Due';
+            }
+          } else if (totalPaid > 0) {
+            paymentStatus = 'advance';
+            displayStatus = 'Advance';
+          }
+          
+          // Get due date and purchase order from latest payment
+          const paymentsWithDates = validPayments.filter(p => p.revised_delivery_date || p.delivery_date);
           let dueDate = null;
           let deliveryStatus = 'pending';
           let purchaseOrderId = null;
@@ -1139,48 +1225,57 @@ export default function DuePaymentPage({ isDarkMode = false }) {
             deliveryStatus = latestPayment.delivery_status || 'pending';
           }
           
-          if (quotationPayments.length > 0) {
-            const latestPayment = quotationPayments[quotationPayments.length - 1];
-            purchaseOrderId = latestPayment.purchase_order_id || quotation.work_order_id;
+          if (validPayments.length > 0) {
+            const latestPayment = validPayments[validPayments.length - 1];
+            purchaseOrderId = latestPayment.purchase_order_id || (quotation ? quotation.work_order_id : null);
           }
           
           // Calculate days overdue
           const daysOverdue = dueDate ? Math.max(0, Math.ceil((new Date() - new Date(dueDate)) / (1000 * 60 * 60 * 24))) : 0;
           
-          let paymentStatus = 'pending';
-          if (paidAmount >= totalAmount && totalAmount > 0) {
-            paymentStatus = 'paid';
-          } else if (paidAmount > 0) {
-            paymentStatus = 'partial';
-          }
+          const firstPayment = validPayments.length > 0 ? validPayments[0] : null;
           
-          return {
-            id: `${quotation.customer_id}-${quotation.id}`,
-            leadId: `LD-${quotation.customer_id}`,
-            customerName: quotation.customer_name || lead.name || 'N/A',
-            productName: lead.product_type || quotation.items?.[0]?.description || 'N/A',
-            address: quotation.customer_address || lead.address || 'N/A',
-            quotationId: quotation.quotation_number || `QT-${quotation.id}`,
+          paymentTrackingData.push({
+            id: quotation ? `${quotation.customer_id || lead.id}-${quotation.id}` : `lead_${lead.id || (firstPayment?.lead_id)}`,
+            leadId: `LD-${quotation ? (quotation.customer_id || lead.id) : (lead.id || firstPayment?.lead_id)}`,
+            customerName: quotation?.customer_name || lead.name || firstPayment?.customer_name || 'N/A',
+            productName: lead.product_type || quotation?.items?.[0]?.description || firstPayment?.product_name || 'N/A',
+            address: quotation?.customer_address || lead.address || firstPayment?.address || 'N/A',
+            quotationId: quotation?.quotation_number || (quotation ? `QT-${quotation.id}` : 'N/A'),
             paymentStatus: paymentStatus,
-            workOrderId: purchaseOrderId ? `PO-${purchaseOrderId}` : (quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'),
+            displayStatus: displayStatus,
             dueAmount: remainingAmount,
             dueDate: dueDate,
             deliveryStatus: deliveryStatus,
             daysOverdue: daysOverdue,
-            totalAmount: totalAmount,
-            paidAmount: paidAmount,
+            totalAmount: quotationTotal,
+            paidAmount: totalPaid,
+            remainingAmount: remainingAmount,
+            workOrderId: purchaseOrderId ? `PO-${purchaseOrderId}` : (quotation?.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'),
             leadData: lead,
-            quotationData: {
+            quotationData: quotation ? {
               ...quotation,
-              paid_amount: paidAmount,
-              remaining_amount: remainingAmount
-            },
-            paymentsData: quotationPayments
-          };
+              paid_amount: totalPaid,
+              remaining_amount: remainingAmount,
+              delivery_date: dueDate,
+              delivery_status: deliveryStatus
+            } : null,
+            paymentsData: validPayments
+          });
         });
         
-        // Filter only items with due amount (remaining_amount > 0)
-        const duePayments = paymentTrackingData.filter(item => item.dueAmount > 0);
+        // Filter only items with due amount (remaining_amount > 0) OR advance payments (status = 'advance')
+        // Due Payment page should show: items with no payment (due) AND items with partial payment (advance)
+        const duePayments = paymentTrackingData.filter(item => 
+          item.remainingAmount > 0 || item.paymentStatus === 'advance' || item.paymentStatus === 'due'
+        );
+        
+        // Sort by most recent payment date
+        duePayments.sort((a, b) => {
+          const aDate = a.paymentsData?.length > 0 ? new Date(a.paymentsData[a.paymentsData.length - 1].payment_date || a.paymentsData[a.paymentsData.length - 1].created_at) : new Date(0);
+          const bDate = b.paymentsData?.length > 0 ? new Date(b.paymentsData[b.paymentsData.length - 1].payment_date || b.paymentsData[b.paymentsData.length - 1].created_at) : new Date(0);
+          return bDate - aDate;
+        });
         
         setPaymentTracking(duePayments);
         setFilteredPaymentTracking(duePayments);
