@@ -84,6 +84,26 @@ class PaymentService {
     }
   }
 
+  // Update approval status
+  async updateApprovalStatus(id, status, notes = '') {
+    try {
+      return await apiClient.put(`/api/payments/${id}/approval`, { status, notes });
+    } catch (error) {
+      console.error('Error updating payment approval status:', error);
+      throw error;
+    }
+  }
+
+  // Approve payment shortcut
+  async approvePayment(id, notes = '') {
+    try {
+      return await apiClient.put(`/api/payments/${id}/approve`, { notes });
+    } catch (error) {
+      console.error('Error approving payment:', error);
+      throw error;
+    }
+  }
+
   // Get payment summary by customer
   async getPaymentSummary(customerId) {
     try {
@@ -157,6 +177,30 @@ class PaymentService {
       return response;
     } catch (error) {
       console.error('Error deleting payment:', error);
+      throw error;
+    }
+  }
+
+  // OPTIMIZED: Get payments for multiple quotations in one call
+  async getBulkPaymentsByQuotations(quotationIds) {
+    try {
+      const idsParam = JSON.stringify(quotationIds);
+      const response = await apiClient.get(`/api/payments/bulk-by-quotations?quotationIds=${encodeURIComponent(idsParam)}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching bulk payments by quotations:', error);
+      throw error;
+    }
+  }
+
+  // OPTIMIZED: Get payments for multiple customers in one call
+  async getBulkPaymentsByCustomers(customerIds) {
+    try {
+      const idsParam = JSON.stringify(customerIds);
+      const response = await apiClient.get(`/api/payments/bulk-by-customers?customerIds=${encodeURIComponent(idsParam)}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching bulk payments by customers:', error);
       throw error;
     }
   }

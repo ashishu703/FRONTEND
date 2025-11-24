@@ -170,6 +170,30 @@ class QuotationService {
       throw error;
     }
   }
+
+  // OPTIMIZED: Get quotations for multiple customers in one call
+  async getBulkQuotationsByCustomers(customerIds) {
+    try {
+      const idsParam = JSON.stringify(customerIds);
+      const response = await apiClient.get(`/api/quotations/bulk-by-customers?customerIds=${encodeURIComponent(idsParam)}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching bulk quotations by customers:', error);
+      throw error;
+    }
+  }
+
+  // OPTIMIZED: Get summaries for multiple quotations in one call
+  async getBulkSummaries(quotationIds) {
+    try {
+      const idsParam = JSON.stringify(quotationIds);
+      const response = await apiClient.get(`/api/quotations/bulk-summaries?quotationIds=${encodeURIComponent(idsParam)}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching bulk summaries:', error);
+      throw error;
+    }
+  }
 }
 
 export default new QuotationService();

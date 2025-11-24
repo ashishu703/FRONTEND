@@ -204,20 +204,6 @@ const ProductionHeadDashboard = ({ setActiveView }) => {
 
   return (
     <div className="px-6 pb-6 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Factory className="w-7 h-7 text-orange-600" />
-            Production Dashboard
-          </h1>
-          <p className="text-gray-600 mt-1">Production department performance overview</p>
-        </div>
-        {/* Remove duplicate identity block; global header already shows user info */}
-      </div>
-
-      {/* Removed redundant dashboard card to reduce noise */}
-
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
         <div className="flex items-center gap-4">

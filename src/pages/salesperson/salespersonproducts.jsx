@@ -7,7 +7,36 @@ import apiClient from '../../utils/apiClient';
 import quotationService from '../../api/admin_api/quotationService';
 import paymentService from '../../api/admin_api/paymentService';
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
+import uploadService from '../../api/admin_api/uploadService';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
+
+// Helpers -----------------------------------------------------------------
+const extractApiArray = (response) => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  return [];
+};
+
+const extractSummary = (response) => (response?.data ? response.data : response);
+
+const normalizeQuotationStatus = (status = '') => {
+  const normalized = String(status).toLowerCase();
+  if (normalized.includes('reject')) return 'rejected';
+  if (normalized.includes('approve') || normalized === 'paid' || normalized === 'completed') return 'approved';
+  return 'pending';
+};
+
+const calculateCredit = (summary = {}, apiCredit = 0) => {
+  // Handle null/undefined summary
+  if (!summary || typeof summary !== 'object') {
+    return Math.max(0, Number(apiCredit || 0));
+  }
+  const total = Number(summary.total ?? summary.total_amount ?? summary.totalAmount ?? 0);
+  const paid = Number(summary.paid ?? summary.total_paid ?? summary.paidAmount ?? 0);
+  const derived = Math.max(0, paid - total);
+  return Math.max(Number(apiCredit || 0), derived);
+};
 
 // Timeline Sidebar component for viewing payment tracking details
 const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
@@ -42,9 +71,14 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
               quotationService.getSummary(chosenQuotationId),
               paymentService.getPaymentsByQuotation(chosenQuotationId)
             ]);
-            setCustomerQuotations([item.quotationData]);
-            setQuotationSummary(sRes?.data || null);
-            setPaymentsForQuotation(pRes?.data || []);
+            const summaryData = extractSummary(sRes) || null;
+            const paymentsData = extractApiArray(pRes);
+            setCustomerQuotations([{
+              ...item.quotationData,
+              status: summaryData?.status || summaryData?.quotation_status || item.quotationData?.status
+            }]);
+            setQuotationSummary(summaryData);
+            setPaymentsForQuotation(paymentsData);
             return;
           } catch (innerErr) {
             console.warn('Failed to load quotation summary/payments', innerErr);
@@ -53,16 +87,21 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
 
         // Fallback: fetch quotations for this customer/lead and then pick latest approved
         const quotationsResponse = await quotationService.getQuotationsByCustomer(item.leadData.id);
-        const qList = quotationsResponse?.data || [];
+        const qList = extractApiArray(quotationsResponse).map(q => ({
+          ...q,
+          status: q?.status || q?.quotation_status
+        }));
         setCustomerQuotations(qList);
-        const latestApproved = qList.filter(q => q.status === 'approved').slice(-1)[0];
+        const latestApproved = qList
+          .filter(q => normalizeQuotationStatus(q.status) === 'approved')
+          .slice(-1)[0];
         if (latestApproved?.id) {
           const [sRes, pRes] = await Promise.all([
             quotationService.getSummary(latestApproved.id),
             paymentService.getPaymentsByQuotation(latestApproved.id)
           ]);
-          setQuotationSummary(sRes?.data || null);
-          setPaymentsForQuotation(pRes?.data || []);
+          setQuotationSummary(extractSummary(sRes) || null);
+          setPaymentsForQuotation(extractApiArray(pRes));
         }
       } catch (error) {
         console.error('Error fetching customer quotations:', error);
@@ -410,12 +449,14 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
       'completed': { bg: 'bg-green-100', text: 'text-green-800', label: 'COMPLETED' },
       'approved': { bg: 'bg-green-100', text: 'text-green-800', label: 'APPROVED' },
       'pending': { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'PENDING' },
+      'pending-approval': { bg: 'bg-amber-100', text: 'text-amber-800', label: 'PENDING APPROVAL' },
       'rejected': { bg: 'bg-red-100', text: 'text-red-800', label: 'REJECTED' },
       'paid': { bg: 'bg-green-100', text: 'text-green-800', label: 'PAID' },
       'partial': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'PARTIAL' },
       'overdue': { bg: 'bg-red-100', text: 'text-red-800', label: 'OVERDUE' },
       'due': { bg: 'bg-red-100', text: 'text-red-800', label: 'PENDING' },
-      'deal-closed': { bg: 'bg-green-100', text: 'text-green-800', label: 'DEAL CLOSED' }
+      'deal-closed': { bg: 'bg-green-100', text: 'text-green-800', label: 'DEAL CLOSED' },
+      'credit': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'CREDIT' }
     };
 
     const config = statusConfig[status] || statusConfig['pending'];
@@ -429,7 +470,9 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
 
   // Calculate payment summary from approved quotations
   const calculatePaymentSummary = () => {
-    const approvedQuotations = customerQuotations.filter(q => q.status === 'approved');
+    const approvedQuotations = customerQuotations.filter(
+      q => normalizeQuotationStatus(q.status) === 'approved'
+    );
     
     if (approvedQuotations.length === 0) {
       return {
@@ -443,33 +486,29 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
       };
     }
 
-    // Get the latest approved quotation amount
     const latestApprovedQuotation = approvedQuotations[approvedQuotations.length - 1];
-    // Prefer backend summary if available for accuracy
     const totalAmount = (quotationSummary?.total_amount ?? latestApprovedQuotation.total_amount) || 0;
-    const paidAmount = typeof quotationSummary?.total_paid === 'number'
-      ? quotationSummary.total_paid
-      : (typeof quotationSummary?.paid === 'number'
-        ? quotationSummary.paid
-        : (Array.isArray(paymentsForQuotation)
-            ? paymentsForQuotation.filter(p => (p.payment_status || p.status || '').toLowerCase() === 'completed')
-                .reduce((sum, p) => sum + (Number((p.paid_amount ?? p.installment_amount ?? p.amount) || 0)), 0)
-            : 0));
-    const remainingAmount = typeof quotationSummary?.current_remaining === 'number'
-      ? quotationSummary.current_remaining
-      : (typeof quotationSummary?.remaining === 'number'
-        ? quotationSummary.remaining
-        : Math.max(0, Number(totalAmount) - Number(paidAmount)));
+
+    const sortedPayments = Array.isArray(paymentsForQuotation)
+      ? paymentsForQuotation.slice().sort((a, b) => new Date(a.payment_date) - new Date(b.payment_date))
+      : [];
+    const approvedPayments = sortedPayments.filter(isApprovedPayment);
+
+    const paidAmount = approvedPayments.reduce(
+      (sum, p) => sum + Number((p.paid_amount ?? p.installment_amount ?? p.amount) || 0),
+      0
+    );
+    const remainingAmount = Math.max(0, Number(totalAmount) - Number(paidAmount));
     
     // Calculate advance (first payment), partial (subsequent payments), due (remaining)
     let advanceAmount = 0;
     let partialAmount = 0;
-    
-    const pmts = Array.isArray(paymentsForQuotation) ? paymentsForQuotation.slice().sort((a,b)=> new Date(a.payment_date) - new Date(b.payment_date)) : [];
-    if (pmts.length > 0) {
-      advanceAmount = Number((pmts[0]?.paid_amount ?? pmts[0]?.installment_amount ?? pmts[0]?.amount) || 0);
-      if (pmts.length > 1) {
-        partialAmount = pmts.slice(1).reduce((sum, p) => sum + (Number((p.paid_amount ?? p.installment_amount ?? p.amount) || 0)), 0);
+    if (approvedPayments.length > 0) {
+      advanceAmount = Number((approvedPayments[0]?.paid_amount ?? approvedPayments[0]?.installment_amount ?? approvedPayments[0]?.amount) || 0);
+      if (approvedPayments.length > 1) {
+        partialAmount = approvedPayments
+          .slice(1)
+          .reduce((sum, p) => sum + Number((p.paid_amount ?? p.installment_amount ?? p.amount) || 0), 0);
       }
     }
     
@@ -498,24 +537,65 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
   );
   const paymentSummary = dataReady ? calculatePaymentSummary() : null;
 
-  // Build chronological payment timeline with running remaining balance
+  // Build chronological payment timeline - using only data from summary and payments APIs
   const buildPaymentTimeline = () => {
-    const approvedQuotations = customerQuotations.filter(q => q.status === 'approved');
-    if (approvedQuotations.length === 0) return [];
-    const latestApprovedQuotation = approvedQuotations[approvedQuotations.length - 1];
-    const totalAmount = (quotationSummary?.total_amount ?? latestApprovedQuotation.total_amount) || 0;
-    const pmts = Array.isArray(paymentsForQuotation)
-      ? paymentsForQuotation.slice().sort((a, b) => new Date(a.payment_date) - new Date(b.payment_date))
+    // Get payments array - sorted by payment_date
+    const pmts = Array.isArray(paymentsForQuotation) && paymentsForQuotation.length > 0
+      ? paymentsForQuotation.slice().sort((a, b) => new Date(a.payment_date || a.created_at) - new Date(b.payment_date || b.created_at))
       : [];
-    let cumulativePaid = 0;
+    
+    if (pmts.length === 0) return [];
+
+    // Get summary data from API response
+    const summaryRemainingForTimeline = Number(quotationSummary?.remaining || 0);
+    
+    // Track approved payments for labeling
+    let approvedPaymentCount = 0;
+
     return pmts.map((p, idx) => {
       const amountNum = Number(p.paid_amount ?? p.installment_amount ?? p.amount ?? 0);
-      cumulativePaid += amountNum;
-      const remaining = Math.max(0, Number(totalAmount) - cumulativePaid);
-      // Label logic: If cumulative paid >= total amount, it's "Full Payment", otherwise "Advance Payment"
-      const isFullPayment = cumulativePaid >= totalAmount && totalAmount > 0;
-      const label = isFullPayment ? 'Full Payment' : 'Advance Payment';
-      return { ...p, amount: amountNum, label, remainingAfter: remaining };
+      const approvalStatus = normalizeApprovalStatus(p);
+      const isApproved = approvalStatus === 'approved';
+      const isRejected = approvalStatus === 'rejected';
+      const paymentRemaining = Number(p.remaining_amount || 0);
+      const isLastPayment = idx === pmts.length - 1;
+      const piDisplay = p.pi_number || p.pi_full_id || p.pi_id || '';
+      
+      // Determine label based on payment data
+      let label = '';
+      if (!isApproved && !isRejected) {
+        label = 'Pending Approval';
+      } else if (isRejected) {
+        label = 'Rejected Payment';
+      } else if (isLastPayment && (paymentRemaining === 0 || summaryRemainingForTimeline === 0)) {
+        // If last payment and remaining is 0, it's Full Payment
+        label = 'Full Payment';
+      } else {
+        // Advance payment - show #1, #2, etc.
+        approvedPaymentCount++;
+        label = `Advance Payment #${approvedPaymentCount}`;
+      }
+      
+      // Timeline status
+      const timelineStatus = isRejected
+        ? 'rejected'
+        : isApproved
+          ? (paymentRemaining === 0 ? 'paid' : 'approved')
+          : 'pending-approval';
+      
+      const timelineIcon = isRejected ? '✕' : isApproved ? '₹' : '⏳';
+      
+      return {
+        ...p,
+        amount: amountNum,
+        label,
+        remainingAfter: paymentRemaining,
+        approvalStatus,
+        timelineStatus,
+        timelineIcon,
+        approvalNotes: p.approval_notes || '',
+        piDisplay
+      };
     });
   };
   const paymentTimeline = buildPaymentTimeline();
@@ -533,9 +613,20 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
   };
 
   const dueDate = getDueDate();
-  const hasPendingAmount = dataReady && paymentSummary?.dueAmount > 0;
+  
+  // Check payment status from summary API data
+  const summaryRemaining = Number(quotationSummary?.remaining || 0);
+  const summaryTotal = Number(quotationSummary?.total || quotationSummary?.total_amount || 0);
+  const summaryPaid = Number(quotationSummary?.paid || 0);
+  const creditAmount = calculateCredit(quotationSummary || {});
+  const hasCredit = creditAmount > 0;
+  const hasPendingAmount = summaryRemaining > 0;
+  const isDealDone = summaryRemaining === 0 && summaryPaid > 0 && summaryTotal > 0;
+  const lastPaymentDate = paymentTimeline.length > 0
+    ? (paymentTimeline[paymentTimeline.length - 1].payment_date || paymentTimeline[paymentTimeline.length - 1].created_at)
+    : new Date().toISOString();
 
-  // Timeline events data - complete sequence (include payments inline)
+  // Timeline events data - using only data from summary and payments APIs
   const timelineEvents = [
     {
       id: 'customer-created',
@@ -545,41 +636,78 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
       icon: '✓',
       description: `Lead ID: ${item.leadId}`
     },
-    ...customerQuotations.map((quotation, index) => ({
-      id: `quotation-${quotation.id}`,
-      title: `Quotation ${index + 1}`,
-      date: formatIndianDateTime(quotation.created_at),
-      status: quotation.status === 'approved' ? 'approved' : 'pending',
-      icon: quotation.status === 'approved' ? '✓' : '⏳',
-      description: `ID: ${quotation.quotation_number || `QT-${quotation.id}`} | Purchase Order: ${quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'}`,
-      amount: quotation.total_amount || 0,
-      quotationId: quotation.id,
-      quotationStatus: quotation.status
-    })),
-    ...paymentTimeline.map((payment, index) => ({
-      id: `payment-${index + 1}`,
-      title: `${payment.label} Payment #${index + 1}`,
-      date: formatIndianDateTime(payment.payment_date),
-      status: (payment.status || 'completed').toLowerCase(),
+    ...customerQuotations.map((quotation, index) => {
+      const quotationStatus = normalizeQuotationStatus(quotation.status);
+      return {
+        id: `quotation-${quotation.id}`,
+        title: `Quotation ${index + 1}`,
+        date: formatIndianDateTime(quotation.created_at),
+        status: quotationStatus,
+        icon: quotationStatus === 'approved' ? '✓' : quotationStatus === 'rejected' ? '✕' : '⏳',
+        description: `ID: ${quotation.quotation_number || `QT-${quotation.id}`} | Purchase Order: ${quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'}`,
+        amount: quotation.total_amount || 0,
+        quotationId: quotation.id,
+        quotationStatus: quotationStatus
+      };
+    }),
+    ...paymentTimeline.map((payment, index) => {
+      const approvalStatus = payment.approvalStatus || 'pending';
+      let description = `Method: ${payment.payment_method || 'N/A'}`;
+      if (approvalStatus === 'pending') {
+        description += ' • Awaiting Accounts approval';
+      } else if (approvalStatus === 'rejected') {
+        description += ' • Rejected by Accounts';
+      }
+      if (payment.approvalNotes?.trim()) {
+        description += ` • Note: ${payment.approvalNotes}`;
+      }
+      // Combine PI ID and PO together
+      const piAndPO = [];
+      if (payment.piDisplay) {
+        piAndPO.push(`PI: ${payment.piDisplay}`);
+      }
+      if (payment.purchase_order_id) {
+        piAndPO.push(`PO: ${payment.purchase_order_id}`);
+      }
+      if (piAndPO.length > 0) {
+        description += ` • ${piAndPO.join(' | ')}`;
+      }
+      return {
+        id: `payment-${payment.id || index + 1}`,
+        title: payment.label, // Already has #1, #2, etc. or "Full Payment", "Pending Approval"
+        date: formatIndianDateTime(payment.payment_date || payment.created_at),
+        status: payment.timelineStatus || (payment.payment_status || 'completed').toLowerCase(),
+        icon: payment.timelineIcon || '₹',
+        description,
+        amount: payment.amount ?? payment.installment_amount,
+        remainingAmount: payment.remainingAfter
+      };
+    }),
+    ...(hasCredit ? [{
+      id: 'credit-available',
+      title: 'Credit Available',
+      date: formatIndianDateTime(lastPaymentDate),
+      status: 'credit',
       icon: '₹',
-      description: `Method: ${payment.payment_method || 'N/A'}`,
-      amount: payment.amount ?? payment.installment_amount,
-      remainingAmount: payment.remainingAfter
-    })),
-    ...(hasPendingAmount ? [{
+      description: 'Extra amount received; usable as credit for next orders',
+      amount: creditAmount
+    }] : []),
+    // Show DUE if there's remaining amount from summary
+    ...(hasPendingAmount && !isDealDone ? [{
       id: 'due-payment',
       title: 'DUE',
       date: dueDate ? formatIndianDate(dueDate) : 'N/A',
       status: 'due',
       icon: '⚠',
       description: dueDate ? `Due Date: ${formatIndianDate(dueDate)}` : 'Payment pending',
-      amount: paymentSummary.dueAmount,
+      amount: summaryRemaining,
       isDue: true
     }] : []),
-    ...((paymentSummary && paymentSummary.paymentStatus === 'paid') ? [{
+    // Show Deal Done if remaining is 0 and payment exists
+    ...(isDealDone && paymentTimeline.length > 0 ? [{
       id: 'deal-closed',
-      title: 'Deal Closed',
-      date: Array.isArray(item.paymentsData) && item.paymentsData.length > 0 ? formatIndianDateTime(item.paymentsData[item.paymentsData.length - 1]?.payment_date) : 'N/A',
+      title: 'Deal Done',
+      date: formatIndianDateTime(lastPaymentDate),
       status: 'completed',
       icon: '✓',
       description: 'Full and final payment received'
@@ -637,10 +765,16 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
                 <div className={`relative z-10 flex items-center justify-center w-8 h-8 rounded-full ${
                   event.isDue
                     ? 'bg-red-500'
+                    : (event.id?.startsWith('payment-') && event.status === 'rejected')
+                    ? 'bg-red-500'
+                    : (event.id?.startsWith('payment-') && event.status === 'pending-approval')
+                    ? 'bg-amber-500'
                     : event.id?.startsWith('payment-')
-                    ? 'bg-yellow-500'
+                    ? 'bg-green-500'
                     : event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
                     ? 'bg-green-500'
+                    : event.status === 'credit'
+                    ? 'bg-blue-500'
                     : 'bg-gray-400'
                 }`}>
                   <span className="text-white text-sm font-bold">{event.icon}</span>
@@ -650,10 +784,16 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
                 <div className={`ml-4 flex-1 p-3 rounded-lg ${
                   event.isDue
                     ? 'bg-red-50 border border-red-300'
+                    : event.id?.startsWith('payment-') && event.status === 'rejected'
+                    ? 'bg-rose-50 border border-rose-200'
+                    : event.id?.startsWith('payment-') && event.status === 'pending-approval'
+                    ? 'bg-amber-50 border border-amber-200'
                     : event.id?.startsWith('payment-')
-                    ? 'bg-yellow-50'
+                    ? 'bg-green-50 border border-green-200'
                     : event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
-                    ? 'bg-green-50'
+                    ? 'bg-green-50 border border-green-200'
+                    : event.status === 'credit'
+                    ? 'bg-blue-50 border border-blue-200'
                     : 'bg-gray-50'
                 }`}>
                   <div className="flex justify-between items-start">
@@ -686,7 +826,15 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
                     </div>
                     <div className="ml-2">
                       {event.id?.startsWith('payment-') ? (
-                        <span className="px-2 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800">
+                        <span
+                          className={`px-2 py-1 text-xs font-semibold rounded ${
+                            event.status === 'rejected'
+                              ? 'bg-red-100 text-red-800'
+                              : event.status === 'pending-approval'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-green-100 text-green-800'
+                          }`}
+                        >
                           ₹{Number(event.amount || 0).toLocaleString('en-IN')}
                         </span>
                       ) : (
@@ -704,6 +852,13 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
   );
 };
 
+const normalizeApprovalStatus = (payment = {}) =>
+  (payment.approval_status || payment.status || '').toLowerCase() || 'pending';
+
+const isApprovedPayment = (payment) => normalizeApprovalStatus(payment) === 'approved';
+const isPendingApproval = (payment) => normalizeApprovalStatus(payment) === 'pending';
+const isRejectedPayment = (payment) => normalizeApprovalStatus(payment) === 'rejected';
+
 // Enhanced Payment Modal Component with all required fields
 const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
   const [paymentData, setPaymentData] = useState({
@@ -720,13 +875,46 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [receiptFile, setReceiptFile] = useState(null);
   const [approvedQuotations, setApprovedQuotations] = useState([]);
   const [selectedQuotationId, setSelectedQuotationId] = useState(item.quotationData?.id || '');
   const [proformaInvoices, setProformaInvoices] = useState([]);
   const [selectedPIId, setSelectedPIId] = useState('');
   const [summary, setSummary] = useState({ total: 0, paid: 0, remaining: 0 });
   const [credit, setCredit] = useState(0);
+  const [baseCredit, setBaseCredit] = useState(0);
   const [installments, setInstallments] = useState([]);
+
+  const loadQuotationDetails = async (quotationId, creditSource = baseCredit, quotationDetails = null) => {
+    if (!quotationId) return;
+    const [sRes, pRes, piRes] = await Promise.all([
+      quotationService.getSummary(quotationId),
+      paymentService.getPaymentsByQuotation(quotationId),
+      proformaInvoiceService.getPIsByQuotation(quotationId)
+    ]);
+
+    const summaryData = extractSummary(sRes) || { total: 0, paid: 0, remaining: 0 };
+    const paymentsData = extractApiArray(pRes);
+    const pis = extractApiArray(piRes);
+
+    setSummary(summaryData);
+    setInstallments(paymentsData);
+    setProformaInvoices(pis);
+    setCredit(calculateCredit(summaryData, creditSource));
+
+    if (pis.length > 0) {
+      setSelectedPIId(pis[0].id);
+    } else {
+      setSelectedPIId('');
+    }
+
+    setPaymentData((p) => ({
+      ...p,
+      installment_amount: String(summaryData.remaining ?? summaryData.current_remaining ?? summaryData.balance ?? ''),
+      purchase_order_id: quotationDetails?.work_order_id || item.quotationData?.work_order_id || p.purchase_order_id || ''
+    }));
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -736,29 +924,26 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
           quotationService.getApproved(item.leadData.id),
           paymentService.getCustomerCredit(item.leadData.id)
         ]);
-        setApprovedQuotations(qRes?.data || []);
-        setCredit(cRes?.data?.balance || 0);
-        const qid = item.quotationData?.id || (qRes?.data?.[0]?.id || '');
+        
+        const allApprovedQuotations = extractApiArray(qRes);
+        setApprovedQuotations(allApprovedQuotations);
+
+        const apiCredit = Number(cRes?.data?.balance ?? cRes?.data?.available_credit ?? 0);
+        setBaseCredit(apiCredit);
+        setCredit(apiCredit);
+        
+        // Pre-select quotation if available
+        const preselectedQuotation = item.quotationData?.id
+          ? allApprovedQuotations.find(q => q.id === item.quotationData.id)
+          : allApprovedQuotations?.[0];
+        const qid = preselectedQuotation?.id;
         if (qid) {
           setSelectedQuotationId(qid);
-          const [sRes, pRes, piRes] = await Promise.all([
-            quotationService.getSummary(qid),
-            paymentService.getPaymentsByQuotation(qid),
-            proformaInvoiceService.getPIsByQuotation(qid)
-          ]);
-          const s = sRes?.data || { total: 0, paid: 0, remaining: 0 };
-          setSummary(s);
-          setInstallments(pRes?.data || []);
-          const pis = piRes?.data || [];
-          setProformaInvoices(pis);
-          setPaymentData((p) => ({ 
-            ...p, 
-            installment_amount: String(s.remaining || ''),
-            purchase_order_id: item.quotationData?.work_order_id || ''
-          }));
+          await loadQuotationDetails(qid, apiCredit, preselectedQuotation);
         }
       } catch (e) {
         console.error('Init payment modal failed', e);
+        setError('Failed to load quotations. Please try again.');
       }
     };
     init();
@@ -770,19 +955,26 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
     setProformaInvoices([]);
     if (!qid) return;
     try {
-      const [sRes, pRes, piRes] = await Promise.all([
-        quotationService.getSummary(qid),
-        paymentService.getPaymentsByQuotation(qid),
-        proformaInvoiceService.getPIsByQuotation(qid)
-      ]);
-      const s = sRes?.data || { total: 0, paid: 0, remaining: 0 };
-      setSummary(s);
-      setInstallments(pRes?.data || []);
-      const pis = piRes?.data || [];
-      setProformaInvoices(pis);
-      setPaymentData((p) => ({ ...p, installment_amount: String(s.remaining || '') }));
+      const selectedQuotation = approvedQuotations.find(q => q.id === qid);
+      await loadQuotationDetails(qid, baseCredit, selectedQuotation);
     } catch (e) {
       setProformaInvoices([]);
+      setError('Failed to load PI for selected quotation');
+    }
+  };
+
+  const handleReceiptUpload = async (file) => {
+    if (!file) return;
+    
+    setUploadingReceipt(true);
+    try {
+      const url = await uploadService.uploadFile(file, 'payments');
+      setPaymentData(prev => ({ ...prev, payment_receipt_url: url }));
+      setReceiptFile(file);
+    } catch (error) {
+      setError('Failed to upload receipt: ' + (error.message || 'Unknown error'));
+    } finally {
+      setUploadingReceipt(false);
     }
   };
 
@@ -792,15 +984,34 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
     setError(null);
 
     try {
+      // Validate PI is selected
+      if (!selectedPIId) {
+        setError('Please create PI first, then add payment. PI (Proforma Invoice) is required to add payment.');
+        setLoading(false);
+        return;
+      }
+
+      if (!selectedQuotationId) {
+        setError('Please select a quotation with PI created.');
+        setLoading(false);
+        return;
+      }
+
+      // Upload receipt if file is selected but URL is not set
+      let receiptUrl = paymentData.payment_receipt_url;
+      if (receiptFile && !receiptUrl) {
+        receiptUrl = await uploadService.uploadFile(receiptFile, 'payments');
+      }
+
       const paymentPayload = {
         lead_id: item.leadData?.id,
-        quotation_id: selectedQuotationId || null,
-        pi_id: selectedPIId || null,
+        quotation_id: selectedQuotationId,
+        pi_id: selectedPIId,
         installment_amount: parseFloat(paymentData.installment_amount),
         payment_method: paymentData.payment_method,
         payment_reference: paymentData.payment_reference,
         payment_status: paymentData.payment_status,
-        payment_receipt_url: paymentData.payment_receipt_url || undefined,
+        payment_receipt_url: receiptUrl || undefined,
         payment_date: new Date().toISOString(),
         notes: paymentData.delivery_note,
         remarks: paymentData.payment_remark,
@@ -812,9 +1023,8 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
       const response = await paymentService.createPayment(paymentPayload);
       if (response.success) {
         const { summary: responseSummary } = response.data;
-        // Close modal and refresh data
         onClose();
-        onPaymentAdded({ leadId: item.leadData?.id, quotationId: selectedQuotationId || null });
+        onPaymentAdded({ leadId: item.leadData?.id, quotationId: selectedQuotationId });
         alert(`Payment installment #${responseSummary.installment_number} added successfully!\nPaid: ₹${responseSummary.total_paid.toLocaleString('en-IN')}\nRemaining: ₹${responseSummary.remaining.toLocaleString('en-IN')}`);
       } else {
         setError('Failed to add payment');
@@ -825,166 +1035,6 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateInvoice = async (item, paymentData) => {
-    try {
-      // Get quotation details
-      const quotationResponse = await quotationService.getQuotation(item.quotationData?.id);
-      const quotation = quotationResponse.data;
-
-      // Calculate opening and closing balance
-      const totalAmount = parseFloat(quotation?.total_amount || 0);
-      const previousPayments = item.paymentsData?.reduce((sum, payment) => sum + (payment.amount || 0), 0) || 0;
-      const openingBalance = totalAmount - previousPayments;
-      const closingBalance = openingBalance - parseFloat(paymentData.amount);
-
-      // Generate invoice HTML
-      const invoiceHTML = generateInvoiceHTML(item, quotation, paymentData, openingBalance, closingBalance);
-      
-      // Open invoice in new window
-      const invoiceWindow = window.open('', '_blank', 'width=1000,height=800,scrollbars=yes,resizable=yes');
-      if (invoiceWindow) {
-        invoiceWindow.document.write(invoiceHTML);
-        invoiceWindow.document.close();
-      }
-    } catch (error) {
-      console.error('Error generating invoice:', error);
-    }
-  };
-
-  const generateInvoiceHTML = (item, quotation, paymentData, openingBalance, closingBalance) => {
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Payment Invoice - ${item.quotationId}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; background: #f8f9fa; }
-          .invoice-container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
-          .company-info h1 { color: #2563eb; margin: 0; font-size: 28px; }
-          .company-info p { margin: 5px 0; color: #666; }
-          .invoice-title { text-align: right; }
-          .invoice-title h2 { color: #2563eb; margin: 0; font-size: 24px; }
-          .divider { border-top: 2px solid #e5e7eb; margin: 20px 0; }
-          .details-section { display: flex; justify-content: space-between; margin-bottom: 30px; }
-          .invoice-details, .customer-details { flex: 1; }
-          .invoice-details h3, .customer-details h3 { color: #374151; margin-bottom: 10px; }
-          .invoice-details p, .customer-details p { margin: 5px 0; color: #666; }
-          .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-          .items-table th { background: #2563eb; color: white; padding: 12px; text-align: left; }
-          .items-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
-          .items-table tr:nth-child(even) { background: #f9fafb; }
-          .summary-section { display: flex; justify-content: space-between; }
-          .terms-section { flex: 1; margin-right: 30px; }
-          .financial-summary { flex: 1; background: #f0f9ff; padding: 20px; border-radius: 8px; }
-          .financial-summary h3 { color: #2563eb; margin-bottom: 15px; }
-          .summary-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
-          .summary-row.total { font-weight: bold; font-size: 18px; color: #2563eb; border-top: 2px solid #2563eb; padding-top: 10px; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-        </style>
-      </head>
-      <body>
-        <div class="invoice-container">
-          <div class="header">
-            <div class="company-info">
-              <h1>ANODE ELECTRIC PRIVATE LIMITED</h1>
-              <p>Manufacturing & Supply of Electrical Cables & Wires</p>
-              <p>KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS</p>
-              <p>JABALPUR - 482003, MADHYA PRADESH, INDIA</p>
-              <p>Tel: 6262002116, 6262002113 | Web: www.anocab.com</p>
-              <p>Email: info@anocab.com</p>
-            </div>
-            <div class="invoice-title">
-              <h2>PAYMENT INVOICE</h2>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="details-section">
-            <div class="invoice-details">
-              <h3>Invoice Details</h3>
-              <p><strong>Invoice #:</strong> INV-${Date.now().toString().slice(-6)}</p>
-              <p><strong>Invoice Date:</strong> ${new Date().toLocaleDateString('en-GB')}</p>
-              <p><strong>Quotation #:</strong> ${item.quotationId}</p>
-              <p><strong>Payment Method:</strong> ${paymentData.payment_method.toUpperCase()}</p>
-              <p><strong>Payment Ref:</strong> ${paymentData.payment_ref || 'N/A'}</p>
-            </div>
-            <div class="customer-details">
-              <h3>Bill To</h3>
-              <p><strong>${item.customerName}</strong></p>
-              <p>${item.address}</p>
-              <p>Phone: ${item.leadData?.phone || 'N/A'}</p>
-              <p>Email: ${item.leadData?.email || 'N/A'}</p>
-            </div>
-          </div>
-
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Item & Description</th>
-                <th>Qty</th>
-                <th>Rate</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${quotation?.items?.map((item, index) => `
-                <tr>
-                  <td>${index + 1}</td>
-                  <td>
-                    <strong>${item.product_name || item.description}</strong><br>
-                    <small>${item.description || item.product_name}</small>
-                  </td>
-                  <td>${item.quantity}</td>
-                  <td>₹${parseFloat(item.rate || item.unit_price || 0).toLocaleString()}</td>
-                  <td>₹${parseFloat(item.amount || item.total_amount || 0).toLocaleString()}</td>
-                </tr>
-              `).join('') || '<tr><td colspan="5" style="text-align: center;">No items found</td></tr>'}
-            </tbody>
-          </table>
-
-          <div class="summary-section">
-            <div class="terms-section">
-              <h3>Terms & Conditions</h3>
-              <p>• Payment received as per the above details</p>
-              <p>• This invoice is generated for payment tracking purposes</p>
-              <p>• For any queries, contact our customer support</p>
-              <br>
-              <p><strong>Notes:</strong> ${paymentData.notes || 'No additional notes'}</p>
-            </div>
-            <div class="financial-summary">
-              <h3>Payment Summary</h3>
-              <div class="summary-row">
-                <span>Total Quotation Amount:</span>
-                <span>₹${parseFloat(quotation?.total_amount || 0).toLocaleString()}</span>
-              </div>
-              <div class="summary-row">
-                <span>Opening Balance:</span>
-                <span>₹${openingBalance.toLocaleString()}</span>
-              </div>
-              <div class="summary-row">
-                <span>Payment Received:</span>
-                <span>₹${parseFloat(paymentData.amount).toLocaleString()}</span>
-              </div>
-              <div class="summary-row total">
-                <span>Closing Balance:</span>
-                <span>₹${closingBalance.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="footer">
-            <p>Thank you for your business with ANODE ELECTRIC PRIVATE LIMITED</p>
-            <p>Generated on ${new Date().toLocaleString()}</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
   };
 
   if (!item) return null;
@@ -1021,31 +1071,52 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
                 <option key={q.id} value={q.id}>{q.quotation_number || q.id} - ₹{Number(q.total_amount || q.totalAmount || 0).toLocaleString()}</option>
               ))}
             </select>
-              <div className="text-xs text-gray-600 mt-2 grid grid-cols-2 gap-2">
-                <div>Total: ₹{Number(summary.total ?? 0).toLocaleString()}</div>
-                <div>Paid: ₹{Number(summary.paid ?? 0).toLocaleString()}</div>
-                <div>Remaining: ₹{Number(summary.remaining ?? 0).toLocaleString()}</div>
-                <div>Available credit: ₹{Number(credit ?? 0).toLocaleString()}</div>
-              </div>
+              {selectedQuotationId && proformaInvoices.length > 0 && (
+                <div className="text-xs text-gray-600 mt-2 grid grid-cols-2 gap-2">
+                  <div>Total: ₹{Number(summary.total ?? 0).toLocaleString()}</div>
+                  <div>Paid: ₹{Number(summary.paid ?? 0).toLocaleString()}</div>
+                  <div>Remaining: ₹{Number(summary.remaining ?? 0).toLocaleString()}</div>
+                  <div>Available credit: ₹{Number(credit ?? 0).toLocaleString()}</div>
+                </div>
+              )}
           </div>
 
-          {selectedQuotationId && proformaInvoices.length > 0 && (
+          {selectedQuotationId && (
             <div className="mt-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Proforma Invoice (PI) - Optional</label>
-              <select
-                value={selectedPIId}
-                onChange={(e) => setSelectedPIId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">-- Select PI (Optional) --</option>
-                {proformaInvoices.map((pi) => (
-                  <option key={pi.id} value={pi.id}>
-                    {pi.pi_number} - ₹{Number(pi.total_amount || 0).toLocaleString()} 
-                    {pi.status && ` (${pi.status})`}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">Select a PI if this payment is against a specific Proforma Invoice</p>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Proforma Invoice (PI) <span className="text-red-600">*</span>
+              </label>
+              {proformaInvoices.length > 0 ? (
+                <>
+                  <select
+                    value={selectedPIId}
+                    onChange={(e) => setSelectedPIId(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">-- Select PI (Required) --</option>
+                    {proformaInvoices.map((pi) => (
+                      <option key={pi.id} value={pi.id}>
+                        {pi.pi_number} - ₹{Number(pi.total_amount || 0).toLocaleString()} 
+                        {pi.status && ` (${pi.status})`}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-blue-600 mt-1 font-medium">PI is required to add payment</p>
+                </>
+              ) : (
+                <div className="w-full px-3 py-2 border border-red-300 rounded-md bg-red-50">
+                  <p className="text-sm text-red-600 font-medium">⚠ No PI found for this quotation</p>
+                  <p className="text-xs text-red-500 mt-1">Please create PI first before adding payment</p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {approvedQuotations.length === 0 && (
+            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+              <p className="text-sm text-yellow-800 font-medium">⚠ No quotations with PI available</p>
+              <p className="text-xs text-yellow-700 mt-1">Please create a PI for an approved quotation first, then you can add payment.</p>
             </div>
           )}
         </div>
@@ -1115,14 +1186,36 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Upload Payment Receipt (URL)</label>
-            <input
-              type="url"
-              value={paymentData.payment_receipt_url}
-              onChange={(e) => setPaymentData(prev => ({ ...prev, payment_receipt_url: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="https://..."
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Upload Payment Receipt {paymentData.payment_receipt_url && <span className="text-green-600 text-xs">✓ Uploaded</span>}
+            </label>
+            <div className="space-y-2">
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    handleReceiptUpload(file);
+                  }
+                }}
+                disabled={uploadingReceipt}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+              />
+              {uploadingReceipt && (
+                <p className="text-sm text-blue-600">Uploading...</p>
+              )}
+              {paymentData.payment_receipt_url && (
+                <a
+                  href={paymentData.payment_receipt_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:underline block"
+                >
+                  View Receipt
+                </a>
+              )}
+            </div>
           </div>
 
           <div>
@@ -1246,6 +1339,7 @@ export default function ProductsPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPaymentItem, setSelectedPaymentItem] = useState(null);
 
+
   // Fetch payment tracking data - fetch ALL payments from payment_history table
   useEffect(() => {
     const fetchPaymentTrackingData = async () => {
@@ -1289,7 +1383,7 @@ export default function ProductsPage() {
             for (const quotation of quotations) {
               try {
                 const pRes = await paymentService.getPaymentsByQuotation(quotation.id);
-                const payments = Array.isArray(pRes?.data) ? pRes.data : [];
+                const payments = extractApiArray(pRes);
                 // Add payments that aren't already in allPayments
                 payments.forEach(p => {
                   const exists = allPayments.some(ap => ap.id === p.id || 
@@ -1340,14 +1434,37 @@ export default function ProductsPage() {
         });
         
         // Build payment tracking data with correct status logic
+        // ONLY show items with PI created
         const paymentTrackingData = [];
         
-        paymentMap.forEach(({ quotation, lead, payments }) => {
+        // Fetch PI for each quotation to filter
+        for (const [key, { quotation, lead, payments }] of paymentMap.entries()) {
+          // Skip if no quotation
+          if (!quotation) continue;
+          
+          // Check if PI exists for this quotation
+          let hasPIForQuotation = false;
+          try {
+            const piRes = await proformaInvoiceService.getPIsByQuotation(quotation.id);
+            const pis = extractApiArray(piRes);
+            hasPIForQuotation = pis.length > 0;
+          } catch (err) {
+            console.warn(`Error checking PI for quotation ${quotation.id}:`, err);
+            hasPIForQuotation = false;
+          }
+          
+          // Skip if no PI exists
+          if (!hasPIForQuotation) {
+            continue;
+          }
+          
           // Filter out refunds
           const validPayments = payments.filter(p => !p.is_refund);
+          const approvedPayments = validPayments.filter(isApprovedPayment);
+          const pendingApprovals = validPayments.filter(isPendingApproval);
+          const rejectedApprovals = validPayments.filter(isRejectedPayment);
           
-          // Calculate payment totals
-          const totalPaid = validPayments
+          const totalPaid = approvedPayments
             .filter(p => {
               const status = (p.payment_status || '').toLowerCase();
               return status === 'completed' || status === 'paid' || status === 'success' || status === 'advance';
@@ -1422,9 +1539,14 @@ export default function ProductsPage() {
               delivery_date: deliveryDate,
               delivery_status: deliveryStatus
             } : null,
-            paymentsData: validPayments
+            paymentsData: validPayments,
+            approvalSummary: {
+              pending: pendingApprovals.length,
+              rejected: rejectedApprovals.length,
+              latestNote: pendingApprovals[0]?.approval_notes || rejectedApprovals[0]?.approval_notes || ''
+            }
           });
-        });
+        }
         
         // Sort by most recent payment date
         paymentTrackingData.sort((a, b) => {
@@ -1590,7 +1712,7 @@ export default function ProductsPage() {
             for (const quotation of quotations) {
               try {
                 const pRes = await paymentService.getPaymentsByQuotation(quotation.id);
-                const payments = Array.isArray(pRes?.data) ? pRes.data : [];
+                const payments = extractApiArray(pRes);
                 payments.forEach(p => {
                   const exists = allPayments.some(ap => ap.id === p.id || 
                     (ap.payment_reference && p.payment_reference && ap.payment_reference === p.payment_reference));
@@ -1641,8 +1763,11 @@ export default function ProductsPage() {
         
         paymentMap.forEach(({ quotation, lead, payments }) => {
           const validPayments = payments.filter(p => !p.is_refund);
+          const approvedPayments = validPayments.filter(isApprovedPayment);
+          const pendingApprovals = validPayments.filter(isPendingApproval);
+          const rejectedApprovals = validPayments.filter(isRejectedPayment);
           
-          const totalPaid = validPayments
+          const totalPaid = approvedPayments
             .filter(p => {
               const status = (p.payment_status || '').toLowerCase();
               return status === 'completed' || status === 'paid' || status === 'success' || status === 'advance';
@@ -1710,7 +1835,12 @@ export default function ProductsPage() {
               delivery_date: deliveryDate,
               delivery_status: deliveryStatus
             } : null,
-            paymentsData: validPayments
+            paymentsData: validPayments,
+            approvalSummary: {
+              pending: pendingApprovals.length,
+              rejected: rejectedApprovals.length,
+              latestNote: pendingApprovals[0]?.approval_notes || rejectedApprovals[0]?.approval_notes || ''
+            }
           });
         });
         
@@ -1759,6 +1889,41 @@ export default function ProductsPage() {
     // Use displayStatus if available, otherwise fall back to paymentStatus
     const displayStatus = item?.displayStatus || item?.paymentStatus || 'pending';
     const status = displayStatus.toLowerCase();
+    const pendingApprovals = item?.approvalSummary?.pending || 0;
+    const rejectedApprovals = item?.approvalSummary?.rejected || 0;
+    const latestNote = item?.approvalSummary?.latestNote;
+
+    if (pendingApprovals > 0) {
+      return (
+        <div className="flex flex-col">
+          <span className="px-2 py-1 text-xs font-semibold rounded bg-amber-100 text-amber-800 border border-amber-200">
+            Pending Accounts Approval
+          </span>
+          <span className="text-[11px] text-amber-700 mt-1">
+            {pendingApprovals} payment{pendingApprovals > 1 ? 's' : ''} awaiting approval
+          </span>
+          {latestNote && (
+            <span className="text-[11px] text-slate-500 mt-1 truncate">Note: {latestNote}</span>
+          )}
+        </div>
+      );
+    }
+
+    if (rejectedApprovals > 0) {
+      return (
+        <div className="flex flex-col">
+          <span className="px-2 py-1 text-xs font-semibold rounded bg-rose-100 text-rose-800 border border-rose-200">
+            Rejected by Accounts
+          </span>
+          <span className="text-[11px] text-rose-700 mt-1">
+            {rejectedApprovals} payment{rejectedApprovals > 1 ? 's' : ''} rejected
+          </span>
+          {latestNote && (
+            <span className="text-[11px] text-slate-500 mt-1 truncate">Note: {latestNote}</span>
+          )}
+        </div>
+      );
+    }
     
     const statusClasses = {
       'paid': 'bg-green-100 text-green-800 border border-green-200',
@@ -2002,7 +2167,9 @@ export default function ProductsPage() {
               if (!selectedPaymentItem?.leadData?.id) return;
               const quotationsResponse = await quotationService.getQuotationsByCustomer(selectedPaymentItem.leadData.id);
               const quotations = quotationsResponse?.data || [];
-              const approvedQuotations = quotations.filter(q => q.status === 'approved');
+              const approvedQuotations = quotations.filter(
+                q => normalizeQuotationStatus(q.status) === 'approved'
+              );
               let payments = [];
               if (quotationId) {
                 const paymentsResponse = await paymentService.getPaymentsByQuotation(quotationId);

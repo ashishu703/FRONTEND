@@ -77,6 +77,18 @@ class ProformaInvoiceService {
       throw error;
     }
   }
+
+  // OPTIMIZED: Get PIs for multiple quotations in one call
+  async getBulkPIsByQuotations(quotationIds) {
+    try {
+      const idsParam = JSON.stringify(quotationIds);
+      const response = await apiClient.get(`/api/proforma-invoices/bulk-by-quotations?quotationIds=${encodeURIComponent(idsParam)}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching bulk PIs by quotations:', error);
+      throw error;
+    }
+  }
 }
 
 export default new ProformaInvoiceService();

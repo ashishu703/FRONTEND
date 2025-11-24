@@ -31,14 +31,31 @@ class ApiClient {
     // Only set in this tab. We still use localStorage to keep compatibility,
     // but set ALSO a session-scoped copy and prefer that for reads.
     try { sessionStorage.setItem('authToken', token); } catch {}
+    // Clear legacy storage key to avoid stale tokens in older components
+    localStorage.removeItem('token');
     localStorage.setItem('authToken', token);
   }
 
   /**
-   * Remove authentication token from localStorage
+   * Completely clear authentication artifacts from both storage scopes
+   */
+  clearStoredAuth() {
+    try {
+      sessionStorage.removeItem('authToken');
+      sessionStorage.removeItem('impersonating');
+      sessionStorage.removeItem('user');
+    } catch (_) {}
+
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('token'); // Legacy key used by older components
+    localStorage.removeItem('user');
+  }
+
+  /**
+   * Remove authentication token from storage (wrapper maintained for backwards compatibility)
    */
   removeAuthToken() {
-    localStorage.removeItem('authToken');
+    this.clearStoredAuth();
   }
 
   /**
@@ -81,6 +98,18 @@ class ApiClient {
     if (!response.ok) {
       // Extract error message from response - check both 'error' and 'message' fields
       const errorMessage = data.error || data.message || 'An error occurred';
+
+      // If authentication failed (expired / invalid token), proactively clear stored auth
+      if (response.status === 401 && errorMessage.toLowerCase().includes('not authorized')) {
+        this.clearStoredAuth();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth:logout'));
+          if (!window.location.pathname.toLowerCase().includes('login')) {
+            window.location.href = '/login';
+          }
+        }
+      }
+
       const error = new Error(errorMessage);
       error.status = response.status;
       error.data = data;

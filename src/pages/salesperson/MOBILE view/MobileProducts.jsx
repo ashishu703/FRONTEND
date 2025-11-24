@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Filter, Plus, Box, Eye, Edit, Trash2, Calendar, Star, Package, Image, CreditCard, Wrench, Calculator, ChevronDown, CheckCircle, Shield, FileText, Download, MoreVertical, User, Phone, Mail, MapPin, Building, ChevronRight, DollarSign, Settings, BarChart3, X, Globe } from 'lucide-react';
+import { Search, Filter, Plus, Box, Eye, Edit, Trash2, Calendar, Star, Package, Image, CreditCard, Wrench, Calculator, ChevronDown, CheckCircle, Shield, FileText, Download, MoreVertical, User, Phone, Mail, MapPin, Building, ChevronRight, DollarSign, Settings, BarChart3, X, Globe, Folder } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
 const MobileProducts = () => {
@@ -75,8 +75,40 @@ const MobileProducts = () => {
   const [isCompanyEmailsModalOpen, setIsCompanyEmailsModalOpen] = useState(false);
   const [isGstDetailsOpen, setIsGstDetailsOpen] = useState(false);
   const [isApprovalsModalOpen, setIsApprovalsModalOpen] = useState(false);
+  const [isBisFolderOpen, setIsBisFolderOpen] = useState(false);
   const businessCardRef = useRef(null);
   const samriddhiBusinessCardRef = useRef(null);
+
+  // BIS Component PDF opener function
+  const openBisComponentPdf = (componentCode) => {
+    const pdfMappings = {
+      '14255': 'aerial bunch cable, bis liscence .pdf',
+      '389 - P2': 'aluminium conductor galvanised steel reinforced, bis liscence.pdf',
+      '398 - P4': 'all aluminium alloy conductor,bis liscence.pdf',
+      '7098': 'multicore xlpe insulated aluminium unrmoured cable,bis liscence.pdf',
+      '7098 - P1': 'single core xlpe insulated aluminium:copper armoured:unarmoured cable bis liscence.pdf'
+    };
+
+    const pdfFileName = pdfMappings[componentCode];
+    
+    if (pdfFileName) {
+      const pdfUrl = `${window.location.origin}/pdf/${pdfFileName}`;
+      const newWindow = window.open(pdfUrl, '_blank');
+      if (!newWindow) {
+        alert('Please allow pop-ups for this site to view the license');
+      }
+    } else {
+      alert('BIS License not available for this component');
+    }
+  };
+
+  const openBisFolder = () => {
+    setIsBisFolderOpen(true);
+  };
+
+  const closeBisFolder = () => {
+    setIsBisFolderOpen(false);
+  };
   
   // Helping Calculators Modal state
   const [isHelpingCalcOpen, setIsHelpingCalcOpen] = useState(false);
@@ -257,6 +289,59 @@ const MobileProducts = () => {
   const [subCurrent, setSubCurrent] = useState(7.27);
   const [subActualGauge, setSubActualGauge] = useState(8.08);
   const [subCableSize, setSubCableSize] = useState('10 SQMM');
+
+  // Wire Selection Calculator state (for AB Cable)
+  const [wsPhase, setWsPhase] = useState(3);
+  const [wsPower, setWsPower] = useState(20.0);
+  const [wsPowerUnit, setWsPowerUnit] = useState('HP');
+  const [wsLength, setWsLength] = useState(500);
+  const [wsLengthUnit, setWsLengthUnit] = useState('MTR');
+  
+  // Wire Selection Calculator calculations
+  const wsCurrent = (() => {
+    const power = Number(wsPower) || 0;
+    const unit = wsPowerUnit;
+    const phase = Number(wsPhase) || 1;
+    let powerKw;
+    if (unit === 'HP') powerKw = power * 0.746;
+    else if (unit === 'WATT') powerKw = power * 0.001;
+    else powerKw = power; // KW
+    const numerator = powerKw * 1000;
+    const phaseFactor = phase === 3 ? 1.732 : 1;
+    const denominator = phaseFactor * 0.83 * 0.83 * 430;
+    const amps = denominator > 0 ? numerator / denominator : 0;
+    return Number.isFinite(amps) ? amps : 0;
+  })();
+  
+  const wsActualGauge = (() => {
+    const current = Number(wsCurrent) || 0;
+    const phase = Number(wsPhase) || 1;
+    const lengthVal = Number(wsLength) || 0;
+    const lengthMetersSel = wsLengthUnit === 'FT' ? lengthVal * 0.3048 : lengthVal;
+    const phaseFactor = phase === 3 ? 1.732 : 1;
+    const option1 = current / 5;
+    const option2 = (phaseFactor * current * 17.25 * lengthMetersSel) / ((0.05 * 430) * 1000);
+    const result = Math.max(option1, option2);
+    return Number.isFinite(result) ? result : 0;
+  })();
+  
+  const wsWireSize = (() => {
+    const h = Number(wsActualGauge) || 0;
+    if (h <= 0.5) return '0.50 SQMM';
+    if (h <= 0.75) return '0.75 SQMM';
+    if (h <= 1.5) return '1.5 SQMM';
+    if (h <= 2.5) return '2.5 SQMM';
+    if (h <= 4) return '4 SQMM';
+    if (h <= 6) return '6 SQMM';
+    if (h <= 10) return '10 SQMM';
+    if (h <= 16) return '16 SQMM';
+    if (h <= 25) return '25 SQMM';
+    if (h <= 35) return '35 SQMM';
+    if (h <= 50) return '50 SQMM';
+    if (h <= 70) return '70 SQMM';
+    if (h <= 95) return '95 SQMM';
+    return 'Above Standard';
+  })();
 
   // Voltage Drop: = 0.05 * (430)
   useEffect(() => {
@@ -1069,12 +1154,23 @@ const MobileProducts = () => {
 
   // Price list for AAAC Conductor (mobile view)
   const aaacPriceList = [
-    { size: 'MOLE - 15 SQMM', price: '', stock: '', image: '' },
-    { size: 'SQUIRREL - 22 SQMM', price: '', stock: '', image: '' },
-    { size: 'WEASEL - 34 SQMM', price: '', stock: '', image: '' },
-    { size: 'RABBIT - 55 SQMM', price: '', stock: '', image: '' },
-    { size: 'RACCOON - 80 SQMM', price: '', stock: '', image: '' },
-    { size: 'DOG - 100 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Mole', size: '15 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Squirrel', size: '20 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Weasel', size: '34 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Rabbit', size: '55 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Raccoon', size: '80 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Dog', size: '100 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Dog(up)', size: '125 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Coyote', size: '150 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Wolf', size: '175 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Wolf(up)', size: '200 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Panther', size: '232 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Panther (up)', size: '290 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Panther (up)', size: '345 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Kundah', size: '400 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Zebra', size: '465 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Zebra (up)', size: '525 SQMM', price: '', stock: '', image: '' },
+    { conductorCode: 'Moose', size: '570 SQMM', price: '', stock: '', image: '' },
   ];
 
   // Price list for PVC Insulated Submersible Cable (mobile view)
@@ -1593,49 +1689,241 @@ const MobileProducts = () => {
                     </div>
                 <div className="p-4">
                   {selectedProduct.name.toLowerCase().includes('aerial bunch cable') ? (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <span className="text-sm font-semibold text-gray-800">REFERENCE</span>
-                          <p className="text-sm text-gray-800">IS 14255:1995</p>
+                    <div className="space-y-6">
+                      {/* Front and Side View Images */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col items-center">
+                          <div className="w-full h-32 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                            <img 
+                              src="/images/products/Aerial Bunch Cable (2).jpg"
+                              alt="Aerial Bunch Cable Front View"
+                              className="w-full h-full object-contain p-2"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                const fallback = e.currentTarget.nextElementSibling;
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
+                            <div className="hidden w-full h-full items-center justify-center text-gray-400">
+                              <div className="text-center p-2">
+                                <p className="text-xs">Front View</p>
                     </div>
-                        <div className="space-y-2">
-                          <span className="text-sm font-semibold text-gray-800">RATED VOLTAGE</span>
-                          <p className="text-sm text-gray-800">1100 volts</p>
                     </div>
-                        <div className="space-y-2">
-                          <span className="text-sm font-semibold text-gray-800">CONDUCTOR</span>
-                          <p className="text-sm text-gray-800">Class-2 as per IS-8130</p>
                         </div>
-                        <div className="space-y-2">
-                          <span className="text-sm font-semibold text-gray-800">INSULATION</span>
-                          <p className="text-sm text-gray-800">Cross link polythene insulated</p>
+                          <p className="text-xs text-gray-500 mt-1 text-center">Front View</p>
                         </div>
-                        <div className="space-y-2">
-                          <span className="text-sm font-semibold text-gray-800">MESSENGER</span>
-                          <p className="text-sm text-gray-800">Aluminium alloy conductor as per IS-398 pt-4</p>
+                        <div className="flex flex-col items-center">
+                          <div className="w-full h-32 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                            <img 
+                              src="/images/products/aerial bunch cable.jpeg"
+                              alt="Aerial Bunch Cable Side View"
+                              className="w-full h-full object-contain p-2"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                const fallback = e.currentTarget.nextElementSibling;
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
+                            <div className="hidden w-full h-full items-center justify-center text-gray-400">
+                              <div className="text-center p-2">
+                                <p className="text-xs">Side View</p>
                         </div>
-                        <div className="space-y-2">
-                          <span className="text-sm font-semibold text-gray-800">TEMPERATURE RANGE</span>
-                          <p className="text-sm text-gray-800">-30°C to 90°C</p>
                         </div>
                       </div>
-                      <div className="space-y-2 mt-4">
-                        <span className="text-sm font-semibold text-gray-800">FEATURES</span>
-                        <div className="text-sm text-gray-800">
-                          <ul className="list-disc list-inside space-y-1">
-                        <li>UV radiation protected</li>
-                        <li>Higher current carrying capacity</li>
-                        <li>High temperature range -30°C to 90°C</li>
+                          <p className="text-xs text-gray-500 mt-1 text-center">Side View</p>
+                        </div>
+                      </div>
+
+                      {/* Construction Details */}
+                      <div>
+                        <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                          <table className="min-w-full bg-white">
+                            <thead>
+                              <tr className="bg-gray-50">
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Material Used</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Aluminium / Aluminium Alloy Conductor (Class 2 as per IS 8130)</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">High conductivity, corrosion-resistant conductor ensuring minimal power loss.</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Cross-linked Polyethylene (XLPE)</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Heat and UV resistant insulation providing enhanced dielectric strength and mechanical durability.</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Messenger Wire</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Aluminium Alloy Conductor (as per IS 398 Pt-4)</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Provides mechanical support and tensile strength to the aerial bundle.</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Core Identification</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Phase cores: Black with number marking; Neutral: Black with blue marking; Street lighting: Black with white marking</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Easy identification and installation.</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Sheath (if applicable)</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">UV stabilized XLPE</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Offers superior resistance against environmental degradation and sunlight.</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Layout Type</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">2 to 4 Core + Messenger</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Configured for overhead LT distribution systems.</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Standards Followed */}
+                      <div>
+                        <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                          <table className="min-w-full bg-white">
+                            <thead>
+                              <tr className="bg-gray-50">
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">IS 14255:1995</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Specification for Aerial Bunched Cables for working voltage up to and including 1100 V.</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">IS 8130:2023</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Conductors for insulated electric cables and flexible cords.</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">IS 398 (Part 4):1994</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Aluminium Alloy Conductors.</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">IEC 60502-1</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Power cables with extruded insulation and their accessories for rated voltages up to 1 kV (optional).</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Environmentally friendly and lead-free materials.</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Technical Properties */}
+                      <div>
+                        <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                          <table className="min-w-full bg-white">
+                            <thead>
+                              <tr className="bg-gray-50">
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Value / Range</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">1100 V (1.1 kV)</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">-30°C to +90°C</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">{'>'} 1 MΩ/km at 27°C</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Conductor Resistance (Max.)</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">As per IS 8130:2023 for Aluminium / Aluminium Alloy</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">UV Resistance</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Excellent – tested for prolonged sunlight exposure</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Tensile Strength (Messenger)</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">As per IS 398 Pt-4</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Current Carrying Capacity</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Higher compared to conventional bare conductor systems</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Short Circuit Rating</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">As per IS 14255:1995</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Applications */}
+                      <div>
+                        <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                          <table className="min-w-full bg-white">
+                            <thead>
+                              <tr className="bg-gray-50">
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                <th className="px-2 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Overhead LT Power Distribution</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Widely used in power distribution lines for reliable power delivery.</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Urban & Rural Electrification</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Ideal for areas where safety, reliability, and reduced theft risk are required.</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Industrial & Street Lighting Systems</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Suitable for power supply in industrial complexes and municipal lighting.</td>
+                              </tr>
+                              <tr className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-semibold">Hilly / Forested / Coastal Areas</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">Performs efficiently under harsh weather, moisture, and UV exposure.</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Key Features / Advantages */}
+                      <div>
+                        <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                        <ul className="list-disc list-inside space-y-2 text-xs text-gray-800">
+                          <li>UV radiation protected for long outdoor life.</li>
+                          <li>High current carrying capacity with low power loss.</li>
+                          <li>Operates efficiently within a temperature range of -30°C to +90°C.</li>
+                          <li>Resistant to mechanical stress, corrosion, and atmospheric pollution.</li>
+                          <li>Reduced line faults and power theft due to insulated design.</li>
+                          <li>Maintenance-free and safe for overhead installations.</li>
+                          <li>Lightweight and easy to install on existing pole structures.</li>
                       </ul>
                     </div>
                   </div>
-                    </>
                   ) : selectedProduct.name.toLowerCase().includes('aluminium conductor galvanized steel reinforced') ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <span className="text-sm font-semibold text-gray-800">REFERENCE</span>
-                        <p className="text-sm text-gray-800">IS-398 (Pt-2): 1996</p>
+                        <p className="text-sm text-gray-800">IS 398 (PART:-2) 1996</p>
                       </div>
                       <div className="space-y-2">
                         <span className="text-sm font-semibold text-gray-800">APPLICATION</span>
@@ -1702,14 +1990,15 @@ const MobileProducts = () => {
                         <p className="text-sm text-gray-800">Submersible pump connections and wet environments</p>
                       </div>
                       <div>
-                        <h4 className="text-base font-semibold text-gray-800 mb-2">Features</h4>
+                        <h4 className="text-base font-semibold text-gray-800 mb-2">Key Features / Advantages</h4>
                         <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                          <li>High quality multilayer PVC having greater IR Value.</li>
-                          <li>REACH and RoHS Compliant Cable.</li>
-                          <li>Flame Retardant Cable with higher Oxygen Index.</li>
-                          <li>Anti-Rodent, Anti-Termite.</li>
-                          <li>100% Pure EC Grade Aluminium.</li>
-                          <li>Super Annealed Conductor.</li>
+                          <li>100% Pure Electrolytic Grade Annealed Copper — Ensures maximum conductivity and efficiency</li>
+                          <li>High Quality Multilayer PVC Insulation — Provides excellent insulation resistance and moisture protection</li>
+                          <li>Water-Tight Construction — Specially designed for submersible pump applications and wet environments</li>
+                          <li>Flame Retardant & UV Resistant — Offers enhanced fire safety and weather protection</li>
+                          <li>Anti-Rodent & Anti-Termite — Prolongs cable durability in harsh environments</li>
+                          <li>REACH & RoHS Compliant — Environmentally safe and non-toxic</li>
+                          <li>Available in Flat and Round Construction — Flexible design for various installation requirements</li>
                         </ul>
                       </div>
                       <div>
@@ -2088,15 +2377,18 @@ const MobileProducts = () => {
                     Price List
                   </h2>
                   </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse border border-gray-200">
+                <div className="p-2">
+                  <table className="w-full border-collapse border border-gray-200 text-[10px]">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Size</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Price per Meter</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Stock Status</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Image</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Add Images</th>
+                        {(selectedProduct.name.toLowerCase().includes('aluminium conductor galvanized steel reinforced') || selectedProduct.name.toLowerCase().includes('all aluminium alloy conductor')) && (
+                          <th className="px-1 py-1.5 text-left font-semibold text-gray-700 border border-gray-200 whitespace-nowrap">CODE</th>
+                        )}
+                        <th className="px-1 py-1.5 text-left font-semibold text-gray-700 border border-gray-200">Size</th>
+                        <th className="px-1 py-1.5 text-left font-semibold text-gray-700 border border-gray-200 whitespace-nowrap">Price/M</th>
+                        <th className="px-1 py-1.5 text-left font-semibold text-gray-700 border border-gray-200 whitespace-nowrap">Stock</th>
+                        <th className="px-1 py-1.5 text-center font-semibold text-gray-700 border border-gray-200 w-10">Img</th>
+                        <th className="px-1 py-1.5 text-center font-semibold text-gray-700 border border-gray-200 w-10">Add</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2121,18 +2413,21 @@ const MobileProducts = () => {
                         selectedProduct.name.toLowerCase().includes('single core pvc insulated aluminium/copper armoured/unarmoured cable') ? singleCorePvcArmouredPriceList :
                         selectedProduct.name.toLowerCase().includes('paper cover aluminium conductor') ? paperCoverAluminiumPriceList : []).map((item, index) => (
                         <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-3 py-2 border border-gray-200 text-xs font-medium">{item.size}</td>
-                          <td className="px-3 py-2 border border-gray-200 text-xs text-blue-600 font-semibold">{item.price || '-'}</td>
-                          <td className="px-3 py-2 border border-gray-200 text-xs">
-                            <span className={`px-2 py-1 rounded-full text-xs ${
+                          {(selectedProduct.name.toLowerCase().includes('aluminium conductor galvanized steel reinforced') || selectedProduct.name.toLowerCase().includes('all aluminium alloy conductor')) && (
+                            <td className="px-1 py-1.5 border border-gray-200 font-medium whitespace-nowrap">{item.conductorCode || '-'}</td>
+                          )}
+                          <td className="px-1 py-1.5 border border-gray-200 font-medium break-words">{item.size}</td>
+                          <td className="px-1 py-1.5 border border-gray-200 text-blue-600 font-semibold whitespace-nowrap">{item.price || '-'}</td>
+                          <td className="px-1 py-1.5 border border-gray-200">
+                            <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${
                               item.stock === "Available" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
                             }`}>
                               {item.stock || '-'}
                               </span>
                             </td>
-                          <td className="px-3 py-2 border border-gray-200">
+                          <td className="px-1 py-1.5 border border-gray-200">
                             <div 
-                              className={`w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center ${priceImages[index]?.length > 0 ? 'cursor-pointer hover:bg-gray-200 transition-colors' : ''}`}
+                              className={`w-6 h-6 bg-gray-100 rounded-md flex items-center justify-center mx-auto ${priceImages[index]?.length > 0 ? 'cursor-pointer hover:bg-gray-200 transition-colors' : ''}`}
                               onClick={() => handleImageClick(index)}
                               title={priceImages[index]?.length > 0 ? "Click to view image" : "No image uploaded"}
                             >
@@ -2143,17 +2438,17 @@ const MobileProducts = () => {
                                   className="w-full h-full object-cover rounded-md"
                                 />
                               ) : (
-                                <Image className="h-3 w-3 text-gray-400" />
+                                <Image className="h-2.5 w-2.5 text-gray-400" />
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-2 border border-gray-200">
+                            <td className="px-1 py-1.5 border border-gray-200">
                               <button
-                                className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center text-blue-600 hover:bg-blue-200 transition-colors" 
+                                className="w-6 h-6 bg-blue-100 rounded-md flex items-center justify-center text-blue-600 hover:bg-blue-200 transition-colors mx-auto" 
                                 title="Add image"
                                 onClick={() => handleImageUpload(index)}
                               >
-                                <Plus className="h-3 w-3" />
+                                <Plus className="h-2.5 w-2.5" />
                               </button>
                             </td>
                           </tr>
@@ -2215,7 +2510,7 @@ const MobileProducts = () => {
                         </tbody>
                       </table>
                     </div>
-                  ) : (
+                  ) : selectedProduct.name.toLowerCase().includes('pvc insulated submersible cable') ? null : (
                     (selectedProduct.name.toLowerCase().includes('aerial bunch cable') ? abTechnicalTables : 
                     selectedProduct.name.toLowerCase().includes('aluminium conductor galvanized steel reinforced') ? acsrTechnicalTables :
                     selectedProduct.name.toLowerCase().includes('all aluminium alloy conductor') ? aaacTechnicalTables :
@@ -2228,15 +2523,50 @@ const MobileProducts = () => {
                     };
                     const order = tableKeyOrders[tbl.title] || Object.keys(tbl.rows[0] || {});
                     
+                    // Shorten column headers for mobile
+                    const getShortHeader = (originalHeader) => {
+                      const headerMap = {
+                        'CROSS SECTIONAL AREA OF PHASE CONDUCTOR (SQMM)': 'Area (SQMM)',
+                        'STRANDS/WIRE (nos/mm)': 'Strands',
+                        'CONDUCTOR DIA (mm)': 'Cond Dia',
+                        'INSULATION THICKNESS (mm)': 'Ins Thick',
+                        'INSULATED CORE DIA (mm)': 'Core Dia',
+                        'MAXIMUM RESISTANCE (Ohm/Km) @20°C': 'Res (Ω/km)',
+                        'CROSS SECTIONAL AREA OF MESSENGER (SQMM)': 'Area (SQMM)',
+                        'MAXIMUM BREAKING LOAD (kN)': 'Break Load',
+                        'ACSR Code': 'Code',
+                        'Nom. Aluminium Area (mm²)': 'Al Area',
+                        'Stranding and Wire Diameter - Aluminium (nos/mm)': 'Al Strand',
+                        'Stranding and Wire Diameter - Steel (nos/mm)': 'Steel Strand',
+                        'DC Resistance at 20°C (Ω/km)': 'DC R @20°C',
+                        'AC Resistance at 65°C (Ω/km)': 'AC R @65°C',
+                        'AC Resistance at 75°C (Ω/km)': 'AC R @75°C',
+                        'Current Capacity at 65°C (Amps)': 'Current @65°C',
+                        'Current Capacity at 75°C (Amps)': 'Current @75°C',
+                        'AAAC Code': 'Code',
+                        'Nom Alloy Area (mm²)': 'Area',
+                        'Stranding And Wire Dia. (nos/mm)': 'Strand',
+                        'DC Resistance (N) Nom (Ω/km)': 'DC R (N)',
+                        'DC Resistance (M) Max (Ω/km)': 'DC R (M)',
+                        'AC Resistance 65°C (Ω/km)': 'AC R 65°C',
+                        'AC Resistance 75°C (Ω/km)': 'AC R 75°C',
+                        'AC Resistance 90°C (Ω/km)': 'AC R 90°C',
+                        'Current 65°C (A/km)': 'I 65°C',
+                        'Current 75°C (A/km)': 'I 75°C',
+                        'Current 90°C (A/km)': 'I 90°C'
+                      };
+                      return headerMap[originalHeader] || originalHeader;
+                    };
+                    
                     return (
                       <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden">
-                        <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 font-semibold text-sm text-gray-800">{tbl.title}</div>
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full bg-white">
+                        <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200 font-semibold text-xs text-gray-800">{tbl.title}</div>
+                        <div className="p-1">
+                          <table className="w-full border-collapse border border-gray-200 text-[10px]">
                     <thead>
                               <tr>
                                 {tbl.columns.map((col, cIdx) => (
-                                  <th key={cIdx} className="px-2 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200 whitespace-nowrap">{col}</th>
+                                  <th key={cIdx} className="px-1 py-1 text-left font-semibold text-gray-600 border border-gray-200 whitespace-nowrap">{getShortHeader(col)}</th>
                                 ))}
                       </tr>
                     </thead>
@@ -2244,7 +2574,7 @@ const MobileProducts = () => {
                               {tbl.rows.map((row, rIdx) => (
                                 <tr key={rIdx} className="hover:bg-gray-50">
                                   {order.map((key, kIdx) => (
-                                    <td key={kIdx} className="px-2 py-2 text-xs text-gray-800 border border-gray-200">{row[key] || '-'}</td>
+                                    <td key={kIdx} className="px-1 py-1 text-gray-800 border border-gray-200 whitespace-nowrap">{row[key] || '-'}</td>
                                   ))}
                             </tr>
                           ))}
@@ -2265,11 +2595,218 @@ const MobileProducts = () => {
                   </div>
                 </div>
 
-                {/* Costing Calculator - Show for AB Cable, ACSR, AAAC, and PVC Submersible */}
-                {(selectedProduct.name.toLowerCase().includes('aerial bunch cable') || 
-                  selectedProduct.name.toLowerCase().includes('aluminium conductor galvanized steel reinforced') ||
-                  selectedProduct.name.toLowerCase().includes('all aluminium alloy conductor') ||
-                  selectedProduct.name.toLowerCase().includes('pvc insulated submersible cable')) && (
+                {/* Cable Selection for Submersible Motor Calculator (PVC Submersible) */}
+                {selectedProduct.name.toLowerCase().includes('pvc insulated submersible cable') && (
+                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="p-4 border-b border-gray-200">
+                      <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <Calculator className="h-5 w-5 text-blue-600" />
+                        Cable Selection for Submersible Motor Calculator
+                      </h2>
+                      <p className="text-xs text-gray-600 mt-1">3 PHASE, 220-240 V, 50Hz | Direct on line Starter</p>
+                    </div>
+                    <div className="p-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Motor Rating</label>
+                          <div className="space-y-2">
+                            <input 
+                              type="number" 
+                              value={subMotorRating}
+                              onChange={(e) => setSubMotorRating(Number(e.target.value) || 0)}
+                              className="w-full px-2 py-2 text-xs text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                            />
+                            <select 
+                              value={subMotorUnit}
+                              onChange={(e) => setSubMotorUnit(e.target.value)}
+                              className="w-full px-2 py-1.5 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              <option>HP</option>
+                              <option>KW</option>
+                              <option>WATT</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Length</label>
+                          <div className="space-y-2">
+                            <input 
+                              type="number" 
+                              value={subMotorLen}
+                              onChange={(e) => setSubMotorLen(Number(e.target.value) || 0)}
+                              className="w-full px-2 py-2 text-xs text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                            />
+                            <select 
+                              value={subMotorLenUnit}
+                              onChange={(e) => setSubMotorLenUnit(e.target.value)}
+                              className="w-full px-2 py-1.5 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              <option>MTR</option>
+                              <option>FT</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Voltage Drop</label>
+                          <div className="px-2 py-2 text-xs font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subVoltDrop).toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Current (Ω)</label>
+                          <div className="px-2 py-2 text-xs font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subCurrent).toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Actual Gauge</label>
+                          <div className="px-2 py-2 text-xs font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subActualGauge).toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Cable Size</label>
+                          <div className="px-2 py-2 text-xs font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{subCableSize}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cable Size vs Max Length Table (PVC Submersible) */}
+                {selectedProduct.name.toLowerCase().includes('pvc insulated submersible cable') && (
+                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="p-4 border-b border-gray-200">
+                      <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <Wrench className="h-5 w-5 text-blue-600" />
+                        CABLE SIZE IN SQ. MM. (Max Length in Meters)
+                      </h2>
+                    </div>
+                    <div className="p-4">
+                      <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                        <table className="min-w-full bg-white">
+                          <thead>
+                            <tr className="bg-gray-50">
+                              <th className="px-2 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">V</th>
+                              <th className="px-2 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">kW</th>
+                              <th className="px-2 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">HP</th>
+                              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">1.5</th>
+                              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">2.5</th>
+                              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">4</th>
+                              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">6</th>
+                              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">10</th>
+                              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">16</th>
+                              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">25</th>
+                              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">35</th>
+                              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">50</th>
+                              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">70</th>
+                              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">95</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[
+                              { v: "220-240", kw: "0.37", hp: "0.50", s15: "120", s25: "200", s4: "320", s6: "480", s10: "810", s16: "1260", s25mm: "1900", s35: "2590", s50: "3580", s70: "4770", s95: "5920" },
+                              { v: "220-240", kw: "0.55", hp: "0.75", s15: "80", s25: "130", s4: "250", s6: "320", s10: "550", s16: "850", s25mm: "1290", s35: "1760", s50: "2430", s70: "3230", s95: "4000" },
+                              { v: "220-240", kw: "0.75", hp: "1.00", s15: "60", s25: "100", s4: "170", s6: "250", s10: "430", s16: "670", s25mm: "1010", s35: "1380", s50: "1910", s70: "2550", s95: "3160" },
+                              { v: "220-240", kw: "1.10", hp: "1.50", s15: "40", s25: "70", s4: "120", s6: "180", s10: "300", s16: "470", s25mm: "710", s35: "980", s50: "1360", s70: "1850", s95: "2320" },
+                              { v: "220-240", kw: "1.50", hp: "2.00", s15: "30", s25: "60", s4: "90", s6: "130", s10: "230", s16: "360", s25mm: "550", s35: "760", s50: "1060", s70: "1440", s95: "1820" },
+                              { v: "220-240", kw: "2.20", hp: "3.00", s15: "-", s25: "40", s4: "60", s6: "100", s10: "170", s16: "280", s25mm: "430", s35: "600", s50: "820", s70: "1080", s95: "1310" }
+                            ].map((row, idx) => (
+                              <tr key={idx} className="hover:bg-gray-50">
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">{row.v}</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">{row.kw}</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">{row.hp}</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">{row.s15}</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">{row.s25}</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">{row.s4}</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">{row.s6}</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">{row.s10}</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">{row.s16}</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">{row.s25mm}</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">{row.s35}</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">{row.s50}</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">{row.s70}</td>
+                                <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">{row.s95}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <p className="px-2 py-2 text-xs text-gray-600 italic">Note: Values are in meters (MTR) for 220-240V, 50Hz systems</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* HP Vs Current Table (PVC Submersible) */}
+                {selectedProduct.name.toLowerCase().includes('pvc insulated submersible cable') && (
+                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="p-4 border-b border-gray-200">
+                      <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <Wrench className="h-5 w-5 text-blue-600" />
+                        HP Vs Current - Full Load Current for Submersible Pump Motors
+                      </h2>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      {/* First Table */}
+                      <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                        <table className="min-w-full bg-white">
+                          <tbody>
+                            <tr className="hover:bg-gray-50">
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">HP</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">5</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">7.5</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">10</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">12.5</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">15.5</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">17.5</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">20</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">25</td>
+                            </tr>
+                            <tr className="hover:bg-gray-50">
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">Amp</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">7.50</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">11.00</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">14.90</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">18.90</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">25.20</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">25.20</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">28.40</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">35.60</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      {/* Second Table */}
+                      <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                        <table className="min-w-full bg-white">
+                          <tbody>
+                            <tr className="hover:bg-gray-50">
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">HP</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">30</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">35</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">40</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">45</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">50</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">55</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">60</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium">65</td>
+                            </tr>
+                            <tr className="hover:bg-gray-50">
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">Amp</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">42.30</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">50.40</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">58.10</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">62.10</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">67.50</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">73.80</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">81.00</td>
+                              <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 text-center">87.30</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-xs text-gray-600 italic">Note: For 3 Phase, 50 Cycles, 415-425 V submersible pump motors</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Costing Calculator - Show for ACSR, AAAC (exclude AB Cable and PVC Submersible) */}
+                {(selectedProduct.name.toLowerCase().includes('aluminium conductor galvanized steel reinforced') ||
+                  selectedProduct.name.toLowerCase().includes('all aluminium alloy conductor')) && (
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -2518,57 +3055,47 @@ const MobileProducts = () => {
                     Calculate
                   </button>
                   </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full bg-white">
+                <div className="p-2">
+                  <table className="w-full border-collapse border border-gray-200 text-[10px]">
                     <thead>
                       <tr className="bg-gray-100">
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">AREA</th>
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">AREA</th>
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">REDUCTION %</th>
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">STRAND</th>
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">WIRE</th>
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">INSULATION</th>
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">OUTER DIA</th>
+                        <th className="px-1 py-1 text-left font-semibold text-gray-600 border border-gray-200">AREA</th>
+                        <th className="px-1 py-1 text-left font-semibold text-gray-600 border border-gray-200">AREA</th>
+                        <th className="px-1 py-1 text-left font-semibold text-gray-600 border border-gray-200">REDUCTION %</th>
+                        <th className="px-1 py-1 text-left font-semibold text-gray-600 border border-gray-200">STRAND</th>
+                        <th className="px-1 py-1 text-left font-semibold text-gray-600 border border-gray-200">WIRE</th>
                       </tr>
                     </thead>
                     <tbody>
                       {/* PHASE Row */}
                       <tr className="hover:bg-gray-50">
-                        <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-medium">PHASE</td>
-                        <td className="px-2 py-2 border border-gray-200">
-                          <input type="text" defaultValue="25 SQMM" className="w-full text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                        <td className="px-1 py-1 text-gray-800 border border-gray-200 font-medium">PHASE</td>
+                        <td className="px-1 py-1 border border-gray-200">
+                          <input type="text" defaultValue="25 SQMM" className="w-full text-[10px] text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
                         </td>
-                        <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">-</td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">7</td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">2.02 MM</td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">1.30 MM</td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">8.67 MM</td>
+                        <td rowSpan={3} className="px-1 py-1 align-middle border border-gray-200">
+                          <input type="number" defaultValue="10" className="w-full text-[10px] text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none text-center" />
+                        </td>
+                        <td className="px-1 py-1 text-blue-600 border border-gray-200 font-semibold">7</td>
+                        <td className="px-1 py-1 text-blue-600 border border-gray-200 font-semibold">2.02 MM</td>
                       </tr>
                       {/* STREET LIGHT Row */}
                       <tr className="hover:bg-gray-50">
-                        <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-medium">STREET LIGHT</td>
-                        <td className="px-2 py-2 border border-gray-200">
-                          <input type="text" defaultValue="16 SQMM" className="w-full text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                        <td className="px-1 py-1 text-gray-800 border border-gray-200 font-medium">STREET LIGHT</td>
+                        <td className="px-1 py-1 border border-gray-200">
+                          <input type="text" defaultValue="16 SQMM" className="w-full text-[10px] text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
                         </td>
-                        <td className="px-2 py-2 border border-gray-200">
-                          <input type="number" defaultValue="10" className="w-full text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                        </td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">7</td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">1.62 MM</td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">1.30 MM</td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">7.46 MM</td>
+                        <td className="px-1 py-1 text-blue-600 border border-gray-200 font-semibold">7</td>
+                        <td className="px-1 py-1 text-blue-600 border border-gray-200 font-semibold">1.62 MM</td>
                       </tr>
                       {/* MESSENGER Row */}
                       <tr className="hover:bg-gray-50">
-                        <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200 font-medium">MESSENGER</td>
-                        <td className="px-2 py-2 border border-gray-200">
-                          <input type="text" defaultValue="25 SQMM" className="w-full text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                        <td className="px-1 py-1 text-gray-800 border border-gray-200 font-medium">MESSENGER</td>
+                        <td className="px-1 py-1 border border-gray-200">
+                          <input type="text" defaultValue="25 SQMM" className="w-full text-[10px] text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
                         </td>
-                        <td className="px-2 py-2 text-xs text-gray-800 border border-gray-200">-</td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">7</td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">2.02 MM</td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">1.30 MM</td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">8.67 MM</td>
+                        <td className="px-1 py-1 text-blue-600 border border-gray-200 font-semibold">7</td>
+                        <td className="px-1 py-1 text-blue-600 border border-gray-200 font-semibold">2.02 MM</td>
                       </tr>
                     </tbody>
                   </table>
@@ -2579,64 +3106,83 @@ const MobileProducts = () => {
                 </div>
 
               {/* Wire Selection Calculator */}
+              {selectedProduct.name.toLowerCase().includes('aerial bunch cable') && (
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <Calculator className="h-5 w-5 text-blue-600" />
                     Wire Selection Calculator
                   </h2>
-                  <button className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700" onClick={() => {/* TODO: compute Wire Selection */}}>
-                    Calculate
-                  </button>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full bg-white">
+                <div className="p-2">
+                  <table className="w-full border-collapse border border-gray-200 text-[10px]">
                     <thead>
                       <tr className="bg-black">
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-white border border-gray-200">PHASE Φ</th>
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-white border border-gray-200">POWER CONSUMPTION</th>
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-white border border-gray-200">LENGTH OF CABLE</th>
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-white border border-gray-200">CURRENT (Ω)</th>
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-white border border-gray-200">ACTUAL GAUGE</th>
-                        <th className="px-2 py-2 text-left text-xs font-semibold text-white border border-gray-200">WIRE SIZE</th>
+                        <th className="px-1 py-1 text-left font-semibold text-white border border-gray-200">PHASE Φ</th>
+                        <th className="px-1 py-1 text-left font-semibold text-white border border-gray-200">POWER</th>
+                        <th className="px-1 py-1 text-left font-semibold text-white border border-gray-200">LENGTH</th>
+                        <th className="px-1 py-1 text-left font-semibold text-white border border-gray-200">CURRENT</th>
+                        <th className="px-1 py-1 text-left font-semibold text-white border border-gray-200">GAUGE</th>
+                        <th className="px-1 py-1 text-left font-semibold text-white border border-gray-200">WIRE SIZE</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr className="hover:bg-gray-50">
-                        <td className="px-2 py-2 border border-gray-200">
-                          <div className="flex items-center">
-                            <input type="number" defaultValue="3" className="w-12 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                            <ChevronDown className="h-3 w-3 text-gray-400 ml-1" />
-                          </div>
+                        <td className="px-1 py-1 border border-gray-200">
+                          <input 
+                            type="number" 
+                            value={wsPhase}
+                            onChange={(e) => setWsPhase(Number(e.target.value) || 1)}
+                            className="w-full text-[10px] text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" 
+                          />
                         </td>
-                        <td className="px-2 py-2 border border-gray-200">
-                          <div className="flex items-center">
-                            <input type="number" step="0.01" defaultValue="20.00" className="w-16 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                            <select className="ml-1 text-xs text-red-600 border-0 focus:ring-0 focus:outline-none bg-transparent font-semibold">
+                        <td className="px-1 py-1 border border-gray-200">
+                          <div className="flex items-center gap-1">
+                            <input 
+                              type="number" 
+                              step="0.01" 
+                              value={wsPower}
+                              onChange={(e) => setWsPower(Number(e.target.value) || 0)}
+                              className="flex-1 text-[10px] text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" 
+                            />
+                            <select 
+                              value={wsPowerUnit}
+                              onChange={(e) => setWsPowerUnit(e.target.value)}
+                              className="text-[10px] text-red-600 border-0 focus:ring-0 focus:outline-none bg-transparent font-semibold"
+                            >
                               <option>HP</option>
                               <option>KW</option>
+                              <option>WATT</option>
                             </select>
-                            <ChevronDown className="h-3 w-3 text-gray-400 ml-1" />
                           </div>
                         </td>
-                        <td className="px-2 py-2 border border-gray-200">
-                          <div className="flex items-center">
-                            <input type="number" defaultValue="500" className="w-16 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                            <select className="ml-1 text-xs text-red-600 border-0 focus:ring-0 focus:outline-none bg-transparent font-semibold">
+                        <td className="px-1 py-1 border border-gray-200">
+                          <div className="flex items-center gap-1">
+                            <input 
+                              type="number" 
+                              value={wsLength}
+                              onChange={(e) => setWsLength(Number(e.target.value) || 0)}
+                              className="flex-1 text-[10px] text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" 
+                            />
+                            <select 
+                              value={wsLengthUnit}
+                              onChange={(e) => setWsLengthUnit(e.target.value)}
+                              className="text-[10px] text-red-600 border-0 focus:ring-0 focus:outline-none bg-transparent font-semibold"
+                            >
                               <option>MTR</option>
                               <option>FT</option>
                             </select>
-                            <ChevronDown className="h-3 w-3 text-gray-400 ml-1" />
                   </div>
                         </td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">29.08</td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">20.21</td>
-                        <td className="px-2 py-2 text-xs text-blue-600 border border-gray-200 font-semibold">25 SQMM</td>
+                        <td className="px-1 py-1 text-blue-600 border border-gray-200 font-semibold">{wsCurrent.toFixed(2)}</td>
+                        <td className="px-1 py-1 text-blue-600 border border-gray-200 font-semibold">{wsActualGauge.toFixed(2)}</td>
+                        <td className="px-1 py-1 text-blue-600 border border-gray-200 font-semibold">{wsWireSize}</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
               </div>
+              )}
 
               {/* Identification - Only for AB Cable */}
               {selectedProduct.name.toLowerCase().includes('aerial bunch cable') && (
@@ -2681,283 +3227,96 @@ const MobileProducts = () => {
                   <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                     <h6 className="font-semibold text-blue-800 mb-2 text-sm">Key Points:</h6>
                     <ul className="text-xs text-blue-700 space-y-1">
-                      <li>• Phase conductors: 1, 2, or 3 ridges for identification</li>
-                      <li>• Neutral conductors: 4 ridges for identification</li>
-                      <li>• Street lighting conductor: No identification marks</li>
-                      <li>• Messenger conductor: No identification marks (if insulated)</li>
+                      <li>• PHASE CONDUCTORS: 1, 2, OR 3 RIDGES FOR IDENTIFICATION</li>
+                      <li>• STREET LIGHTING CONDUCTOR: NO IDENTIFICATION MARKS</li>
+                      <li>• NEUTRAL CONDUCTOR HAS NO IDENTIFIFCATION MARK AS PER IS14255 OR 4 RIDGES AS ON DEMAND (if insulated)</li>
                     </ul>
                   </div>
                 </div>
               </div>
               )}
 
-              {/* Technical Documents */}
+              {/* Technical Documents - BIS Folder Buttons (like desktop) */}
+              {(selectedProduct.name.toLowerCase().includes('aerial bunch cable') || 
+                selectedProduct.name.toLowerCase().includes('aluminium conductor galvanized steel reinforced') ||
+                selectedProduct.name.toLowerCase().includes('all aluminium alloy conductor') ||
+                selectedProduct.name.toLowerCase().includes('multi core xlpe insulated aluminium unarmoured cable') ||
+                selectedProduct.name.toLowerCase().includes('single core xlpe insulated aluminium/copper armoured/unarmoured cable')) && (
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="p-4 border-b border-gray-200">
                   <h2 className="text-lg font-semibold text-gray-900">Technical Documents</h2>
                   </div>
-                <div className="p-4 space-y-4">
-                  {/* Approvals */}
-                  <div className="border border-gray-200 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle className="h-4 w-4 text-blue-600" />
-                      <h4 className="font-semibold text-gray-900 text-sm">Approvals</h4>
+                  <div className="p-4">
+                    {!isBisFolderOpen ? (
+                      <button
+                        onClick={openBisFolder}
+                        className="w-full p-4 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 cursor-pointer transition-all duration-200"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Folder className="h-6 w-6 text-yellow-500" />
+                          <h4 className="text-base font-semibold text-gray-900">BIS</h4>
                           </div>
+                      </button>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* Back Button */}
+                        <button
+                          onClick={closeBisFolder}
+                          className="w-full p-2 mb-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-all duration-200"
+                        >
+                          <div className="flex items-center gap-2">
+                            <ChevronRight className="h-4 w-4 rotate-180 text-gray-600" />
+                            <span className="text-sm font-medium text-gray-900">Back</span>
+                          </div>
+                        </button>
+
+                        {/* BIS Components */}
                     <div className="space-y-2">
-                      {(() => {
+                          {['14255', '694', '389 - P2', '398 - P4', '1554 - P1', '7098 - P1'].map((component, index) => {
                         const pdfMappings = {
-                          "Aerial Bunch Cable": "aerial bunch cable, bis liscence .pdf",
-                          "All Aluminium Alloy Conductor": "all aluminium alloy conductor,bis liscence.pdf",
-                          "Aluminium Conductor Galvanized Steel Reinforced": "aluminium conductor galvanised steel reinforced, bis liscence.pdf",
-                          "Multi Core XLPE Insulated Aluminium Unarmoured Cable": "multicore xlpe insulated aluminium unrmoured cable,bis liscence.pdf",
-                          "PVC Insulated Submersible Cable": "pvc insulated submersible cable, bis liscence .pdf",
-                          "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable": "single core xlpe insulated aluminium:copper armoured:unarmoured cable bis liscence.pdf"
-                        };
-                        
-                        // List of products that actually have licenses uploaded and available
-                        // Buttons will be disabled for products not in this list
-                        const availableCertificates = [
-                          "Aerial Bunch Cable",
-                          "All Aluminium Alloy Conductor",
-                          "Aluminium Conductor Galvanized Steel Reinforced",
-                          "Multi Core XLPE Insulated Aluminium Unarmoured Cable",
-                          "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable"
-                          // "PVC Insulated Submersible Cable" - license not uploaded yet, buttons will be disabled
-                        ];
-                        
-                        const productName = selectedProduct?.name || "";
-                        const relevantPdfs = [];
-                        
-                        // Show BIS license for all products in pdfMappings, but buttons will be disabled if not in availableCertificates
-                        if (pdfMappings[productName]) {
-                          relevantPdfs.push({
-                            type: `BIS License - ${productName}`,
-                            status: "Valid",
-                            expiry: "2025-12-31",
-                            file: pdfMappings[productName],
-                            isAvailable: availableCertificates.includes(productName)
-                          });
-                        }
-                        
-                        // Add general certifications (always available)
-                        relevantPdfs.push(
-                          { type: "ISO 9001:2015", status: "Valid", expiry: "2024-06-30", file: "ISO_9001_2015_Certificate.pdf", isAvailable: false },
-                          { type: "CE Marking", status: "Valid", expiry: "2025-03-15", file: "CE_Marking_Certificate.pdf", isAvailable: false }
-                        );
-                        
-                        return relevantPdfs.map((approval, index) => (
-                          <div key={index} className="p-2 bg-gray-50 rounded text-xs">
-                            <div className="flex justify-between items-start mb-2">
-                              <div className="font-medium text-xs">{approval.type}</div>
-                              <div className="flex gap-2">
+                              '14255': 'aerial bunch cable, bis liscence .pdf',
+                              '389 - P2': 'aluminium conductor galvanised steel reinforced, bis liscence.pdf',
+                              '398 - P4': 'all aluminium alloy conductor,bis liscence.pdf',
+                              '7098': 'multicore xlpe insulated aluminium unrmoured cable,bis liscence.pdf',
+                              '7098 - P1': 'single core xlpe insulated aluminium:copper armoured:unarmoured cable bis liscence.pdf'
+                            };
+                            const hasPdf = pdfMappings[component] !== undefined;
+                            
+                            return (
                               <button
-                      onClick={async (e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    
-                                    // Check if certificate is available (not disabled)
-                                    const isCertificateAvailable = approval.isAvailable || false;
-                                    
-                                    if (!isCertificateAvailable) {
-                                      return; // Button is disabled, do nothing
-                                    }
-                                    
-                                    if (pdfMappings[productName] && approval.file === pdfMappings[productName]) {
-                                      const pdfUrl = `${window.location.origin}/pdf/${approval.file}`;
-                                      
-                                      // Verify PDF exists before downloading
-                                      try {
-                                        const response = await fetch(pdfUrl, { method: 'HEAD' });
-                                        if (response.ok) {
-                                      const link = document.createElement('a');
-                                      link.href = pdfUrl;
-                                      link.download = approval.file;
-                                      document.body.appendChild(link);
-                                      link.click();
-                                      document.body.removeChild(link);
-                                        } else {
-                                          alert('Certificate not available for download. The file does not exist.');
-                                        }
-                                      } catch (error) {
-                                        console.error('Error checking PDF:', error);
-                                        alert('Certificate not available for download. The file does not exist.');
-                                      }
-                                    } else {
-                                      alert('Certificate not available for download');
-                                    }
-                                  }}
-                                  disabled={approval.isAvailable === false}
-                                  className={`${approval.isAvailable ? 'text-green-600 hover:text-green-800 cursor-pointer' : 'text-gray-400 cursor-not-allowed opacity-50'} transition-colors`}
-                                  title={approval.isAvailable ? "Download PDF" : "PDF not available"}
-                                >
-                                  <Download className="h-3 w-3" />
+                                key={index}
+                                onClick={() => {
+                                  if (hasPdf) {
+                                    openBisComponentPdf(component);
+                                  }
+                                }}
+                                disabled={!hasPdf}
+                                className={`w-full p-3 rounded-lg border transition-all duration-200 ${
+                                  hasPdf
+                                    ? 'border-gray-200 bg-white hover:bg-gray-50 cursor-pointer' 
+                                    : 'border-gray-300 bg-gray-100 opacity-50 cursor-not-allowed'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <FileText className={`h-5 w-5 ${
+                                    hasPdf ? 'text-gray-600' : 'text-gray-400'
+                                  }`} />
+                                  <h4 className={`text-sm font-semibold ${
+                                    hasPdf ? 'text-gray-900' : 'text-gray-500'
+                                  }`}>{component}</h4>
+                                </div>
                     </button>
-                              <button
-                                onClick={async (e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    
-                                    // Check if certificate is available (not disabled)
-                                    const isCertificateAvailable = approval.isAvailable || false;
-                                    
-                                    if (!isCertificateAvailable) {
-                                      return; // Button is disabled, do nothing
-                                    }
-                                    
-                                    if (pdfMappings[productName] && approval.file === pdfMappings[productName]) {
-                                      const pdfUrl = `${window.location.origin}/pdf/${approval.file}`;
-                                      
-                                      // Verify PDF exists before opening
-                                      try {
-                                        const response = await fetch(pdfUrl, { method: 'HEAD' });
-                                        if (response.ok) {
-                                      setBisDocUrl(pdfUrl);
-                                      setBisPreviewOpen(true);
-                                        } else {
-                                          alert('Certificate not available for viewing. The file does not exist.');
-                                        }
-                                      } catch (error) {
-                                        console.error('Error checking PDF:', error);
-                                        alert('Certificate not available for viewing. The file does not exist.');
-                                      }
-                                    } else {
-                                      alert('Certificate not available for viewing');
-                                    }
-                                  }}
-                                  disabled={approval.isAvailable === false}
-                                  className={`${approval.isAvailable ? 'text-blue-600 hover:text-blue-800 cursor-pointer' : 'text-gray-400 cursor-not-allowed opacity-50'} transition-colors`}
-                                  title={approval.isAvailable ? "View Document" : "PDF not available"}
-                                >
-                                  <Eye className="h-3 w-3" />
-                              </button>
+                            );
+                          })}
                             </div>
                         </div>
-                            <div className="flex justify-between items-center">
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                approval.status === "Valid" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                              }`}>
-                                {approval.status}
-                              </span>
-                              <span className="text-xs text-gray-500">{approval.expiry}</span>
-                      </div>
-                          </div>
-                        ));
-                      })()}
+                    )}
                   </div>
                 </div>
-
-                {/* Licenses */}
-                  <div className="border border-gray-200 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Shield className="h-4 w-4 text-blue-600" />
-                      <h4 className="font-semibold text-gray-900 text-sm">Licenses</h4>
-                  </div>
-                    <div className="space-y-2">
-                      {[
-                        { type: "Manufacturing License", number: "ML/2023/001", status: "Active" },
-                        { type: "Trade License", number: "TL/2023/045", status: "Active" }
-                      ].map((license, index) => (
-                        <div key={index} className="p-2 bg-gray-50 rounded text-xs">
-                          <div className="flex justify-between items-start mb-2">
-                            <div className="font-medium text-xs">{license.type}</div>
-                            <div className="flex gap-2">
-                              <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                                <Download className="h-3 w-3" />
-                              </span>
-                              <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                                <Eye className="h-3 w-3" />
-                              </span>
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-500 mb-1">{license.number}</div>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            license.status === "Active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                          }`}>
-                            {license.status}
-                          </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* GTP */}
-                  <div className="border border-gray-200 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Wrench className="h-4 w-4 text-blue-600" />
-                      <h4 className="font-semibold text-gray-900 text-sm">GTP</h4>
-                  </div>
-                    <div className="space-y-2">
-                      {[
-                        { process: "Raw Material Testing", status: "Completed", date: "2024-01-15" },
-                        { process: "Conductor Testing", status: "Completed", date: "2024-01-16" },
-                        { process: "Insulation Testing", status: "Completed", date: "2024-01-17" },
-                        { process: "Final Inspection", status: "Completed", date: "2024-01-18" }
-                      ].map((process, index) => (
-                        <div key={index} className="p-2 bg-gray-50 rounded text-xs">
-                          <div className="flex justify-between items-start mb-2">
-                            <div className="font-medium text-xs">{process.process}</div>
-                            <div className="flex gap-2">
-                              <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                                <Download className="h-3 w-3" />
-                              </span>
-                              <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                                <Eye className="h-3 w-3" />
-                              </span>
-                        </div>
-                      </div>
-                          <div className="flex justify-between items-center">
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              process.status === "Completed" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                            }`}>
-                              {process.status}
-                            </span>
-                            <span className="text-xs text-gray-500">{process.date}</span>
-                  </div>
-                  </div>
-                      ))}
-                </div>
-              </div>
-
-                {/* Type Test */}
-                  <div className="border border-gray-200 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-3">
-                      <FileText className="h-4 w-4 text-blue-600" />
-                      <h4 className="font-semibold text-gray-900 text-sm">Type Test</h4>
-                  </div>
-                    <div className="space-y-2">
-                      {[
-                        { test: "Electrical Properties", result: "Pass", certificate: "ET/2024/001" },
-                        { test: "Mechanical Properties", result: "Pass", certificate: "MT/2024/001" },
-                        { test: "Fire Resistance", result: "Pass", certificate: "FR/2024/001" },
-                        { test: "Weather Resistance", result: "Pass", certificate: "WR/2024/001" }
-                      ].map((test, index) => (
-                        <div key={index} className="p-2 bg-gray-50 rounded text-xs">
-                          <div className="flex justify-between items-start mb-2">
-                            <div className="font-medium text-xs">{test.test}</div>
-                            <div className="flex gap-2">
-                              <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                                <Download className="h-3 w-3" />
-                              </span>
-                              <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                                <Eye className="h-3 w-3" />
-                              </span>
-                        </div>
-                      </div>
-                          <div className="text-xs text-gray-500 mb-1">{test.certificate}</div>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            test.result === "Pass" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                          }`}>
-                            {test.result}
-                          </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                  </div>
-                        </div>
-                      </div>
-                  </div>
-                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {bisPreviewOpen && (
@@ -3569,33 +3928,33 @@ const MobileProducts = () => {
                 {/* CHHATTISGARH */}
                 <button
                   onClick={() => openApprovalPdf('CHHATTISGARH')}
-                  className="w-full p-4 rounded-lg border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-300 transition-all duration-200"
+                  className="w-full p-4 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-all duration-200"
                 >
                   <div className="flex items-center justify-between">
                     <h4 className="text-lg font-semibold text-gray-900">CHHATTISGARH</h4>
-                    <FileText className="h-5 w-5 text-blue-600" />
+                    <FileText className="h-5 w-5 text-gray-600" />
                   </div>
                 </button>
 
                 {/* MADHYA PRADESH */}
                 <button
                   onClick={() => openApprovalPdf('MADHYA PRADESH')}
-                  className="w-full p-4 rounded-lg border-2 border-green-200 bg-green-50 hover:bg-green-100 hover:border-green-300 transition-all duration-200"
+                  className="w-full p-4 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-all duration-200"
                 >
                   <div className="flex items-center justify-between">
                     <h4 className="text-lg font-semibold text-gray-900">MADHYA PRADESH</h4>
-                    <FileText className="h-5 w-5 text-green-600" />
+                    <FileText className="h-5 w-5 text-gray-600" />
                   </div>
                 </button>
 
                 {/* MAHARASHTRA */}
                 <button
                   onClick={() => openApprovalPdf('MAHARASHTRA')}
-                  className="w-full p-4 rounded-lg border-2 border-purple-200 bg-purple-50 hover:bg-purple-100 hover:border-purple-300 transition-all duration-200"
+                  className="w-full p-4 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-all duration-200"
                 >
                   <div className="flex items-center justify-between">
                     <h4 className="text-lg font-semibold text-gray-900">MAHARASHTRA</h4>
-                    <FileText className="h-5 w-5 text-purple-600" />
+                    <FileText className="h-5 w-5 text-gray-600" />
                   </div>
                 </button>
               </div>
