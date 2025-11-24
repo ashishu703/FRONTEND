@@ -10,6 +10,34 @@ import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import uploadService from '../../api/admin_api/uploadService';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 
+// Helpers -----------------------------------------------------------------
+const extractApiArray = (response) => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  return [];
+};
+
+const extractSummary = (response) => (response?.data ? response.data : response);
+
+const normalizeQuotationStatus = (status = '') => {
+  const normalized = String(status).toLowerCase();
+  if (normalized.includes('reject')) return 'rejected';
+  if (normalized.includes('approve') || normalized === 'paid' || normalized === 'completed') return 'approved';
+  return 'pending';
+};
+
+const calculateCredit = (summary = {}, apiCredit = 0) => {
+  // Handle null/undefined summary
+  if (!summary || typeof summary !== 'object') {
+    return Math.max(0, Number(apiCredit || 0));
+  }
+  const total = Number(summary.total ?? summary.total_amount ?? summary.totalAmount ?? 0);
+  const paid = Number(summary.paid ?? summary.total_paid ?? summary.paidAmount ?? 0);
+  const derived = Math.max(0, paid - total);
+  return Math.max(Number(apiCredit || 0), derived);
+};
+
 // Timeline Sidebar component for viewing payment tracking details
 const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
   const [customerQuotations, setCustomerQuotations] = useState([]);
@@ -43,9 +71,14 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
               quotationService.getSummary(chosenQuotationId),
               paymentService.getPaymentsByQuotation(chosenQuotationId)
             ]);
-            setCustomerQuotations([item.quotationData]);
-            setQuotationSummary(sRes?.data || null);
-            setPaymentsForQuotation(pRes?.data || []);
+            const summaryData = extractSummary(sRes) || null;
+            const paymentsData = extractApiArray(pRes);
+            setCustomerQuotations([{
+              ...item.quotationData,
+              status: summaryData?.status || summaryData?.quotation_status || item.quotationData?.status
+            }]);
+            setQuotationSummary(summaryData);
+            setPaymentsForQuotation(paymentsData);
             return;
           } catch (innerErr) {
             console.warn('Failed to load quotation summary/payments', innerErr);
@@ -54,16 +87,21 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
 
         // Fallback: fetch quotations for this customer/lead and then pick latest approved
         const quotationsResponse = await quotationService.getQuotationsByCustomer(item.leadData.id);
-        const qList = quotationsResponse?.data || [];
+        const qList = extractApiArray(quotationsResponse).map(q => ({
+          ...q,
+          status: q?.status || q?.quotation_status
+        }));
         setCustomerQuotations(qList);
-        const latestApproved = qList.filter(q => q.status === 'approved').slice(-1)[0];
+        const latestApproved = qList
+          .filter(q => normalizeQuotationStatus(q.status) === 'approved')
+          .slice(-1)[0];
         if (latestApproved?.id) {
           const [sRes, pRes] = await Promise.all([
             quotationService.getSummary(latestApproved.id),
             paymentService.getPaymentsByQuotation(latestApproved.id)
           ]);
-          setQuotationSummary(sRes?.data || null);
-          setPaymentsForQuotation(pRes?.data || []);
+          setQuotationSummary(extractSummary(sRes) || null);
+          setPaymentsForQuotation(extractApiArray(pRes));
         }
       } catch (error) {
         console.error('Error fetching customer quotations:', error);
@@ -417,7 +455,8 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
       'partial': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'PARTIAL' },
       'overdue': { bg: 'bg-red-100', text: 'text-red-800', label: 'OVERDUE' },
       'due': { bg: 'bg-red-100', text: 'text-red-800', label: 'PENDING' },
-      'deal-closed': { bg: 'bg-green-100', text: 'text-green-800', label: 'DEAL CLOSED' }
+      'deal-closed': { bg: 'bg-green-100', text: 'text-green-800', label: 'DEAL CLOSED' },
+      'credit': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'CREDIT' }
     };
 
     const config = statusConfig[status] || statusConfig['pending'];
@@ -431,7 +470,9 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
 
   // Calculate payment summary from approved quotations
   const calculatePaymentSummary = () => {
-    const approvedQuotations = customerQuotations.filter(q => q.status === 'approved');
+    const approvedQuotations = customerQuotations.filter(
+      q => normalizeQuotationStatus(q.status) === 'approved'
+    );
     
     if (approvedQuotations.length === 0) {
       return {
@@ -496,47 +537,64 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
   );
   const paymentSummary = dataReady ? calculatePaymentSummary() : null;
 
-  // Build chronological payment timeline with running remaining balance
+  // Build chronological payment timeline - using only data from summary and payments APIs
   const buildPaymentTimeline = () => {
-    const approvedQuotations = customerQuotations.filter(q => q.status === 'approved');
-    if (approvedQuotations.length === 0) return [];
-    const latestApprovedQuotation = approvedQuotations[approvedQuotations.length - 1];
-    const totalAmount = (quotationSummary?.total_amount ?? latestApprovedQuotation.total_amount) || 0;
-    const pmts = Array.isArray(paymentsForQuotation)
-      ? paymentsForQuotation.slice().sort((a, b) => new Date(a.payment_date) - new Date(b.payment_date))
+    // Get payments array - sorted by payment_date
+    const pmts = Array.isArray(paymentsForQuotation) && paymentsForQuotation.length > 0
+      ? paymentsForQuotation.slice().sort((a, b) => new Date(a.payment_date || a.created_at) - new Date(b.payment_date || b.created_at))
       : [];
-    let cumulativePaid = 0;
+    
+    if (pmts.length === 0) return [];
+
+    // Get summary data from API response
+    const summaryRemainingForTimeline = Number(quotationSummary?.remaining || 0);
+    
+    // Track approved payments for labeling
+    let approvedPaymentCount = 0;
+
     return pmts.map((p, idx) => {
       const amountNum = Number(p.paid_amount ?? p.installment_amount ?? p.amount ?? 0);
       const approvalStatus = normalizeApprovalStatus(p);
       const isApproved = approvalStatus === 'approved';
       const isRejected = approvalStatus === 'rejected';
-      if (isApproved) {
-        cumulativePaid += amountNum;
-      }
-      const remaining = Math.max(0, Number(totalAmount) - cumulativePaid);
-      const isFullPayment = cumulativePaid >= totalAmount && totalAmount > 0;
-      let label = isFullPayment ? 'Full Payment' : 'Advance Payment';
+      const paymentRemaining = Number(p.remaining_amount || 0);
+      const isLastPayment = idx === pmts.length - 1;
+      const piDisplay = p.pi_number || p.pi_full_id || p.pi_id || '';
+      
+      // Determine label based on payment data
+      let label = '';
       if (!isApproved && !isRejected) {
         label = 'Pending Approval';
       } else if (isRejected) {
         label = 'Rejected Payment';
+      } else if (isLastPayment && (paymentRemaining === 0 || summaryRemainingForTimeline === 0)) {
+        // If last payment and remaining is 0, it's Full Payment
+        label = 'Full Payment';
+      } else {
+        // Advance payment - show #1, #2, etc.
+        approvedPaymentCount++;
+        label = `Advance Payment #${approvedPaymentCount}`;
       }
+      
+      // Timeline status
       const timelineStatus = isRejected
         ? 'rejected'
         : isApproved
-          ? (isFullPayment ? 'paid' : 'approved')
+          ? (paymentRemaining === 0 ? 'paid' : 'approved')
           : 'pending-approval';
+      
       const timelineIcon = isRejected ? '✕' : isApproved ? '₹' : '⏳';
+      
       return {
         ...p,
         amount: amountNum,
         label,
-        remainingAfter: remaining,
+        remainingAfter: paymentRemaining,
         approvalStatus,
         timelineStatus,
         timelineIcon,
-        approvalNotes: p.approval_notes || ''
+        approvalNotes: p.approval_notes || '',
+        piDisplay
       };
     });
   };
@@ -555,9 +613,20 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
   };
 
   const dueDate = getDueDate();
-  const hasPendingAmount = dataReady && paymentSummary?.dueAmount > 0;
+  
+  // Check payment status from summary API data
+  const summaryRemaining = Number(quotationSummary?.remaining || 0);
+  const summaryTotal = Number(quotationSummary?.total || quotationSummary?.total_amount || 0);
+  const summaryPaid = Number(quotationSummary?.paid || 0);
+  const creditAmount = calculateCredit(quotationSummary || {});
+  const hasCredit = creditAmount > 0;
+  const hasPendingAmount = summaryRemaining > 0;
+  const isDealDone = summaryRemaining === 0 && summaryPaid > 0 && summaryTotal > 0;
+  const lastPaymentDate = paymentTimeline.length > 0
+    ? (paymentTimeline[paymentTimeline.length - 1].payment_date || paymentTimeline[paymentTimeline.length - 1].created_at)
+    : new Date().toISOString();
 
-  // Timeline events data - complete sequence (include payments inline)
+  // Timeline events data - using only data from summary and payments APIs
   const timelineEvents = [
     {
       id: 'customer-created',
@@ -567,17 +636,20 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
       icon: '✓',
       description: `Lead ID: ${item.leadId}`
     },
-    ...customerQuotations.map((quotation, index) => ({
-      id: `quotation-${quotation.id}`,
-      title: `Quotation ${index + 1}`,
-      date: formatIndianDateTime(quotation.created_at),
-      status: quotation.status === 'approved' ? 'approved' : 'pending',
-      icon: quotation.status === 'approved' ? '✓' : '⏳',
-      description: `ID: ${quotation.quotation_number || `QT-${quotation.id}`} | Purchase Order: ${quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'}`,
-      amount: quotation.total_amount || 0,
-      quotationId: quotation.id,
-      quotationStatus: quotation.status
-    })),
+    ...customerQuotations.map((quotation, index) => {
+      const quotationStatus = normalizeQuotationStatus(quotation.status);
+      return {
+        id: `quotation-${quotation.id}`,
+        title: `Quotation ${index + 1}`,
+        date: formatIndianDateTime(quotation.created_at),
+        status: quotationStatus,
+        icon: quotationStatus === 'approved' ? '✓' : quotationStatus === 'rejected' ? '✕' : '⏳',
+        description: `ID: ${quotation.quotation_number || `QT-${quotation.id}`} | Purchase Order: ${quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'}`,
+        amount: quotation.total_amount || 0,
+        quotationId: quotation.id,
+        quotationStatus: quotationStatus
+      };
+    }),
     ...paymentTimeline.map((payment, index) => {
       const approvalStatus = payment.approvalStatus || 'pending';
       let description = `Method: ${payment.payment_method || 'N/A'}`;
@@ -589,31 +661,53 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
       if (payment.approvalNotes?.trim()) {
         description += ` • Note: ${payment.approvalNotes}`;
       }
+      // Combine PI ID and PO together
+      const piAndPO = [];
+      if (payment.piDisplay) {
+        piAndPO.push(`PI: ${payment.piDisplay}`);
+      }
+      if (payment.purchase_order_id) {
+        piAndPO.push(`PO: ${payment.purchase_order_id}`);
+      }
+      if (piAndPO.length > 0) {
+        description += ` • ${piAndPO.join(' | ')}`;
+      }
       return {
-        id: `payment-${index + 1}`,
-        title: `${payment.label} #${index + 1}`,
-        date: formatIndianDateTime(payment.payment_date),
-        status: payment.timelineStatus || (payment.status || 'completed').toLowerCase(),
+        id: `payment-${payment.id || index + 1}`,
+        title: payment.label, // Already has #1, #2, etc. or "Full Payment", "Pending Approval"
+        date: formatIndianDateTime(payment.payment_date || payment.created_at),
+        status: payment.timelineStatus || (payment.payment_status || 'completed').toLowerCase(),
         icon: payment.timelineIcon || '₹',
         description,
         amount: payment.amount ?? payment.installment_amount,
         remainingAmount: payment.remainingAfter
       };
     }),
-    ...(hasPendingAmount ? [{
+    ...(hasCredit ? [{
+      id: 'credit-available',
+      title: 'Credit Available',
+      date: formatIndianDateTime(lastPaymentDate),
+      status: 'credit',
+      icon: '₹',
+      description: 'Extra amount received; usable as credit for next orders',
+      amount: creditAmount
+    }] : []),
+    // Show DUE if there's remaining amount from summary
+    ...(hasPendingAmount && !isDealDone ? [{
       id: 'due-payment',
       title: 'DUE',
       date: dueDate ? formatIndianDate(dueDate) : 'N/A',
       status: 'due',
       icon: '⚠',
       description: dueDate ? `Due Date: ${formatIndianDate(dueDate)}` : 'Payment pending',
-      amount: paymentSummary.dueAmount,
+      amount: summaryRemaining,
       isDue: true
     }] : []),
-    ...((paymentSummary && paymentSummary.paymentStatus === 'paid') ? [{
+    // Show Deal Done if remaining is 0 and payment exists
+    ...(isDealDone && paymentTimeline.length > 0 ? [{
       id: 'deal-closed',
-      title: 'Deal Closed',
-      date: Array.isArray(item.paymentsData) && item.paymentsData.length > 0 ? formatIndianDateTime(item.paymentsData[item.paymentsData.length - 1]?.payment_date) : 'N/A',
+      title: 'Deal Done',
+      date: formatIndianDateTime(lastPaymentDate),
       status: 'completed',
       icon: '✓',
       description: 'Full and final payment received'
@@ -679,6 +773,8 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
                     ? 'bg-green-500'
                     : event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
                     ? 'bg-green-500'
+                    : event.status === 'credit'
+                    ? 'bg-blue-500'
                     : 'bg-gray-400'
                 }`}>
                   <span className="text-white text-sm font-bold">{event.icon}</span>
@@ -696,6 +792,8 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
                     ? 'bg-green-50 border border-green-200'
                     : event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
                     ? 'bg-green-50 border border-green-200'
+                    : event.status === 'credit'
+                    ? 'bg-blue-50 border border-blue-200'
                     : 'bg-gray-50'
                 }`}>
                   <div className="flex justify-between items-start">
@@ -785,7 +883,38 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
   const [selectedPIId, setSelectedPIId] = useState('');
   const [summary, setSummary] = useState({ total: 0, paid: 0, remaining: 0 });
   const [credit, setCredit] = useState(0);
+  const [baseCredit, setBaseCredit] = useState(0);
   const [installments, setInstallments] = useState([]);
+
+  const loadQuotationDetails = async (quotationId, creditSource = baseCredit, quotationDetails = null) => {
+    if (!quotationId) return;
+    const [sRes, pRes, piRes] = await Promise.all([
+      quotationService.getSummary(quotationId),
+      paymentService.getPaymentsByQuotation(quotationId),
+      proformaInvoiceService.getPIsByQuotation(quotationId)
+    ]);
+
+    const summaryData = extractSummary(sRes) || { total: 0, paid: 0, remaining: 0 };
+    const paymentsData = extractApiArray(pRes);
+    const pis = extractApiArray(piRes);
+
+    setSummary(summaryData);
+    setInstallments(paymentsData);
+    setProformaInvoices(pis);
+    setCredit(calculateCredit(summaryData, creditSource));
+
+    if (pis.length > 0) {
+      setSelectedPIId(pis[0].id);
+    } else {
+      setSelectedPIId('');
+    }
+
+    setPaymentData((p) => ({
+      ...p,
+      installment_amount: String(summaryData.remaining ?? summaryData.current_remaining ?? summaryData.balance ?? ''),
+      purchase_order_id: quotationDetails?.work_order_id || item.quotationData?.work_order_id || p.purchase_order_id || ''
+    }));
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -796,50 +925,21 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
           paymentService.getCustomerCredit(item.leadData.id)
         ]);
         
-        // Filter quotations to only show those with PI created
-        const allApprovedQuotations = qRes?.data || [];
-        const quotationsWithPI = [];
-        
-        for (const q of allApprovedQuotations) {
-          try {
-            const piRes = await proformaInvoiceService.getPIsByQuotation(q.id);
-            const pis = piRes?.data || [];
-            if (pis.length > 0) {
-              quotationsWithPI.push(q);
-            }
-          } catch (err) {
-            console.warn(`Error fetching PI for quotation ${q.id}:`, err);
-          }
-        }
-        
-        setApprovedQuotations(quotationsWithPI);
-        setCredit(cRes?.data?.balance || 0);
+        const allApprovedQuotations = extractApiArray(qRes);
+        setApprovedQuotations(allApprovedQuotations);
+
+        const apiCredit = Number(cRes?.data?.balance ?? cRes?.data?.available_credit ?? 0);
+        setBaseCredit(apiCredit);
+        setCredit(apiCredit);
         
         // Pre-select quotation if available
-        const qid = item.quotationData?.id || (quotationsWithPI?.[0]?.id || '');
+        const preselectedQuotation = item.quotationData?.id
+          ? allApprovedQuotations.find(q => q.id === item.quotationData.id)
+          : allApprovedQuotations?.[0];
+        const qid = preselectedQuotation?.id;
         if (qid) {
           setSelectedQuotationId(qid);
-          const [sRes, pRes, piRes] = await Promise.all([
-            quotationService.getSummary(qid),
-            paymentService.getPaymentsByQuotation(qid),
-            proformaInvoiceService.getPIsByQuotation(qid)
-          ]);
-          const s = sRes?.data || { total: 0, paid: 0, remaining: 0 };
-          setSummary(s);
-          setInstallments(pRes?.data || []);
-          const pis = piRes?.data || [];
-          setProformaInvoices(pis);
-          
-          // Auto-select first PI if available
-          if (pis.length > 0) {
-            setSelectedPIId(pis[0].id);
-          }
-          
-          setPaymentData((p) => ({ 
-            ...p, 
-            installment_amount: String(s.remaining || ''),
-            purchase_order_id: item.quotationData?.work_order_id || ''
-          }));
+          await loadQuotationDetails(qid, apiCredit, preselectedQuotation);
         }
       } catch (e) {
         console.error('Init payment modal failed', e);
@@ -855,23 +955,8 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
     setProformaInvoices([]);
     if (!qid) return;
     try {
-      const [sRes, pRes, piRes] = await Promise.all([
-        quotationService.getSummary(qid),
-        paymentService.getPaymentsByQuotation(qid),
-        proformaInvoiceService.getPIsByQuotation(qid)
-      ]);
-      const s = sRes?.data || { total: 0, paid: 0, remaining: 0 };
-      setSummary(s);
-      setInstallments(pRes?.data || []);
-      const pis = piRes?.data || [];
-      setProformaInvoices(pis);
-      
-      // Auto-select first PI if available
-      if (pis.length > 0) {
-        setSelectedPIId(pis[0].id);
-      }
-      
-      setPaymentData((p) => ({ ...p, installment_amount: String(s.remaining || '') }));
+      const selectedQuotation = approvedQuotations.find(q => q.id === qid);
+      await loadQuotationDetails(qid, baseCredit, selectedQuotation);
     } catch (e) {
       setProformaInvoices([]);
       setError('Failed to load PI for selected quotation');
@@ -1298,7 +1383,7 @@ export default function ProductsPage() {
             for (const quotation of quotations) {
               try {
                 const pRes = await paymentService.getPaymentsByQuotation(quotation.id);
-                const payments = Array.isArray(pRes?.data) ? pRes.data : [];
+                const payments = extractApiArray(pRes);
                 // Add payments that aren't already in allPayments
                 payments.forEach(p => {
                   const exists = allPayments.some(ap => ap.id === p.id || 
@@ -1361,7 +1446,7 @@ export default function ProductsPage() {
           let hasPIForQuotation = false;
           try {
             const piRes = await proformaInvoiceService.getPIsByQuotation(quotation.id);
-            const pis = piRes?.data || [];
+            const pis = extractApiArray(piRes);
             hasPIForQuotation = pis.length > 0;
           } catch (err) {
             console.warn(`Error checking PI for quotation ${quotation.id}:`, err);
@@ -1627,7 +1712,7 @@ export default function ProductsPage() {
             for (const quotation of quotations) {
               try {
                 const pRes = await paymentService.getPaymentsByQuotation(quotation.id);
-                const payments = Array.isArray(pRes?.data) ? pRes.data : [];
+                const payments = extractApiArray(pRes);
                 payments.forEach(p => {
                   const exists = allPayments.some(ap => ap.id === p.id || 
                     (ap.payment_reference && p.payment_reference && ap.payment_reference === p.payment_reference));
@@ -2082,7 +2167,9 @@ export default function ProductsPage() {
               if (!selectedPaymentItem?.leadData?.id) return;
               const quotationsResponse = await quotationService.getQuotationsByCustomer(selectedPaymentItem.leadData.id);
               const quotations = quotationsResponse?.data || [];
-              const approvedQuotations = quotations.filter(q => q.status === 'approved');
+              const approvedQuotations = quotations.filter(
+                q => normalizeQuotationStatus(q.status) === 'approved'
+              );
               let payments = [];
               if (quotationId) {
                 const paymentsResponse = await paymentService.getPaymentsByQuotation(quotationId);

@@ -1201,20 +1201,11 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       console.log('Total Revenue (from approved quotations with PI):', totalRevenue)
       console.log('Total Due Payment:', duePayment)
       
-      // Count sale orders - Total number of leads which paid advance amount
-      // A sale order exists when a quotation has an approved advance payment
-      const saleOrderLeadIds = new Set()
-      
-      // Filter advance payments that are approved
-      allPayments.forEach(payment => {
-        if (isPaymentApprovedByAccounts(payment) && isAdvancePayment(payment) && payment.lead_id) {
-          saleOrderLeadIds.add(payment.lead_id)
-        }
-      })
-      
-      // Count unique leads that paid advance amount
-      const totalSaleOrder = saleOrderLeadIds.size
-      console.log('Total Sale Order (leads with advance payment):', totalSaleOrder)
+      // Count sale orders
+      // Business rule: any quotation that has at least one PI created is treated as a Sale Order
+      // So we simply count unique quotation IDs which have a PI
+      const totalSaleOrder = quotationIdsWithPI.size
+      console.log('Total Sale Order (quotations with PI):', totalSaleOrder)
       
       setBusinessMetrics({
         totalQuotation,

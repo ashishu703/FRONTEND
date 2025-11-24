@@ -918,6 +918,13 @@ export default function DashboardContent({ isDarkMode = false }) {
           allPIs = []
         }
       }
+
+      // Set of quotation IDs which have at least one PI (used for Sale Order count)
+      const quotationIdsWithPI = new Set(
+        allPIs
+          .map((pi) => pi.quotation_id)
+          .filter((id) => id != null)
+      )
       
       // Calculate quotation metrics
       const totalQuotation = allQuotations.length
@@ -1112,45 +1119,10 @@ export default function DashboardContent({ isDarkMode = false }) {
         }
       }
       
-      // Count sale orders - from payment_history table
-      // A sale order exists when there's an approved quotation with payment record (any payment = sale order created)
-      const approvedQuotationIds = new Set(
-        allQuotations
-          .filter(q => {
-            const status = (q.status || '').toLowerCase()
-            return status === 'approved'
-          })
-          .map(q => q.id)
-      )
-      
-      // Get unique quotation IDs from payments that belong to approved quotations
-      // If APPROVED payment exists for approved quotation, it means sale order is created
-      // ONLY count sale orders where payment is approved by accounts department
-      const saleOrderQuotationIds = new Set()
-      allPayments.forEach(payment => {
-        if (payment.quotation_id && approvedQuotationIds.has(payment.quotation_id)) {
-          // Check if payment is approved by accounts department
-          const approvalStatus = (payment.approval_status || '').toLowerCase()
-          const isApproved = approvalStatus === 'approved'
-          
-          // Only count if payment is approved
-          if (isApproved) {
-            // Check if payment has total_quotation_amount or any paid amount
-            const totalOrderAmount = Number(
-              payment.total_quotation_amount || 
-              payment.total_amount ||
-              payment.paid_amount ||
-              0
-            )
-            if (totalOrderAmount > 0) {
-              saleOrderQuotationIds.add(payment.quotation_id)
-            }
-          }
-        }
-      })
-      
-      // Count unique sale orders (approved quotations with payments)
-      const totalSaleOrder = saleOrderQuotationIds.size
+      // Count sale orders
+      // Business rule: any quotation that has at least one PI created is treated as a Sale Order
+      // So we simply count unique quotation IDs which have a PI
+      const totalSaleOrder = quotationIdsWithPI.size
       
       setBusinessMetrics({
         totalQuotation,

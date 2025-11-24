@@ -345,85 +345,97 @@ const AccountsPayInfo = ({ setActiveView }) => {
       {/* View Modal */}
       {viewPayment && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 px-4">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl border border-slate-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="bg-white w-full max-w-xl rounded-lg shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
               <div>
-                <p className="text-xs uppercase text-slate-500">Payment Preview</p>
-                <h3 className="text-lg font-semibold text-slate-900">Lead #{viewPayment.lead_id}</h3>
+                <p className="text-[10px] uppercase text-slate-400">Payment Preview</p>
+                <h3 className="text-sm font-semibold text-slate-900">Lead #{viewPayment.lead_id}</h3>
               </div>
-              <button onClick={() => setViewPayment(null)} className="text-slate-500 hover:text-slate-700">
+              <button onClick={() => setViewPayment(null)} className="text-slate-400 hover:text-slate-600 text-lg leading-none">
                 ✕
               </button>
             </div>
-            <div className="px-6 py-5 space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="px-4 py-3 space-y-2.5">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
                 <div>
-                  <p className="text-xs text-slate-500">Customer</p>
-                  <p className="font-medium text-slate-900">{viewPayment.customer_name || 'N/A'}</p>
+                  <p className="text-[10px] text-slate-400 mb-0.5">Customer</p>
+                  <p className="text-xs font-medium text-slate-900 leading-tight">{viewPayment.customer_name || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Business</p>
-                  <p className="font-medium text-slate-900">{viewPayment.business_name || 'N/A'}</p>
+                  <p className="text-[10px] text-slate-400 mb-0.5">Business</p>
+                  <p className="text-xs font-medium text-slate-900 leading-tight">{viewPayment.business_name || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Product</p>
-                  <p className="font-medium text-slate-900">{viewPayment.product_name || 'N/A'}</p>
+                  <p className="text-[10px] text-slate-400 mb-0.5">Product</p>
+                  <p className="text-xs font-medium text-slate-900 leading-tight">{viewPayment.product_name || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Installment Amount</p>
-                  <p className="font-medium text-slate-900">{formatAmount(viewPayment.installment_amount)}</p>
+                  <p className="text-[10px] text-slate-400 mb-0.5">Installment Amount</p>
+                  <p className="text-xs font-medium text-slate-900 leading-tight">{formatAmount(viewPayment.installment_amount)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Quotation ID</p>
-                  <p className="font-medium text-slate-900">{viewPayment.displayQuotation || viewPayment.quotation_id || 'N/A'}</p>
+                  <p className="text-[10px] text-slate-400 mb-0.5">Quotation ID</p>
+                  <p className="text-xs font-medium text-slate-900 leading-tight">{viewPayment.displayQuotation || viewPayment.quotation_id || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">PI ID</p>
-                  <p className="font-medium text-slate-900">{viewPayment.displayPi || 'N/A'}</p>
+                  <p className="text-[10px] text-slate-400 mb-0.5">PI ID</p>
+                  <p className="text-xs font-medium text-slate-900 leading-tight">{viewPayment.displayPi || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Payment Method</p>
-                  <p className="font-medium text-slate-900">
+                  <p className="text-[10px] text-slate-400 mb-0.5">Payment Method</p>
+                  <p className="text-xs font-medium text-slate-900 leading-tight">
                     {(viewPayment.payment_method || 'N/A').replace(/_/g, ' ').toUpperCase()}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Reference No.</p>
-                  <p className="font-medium text-slate-900">{viewPayment.payment_reference || '—'}</p>
+                  <p className="text-[10px] text-slate-400 mb-0.5">Reference No.</p>
+                  <p className="text-xs font-medium text-slate-900 leading-tight">{viewPayment.payment_reference || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500">Payment Date</p>
-                  <p className="font-medium text-slate-900">
+                  <p className="text-[10px] text-slate-400 mb-0.5">Payment Date</p>
+                  <p className="text-xs font-medium text-slate-900 leading-tight">
                     {viewPayment.payment_date ? new Date(viewPayment.payment_date).toLocaleString() : 'N/A'}
                   </p>
                 </div>
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-1">Address</p>
-                <p className="text-sm text-slate-700">{viewPayment.address || 'N/A'}</p>
+                <p className="text-[10px] text-slate-400 mb-0.5">Address</p>
+                <p className="text-xs text-slate-700 leading-tight">{viewPayment.address || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-1">Remarks</p>
-                <p className="text-sm text-slate-700">{viewPayment.remarks || 'No remarks added'}</p>
+                <p className="text-[10px] text-slate-400 mb-0.5">Remarks</p>
+                <p className="text-xs text-slate-700 leading-tight">{viewPayment.remarks || 'No remarks added'}</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-1">Accounts Notes</p>
-                <p className="text-sm text-slate-500">
+                <p className="text-[10px] text-slate-400 mb-0.5">Accounts Notes</p>
+                <p className="text-xs text-slate-500 leading-tight">
                   {viewPayment.approval_notes?.trim() ? viewPayment.approval_notes : 'No notes provided'}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 mb-1">Payment Receipt</p>
+                <p className="text-[10px] text-slate-400 mb-1">Payment Receipt</p>
                 {viewPayment.payment_receipt_url ? (
-                  <div className="border border-slate-200 rounded-lg overflow-hidden max-w-md">
-                    <img
-                      src={viewPayment.payment_receipt_url}
-                      alt="Payment receipt"
-                      className="max-h-64 w-full object-contain bg-slate-50"
-                    />
+                  <div className="flex items-start gap-2">
+                    <div className="border border-slate-200 rounded overflow-hidden bg-white flex-shrink-0" style={{ maxWidth: '160px', maxHeight: '120px' }}>
+                      <img
+                        src={viewPayment.payment_receipt_url}
+                        alt="Payment receipt"
+                        className="w-full h-full object-contain"
+                        style={{ maxHeight: '120px', maxWidth: '160px' }}
+                        loading="lazy"
+                      />
+                    </div>
+                    <a
+                      href={viewPayment.payment_receipt_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-2 py-1 text-[10px] font-medium text-indigo-600 border border-indigo-200 rounded hover:bg-indigo-50 transition-colors h-fit mt-0.5"
+                    >
+                      Open
+                    </a>
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-500">No receipt uploaded</p>
+                  <p className="text-xs text-slate-500">No receipt uploaded</p>
                 )}
               </div>
             </div>
