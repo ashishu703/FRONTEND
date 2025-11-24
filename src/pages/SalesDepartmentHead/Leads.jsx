@@ -952,26 +952,135 @@ const LeadsSimplified = () => {
     toastManager.success('CSV template downloaded successfully');
   };
 
-  // Parse CSV file
+  // Parse CSV file with proper handling of quoted fields containing commas
   const parseCSV = (csvText) => {
-    const lines = csvText.split('\n');
-    const headers = lines[0].split(',').map(h => h.trim());
+    const lines = csvText.split(/\r?\n/).filter(line => line.trim());
+    if (lines.length === 0) return [];
+    
+    // Improved CSV line parser that properly handles quoted fields with commas
+    const parseCSVLine = (line) => {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const nextChar = i < line.length - 1 ? line[i + 1] : null;
+        
+        if (char === '"') {
+          if (inQuotes) {
+            // We're inside quotes
+            if (nextChar === '"') {
+              // Escaped quote (double quote) - add single quote to content
+              current += '"';
+              i++; // Skip next quote
+            } else if (nextChar === ',' || nextChar === null || nextChar === '\r' || nextChar === '\n') {
+              // Closing quote followed by comma or end of line
+              inQuotes = false;
+              // Don't add the closing quote to current
+            } else {
+              // Quote inside quoted field that's not escaped - might be malformed, but keep it
+              current += char;
+            }
+          } else {
+            // Starting a quoted field
+            inQuotes = true;
+            // Don't add opening quote to current
+          }
+        } else if (char === ',' && !inQuotes) {
+          // Field separator (only when NOT inside quotes)
+          result.push(current);
+          current = '';
+        } else {
+          // Regular character - add to current field
+          current += char;
+        }
+      }
+      
+      // Add the last field (even if line ends without comma)
+      result.push(current);
+      
+      // Clean up quotes from field boundaries
+      return result.map(field => {
+        let cleaned = field.trim();
+        // Remove surrounding quotes if present
+        if (cleaned.length >= 2 && cleaned.startsWith('"') && cleaned.endsWith('"')) {
+          cleaned = cleaned.slice(1, -1);
+        }
+        // Replace escaped quotes (double quotes) with single quotes
+        cleaned = cleaned.replace(/""/g, '"');
+        return cleaned;
+      });
+    };
+    
+    // Parse headers
+    const headerLine = parseCSVLine(lines[0]);
+    const headers = headerLine.map(h => h.trim());
+    
+    // STRICT: Map headers to expected column names (case-insensitive)
+    const headerMap = {
+      'customer name': 'Customer Name',
+      'mobile number': 'Mobile Number',
+      'whatsapp number': 'WhatsApp Number',
+      'email': 'Email',
+      'address': 'Address',
+      'gst number': 'GST Number',
+      'business name': 'Business Name',
+      'lead source': 'Lead Source',
+      'business category': 'Business Category',
+      'category': 'Category',
+      'state': 'State',
+      'date (yyyy-mm-dd)': 'Date (YYYY-MM-DD)',
+      'date': 'Date',
+      'assigned salesperson': 'Assigned Salesperson',
+      'assigned telecaller': 'Assigned Telecaller',
+      'product names (comma separated)': 'Product Names (comma separated)',
+      'product names': 'Product Names'
+    };
+    
+    const normalizedHeaders = headers.map(h => {
+      const lower = h.toLowerCase().trim();
+      return headerMap[lower] || h;
+    });
+    
     const data = [];
     const isBlank = (v) => {
       const s = (v || '').toString().trim().toLowerCase();
       return s === '' || s === 'n/a' || /^-+$/.test(s);
     };
     
+    // Parse data rows
+    const expectedColumnCount = normalizedHeaders.length;
     for (let i = 1; i < lines.length; i++) {
       if (lines[i].trim()) {
-        const values = lines[i].split(',').map(v => v.trim());
+        const values = parseCSVLine(lines[i]);
+        
+        // STRICT VALIDATION: Check if column count matches headers
+        if (values.length !== expectedColumnCount) {
+          console.warn(`Row ${i + 1}: Expected ${expectedColumnCount} columns, found ${values.length}. Data may be misaligned.`, {
+            headers: normalizedHeaders,
+            values: values
+          });
+          // Try to pad or truncate to match header count
+          while (values.length < expectedColumnCount) {
+            values.push('');
+          }
+          if (values.length > expectedColumnCount) {
+            values.splice(expectedColumnCount);
+          }
+        }
+        
         const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
+        
+        // Map values to headers by index - STRICT: each column maps to its header
+        normalizedHeaders.forEach((header, index) => {
+          const value = (values[index] || '').trim();
+          row[header] = value;
         });
+        
         // Keep only meaningful rows (at least name or mobile present)
-        const name = row['Customer Name'] || row['customer'] || '';
-        const mobile = row['Mobile Number'] || row['phone'] || '';
+        const name = row['Customer Name'] || '';
+        const mobile = row['Mobile Number'] || '';
         if (!(isBlank(name) && isBlank(mobile))) {
           data.push(row);
         }
@@ -1035,7 +1144,7 @@ const LeadsSimplified = () => {
     return new Date().toISOString().split('T')[0];
   };
 
-  // Import leads from CSV
+  // Import leads from CSV with strict validation
   const handleImportLeads = async () => {
     if (importPreview.length === 0) {
       toastManager.error('No data to import');
@@ -1045,29 +1154,87 @@ const LeadsSimplified = () => {
     setImporting(true);
 
     try {
-      const leadsPayload = importPreview.map((row) => ({
-        customer: row['Customer Name'] || null,
-        phone: row['Mobile Number'] || null,
-        email: row['Email'] || null,
-        address: row['Address'] || null,
-        business: row['Business Name'] || null,
-        leadSource: row['Lead Source'] || null,
-        category: row['Business Category'] || 'N/A',
-        salesStatus: 'PENDING',
-        gstNo: row['GST Number'] || null,
-        productNames: row['Product Names (comma separated)'] || 'N/A',
-        state: row['State'] || null,
-        assignedSalesperson: row['Assigned Salesperson'] || null,
-        assignedTelecaller: row['Assigned Telecaller'] || null,
-        whatsapp: row['WhatsApp Number'] || row['Mobile Number'] || null,
-        date: formatDate(row['Date (YYYY-MM-DD)']),
-        createdAt: new Date().toISOString().split('T')[0],
-        telecallerStatus: 'INACTIVE',
-        paymentStatus: 'PENDING',
-        connectedStatus: 'pending',
-        finalStatus: 'open',
-        customerType: 'business'
-      }));
+      const validationErrors = [];
+      const leadsPayload = importPreview.map((row, index) => {
+        // STRICT: Extract values from correct columns only
+        let customer = (row['Customer Name'] || '').trim();
+        let phone = (row['Mobile Number'] || '').trim();
+        let whatsapp = (row['WhatsApp Number'] || '').trim();
+        const email = (row['Email'] || '').trim();
+        const address = (row['Address'] || '').trim();
+        const business = (row['Business Name'] || '').trim();
+        const gstNo = (row['GST Number'] || '').trim();
+        
+        // STRICT VALIDATION: Customer name max 100 chars
+        if (customer.length > 100) {
+          validationErrors.push(`Row ${index + 2}: Customer Name exceeds 100 characters (${customer.length} chars). Truncating.`);
+          customer = customer.substring(0, 100);
+        }
+        
+        // Clean phone: remove non-digits, allow up to 50 characters
+        if (phone) {
+          phone = phone.replace(/\D/g, ''); // Remove non-digits
+          if (phone.length > 50) {
+            validationErrors.push(`Row ${index + 2}: Mobile Number exceeds 50 characters. Truncating.`);
+            phone = phone.substring(0, 50);
+          }
+        }
+        
+        // Clean whatsapp: remove non-digits, allow up to 50 characters
+        if (whatsapp) {
+          whatsapp = whatsapp.replace(/\D/g, ''); // Remove non-digits
+          if (whatsapp.length > 50) {
+            validationErrors.push(`Row ${index + 2}: WhatsApp Number exceeds 50 characters. Truncating.`);
+            whatsapp = whatsapp.substring(0, 50);
+          }
+        } else {
+          // If WhatsApp is empty, use phone number
+          whatsapp = phone;
+        }
+        
+        // Validate phone format (should be numeric, 10-20 digits recommended but allow longer)
+        if (phone && phone.length > 0 && phone.length < 10) {
+          validationErrors.push(`Row ${index + 2}: Mobile Number seems too short (${phone.length} digits). Minimum 10 digits recommended.`);
+        }
+        
+        // Validate whatsapp format (should be numeric, 10-20 digits recommended but allow longer)
+        if (whatsapp && whatsapp.length > 0 && whatsapp.length < 10) {
+          validationErrors.push(`Row ${index + 2}: WhatsApp Number seems too short (${whatsapp.length} digits). Minimum 10 digits recommended.`);
+        }
+        
+        return {
+          customer: customer || null,
+          phone: phone || null,
+          email: email || null,
+          address: address || null,
+          business: business || null,
+          leadSource: (row['Lead Source'] || '').trim() || null,
+          category: (row['Business Category'] || '').trim() || 'N/A',
+          salesStatus: 'PENDING',
+          gstNo: gstNo || null,
+          productNames: (row['Product Names (comma separated)'] || '').trim() || 'N/A',
+          state: (row['State'] || '').trim() || null,
+          assignedSalesperson: (row['Assigned Salesperson'] || '').trim() || null,
+          assignedTelecaller: (row['Assigned Telecaller'] || '').trim() || null,
+          whatsapp: whatsapp || phone || null,
+          date: formatDate(row['Date (YYYY-MM-DD)']),
+          createdAt: new Date().toISOString().split('T')[0],
+          telecallerStatus: 'INACTIVE',
+          paymentStatus: 'PENDING',
+          connectedStatus: 'pending',
+          finalStatus: 'open',
+          customerType: 'business'
+        };
+      });
+      
+      // Show validation warnings if any
+      if (validationErrors.length > 0) {
+        console.warn('CSV Import Validation Warnings:', validationErrors);
+        // Show first few errors in toast, rest in console
+        const errorMsg = validationErrors.slice(0, 3).join('; ') + 
+          (validationErrors.length > 3 ? ` and ${validationErrors.length - 3} more...` : '');
+        toastManager.error(`Validation issues found: ${errorMsg}`);
+      }
 
       const resp = await departmentHeadService.importLeads(leadsPayload);
 
