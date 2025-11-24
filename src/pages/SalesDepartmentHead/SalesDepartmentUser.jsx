@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, UserPlus, Upload, Edit, LogOut, Trash2, Hash, User, Mail, Shield, Building, Target, Calendar, MoreHorizontal, TrendingUp, AlertTriangle, LogIn } from 'lucide-react';
+import { Search, UserPlus, Upload, Edit, LogOut, Trash2, Hash, User, Mail, Shield, Building, Target, Calendar, MoreHorizontal, TrendingUp, AlertTriangle, LogIn, Info } from 'lucide-react';
 import departmentUserService, { apiToUiDepartment } from '../../api/admin_api/departmentUserService';
+import departmentHeadService from '../../api/admin_api/departmentHeadService';
 import { useAuth } from '../../context/AuthContext';
 import toastManager from '../../utils/ToastManager';
 
@@ -39,11 +40,143 @@ const SalesDepartmentUser = ({ setActiveView }) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [headInfo, setHeadInfo] = useState(null);
+  const [remainingTarget, setRemainingTarget] = useState(0);
+  const [remainingDays, setRemainingDays] = useState(30);
+  const [headTargetStartDate, setHeadTargetStartDate] = useState(null);
+  const [targetExpirationDate, setTargetExpirationDate] = useState(null);
 
-  const handleAddUser = () => setShowAddModal(true);
-  const handleEdit = (userId) => {
+  const handleAddUser = async () => {
+    setShowAddModal(true);
+    // Fetch department head info to get remaining days and target
+    try {
+      if (currentUser?.id) {
+        const headRes = await departmentHeadService.getHeadById(currentUser.id);
+        const headData = headRes?.data?.user || headRes?.user || headRes?.data || headRes;
+        
+        if (headData) {
+          setHeadInfo(headData);
+          
+          // Get department head's target start date
+          const headStartDate = headData.target_start_date || headData.targetStartDate;
+          let formattedStartDate = null;
+          if (headStartDate) {
+            const date = new Date(headStartDate);
+            formattedStartDate = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+            setHeadTargetStartDate(formattedStartDate);
+            
+            // Auto-set target start date in form
+            setNewUser(prev => ({
+              ...prev,
+              targetStartDate: formattedStartDate
+            }));
+          } else {
+            // If no start date, use today
+            const today = new Date().toISOString().split('T')[0];
+            setHeadTargetStartDate(today);
+            setNewUser(prev => ({
+              ...prev,
+              targetStartDate: today
+            }));
+          }
+          
+          // Calculate remaining days and expiration date (month end logic)
+          let daysRemaining = 30;
+          let expirationDate = null;
+          if (headStartDate) {
+            const startDate = new Date(headStartDate);
+            const now = new Date();
+            
+            // Calculate month end from start date (target expires at end of the month it started)
+            const monthEnd = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+            monthEnd.setHours(23, 59, 59, 999);
+            
+            // Format expiration date for display (DD-MM-YYYY)
+            const day = String(monthEnd.getDate()).padStart(2, '0');
+            const month = String(monthEnd.getMonth() + 1).padStart(2, '0');
+            const year = monthEnd.getFullYear();
+            expirationDate = `${day}-${month}-${year}`;
+            setTargetExpirationDate(expirationDate);
+            
+            // Calculate days remaining until month end
+            if (monthEnd < now) {
+              daysRemaining = 0;
+            } else {
+              const diffTime = monthEnd - now;
+              daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            }
+          } else {
+            setTargetExpirationDate(null);
+          }
+          setRemainingDays(daysRemaining);
+          
+          // Calculate remaining target
+          const headTarget = parseFloat(headData.target || 0);
+          const existingUsers = await departmentUserService.listUsers({});
+          const users = existingUsers?.data?.users || existingUsers?.users || [];
+          const totalDistributed = users.reduce((sum, u) => sum + parseFloat(u.target || 0), 0);
+          const remaining = Math.max(0, headTarget - totalDistributed);
+          setRemainingTarget(remaining);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching head info:', err);
+    }
+  };
+  const handleEdit = async (userId) => {
     const u = users.find(x => x.id === userId);
     if (!u) return;
+    
+    // Fetch department head info to get remaining days and expiration date
+    try {
+      if (currentUser?.id) {
+        const headRes = await departmentHeadService.getHeadById(currentUser.id);
+        const headData = headRes?.data?.user || headRes?.user || headRes?.data || headRes;
+        
+        if (headData) {
+          const headStartDate = headData.target_start_date || headData.targetStartDate;
+          let formattedStartDate = null;
+          if (headStartDate) {
+            const date = new Date(headStartDate);
+            formattedStartDate = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+            setHeadTargetStartDate(formattedStartDate);
+          }
+          
+          let daysRemaining = 30;
+          let expirationDate = null;
+          
+          if (headStartDate) {
+            const startDate = new Date(headStartDate);
+            const now = new Date();
+            
+            // Calculate month end from start date (target expires at end of the month it started)
+            const monthEnd = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+            monthEnd.setHours(23, 59, 59, 999);
+            
+            // Format expiration date for display (DD-MM-YYYY)
+            const day = String(monthEnd.getDate()).padStart(2, '0');
+            const month = String(monthEnd.getMonth() + 1).padStart(2, '0');
+            const year = monthEnd.getFullYear();
+            expirationDate = `${day}-${month}-${year}`;
+            setTargetExpirationDate(expirationDate);
+            
+            // Calculate days remaining until month end
+            if (monthEnd < now) {
+              daysRemaining = 0;
+            } else {
+              const diffTime = monthEnd - now;
+              daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            }
+          } else {
+            setTargetExpirationDate(null);
+          }
+          setRemainingDays(daysRemaining);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching head info for edit:', err);
+    }
+    
     // Initialize customDays if current duration is not in standard options
     const currentDuration = String(u.targetDurationDays || u.target_duration_days || '30');
     const isCustom = !['15', '30', '60', '90'].includes(currentDuration);
@@ -465,7 +598,14 @@ const SalesDepartmentUser = ({ setActiveView }) => {
               <h3 className="text-base font-semibold text-gray-900">Add User</h3>
               <button
                 className="p-2 text-gray-500 hover:text-gray-700"
-                onClick={() => setShowAddModal(false)}
+                onClick={() => {
+                  setShowAddModal(false);
+                  setNewUser({ username: '', email: '', password: '', target: '', targetStartDate: '', targetDurationDays: '30', customDays: '' });
+                  setHeadInfo(null);
+                  setRemainingTarget(0);
+                  setRemainingDays(30);
+                  setHeadTargetStartDate(null);
+                }}
                 aria-label="Close"
               >
                 ✕
@@ -485,27 +625,32 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                     target: Number(newUser.target || 0)
                   };
                   
-                  // Only add target dates if both start date and duration are provided
-                  if (newUser.targetStartDate && newUser.targetStartDate.trim() !== '' && 
-                      newUser.targetDurationDays && newUser.targetDurationDays !== '') {
-                    const targetStartDate = new Date(newUser.targetStartDate);
-                    if (!isNaN(targetStartDate.getTime())) {
-                      const targetDurationDays = newUser.targetDurationDays === 'custom' 
-                        ? parseInt(newUser.customDays || 0)
-                        : parseInt(newUser.targetDurationDays || 0);
-                      
-                      if (targetDurationDays > 0) {
-                        const targetEndDate = new Date(targetStartDate);
-                        targetEndDate.setDate(targetEndDate.getDate() + targetDurationDays);
-                        payload.targetStartDate = targetStartDate.toISOString().split('T')[0];
-                        payload.targetDurationDays = targetDurationDays;
-                      }
-                    }
+                  // Always use department head's target start date
+                  const targetStartDate = headTargetStartDate 
+                    ? new Date(headTargetStartDate)
+                    : (newUser.targetStartDate ? new Date(newUser.targetStartDate) : new Date());
+                    
+                  // Always use exactly remaining days - locked to department head's period (month end)
+                  const finalDuration = remainingDays;
+                  
+                  if (finalDuration > 0 && targetStartDate) {
+                    // Calculate target end date as month end (not start date + duration)
+                    const monthEnd = new Date(targetStartDate.getFullYear(), targetStartDate.getMonth() + 1, 0);
+                    monthEnd.setHours(23, 59, 59, 999);
+                    
+                    payload.targetStartDate = targetStartDate.toISOString().split('T')[0];
+                    payload.targetDurationDays = finalDuration;
+                    // Note: targetEndDate will be calculated on backend as month end
                   }
+                  
                   await departmentUserService.createUser(payload);
                   await fetchUsers();
                   setShowAddModal(false);
                   setNewUser({ username: '', email: '', password: '', target: '', targetStartDate: '', targetDurationDays: '30', customDays: '' });
+                  setHeadInfo(null);
+                  setRemainingTarget(0);
+                  setRemainingDays(30);
+                  setHeadTargetStartDate(null);
                   toastManager.success('User created successfully');
                 } catch (err) {
                   // Extract error message from API response
@@ -552,58 +697,88 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Payment Target (Rs)</label>
+                  <label className="block text-xs text-gray-600 mb-1">
+                    Payment Target (Rs)
+                    {remainingTarget > 0 && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        (Remaining: ₹{remainingTarget.toLocaleString('en-IN')})
+                      </span>
+                    )}
+                  </label>
                   <input
                     type="number"
                     min="0"
+                    max={remainingTarget || undefined}
                     value={newUser.target}
-                    onChange={(e) => setNewUser({ ...newUser, target: e.target.value })}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      if (remainingTarget > 0 && value > remainingTarget) {
+                        toastManager.error(`Target cannot exceed remaining limit: ₹${remainingTarget.toLocaleString('en-IN')}`);
+                        return;
+                      }
+                      setNewUser({ ...newUser, target: e.target.value });
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Enter payment target"
                   />
+                  {remainingTarget > 0 && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Maximum: ₹{remainingTarget.toLocaleString('en-IN')}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Target Start Date</label>
+                  <label className="block text-xs text-gray-600 mb-1">
+                    Target Start Date
+                    <span className="ml-2 text-xs text-orange-600 font-medium">
+                      (Locked: matches department head)
+                    </span>
+                  </label>
                   <input
                     type="date"
-                    value={newUser.targetStartDate}
-                    onChange={(e) => setNewUser({ ...newUser, targetStartDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={newUser.targetStartDate || headTargetStartDate || ''}
+                    disabled
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
                   />
+                  <div className="mt-1 flex items-start gap-1 text-xs text-orange-600 bg-orange-50 px-2 py-1.5 rounded">
+                    <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                    <span>Target start date is automatically set to match department head's target start date. This cannot be changed.</span>
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Target Duration (Days)</label>
-                  <select
-                    value={newUser.targetDurationDays}
-                    onChange={(e) => setNewUser({ ...newUser, targetDurationDays: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="15">15 Days</option>
-                    <option value="30">30 Days (Monthly)</option>
-                    <option value="60">60 Days (2 Months)</option>
-                    <option value="90">90 Days (Quarterly)</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                </div>
-                {newUser.targetDurationDays === 'custom' && (
-                  <div className="md:col-span-2">
-                    <label className="block text-xs text-gray-600 mb-1">Custom Duration (Days)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={newUser.customDays || ''}
-                      onChange={(e) => setNewUser({ ...newUser, customDays: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter number of days"
-                    />
+                  <label className="block text-xs text-gray-600 mb-1">
+                    Target Duration (Days)
+                    <span className="ml-2 text-xs text-orange-600 font-medium">
+                      (Locked: {remainingDays} days remaining - expires {targetExpirationDate || 'at month end'})
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={`${remainingDays} days remaining (expires ${targetExpirationDate || 'at month end'})`}
+                    disabled
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
+                  />
+                  <div className="mt-1 flex items-start gap-1 text-xs text-orange-600 bg-orange-50 px-2 py-1.5 rounded">
+                    <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                    <span>Target duration is automatically set to {remainingDays} days (expires on {targetExpirationDate || 'month end'}) to match department head's remaining target period. This cannot be changed.</span>
                   </div>
-                )}
+                </div>
               </div>
               <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setNewUser({ username: '', email: '', password: '', target: '', targetStartDate: '', targetDurationDays: '30', customDays: '' });
+                    setHeadInfo(null);
+                    setRemainingTarget(0);
+                    setRemainingDays(30);
+                    setHeadTargetStartDate(null);
+                    setTargetExpirationDate(null);
+                  }}
                 >
                   Cancel
                 </button>
@@ -630,6 +805,9 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                 onClick={() => {
                   setShowEditModal(false);
                   setEditingUser(null);
+                  setTargetExpirationDate(null);
+                  setRemainingDays(30);
+                  setHeadTargetStartDate(null);
                 }}
                 aria-label="Close"
               >
@@ -648,54 +826,24 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                     target: Number(editingUser.target || 0)
                   };
                   
-                  // Handle target date updates - only if explicitly set
-                  const hasTargetStartDate = editingUser.targetStartDate && 
-                                           editingUser.targetStartDate.trim() !== '';
-                  const hasTargetDuration = editingUser.targetDurationDays && 
-                                          editingUser.targetDurationDays !== '';
+                  // Always use department head's target start date and remaining days (locked)
+                  const targetStartDate = headTargetStartDate 
+                    ? new Date(headTargetStartDate)
+                    : (editingUser.targetStartDate ? new Date(editingUser.targetStartDate) : 
+                       (editingUser.target_start_date ? new Date(editingUser.target_start_date) : new Date()));
+                    
+                  // Always use exactly remaining days - locked to department head's period (month end)
+                  const finalDuration = remainingDays;
                   
-                  // Only update target dates if explicitly provided - no auto-selection
-                  if (hasTargetStartDate || hasTargetDuration) {
-                    let targetStartDate = null;
-                    let targetDurationDays = null;
+                  if (finalDuration > 0 && targetStartDate) {
+                    // Calculate target end date as month end (not start date + duration)
+                    // This ensures target expires at month end, matching department head's logic
+                    const monthEnd = new Date(targetStartDate.getFullYear(), targetStartDate.getMonth() + 1, 0);
+                    monthEnd.setHours(23, 59, 59, 999);
                     
-                    // Determine targetStartDate - use provided value or existing, NO auto-defaults
-                    if (hasTargetStartDate) {
-                      targetStartDate = new Date(editingUser.targetStartDate);
-                      if (isNaN(targetStartDate.getTime())) {
-                        targetStartDate = null; // Invalid date, don't proceed
-                      }
-                    } else if (editingUser.target_start_date) {
-                      targetStartDate = new Date(editingUser.target_start_date);
-                    }
-                    // No else - if not provided and no existing, leave as null
-                    
-                    // Determine targetDurationDays - use provided value or existing, NO auto-defaults
-                    if (hasTargetDuration) {
-                      if (editingUser.targetDurationDays === 'custom') {
-                        targetDurationDays = editingUser.customDays ? parseInt(editingUser.customDays) : null;
-                      } else {
-                        targetDurationDays = parseInt(editingUser.targetDurationDays);
-                      }
-                      if (isNaN(targetDurationDays) || targetDurationDays <= 0) {
-                        targetDurationDays = null; // Invalid duration, don't proceed
-                      }
-                    } else if (editingUser.target_duration_days) {
-                      targetDurationDays = parseInt(editingUser.target_duration_days);
-                    }
-                    // No else - if not provided and no existing, leave as null
-                    
-                    // Only calculate and add to payload if we have valid start date AND duration
-                    if (targetStartDate && !isNaN(targetStartDate.getTime()) && targetDurationDays && targetDurationDays > 0) {
-                      const targetEndDate = new Date(targetStartDate);
-                      targetEndDate.setDate(targetEndDate.getDate() + targetDurationDays);
-                      
-                      // Add to payload as ISO date strings (YYYY-MM-DD)
-                      payload.targetStartDate = targetStartDate.toISOString().split('T')[0];
-                      payload.targetEndDate = targetEndDate.toISOString().split('T')[0];
-                      payload.targetDurationDays = targetDurationDays;
-                    }
-                    // If invalid combination, don't add dates to payload (keeps existing or null)
+                    payload.targetStartDate = targetStartDate.toISOString().split('T')[0];
+                    payload.targetDurationDays = finalDuration;
+                    // Note: Backend will calculate target_end_date as month end
                   }
                   
                   await departmentUserService.updateUser(editingUser.id, payload);
@@ -746,67 +894,46 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Enter payment target"
                   />
+                  <div className="mt-3">
+                    <label className="block text-xs text-gray-600 mb-1">
+                      Target Duration (Days)
+                      <span className="ml-2 text-xs text-orange-600 font-medium">
+                        (Locked: {remainingDays} days remaining - expires {targetExpirationDate || 'at month end'})
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={`${remainingDays} days remaining (expires ${targetExpirationDate || 'at month end'})`}
+                      disabled
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
+                    />
+                    <div className="mt-1 flex items-start gap-1 text-xs text-orange-600 bg-orange-50 px-2 py-1.5 rounded">
+                      <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      <span>Target duration is automatically set to {remainingDays} days (expires on {targetExpirationDate || 'month end'}) to match department head's remaining target period. This cannot be changed.</span>
+                    </div>
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Target Start Date</label>
+                  <label className="block text-xs text-gray-600 mb-1">
+                    Target Start Date
+                    <span className="ml-2 text-xs text-orange-600 font-medium">
+                      (Locked: matches department head)
+                    </span>
+                  </label>
                   <input
                     type="date"
-                    value={editingUser.targetStartDateInput || editingUser.targetStartDate || 
+                    value={headTargetStartDate || editingUser.targetStartDateInput || editingUser.targetStartDate || 
                           (editingUser.target_start_date ? new Date(editingUser.target_start_date + 'T00:00:00').toISOString().split('T')[0] : '')}
-                    onChange={(e) => {
-                      const dateValue = e.target.value;
-                      setEditingUser({ 
-                        ...editingUser, 
-                        targetStartDate: dateValue,
-                        targetStartDateInput: dateValue
-                      });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Target Duration (Days)</label>
-                  <select
-                    value={editingUser.targetDurationDays || (editingUser.target_duration_days && !['15', '30', '60', '90'].includes(String(editingUser.target_duration_days)) ? 'custom' : String(editingUser.target_duration_days)) || '30'}
-                    onChange={(e) => {
-                      const newState = { ...editingUser, targetDurationDays: e.target.value };
-                      // If switching away from custom, clear customDays
-                      if (e.target.value !== 'custom') {
-                        newState.customDays = '';
-                      }
-                      setEditingUser(newState);
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="15">15 Days</option>
-                    <option value="30">30 Days (Monthly)</option>
-                    <option value="60">60 Days (2 Months)</option>
-                    <option value="90">90 Days (Quarterly)</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                </div>
-                {(editingUser.targetDurationDays === 'custom' || (editingUser.target_duration_days && !['15', '30', '60', '90'].includes(String(editingUser.target_duration_days)))) && (
-                  <div className="md:col-span-2">
-                    <label className="block text-xs text-gray-600 mb-1">Custom Duration (Days)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={editingUser.customDays || editingUser.target_duration_days || ''}
-                      onChange={(e) => setEditingUser({ ...editingUser, customDays: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter number of days"
-                    />
+                  <div className="mt-1 flex items-start gap-1 text-xs text-orange-600 bg-orange-50 px-2 py-1.5 rounded">
+                    <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                    <span>Target start date is automatically set to match department head's target start date. This cannot be changed.</span>
                   </div>
-                )}
-                {editingUser.targetStatus && editingUser.targetStatus !== 'active' && (
-                  <div className="md:col-span-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-xs text-blue-800">
-                      <strong>Current Status:</strong> {editingUser.targetStatus.toUpperCase()}
-                      <br />
-                      Setting a new target will reset status to ACTIVE.
-                    </p>
-                  </div>
-                )}
+                </div>
               </div>
               <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
                 <button

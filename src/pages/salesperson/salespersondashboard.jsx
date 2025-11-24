@@ -738,7 +738,6 @@ function GaugeChart({ value, max = 100, height = 200, isDarkMode = false }) {
 
 export default function DashboardContent({ isDarkMode = false }) {
   const [activeTab, setActiveTab] = useState('overview')
-  const [dateFilter, setDateFilter] = useState('')
   const [overviewDateFilter, setOverviewDateFilter] = useState('')
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
@@ -861,35 +860,33 @@ export default function DashboardContent({ isDarkMode = false }) {
         return
       }
       
-      // Fetch ALL quotations for all leads
+      // Fetch ALL quotations for all leads using bulk API
       let allQuotations = []
-      for (const leadId of leadIds) {
-        try {
-          const qRes = await quotationService.getQuotationsByCustomer(leadId)
-          const quotations = qRes?.data || []
-          allQuotations.push(...quotations)
-        } catch (err) {
-          console.warn(`Error fetching quotations for lead ${leadId}:`, err)
-        }
+      try {
+        const qRes = await quotationService.getBulkQuotationsByCustomers(leadIds)
+        allQuotations = qRes?.data || []
+      } catch (err) {
+        console.error('Error fetching bulk quotations:', err)
+        allQuotations = []
       }
       
-      // Fetch ALL payments from payment_history table for all assigned leads
-      // This ensures we get all payments even if deal is closed
+      // Fetch ALL payments using bulk APIs
       const allPayments = []
-      for (const leadId of leadIds) {
-        try {
-          const paymentRes = await paymentService.getPaymentsByCustomer(leadId)
-          const payments = Array.isArray(paymentRes?.data) ? paymentRes.data : []
-          allPayments.push(...payments)
-        } catch (err) {
-          console.warn(`Error fetching payments for lead ${leadId}:`, err)
-        }
+      
+      // Fetch payments by customers (bulk)
+      try {
+        const paymentRes = await paymentService.getBulkPaymentsByCustomers(leadIds)
+        const payments = Array.isArray(paymentRes?.data) ? paymentRes.data : []
+        allPayments.push(...payments)
+      } catch (err) {
+        console.error('Error fetching bulk payments by customers:', err)
       }
       
-      // Also fetch payments by quotation to catch any missed payments
-      for (const quotation of allQuotations) {
+      // Also fetch payments by quotations (bulk) to catch any missed payments
+      const quotationIds = allQuotations.map(q => q.id)
+      if (quotationIds.length > 0) {
         try {
-          const pRes = await paymentService.getPaymentsByQuotation(quotation.id)
+          const pRes = await paymentService.getBulkPaymentsByQuotations(quotationIds)
           const payments = Array.isArray(pRes?.data) ? pRes.data : []
           // Add payments that aren't already in allPayments
           payments.forEach(p => {
@@ -900,7 +897,7 @@ export default function DashboardContent({ isDarkMode = false }) {
             }
           })
         } catch (err) {
-          console.warn(`Error fetching payments for quotation ${quotation.id}:`, err)
+          console.error('Error fetching bulk payments by quotations:', err)
         }
       }
       
@@ -910,15 +907,15 @@ export default function DashboardContent({ isDarkMode = false }) {
       // Use allPayments variable for rest of the function
       const fetchedPayments = allPayments
       
-      // Fetch all PIs
-      const allPIs = []
-      for (const quotation of allQuotations) {
+      // Fetch all PIs using bulk API
+      let allPIs = []
+      if (quotationIds.length > 0) {
         try {
-          const piRes = await proformaInvoiceService.getPIsByQuotation(quotation.id)
-          const pis = piRes?.data || []
-          allPIs.push(...pis)
+          const piRes = await proformaInvoiceService.getBulkPIsByQuotations(quotationIds)
+          allPIs = piRes?.data || []
         } catch (err) {
-          console.warn(`Error fetching PIs for quotation ${quotation.id}:`, err)
+          console.error('Error fetching bulk PIs:', err)
+          allPIs = []
         }
       }
       
@@ -954,11 +951,15 @@ export default function DashboardContent({ isDarkMode = false }) {
       
       // Calculate payment metrics - improved calculation with date range filtering
       // Filter completed/paid payments and apply date range filter if target dates are set
+      // ONLY count APPROVED payments (approved by accounts department)
       let completedPayments = allPayments.filter(p => {
         const status = (p.payment_status || p.status || '').toLowerCase()
-        // Only count completed/advance payments that are not refunds
+        // Check approval status - ONLY count approved payments
+        const approvalStatus = (p.approval_status || '').toLowerCase()
+        const isApproved = approvalStatus === 'approved'
+        // Only count completed/advance payments that are not refunds AND are approved
         const isRefund = p.is_refund === true || p.is_refund === 1
-        return (status === 'completed' || status === 'paid' || status === 'success' || status === 'advance') && !isRefund
+        return (status === 'completed' || status === 'paid' || status === 'success' || status === 'advance') && !isRefund && isApproved
       })
       
       // Apply date range filter if user has target dates
@@ -1052,6 +1053,22 @@ export default function DashboardContent({ isDarkMode = false }) {
       for (const quotation of allQuotations) {
         const status = (quotation.status || '').toLowerCase()
         if (status === 'approved') {
+          // Check if PI exists for this quotation - ONLY count quotations with PI
+          let hasPIForQuotation = false;
+          try {
+            const piRes = await proformaInvoiceService.getPIsByQuotation(quotation.id);
+            const pis = piRes?.data || [];
+            hasPIForQuotation = pis.length > 0;
+          } catch (err) {
+            console.warn(`Error checking PI for quotation ${quotation.id} in dashboard:`, err);
+            hasPIForQuotation = false;
+          }
+          
+          // Skip if no PI exists
+          if (!hasPIForQuotation) {
+            continue;
+          }
+          
           const quotationTotal = Number(quotation.total_amount || quotation.total || 0)
           if (!isNaN(quotationTotal) && quotationTotal > 0) {
             totalRevenue += quotationTotal
@@ -1072,11 +1089,14 @@ export default function DashboardContent({ isDarkMode = false }) {
             }
             
             // Calculate paid amount using installment_amount
+            // ONLY count APPROVED payments
             const paidTotal = quotationPayments
               .filter(p => {
                 const pStatus = (p.payment_status || p.status || '').toLowerCase()
+                const approvalStatus = (p.approval_status || '').toLowerCase()
+                const isApproved = approvalStatus === 'approved'
                 const isRefund = p.is_refund === true || p.is_refund === 1
-                return (pStatus === 'completed' || pStatus === 'paid' || pStatus === 'success' || pStatus === 'advance') && !isRefund
+                return (pStatus === 'completed' || pStatus === 'paid' || pStatus === 'success' || pStatus === 'advance') && !isRefund && isApproved
               })
               .reduce((sum, p) => {
                 const amount = Number(p.installment_amount || p.paid_amount || p.amount || 0)
@@ -1104,19 +1124,27 @@ export default function DashboardContent({ isDarkMode = false }) {
       )
       
       // Get unique quotation IDs from payments that belong to approved quotations
-      // If payment exists for approved quotation, it means sale order is created
+      // If APPROVED payment exists for approved quotation, it means sale order is created
+      // ONLY count sale orders where payment is approved by accounts department
       const saleOrderQuotationIds = new Set()
       allPayments.forEach(payment => {
         if (payment.quotation_id && approvedQuotationIds.has(payment.quotation_id)) {
-          // Check if payment has total_quotation_amount or any paid amount
-          const totalOrderAmount = Number(
-            payment.total_quotation_amount || 
-            payment.total_amount ||
-            payment.paid_amount ||
-            0
-          )
-          if (totalOrderAmount > 0) {
-            saleOrderQuotationIds.add(payment.quotation_id)
+          // Check if payment is approved by accounts department
+          const approvalStatus = (payment.approval_status || '').toLowerCase()
+          const isApproved = approvalStatus === 'approved'
+          
+          // Only count if payment is approved
+          if (isApproved) {
+            // Check if payment has total_quotation_amount or any paid amount
+            const totalOrderAmount = Number(
+              payment.total_quotation_amount || 
+              payment.total_amount ||
+              payment.paid_amount ||
+              0
+            )
+            if (totalOrderAmount > 0) {
+              saleOrderQuotationIds.add(payment.quotation_id)
+            }
           }
         }
       })
@@ -1451,97 +1479,9 @@ export default function DashboardContent({ isDarkMode = false }) {
     ]
   }
 
-  // Handle date filter change
-  const handleDateFilterChange = (selectedDate) => {
-    setDateFilter(selectedDate)
-    console.log('Filtering performance data for date:', selectedDate)
-  }
-
   // Calculate real metrics
   const calculatedMetrics = calculateMetrics()
   const statusData = calculateLeadStatusData()
-
-  // Generate performance data with demo data
-  const getPerformanceData = (selectedDate) => {
-    // Demo performance data
-    const baseData = {
-      targets: {
-        monthlyLeads: { current: 45, target: 100, label: "Monthly Leads" },
-        conversionRate: { current: 28, target: 30, label: "Conversion Rate (%)" },
-        revenue: { current: 1250000, target: 1500000, label: "Quarterly Revenue (₹)" },
-        calls: { current: 45, target: 60, label: "Daily Calls" }
-      },
-      leadStatusData: [
-        { label: "New", value: 5, color: "#3b82f6" },
-        { label: "Contacted", value: 8, color: "#60a5fa" },
-        { label: "Proposal Sent", value: 6, color: "#f59e0b" },
-        { label: "Meeting Scheduled", value: 4, color: "#8b5cf6" },
-        { label: "Closed Won", value: 3, color: "#10b981" },
-        { label: "Closed Lost", value: 2, color: "#ef4444" }
-      ],
-      monthlyPerformance: [
-        { label: "Jan", value: 78, color: "#3b82f6" },
-        { label: "Feb", value: 85, color: "#3b82f6" },
-        { label: "Mar", value: 92, color: "#3b82f6" },
-        { label: "Apr", value: 88, color: "#3b82f6" },
-        { label: "May", value: 95, color: "#3b82f6" },
-        { label: "Jun", value: 102, color: "#10b981" }
-      ],
-      kpis: [
-        {
-          title: "Lead Response Time",
-          value: "0 hrs",
-          target: "< 1 hr",
-          status: "warning",
-          icon: Clock,
-          color: "bg-orange-50 text-orange-600 border-orange-200"
-        },
-        {
-          title: "Follow-up Rate",
-          value: "0%",
-          target: "> 85%",
-          status: "warning",
-          icon: ArrowUp,
-          color: "bg-orange-50 text-orange-600 border-orange-200"
-        },
-        {
-          title: "Customer Satisfaction",
-          value: "0/5",
-          target: "> 4.5",
-          status: "warning",
-          icon: Award,
-          color: "bg-orange-50 text-orange-600 border-orange-200"
-        },
-        {
-          title: "Quotation Success",
-          value: "0%",
-          target: "> 70%",
-          status: "warning",
-          icon: CheckCircle,
-          color: "bg-orange-50 text-orange-600 border-orange-200"
-        },
-        {
-          title: "Transfer Leads",
-          value: "0",
-          target: "< 20",
-          status: "success",
-          icon: ArrowRightLeft,
-          color: "bg-green-50 text-green-600 border-green-200"
-        }
-      ]
-    }
-
-    // If no date is selected, return base data
-    if (!selectedDate) {
-      return baseData
-    }
-
-    // Return base data for any selected date (no dummy variations)
-    return baseData
-  }
-
-  // Get filtered performance data
-  const performanceData = getPerformanceData(dateFilter)
 
   // Calculate days left based on target period
   const daysLeftInTarget = (() => {
@@ -1565,7 +1505,8 @@ export default function DashboardContent({ isDarkMode = false }) {
   
   // Use actual user target data
   const revenueTarget = userTarget.target || 0
-  const revenueCurrent = userTarget.achievedTarget || 0
+  // Use totalReceivedPayment which counts only APPROVED payments
+  const revenueCurrent = businessMetrics.totalReceivedPayment || 0
 
   // Overview Data - Real data from API
   const overviewData = {

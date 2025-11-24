@@ -787,6 +787,55 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   })
   const [loadingMetrics, setLoadingMetrics] = useState(false)
 
+  // Helper functions to reduce code duplication
+  const isPaymentApprovedByAccounts = (payment) => {
+    // Check approval_status first (primary field), then fallback to other field names
+    const accountsStatus = (payment.approval_status || payment.accounts_approval_status || payment.accountsApprovalStatus || '').toLowerCase()
+    const isApproved = accountsStatus === 'approved'
+    
+    // Debug logging for first few payments
+    if (payment.id && Math.random() < 0.05) { // Log 5% of payments randomly
+      console.log('Payment approval check:', {
+        id: payment.id,
+        approval_status: payment.approval_status,
+        accounts_approval_status: payment.accounts_approval_status,
+        accountsApprovalStatus: payment.accountsApprovalStatus,
+        isApproved: isApproved
+      })
+    }
+    
+    return isApproved
+  }
+
+  const isPaymentCompleted = (payment) => {
+    const status = (payment.payment_status || payment.status || '').toLowerCase()
+    return status === 'completed' || status === 'paid' || status === 'success' || status === 'advance'
+  }
+
+  const isPaymentRefund = (payment) => {
+    return payment.is_refund === true || payment.is_refund === 1
+  }
+
+  const isAdvancePayment = (payment) => {
+    const status = (payment.payment_status || payment.status || '').toLowerCase()
+    return status === 'advance' || 
+           payment.is_advance === true || 
+           payment.payment_type === 'advance' || 
+           payment.installment_number === 1 || 
+           payment.installment_number === 0
+  }
+
+  const getPaymentAmount = (payment) => {
+    const amount = Number(
+      payment.installment_amount ||
+      payment.paid_amount || 
+      payment.amount || 
+      payment.payment_amount ||
+      0
+    )
+    return isNaN(amount) ? 0 : amount
+  }
+
   // Fetch all leads from all salespersons under department head
   const fetchLeads = async () => {
     try {
@@ -936,25 +985,10 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         return
       }
       
-      // Get all quotations for all leads (department head sees all salespersons' data)
-      let allQuotations = []
-      let fetchedPayments = []
-      
-      // Use individual API calls to get quotations for each lead
-      // This ensures we get all quotations regardless of which salesperson created them
-      const quotationPromises = leadIds.map(async (leadId) => {
-        try {
-          const qRes = await quotationService.getQuotationsByCustomer(leadId)
-          return qRes?.data || []
-        } catch (err) {
-          console.warn(`Error fetching quotations for lead ${leadId}:`, err)
-          return []
-        }
-      })
-      
-      const quotationResults = await Promise.all(quotationPromises)
-      allQuotations = quotationResults.flat()
-      
+      // OPTIMIZED: Get all quotations for all leads in ONE bulk API call
+      console.log('Fetching bulk quotations for', leadIds.length, 'customers...')
+      const bulkQuotationsRes = await quotationService.getBulkQuotationsByCustomers(leadIds)
+      let allQuotations = bulkQuotationsRes?.data || []
       console.log('Fetched quotations count:', allQuotations.length)
         
       // Remove duplicates based on quotation ID
@@ -965,54 +999,30 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         }
       })
       allQuotations = Array.from(uniqueQuotations.values())
-      
       console.log('Unique quotations count:', allQuotations.length)
       
-      // Get all payments for all quotations
-      const paymentPromises = allQuotations.map(async (quotation) => {
-              try {
-                const pRes = await paymentService.getPaymentsByQuotation(quotation.id)
-          return Array.isArray(pRes?.data) ? pRes.data : (Array.isArray(pRes) ? pRes : [])
-              } catch (err) {
-                console.warn(`Error fetching payments for quotation ${quotation.id}:`, err)
-          return []
-              }
-      })
+      // OPTIMIZED: Get all payments in TWO bulk API calls
+      const quotationIds = allQuotations.map(q => q.id).filter(id => id != null)
       
-      const paymentResults = await Promise.all(paymentPromises)
-      fetchedPayments = paymentResults.flat()
+      console.log('Fetching bulk payments for', quotationIds.length, 'quotations...')
+      const [bulkQuotationPaymentsRes, bulkCustomerPaymentsRes] = await Promise.all([
+        quotationIds.length > 0 ? paymentService.getBulkPaymentsByQuotations(quotationIds) : Promise.resolve({ data: [] }),
+        paymentService.getBulkPaymentsByCustomers(leadIds)
+      ])
       
-      // Also fetch payments directly by lead_id to catch any payments not linked to quotations
-      const leadPaymentPromises = leadIds.map(async (leadId) => {
-        try {
-          const pRes = await paymentService.getPaymentsByCustomer(leadId)
-          return Array.isArray(pRes?.data) ? pRes.data : (Array.isArray(pRes) ? pRes : [])
-          } catch (err) {
-          console.warn(`Error fetching payments for lead ${leadId}:`, err)
-          return []
-        }
-      })
+      const quotationPayments = bulkQuotationPaymentsRes?.data || []
+      const customerPayments = bulkCustomerPaymentsRes?.data || []
       
-      const leadPaymentResults = await Promise.all(leadPaymentPromises)
-      const leadPayments = leadPaymentResults.flat()
-      
-      // Merge and deduplicate payments (by payment id or payment_reference)
+      // Merge and deduplicate payments
       const paymentMap = new Map()
-      fetchedPayments.forEach(p => {
-        const key = p.id || p.payment_reference || `${p.quotation_id}_${p.lead_id}_${p.payment_date}_${p.installment_amount}`
-        if (!paymentMap.has(key)) {
-          paymentMap.set(key, p)
-        }
-      })
-      leadPayments.forEach(p => {
+      ;[...quotationPayments, ...customerPayments].forEach(p => {
         const key = p.id || p.payment_reference || `${p.quotation_id}_${p.lead_id}_${p.payment_date}_${p.installment_amount}`
         if (!paymentMap.has(key)) {
           paymentMap.set(key, p)
         }
       })
       
-      fetchedPayments = Array.from(paymentMap.values())
-      
+      const fetchedPayments = Array.from(paymentMap.values())
       console.log('Fetched payments count:', fetchedPayments.length)
       
       // Store payments for monthly revenue calculation
@@ -1021,17 +1031,21 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       // Use fetchedPayments variable for rest of the function
       const allPayments = fetchedPayments
       
-      // Fetch all PIs
-      const allPIs = []
-      for (const quotation of allQuotations) {
-        try {
-          const piRes = await proformaInvoiceService.getPIsByQuotation(quotation.id)
-          const pis = piRes?.data || []
-          allPIs.push(...pis)
-        } catch (err) {
-          console.warn(`Error fetching PIs for quotation ${quotation.id}:`, err)
-        }
+      // OPTIMIZED: Fetch all PIs in ONE bulk API call
+      let allPIs = []
+      if (quotationIds.length > 0) {
+        console.log('Fetching bulk PIs for', quotationIds.length, 'quotations...')
+        const bulkPIsRes = await proformaInvoiceService.getBulkPIsByQuotations(quotationIds)
+        allPIs = bulkPIsRes?.data || []
+        console.log('Fetched PIs count:', allPIs.length)
       }
+      
+      // Set of quotation IDs which have at least one PI
+      const quotationIdsWithPI = new Set(
+        allPIs
+          .map((pi) => pi.quotation_id)
+          .filter((id) => id != null)
+      )
       
       // Calculate quotation metrics
       const totalQuotation = allQuotations.length
@@ -1065,13 +1079,13 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       
       // Calculate payment metrics - improved calculation with date range filtering
       // Filter completed/paid/advance payments and exclude refunds
+      // ONLY include payments approved by accounts department (NO PI requirement for payment counting)
       let completedPayments = allPayments.filter(p => {
-        const status = (p.payment_status || p.status || '').toLowerCase()
-        // Include completed, paid, success, and advance payments
-        // Exclude refunds
-        const isRefund = p.is_refund === true || p.is_refund === 1
-        return (status === 'completed' || status === 'paid' || status === 'success' || status === 'advance') && !isRefund
+        return isPaymentCompleted(p) && !isPaymentRefund(p) && isPaymentApprovedByAccounts(p)
       })
+      
+      console.log('All payments count:', allPayments.length)
+      console.log('Completed approved payments count:', completedPayments.length)
       
       // Apply date range filter if department head has target dates
       if (userTarget.targetStartDate && userTarget.targetEndDate) {
@@ -1089,140 +1103,118 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       }
       
       // Calculate total received payment (all completed payments within date range)
-      // Use installment_amount as primary field (matches backend calculation)
-      const totalReceivedPayment = completedPayments.reduce((sum, p) => {
-        const amount = Number(
-          p.installment_amount ||  // Primary field - matches backend
-          p.paid_amount || 
-          p.amount || 
-          p.payment_amount ||
-          0
-        )
-        return sum + (isNaN(amount) ? 0 : amount)
-      }, 0)
+      const totalReceivedPayment = completedPayments.reduce((sum, p) => sum + getPaymentAmount(p), 0)
+      console.log('Total Received Payment:', totalReceivedPayment)
       
       // Calculate advance payment (first payment or payments marked as advance)
-      // Include payments with status 'advance' or installment_number 1/0
-      const advancePayments = completedPayments.filter(p => {
-        const status = (p.payment_status || p.status || '').toLowerCase()
-        // First payment of each quotation or explicitly marked as advance
-        return status === 'advance' || 
-               p.is_advance === true || 
-               p.payment_type === 'advance' || 
-               p.installment_number === 1 || 
-               p.installment_number === 0
-      })
-      const totalAdvancePayment = advancePayments.reduce((sum, p) => {
-        const amount = Number(
-          p.installment_amount ||  // Primary field - matches backend
-          p.paid_amount || 
-          p.amount || 
-          p.payment_amount ||
-          0
-        )
-        return sum + (isNaN(amount) ? 0 : amount)
-      }, 0)
+      const advancePayments = completedPayments.filter(isAdvancePayment)
+      const totalAdvancePayment = advancePayments.reduce((sum, p) => sum + getPaymentAmount(p), 0)
+      console.log('Total Advance Payment:', totalAdvancePayment)
       
-      // Calculate due payments (remaining amounts from approved quotations)
-      let duePayment = 0
-      let totalRevenue = 0
+      // Calculate due payments - ONLY for quotations that have PI created
+      // Don't care about quotation approval status, just need PI to exist
+      const quotationsWithPI = allQuotations.filter(q => quotationIdsWithPI.has(q.id))
       
-      for (const quotation of allQuotations) {
-        const status = (quotation.status || '').toLowerCase()
-        if (status === 'approved') {
-          try {
-            const summaryRes = await quotationService.getSummary(quotation.id)
-            const summary = summaryRes?.data || {}
-            
-            // Calculate total revenue from approved quotations
-            const quotationTotal = Number(summary.total_amount || summary.total || quotation.total_amount || 0)
-            totalRevenue += isNaN(quotationTotal) ? 0 : quotationTotal
-            
-            // Calculate remaining amount
-            const remaining = Number(
-              summary.current_remaining || 
-              summary.remaining || 
-              quotation.remaining_amount ||
-              0
-            )
-            if (remaining > 0 && !isNaN(remaining)) {
-              duePayment += remaining
-            }
-          } catch (err) {
-            console.warn(`Error fetching summary for quotation ${quotation.id}:`, err)
-            // Fallback calculation
-            const quotationTotal = Number(quotation.total_amount || quotation.total || 0)
-            if (!isNaN(quotationTotal)) {
-              totalRevenue += quotationTotal
-              
-              // Get payments for this quotation (filtered by date range if target dates are set)
-              let quotationPayments = allPayments.filter(p => p.quotation_id === quotation.id)
-              
-              // Apply date range filter if department head has target dates
-              if (userTarget.targetStartDate && userTarget.targetEndDate) {
-                const startDate = new Date(userTarget.targetStartDate)
-                startDate.setHours(0, 0, 0, 0)
-                const endDate = new Date(userTarget.targetEndDate)
-                endDate.setHours(23, 59, 59, 999)
-                
-                quotationPayments = quotationPayments.filter(p => {
-                  const paymentDate = p.payment_date ? new Date(p.payment_date) : (p.created_at ? new Date(p.created_at) : null)
-                  if (!paymentDate) return false
-                  return paymentDate >= startDate && paymentDate <= endDate
-                })
-              }
-              
-              const paidTotal = quotationPayments
-                .filter(p => {
-                  const pStatus = (p.payment_status || p.status || '').toLowerCase()
-                  const isRefund = p.is_refund === true || p.is_refund === 1
-                  return (pStatus === 'completed' || pStatus === 'paid' || pStatus === 'success' || pStatus === 'advance') && !isRefund
-                })
-                .reduce((sum, p) => {
-                  const amount = Number(p.installment_amount || p.paid_amount || p.amount || 0)
-                  return sum + (isNaN(amount) ? 0 : amount)
-                }, 0)
-              
-              const remaining = quotationTotal - paidTotal
-              if (remaining > 0) {
-                duePayment += remaining
-              }
-            }
-          }
+      console.log('Total quotations:', allQuotations.length)
+      console.log('Quotations with PI:', quotationsWithPI.length)
+      console.log('Quotation IDs with PI:', Array.from(quotationIdsWithPI))
+      
+      // Fetch summaries for quotations with PI to get accurate totals
+      const quotationIdsForSummary = quotationsWithPI.map(q => q.id)
+      let summariesMap = {}
+      
+      if (quotationIdsForSummary.length > 0) {
+        try {
+          console.log('Fetching bulk summaries for', quotationIdsForSummary.length, 'quotations...')
+          const bulkSummariesRes = await quotationService.getBulkSummaries(quotationIdsForSummary)
+          summariesMap = bulkSummariesRes?.data || {}
+          console.log('Fetched summaries count:', Object.keys(summariesMap).length)
+        } catch (err) {
+          console.error('Error fetching summaries:', err)
         }
       }
       
-      // Count sale orders - from payment_history table
-      // A sale order exists when there's an approved quotation with payment record (any payment = sale order created)
-      const approvedQuotationIds = new Set(
-        allQuotations
-          .filter(q => {
-            const status = (q.status || '').toLowerCase()
-            return status === 'approved'
-          })
-          .map(q => q.id)
-      )
+      // Calculate due payment and total revenue
+      let duePayment = 0
+      let totalRevenue = 0
       
-      // Get unique quotation IDs from payments that belong to approved quotations
-      // If payment exists for approved quotation, it means sale order is created
-      const saleOrderQuotationIds = new Set()
-      allPayments.forEach(payment => {
-        if (payment.quotation_id && approvedQuotationIds.has(payment.quotation_id)) {
-          // Check if payment has total_quotation_amount or any paid amount
-          const totalOrderAmount = Number(
-            payment.total_quotation_amount || 
-            payment.total_amount ||
-            payment.paid_amount ||
-            0
+      // Calculate for each quotation that has PI
+      quotationsWithPI.forEach(quotation => {
+        const summary = summariesMap[quotation.id]
+        
+        // Try to get total from summary first, then fallback to quotation
+        let quotationTotal = 0
+        if (summary && summary.total_amount) {
+          quotationTotal = Number(summary.total_amount)
+        } else if (summary && summary.grand_total) {
+          quotationTotal = Number(summary.grand_total)
+        } else {
+          quotationTotal = Number(quotation.total_amount || quotation.total || 0)
+        }
+        
+        console.log(`\nQuotation ID ${quotation.id}:`)
+        console.log('  - Has Summary:', !!summary)
+        console.log('  - Total Amount:', quotationTotal)
+        
+        // Safeguard against unreasonably large numbers (> 10 crore per quotation)
+        if (quotationTotal > 100000000) {
+          console.warn('  - WARNING: Quotation amount too high, skipping:', quotationTotal)
+          return
+        }
+        
+        if (!isNaN(quotationTotal) && quotationTotal > 0) {
+          // Only add to total revenue if quotation is approved
+          const status = (quotation.status || '').toLowerCase()
+          if (status === 'approved') {
+            totalRevenue += quotationTotal
+          }
+          
+          // Get all approved payments for this quotation (advance, partial, full)
+          const quotationPayments = allPayments.filter(p => 
+            p.quotation_id === quotation.id && 
+            isPaymentCompleted(p) && 
+            !isPaymentRefund(p) && 
+            isPaymentApprovedByAccounts(p)
           )
-          if (totalOrderAmount > 0) {
-            saleOrderQuotationIds.add(payment.quotation_id)
+          
+          console.log('  - Approved payments count:', quotationPayments.length)
+          
+          const paidTotal = quotationPayments.reduce((sum, p) => {
+            const amt = getPaymentAmount(p)
+            console.log(`    Payment ID ${p.id}: ₹${amt}`)
+            return sum + amt
+          }, 0)
+          
+          console.log('  - Total Paid:', paidTotal)
+          
+          // Calculate remaining amount (Due Payment)
+          const remaining = quotationTotal - paidTotal
+          console.log('  - Remaining (Due):', remaining)
+          
+          if (remaining > 0) {
+            duePayment += remaining
           }
         }
       })
       
-      // Count unique sale orders (approved quotations with payments)
-      const totalSaleOrder = saleOrderQuotationIds.size
+      console.log('\n=== SUMMARY ===')
+      console.log('Total Revenue (from approved quotations with PI):', totalRevenue)
+      console.log('Total Due Payment:', duePayment)
+      
+      // Count sale orders - Total number of leads which paid advance amount
+      // A sale order exists when a quotation has an approved advance payment
+      const saleOrderLeadIds = new Set()
+      
+      // Filter advance payments that are approved
+      allPayments.forEach(payment => {
+        if (isPaymentApprovedByAccounts(payment) && isAdvancePayment(payment) && payment.lead_id) {
+          saleOrderLeadIds.add(payment.lead_id)
+        }
+      })
+      
+      // Count unique leads that paid advance amount
+      const totalSaleOrder = saleOrderLeadIds.size
+      console.log('Total Sale Order (leads with advance payment):', totalSaleOrder)
       
       setBusinessMetrics({
         totalQuotation,
@@ -1241,7 +1233,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       })
       
       // Calculate top performers based on payment received
-      await calculateTopPerformers(fetchedPayments, allQuotations, allLeads)
+      await calculateTopPerformers(fetchedPayments, allQuotations, allLeads, quotationIdsWithPI)
       
       console.log('Business metrics calculated:', {
         totalQuotation,
@@ -1281,7 +1273,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   }
 
   // Calculate top performers based on payment received
-  const calculateTopPerformers = async (payments, quotations, leads) => {
+  const calculateTopPerformers = async (payments, quotations, leads, quotationIdsWithPI = new Set()) => {
     try {
       // Get all department users under this head
       if (!user?.id) {
@@ -1343,9 +1335,9 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       })
       
       // Calculate payment received per salesperson
+      // ONLY include payments approved by accounts department (NO PI requirement)
       const completedPayments = payments.filter(p => {
-        const status = (p.payment_status || p.status || '').toLowerCase()
-        return status === 'completed' || status === 'paid' || status === 'success'
+        return isPaymentCompleted(p) && isPaymentApprovedByAccounts(p)
       })
       
       // Map quotations to salespersons via leads
@@ -1365,14 +1357,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         const salespersonId = quotationToSalesperson.get(payment.quotation_id)
         if (salespersonId && performerMap.has(salespersonId)) {
           const performer = performerMap.get(salespersonId)
-          const amount = Number(
-            payment.paid_amount || 
-            payment.installment_amount || 
-            payment.amount || 
-            payment.payment_amount ||
-            0
-          )
-          performer.paymentReceived += isNaN(amount) ? 0 : amount
+          performer.paymentReceived += getPaymentAmount(payment)
         }
       })
       
@@ -2137,23 +2122,23 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
               : "bg-blue-50 text-blue-600 border-blue-200"
           )} isDarkMode={isDarkMode}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className={`text-sm font-medium font-medium ${
+              <CardTitle className={`text-sm font-medium ${
                 isDarkMode 
-                  ? 'text-white text-gray-200' 
-                  : 'text-gray-800 text-gray-800'
+                  ? 'text-white' 
+                  : 'text-gray-800'
               }`} isDarkMode={isDarkMode}>Total Leads</CardTitle>
-              <UserPlus className={`h-5 w-5  rotate-12 ${
+              <UserPlus className={`h-5 w-5 rotate-12 ${
                 isDarkMode ? 'text-blue-300' : 'text-blue-600'
               }`} />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold mb-1  ${
+              <div className={`text-2xl font-bold mb-1 ${
                 isDarkMode ? 'text-white' : 'text-gray-900'
               }`}>{calculatedMetrics.totalLeads}</div>
               <p className={`text-xs  ${
                 isDarkMode 
-                  ? 'text-gray-300 text-gray-100' 
-                  : 'text-gray-500 text-gray-700'
+                  ? 'text-gray-300' 
+                  : 'text-gray-600'
               }`}>All leads {overviewDateFilter ? 'from selected date to today' : 'in your pipeline'}</p>
             </CardContent>
           </Card>
@@ -2167,17 +2152,17 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                   : status.color
               )} isDarkMode={isDarkMode}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className={`text-sm font-medium font-medium ${
+                  <CardTitle className={`text-sm font-medium ${
                     isDarkMode 
                       ? 'text-white text-gray-200' 
                       : 'text-gray-800 text-gray-800'
                   }`} isDarkMode={isDarkMode}>{status.title}</CardTitle>
-                  <Icon className={`h-5 w-5  rotate-12 ${
+                  <Icon className={`h-5 w-5 rotate-12 ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`} />
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold mb-1  ${
+                  <div className={`text-2xl font-bold mb-1 ${
                     isDarkMode ? 'text-white' : 'text-gray-900'
                   }`}>{status.count}</div>
                   <p className={`text-xs  ${
@@ -2206,9 +2191,9 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
               : "bg-gradient-to-br from-white to-gray-50 bg-indigo-50 text-indigo-600 border-indigo-200"
           )} isDarkMode={isDarkMode}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className={`text-sm font-medium font-medium ${isDarkMode ? 'text-gray-300 text-white' : 'text-gray-600 text-gray-800'}`} isDarkMode={isDarkMode}>Revenue Target</CardTitle>
+              <CardTitle className={`text-sm font-medium ${isDarkMode ? 'text-gray-300 text-white' : 'text-gray-600 text-gray-800'}`} isDarkMode={isDarkMode}>Revenue Target</CardTitle>
               <div className={`p-2 rounded-full shadow-md ${isDarkMode ? 'bg-gray-700' : 'bg-white'}`}>
-                <Target className="h-5 w-5  rotate-12" />
+                <Target className="h-5 w-5 rotate-12" />
               </div>
             </CardHeader>
             <CardContent>
@@ -2221,7 +2206,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                   : 'Revenue target this quarter'
                 }
               </p>
-              <div className="w-full bg-gradient-to-r from-current to-transparent opacity-30 h-2 rounded-full  opacity-50 h-2.5"></div>
+              <div className="w-full bg-gradient-to-r from-current to-transparent opacity-50 h-2.5 rounded-full"></div>
             </CardContent>
           </Card>
 
@@ -2232,13 +2217,13 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
               : "bg-gradient-to-br from-white to-gray-50 bg-green-50 text-green-700 border-green-200"
           )} isDarkMode={isDarkMode}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className={`text-sm font-medium font-medium ${
+              <CardTitle className={`text-sm font-medium ${
                 isDarkMode 
                   ? 'text-gray-300 text-white' 
                   : 'text-gray-600 text-gray-800'
               }`} isDarkMode={isDarkMode}>Revenue Achieved</CardTitle>
               <div className={`p-2 rounded-full shadow-md ${isDarkMode ? 'bg-gray-700' : 'bg-white'}`}>
-                <CheckCircle className="h-5 w-5  rotate-12" />
+                <CheckCircle className="h-5 w-5 rotate-12" />
               </div>
             </CardHeader>
             <CardContent>
@@ -2247,15 +2232,15 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
               }`}>₹{revenueCurrent.toLocaleString('en-IN')}</div>
               <p className={`text-sm mb-3  ${
                 isDarkMode 
-                  ? 'text-gray-300 text-gray-100' 
-                  : 'text-gray-600 text-gray-800'
+                  ? 'text-gray-300' 
+                  : 'text-gray-600'
               }`}>
                 {userTarget.targetStartDate && userTarget.targetEndDate 
-                  ? `Revenue achieved (${userTarget.targetDurationDays || Math.ceil((new Date(userTarget.targetEndDate) - new Date(userTarget.targetStartDate)) / (1000 * 60 * 60 * 24))} days period)`
-                  : 'Revenue achieved this quarter'
+                  ? `Approved payments received (${userTarget.targetDurationDays || Math.ceil((new Date(userTarget.targetEndDate) - new Date(userTarget.targetStartDate)) / (1000 * 60 * 60 * 24))} days period)`
+                  : 'Approved payments received this quarter'
                 }
               </p>
-              <div className="w-full bg-gradient-to-r from-current to-transparent opacity-30 h-2 rounded-full  opacity-50 h-2.5"></div>
+              <div className="w-full bg-gradient-to-r from-current to-transparent opacity-50 h-2.5 rounded-full"></div>
             </CardContent>
           </Card>
 
@@ -2266,13 +2251,13 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
               : "bg-gradient-to-br from-white to-gray-50 bg-gray-50 text-gray-700 border-gray-200"
           )} isDarkMode={isDarkMode}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className={`text-sm font-medium font-medium ${
+              <CardTitle className={`text-sm font-medium ${
                 isDarkMode 
                   ? 'text-gray-300 text-white' 
                   : 'text-gray-600 text-gray-800'
               }`} isDarkMode={isDarkMode}>Days Left</CardTitle>
               <div className={`p-2 rounded-full shadow-md ${isDarkMode ? 'bg-gray-700' : 'bg-white'}`}>
-                <Calendar className="h-5 w-5  rotate-12" />
+                <Calendar className="h-5 w-5 rotate-12" />
               </div>
             </CardHeader>
             <CardContent>
@@ -2281,15 +2266,15 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
               }`}>{daysLeftInTarget}</div>
               <p className={`text-sm mb-3  ${
                 isDarkMode 
-                  ? 'text-gray-300 text-gray-100' 
-                  : 'text-gray-600 text-gray-800'
+                  ? 'text-gray-300' 
+                  : 'text-gray-600'
               }`}>
                 {userTarget.targetEndDate 
                   ? `Remaining days in target period`
                   : 'Remaining days in current month'
                 }
               </p>
-              <div className="w-full bg-gradient-to-r from-current to-transparent opacity-30 h-2 rounded-full  opacity-50 h-2.5"></div>
+              <div className="w-full bg-gradient-to-r from-current to-transparent opacity-50 h-2.5 rounded-full"></div>
             </CardContent>
           </Card>
         </div>
@@ -2315,9 +2300,9 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                 !isDarkMode && metric.color
               )} isDarkMode={isDarkMode}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className={`text-sm font-medium font-medium ${isDarkMode ? 'text-white text-gray-200' : 'text-gray-600 text-gray-800'}`}>{metric.title}</CardTitle>
+                  <CardTitle className={`text-sm font-medium ${isDarkMode ? 'text-white text-gray-200' : 'text-gray-600 text-gray-800'}`}>{metric.title}</CardTitle>
                   <div className={`p-2 rounded-full shadow-md ${isDarkMode ? 'bg-gray-700' : 'bg-white'}`}>
-                    <Icon className="h-5 w-5  rotate-12" />
+                    <Icon className="h-5 w-5 rotate-12" />
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -2343,7 +2328,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                       ? 'text-gray-300 text-gray-100' 
                       : 'text-gray-600 text-gray-800'
                   }`}>{metric.subtitle}</p>
-                  <div className="w-full bg-gradient-to-r from-current to-transparent opacity-30 h-2 rounded-full  opacity-50 h-2.5"></div>
+                  <div className="w-full bg-gradient-to-r from-current to-transparent opacity-50 h-2.5 rounded-full"></div>
                 </CardContent>
               </Card>
             )
@@ -2468,17 +2453,17 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                     : "bg-blue-50 text-blue-600 border-blue-200"
                 )} isDarkMode={isDarkMode}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className={`text-sm font-medium font-medium ${
+                    <CardTitle className={`text-sm font-medium ${
                       isDarkMode 
                         ? 'text-white text-gray-200' 
                         : 'text-gray-800 text-gray-800'
                     }`} isDarkMode={isDarkMode}>Total Quotation</CardTitle>
-                    <FileText className={`h-5 w-5  rotate-12 ${
+                    <FileText className={`h-5 w-5 rotate-12 ${
                       isDarkMode ? 'text-blue-300' : 'text-blue-600'
                     }`} />
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold mb-1  ${
+                    <div className={`text-2xl font-bold mb-1 ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>{businessMetrics.totalQuotation}</div>
                     <p className={`text-xs  ${
@@ -2496,17 +2481,17 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                     : "bg-green-50 text-green-600 border-green-200"
                 )} isDarkMode={isDarkMode}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className={`text-sm font-medium font-medium ${
+                    <CardTitle className={`text-sm font-medium ${
                       isDarkMode 
                         ? 'text-white text-gray-200' 
                         : 'text-gray-800 text-gray-800'
                     }`} isDarkMode={isDarkMode}>Approved Quotation</CardTitle>
-                    <FileCheck className={`h-5 w-5  rotate-12 ${
+                    <FileCheck className={`h-5 w-5 rotate-12 ${
                       isDarkMode ? 'text-green-300' : 'text-green-600'
                     }`} />
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold mb-1  ${
+                    <div className={`text-2xl font-bold mb-1 ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>{businessMetrics.approvedQuotation}</div>
                     <p className={`text-xs  ${
@@ -2524,17 +2509,17 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                     : "bg-orange-50 text-orange-600 border-orange-200"
                 )} isDarkMode={isDarkMode}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className={`text-sm font-medium font-medium ${
+                    <CardTitle className={`text-sm font-medium ${
                       isDarkMode 
                         ? 'text-white text-gray-200' 
                         : 'text-gray-800 text-gray-800'
                     }`} isDarkMode={isDarkMode}>Pending for Approval</CardTitle>
-                    <Clock className={`h-5 w-5  rotate-12 ${
+                    <Clock className={`h-5 w-5 rotate-12 ${
                       isDarkMode ? 'text-orange-300' : 'text-orange-600'
                     }`} />
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold mb-1  ${
+                    <div className={`text-2xl font-bold mb-1 ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>{businessMetrics.pendingQuotation}</div>
                     <p className={`text-xs  ${
@@ -2552,17 +2537,17 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                     : "bg-red-50 text-red-600 border-red-200"
                 )} isDarkMode={isDarkMode}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className={`text-sm font-medium font-medium ${
+                    <CardTitle className={`text-sm font-medium ${
                       isDarkMode 
                         ? 'text-white text-gray-200' 
                         : 'text-gray-800 text-gray-800'
                     }`} isDarkMode={isDarkMode}>Rejected Quotation</CardTitle>
-                    <FileX className={`h-5 w-5  rotate-12 ${
+                    <FileX className={`h-5 w-5 rotate-12 ${
                       isDarkMode ? 'text-red-300' : 'text-red-600'
                     }`} />
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold mb-1  ${
+                    <div className={`text-2xl font-bold mb-1 ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>{businessMetrics.rejectedQuotation}</div>
                     <p className={`text-xs  ${
@@ -2586,17 +2571,17 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                     : "bg-indigo-50 text-indigo-600 border-indigo-200"
                 )} isDarkMode={isDarkMode}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className={`text-sm font-medium font-medium ${
+                    <CardTitle className={`text-sm font-medium ${
                       isDarkMode 
                         ? 'text-white text-gray-200' 
                         : 'text-gray-800 text-gray-800'
                     }`} isDarkMode={isDarkMode}>Total PI</CardTitle>
-                    <Receipt className={`h-5 w-5  rotate-12 ${
+                    <Receipt className={`h-5 w-5 rotate-12 ${
                       isDarkMode ? 'text-indigo-300' : 'text-indigo-600'
                     }`} />
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold mb-1  ${
+                    <div className={`text-2xl font-bold mb-1 ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>{businessMetrics.totalPI}</div>
                     <p className={`text-xs  ${
@@ -2614,17 +2599,17 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                     : "bg-green-50 text-green-600 border-green-200"
                 )} isDarkMode={isDarkMode}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className={`text-sm font-medium font-medium ${
+                    <CardTitle className={`text-sm font-medium ${
                       isDarkMode 
                         ? 'text-white text-gray-200' 
                         : 'text-gray-800 text-gray-800'
                     }`} isDarkMode={isDarkMode}>Approved PI</CardTitle>
-                    <FileCheck className={`h-5 w-5  rotate-12 ${
+                    <FileCheck className={`h-5 w-5 rotate-12 ${
                       isDarkMode ? 'text-green-300' : 'text-green-600'
                     }`} />
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold mb-1  ${
+                    <div className={`text-2xl font-bold mb-1 ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>{businessMetrics.approvedPI}</div>
                     <p className={`text-xs  ${
@@ -2642,17 +2627,17 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                     : "bg-orange-50 text-orange-600 border-orange-200"
                 )} isDarkMode={isDarkMode}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className={`text-sm font-medium font-medium ${
+                    <CardTitle className={`text-sm font-medium ${
                       isDarkMode 
                         ? 'text-white text-gray-200' 
                         : 'text-gray-800 text-gray-800'
                     }`} isDarkMode={isDarkMode}>Pending for Approval PI</CardTitle>
-                    <Clock className={`h-5 w-5  rotate-12 ${
+                    <Clock className={`h-5 w-5 rotate-12 ${
                       isDarkMode ? 'text-orange-300' : 'text-orange-600'
                     }`} />
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold mb-1  ${
+                    <div className={`text-2xl font-bold mb-1 ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>{businessMetrics.pendingPI}</div>
                     <p className={`text-xs  ${
@@ -2670,17 +2655,17 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                     : "bg-red-50 text-red-600 border-red-200"
                 )} isDarkMode={isDarkMode}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className={`text-sm font-medium font-medium ${
+                    <CardTitle className={`text-sm font-medium ${
                       isDarkMode 
                         ? 'text-white text-gray-200' 
                         : 'text-gray-800 text-gray-800'
                     }`} isDarkMode={isDarkMode}>Rejected PI</CardTitle>
-                    <FileX className={`h-5 w-5  rotate-12 ${
+                    <FileX className={`h-5 w-5 rotate-12 ${
                       isDarkMode ? 'text-red-300' : 'text-red-600'
                     }`} />
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold mb-1  ${
+                    <div className={`text-2xl font-bold mb-1 ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>{businessMetrics.rejectedPI}</div>
                     <p className={`text-xs  ${
@@ -2704,17 +2689,17 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                     : "bg-purple-50 text-purple-600 border-purple-200"
                 )} isDarkMode={isDarkMode}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className={`text-sm font-medium font-medium ${
+                    <CardTitle className={`text-sm font-medium ${
                       isDarkMode 
                         ? 'text-white text-gray-200' 
                         : 'text-gray-800 text-gray-800'
                     }`} isDarkMode={isDarkMode}>Total Advance Payment</CardTitle>
-                    <DollarSign className={`h-5 w-5  rotate-12 ${
+                    <DollarSign className={`h-5 w-5 rotate-12 ${
                       isDarkMode ? 'text-purple-300' : 'text-purple-600'
                     }`} />
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold mb-1  ${
+                    <div className={`text-2xl font-bold mb-1 ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>₹{businessMetrics.totalAdvancePayment.toLocaleString('en-IN')}</div>
                     <p className={`text-xs  ${
@@ -2732,17 +2717,17 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                     : "bg-red-50 text-red-600 border-red-200"
                 )} isDarkMode={isDarkMode}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className={`text-sm font-medium font-medium ${
+                    <CardTitle className={`text-sm font-medium ${
                       isDarkMode 
                         ? 'text-white text-gray-200' 
                         : 'text-gray-800 text-gray-800'
                     }`} isDarkMode={isDarkMode}>Due Payment</CardTitle>
-                    <CreditCard className={`h-5 w-5  rotate-12 ${
+                    <CreditCard className={`h-5 w-5 rotate-12 ${
                       isDarkMode ? 'text-red-300' : 'text-red-600'
                     }`} />
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold mb-1  ${
+                    <div className={`text-2xl font-bold mb-1 ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>₹{businessMetrics.duePayment.toLocaleString('en-IN')}</div>
                     <p className={`text-xs  ${
@@ -2760,24 +2745,24 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                     : "bg-teal-50 text-teal-600 border-teal-200"
                 )} isDarkMode={isDarkMode}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className={`text-sm font-medium font-medium ${
+                    <CardTitle className={`text-sm font-medium ${
                       isDarkMode 
                         ? 'text-white text-gray-200' 
                         : 'text-gray-800 text-gray-800'
                     }`} isDarkMode={isDarkMode}>Total Sale Order</CardTitle>
-                    <ShoppingCart className={`h-5 w-5  rotate-12 ${
+                    <ShoppingCart className={`h-5 w-5 rotate-12 ${
                       isDarkMode ? 'text-teal-300' : 'text-teal-600'
                     }`} />
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold mb-1  ${
+                    <div className={`text-2xl font-bold mb-1 ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>{businessMetrics.totalSaleOrder}</div>
                     <p className={`text-xs  ${
                       isDarkMode 
                         ? 'text-gray-300 text-gray-100' 
                         : 'text-gray-500 text-gray-700'
-                    }`}>Sale orders created</p>
+                    }`}>Leads with advance payment</p>
                   </CardContent>
                 </Card>
 
@@ -2788,17 +2773,17 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                     : "bg-green-50 text-green-600 border-green-200"
                 )} isDarkMode={isDarkMode}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className={`text-sm font-medium font-medium ${
+                    <CardTitle className={`text-sm font-medium ${
                       isDarkMode 
                         ? 'text-white text-gray-200' 
                         : 'text-gray-800 text-gray-800'
                     }`} isDarkMode={isDarkMode}>Total Received Payment</CardTitle>
-                    <CheckCircle className={`h-5 w-5  rotate-12 ${
+                    <CheckCircle className={`h-5 w-5 rotate-12 ${
                       isDarkMode ? 'text-green-300' : 'text-green-600'
                     }`} />
                   </CardHeader>
                   <CardContent>
-                    <div className={`text-2xl font-bold mb-1  ${
+                    <div className={`text-2xl font-bold mb-1 ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>₹{businessMetrics.totalReceivedPayment.toLocaleString('en-IN')}</div>
                     <p className={`text-xs  ${

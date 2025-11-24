@@ -19,6 +19,12 @@ export const getUserTypeForRole = (role, departmentType = null) => {
       if (departmentType === 'production' || departmentType === 'Production Department') {
         return 'productiondepartmenthead';
       }
+      if (departmentType === 'accounts' || departmentType === 'Accounts Department') {
+        return 'accountsdepartmenthead';
+      }
+      if (departmentType === 'it' || departmentType === 'IT Department') {
+        return 'itdepartmenthead';
+      }
       return 'salesdepartmenthead';
     case ROLES.MARKETING_DEPARTMENT_HEAD:
       return 'marketingdepartmenthead';
@@ -30,6 +36,12 @@ export const getUserTypeForRole = (role, departmentType = null) => {
       }
       if (departmentType === 'marketing_sales' || departmentType === 'Marketing Department') {
         return 'marketing-salesperson';
+      }
+      if (departmentType === 'accounts' || departmentType === 'Accounts Department') {
+        return 'accounts-user';
+      }
+      if (departmentType === 'it' || departmentType === 'IT Department') {
+        return 'it-user';
       }
       return 'salesperson';
     case ROLES.SUPERADMIN:

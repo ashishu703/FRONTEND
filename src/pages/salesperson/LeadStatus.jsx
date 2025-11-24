@@ -1,13 +1,68 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Eye, Edit, MessageCircle, Mail, Search, Filter, Download, ChevronDown, X, Save, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, FileText, Receipt, CreditCard, RefreshCcw } from 'lucide-react';
+import { Eye, Edit, Mail, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, FileText, Receipt, CreditCard, RefreshCcw } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import quotationService from '../../api/admin_api/quotationService';
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 
-// Lead Status Preview Modal Component
+// Helper: normalize and summarise payments by accounts approval status
+const buildPaymentSummary = (payments, rawSummary = {}) => {
+  const safeNumber = (v) => {
+    const n = Number(v || 0)
+    return isNaN(n) ? 0 : n
+  }
+
+  const total =
+    safeNumber(rawSummary.total) ||
+    safeNumber(rawSummary.total_amount) ||
+    safeNumber(rawSummary.totalAmount)
+
+  let approvedAmount = 0
+  let pendingAmount = 0
+  let hasRejected = false
+
+  payments.forEach((p) => {
+    const status = (p.approval_status || p.accounts_approval_status || p.accountsApprovalStatus || '').toLowerCase()
+    const amount = safeNumber(
+      p.installment_amount ||
+      p.paid_amount ||
+      p.amount ||
+      p.payment_amount
+    )
+
+    if (status === 'approved') {
+      approvedAmount += amount
+    } else if (status === 'rejected') {
+      hasRejected = true
+    } else if (amount > 0) {
+      pendingAmount += amount
+    }
+  })
+
+  const remaining = Math.max(0, total - approvedAmount)
+
+  let approvalStatus = 'PENDING'
+  if (total > 0 && approvedAmount >= total) {
+    approvalStatus = 'COMPLETED'
+  } else if (approvedAmount > 0) {
+    approvalStatus = 'PARTIAL'
+  } else if (pendingAmount > 0) {
+    approvalStatus = 'PENDING APPROVAL'
+  } else if (hasRejected) {
+    approvalStatus = 'REJECTED'
+  }
+
+  return {
+    ...rawSummary,
+    total,
+    paid: approvedAmount,
+    remaining,
+    approvalStatus
+  }
+}
+
 const LeadStatusPreview = ({ lead, onClose }) => {
   if (!lead) return null;
 
@@ -52,9 +107,11 @@ const LeadStatusPreview = ({ lead, onClose }) => {
           const piList = (piRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
           if (!cancelled) setLatestPI(piList[0] || null);
           const payRes = await apiClient.get(`/api/payments/quotation/${q.id}`);
-          if (!cancelled) setPayments(payRes?.data || []);
+          const allPayments = payRes?.data || [];
+          if (!cancelled) setPayments(allPayments);
           const sumRes = await apiClient.get(`/api/quotations/${q.id}/summary`);
-          if (!cancelled) setPaymentSummary(sumRes?.data || null);
+          const summaryData = buildPaymentSummary(allPayments, sumRes?.data || sumRes || {});
+          if (!cancelled) setPaymentSummary(summaryData);
         } else if (!cancelled) {
           setLatestPI(null);
           setPayments([]);
@@ -252,13 +309,19 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <CreditCard className="h-3 w-3 text-purple-600" />
                       <span className="text-[11px] font-medium text-gray-900">Payment Status</span>
-                      <span className={`ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded ${
-                        paymentSummary && paymentSummary.remaining <= 0 ? 'bg-green-100 text-green-800' :
-                        paymentSummary && paymentSummary.paid > 0 ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {paymentSummary && paymentSummary.remaining <= 0 ? 'COMPLETED' :
-                         paymentSummary && paymentSummary.paid > 0 ? 'PARTIAL' : 'PENDING'}
+                      <span
+                        className={`ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded ${
+                          (() => {
+                            const status = (paymentSummary?.approvalStatus || '').toLowerCase()
+                            if (status === 'completed' || status === 'approved') return 'bg-green-100 text-green-800'
+                            if (status === 'partial') return 'bg-yellow-100 text-yellow-800'
+                            if (status === 'pending approval') return 'bg-yellow-100 text-yellow-800'
+                            if (status === 'rejected') return 'bg-red-100 text-red-800'
+                            return 'bg-gray-100 text-gray-800'
+                          })()
+                        }`}
+                      >
+                        {(paymentSummary?.approvalStatus || 'PENDING').toUpperCase()}
                       </span>
                     </div>
                     <div className="text-[10px] text-gray-700 space-y-0.5">
@@ -273,6 +336,22 @@ const LeadStatusPreview = ({ lead, onClose }) => {
                               <div className="flex justify-between">
                                 <span className="font-medium">Advance Payment #{idx + 1}</span>
                                 <span className="text-green-700 font-medium">₹{Number(payment.installment_amount || 0).toLocaleString('en-IN')}</span>
+                              </div>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span className="text-gray-500">Status:</span>
+                                {(() => {
+                                  const accountsStatus = (payment.approval_status || payment.accounts_approval_status || payment.accountsApprovalStatus || '').toLowerCase()
+                                  if (accountsStatus === 'approved') {
+                                    return <span className="px-1 py-0.5 text-[8px] font-medium rounded bg-green-100 text-green-800">APPROVED</span>
+                                  }
+                                  if (accountsStatus === 'pending' || accountsStatus === 'pending_approval') {
+                                    return <span className="px-1 py-0.5 text-[8px] font-medium rounded bg-yellow-100 text-yellow-800">PENDING APPROVAL</span>
+                                  }
+                                  if (accountsStatus === 'rejected') {
+                                    return <span className="px-1 py-0.5 text-[8px] font-medium rounded bg-red-100 text-red-800">REJECTED</span>
+                                  }
+                                  return <span className="px-1 py-0.5 text-[8px] font-medium rounded bg-gray-100 text-gray-800">PENDING</span>
+                                })()}
                               </div>
                               <div className="text-gray-500 mt-0.5">
                                 Method: {payment.payment_method || 'N/A'}
@@ -521,7 +600,6 @@ export default function LeadStatusPage() {
   const [followUpFilter, setFollowUpFilter] = useState('');
   const [quotationFilter, setQuotationFilter] = useState(''); 
   const [piFilter, setPiFilter] = useState('');
-  const [showFilterPanel, setShowFilterPanel] = useState(false);
 
   const [quotationStatusByLead, setQuotationStatusByLead] = useState({});
   const [piStatusByLead, setPiStatusByLead] = useState({});
@@ -534,10 +612,6 @@ export default function LeadStatusPage() {
     { key: 'win/closed', label: 'Win', bg: 'bg-emerald-100', text: 'text-emerald-800', ring: 'ring-emerald-300' },
     { key: 'closed', label: 'Closed', bg: 'bg-gray-100', text: 'text-gray-800', ring: 'ring-gray-300' },
     { key: 'lost', label: 'Lost', bg: 'bg-red-100', text: 'text-red-800', ring: 'ring-red-300' },
-  ];
-  const followUpBadges = [
-    { key: 'appointment scheduled', label: 'Scheduled Call', bg: 'bg-blue-50', text: 'text-blue-700', ring: 'ring-blue-200' },
-    { key: 'call back request', label: 'Last Call', bg: 'bg-orange-50', text: 'text-orange-700', ring: 'ring-orange-200' },
   ];
 
   const toggleLeadStatusBadge = (key) => {
@@ -554,39 +628,70 @@ export default function LeadStatusPage() {
       .filter(l => !quotationStatusByLead[l.id] || (quotationStatusByLead[l.id] && !piStatusByLead[l.id]))
       .map(l => l.id);
     if (missingLeadIds.length === 0) return;
+    
     try {
       setHydratingDocs(true);
-      await Promise.all(
-        leads.map(async (lead) => {
-          if (quotationStatusByLead[lead.id] && piStatusByLead[lead.id]) return;
-          try {
-            const qRes = await quotationService.getQuotationsByCustomer(lead.id);
-            const qList = (qRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            const latestQ = qList[0];
-            if (latestQ) {
-              setQuotationStatusByLead(prev => ({ ...prev, [lead.id]: (latestQ.status || '').toLowerCase() }));
-              try {
-                const piRes = await proformaInvoiceService.getPIsByQuotation(latestQ.id);
-                const piList = (piRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                const latestPi = piList[0];
-                if (latestPi) {
-                  setPiStatusByLead(prev => ({ ...prev, [lead.id]: (latestPi.status || '').toLowerCase() }));
-                } else {
-                  setPiStatusByLead(prev => ({ ...prev, [lead.id]: '' }));
-                }
-              } catch (_) {
-                setPiStatusByLead(prev => ({ ...prev, [lead.id]: '' }));
-              }
-            } else {
-              setQuotationStatusByLead(prev => ({ ...prev, [lead.id]: '' }));
-              setPiStatusByLead(prev => ({ ...prev, [lead.id]: '' }));
-            }
-          } catch (_) {
-            setQuotationStatusByLead(prev => ({ ...prev, [lead.id]: '' }));
-            setPiStatusByLead(prev => ({ ...prev, [lead.id]: '' }));
+      
+      // OPTIMIZED: Fetch all quotations in parallel
+      const quotationPromises = leads.map(async (lead) => {
+        if (quotationStatusByLead[lead.id] && piStatusByLead[lead.id]) {
+          return { leadId: lead.id, quotationStatus: quotationStatusByLead[lead.id], piStatus: piStatusByLead[lead.id], latestQuotationId: null };
+        }
+        
+        try {
+          const qRes = await quotationService.getQuotationsByCustomer(lead.id);
+          const qList = (qRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          const latestQ = qList[0];
+          
+          if (latestQ) {
+            return { 
+              leadId: lead.id, 
+              quotationStatus: (latestQ.status || '').toLowerCase(), 
+              latestQuotationId: latestQ.id,
+              piStatus: null 
+            };
+          } else {
+            return { leadId: lead.id, quotationStatus: '', piStatus: '', latestQuotationId: null };
           }
-        })
-      );
+        } catch (_) {
+          return { leadId: lead.id, quotationStatus: '', piStatus: '', latestQuotationId: null };
+        }
+      });
+      
+      const quotationResults = await Promise.all(quotationPromises);
+      
+      // Update quotation statuses first
+      const newQuotationStatuses = {};
+      quotationResults.forEach(result => {
+        newQuotationStatuses[result.leadId] = result.quotationStatus;
+      });
+      setQuotationStatusByLead(prev => ({ ...prev, ...newQuotationStatuses }));
+      
+      // OPTIMIZED: Fetch all PIs in parallel
+      const piPromises = quotationResults.map(async (result) => {
+        if (!result.latestQuotationId || result.piStatus !== null) {
+          return { leadId: result.leadId, piStatus: result.piStatus || '' };
+        }
+        
+        try {
+          const piRes = await proformaInvoiceService.getPIsByQuotation(result.latestQuotationId);
+          const piList = (piRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          const latestPi = piList[0];
+          return { leadId: result.leadId, piStatus: latestPi ? (latestPi.status || '').toLowerCase() : '' };
+        } catch (_) {
+          return { leadId: result.leadId, piStatus: '' };
+        }
+      });
+      
+      const piResults = await Promise.all(piPromises);
+      
+      // Update PI statuses
+      const newPiStatuses = {};
+      piResults.forEach(result => {
+        newPiStatuses[result.leadId] = result.piStatus;
+      });
+      setPiStatusByLead(prev => ({ ...prev, ...newPiStatuses }));
+      
     } finally {
       setHydratingDocs(false);
     }
@@ -666,23 +771,6 @@ export default function LeadStatusPage() {
     fetchLeads();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Close filter panel when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showFilterPanel && !event.target.closest('.filter-panel-container')) {
-        setShowFilterPanel(false);
-      }
-    };
-
-    if (showFilterPanel) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showFilterPanel]);
 
   // Handle search
   const handleSearch = (query) => {
@@ -922,7 +1010,7 @@ export default function LeadStatusPage() {
   // Pagination logic
   const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredLeads.length);
   const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
 
   const handlePageChange = (page) => {
@@ -952,13 +1040,6 @@ export default function LeadStatusPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowFilterPanel(!showFilterPanel)}
-              className="px-3 py-2 rounded-md bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2"
-            >
-              <Filter className="h-4 w-4" />
-              Filters
-            </button>
             <button
               onClick={fetchLeads}
               className="px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 inline-flex items-center gap-2"

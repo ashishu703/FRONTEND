@@ -329,7 +329,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
         return {
           icon: <Factory className="w-6 h-6 text-white" />,
           title: "Production Dashboard",
-          subtitle: "Production department performance overview"
+          subtitle: ""
         };
       case 'production-planning':
       case 'production-schedule':
@@ -340,7 +340,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
         return {
           icon: <Calendar className="w-6 h-6 text-white" />,
           title: "Production Planning",
-          subtitle: "Manage schedules, work orders, and capacity"
+          subtitle: ""
         };
       case 'quality-control':
       case 'inspection-lots':
@@ -349,7 +349,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
         return {
           icon: <CheckCircle className="w-6 h-6 text-white" />,
           title: "Quality Control",
-          subtitle: "Inspections, metrics, and non-conformance"
+          subtitle: ""
         };
       case 'production-execution':
       case 'execution-console':
@@ -358,7 +358,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
         return {
           icon: <Factory className="w-6 h-6 text-white" />,
           title: "Production Execution",
-          subtitle: "Shop-floor execution and machine status"
+          subtitle: ""
         };
       case 'maintenance':
       case 'maintenance-orders':
@@ -367,7 +367,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
         return {
           icon: <Wrench className="w-6 h-6 text-white" />,
           title: "Maintenance",
-          subtitle: "Orders, preventive plans, equipment status"
+          subtitle: ""
         };
       case 'inventory':
       case 'raw-materials':
@@ -376,13 +376,13 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
         return {
           icon: <Package className="w-6 h-6 text-white" />,
           title: "Inventory",
-          subtitle: "Materials, finished goods, and alerts"
+          subtitle: ""
         };
       case 'production-users':
         return {
           icon: <Users className="w-6 h-6 text-white" />,
           title: "Production Staff",
-          subtitle: "Manage production users and roles"
+          subtitle: ""
         };
       case 'reports':
       case 'production-reports':
@@ -391,7 +391,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
         return {
           icon: <BarChart3 className="w-6 h-6 text-white" />,
           title: "Reports & Analytics",
-          subtitle: "Production KPIs and cost analysis"
+          subtitle: ""
         };
 
       // Marketing Department Head pages
@@ -439,7 +439,9 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
           </div>
           <div>
             <h1 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{pageContent.title}</h1>
-            <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>{pageContent.subtitle}</p>
+            {pageContent.subtitle && (
+              <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>{pageContent.subtitle}</p>
+            )}
           </div>
         </div>
 

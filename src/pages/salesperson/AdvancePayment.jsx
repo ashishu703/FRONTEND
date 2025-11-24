@@ -7,6 +7,7 @@ import apiClient from '../../utils/apiClient';
 import quotationService from '../../api/admin_api/quotationService';
 import paymentService from '../../api/admin_api/paymentService';
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
+import uploadService from '../../api/admin_api/uploadService';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 
 // Timeline Sidebar component for viewing payment tracking details
@@ -720,6 +721,8 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [receiptFile, setReceiptFile] = useState(null);
   const [approvedQuotations, setApprovedQuotations] = useState([]);
   const [selectedQuotationId, setSelectedQuotationId] = useState(item.quotationData?.id || '');
   const [proformaInvoices, setProformaInvoices] = useState([]);
@@ -736,9 +739,28 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
           quotationService.getApproved(item.leadData.id),
           paymentService.getCustomerCredit(item.leadData.id)
         ]);
-        setApprovedQuotations(qRes?.data || []);
+        
+        // Filter quotations to only show those with PI created
+        const allApprovedQuotations = qRes?.data || [];
+        const quotationsWithPI = [];
+        
+        for (const q of allApprovedQuotations) {
+          try {
+            const piRes = await proformaInvoiceService.getPIsByQuotation(q.id);
+            const pis = piRes?.data || [];
+            if (pis.length > 0) {
+              quotationsWithPI.push(q);
+            }
+          } catch (err) {
+            console.warn(`Error fetching PI for quotation ${q.id}:`, err);
+          }
+        }
+        
+        setApprovedQuotations(quotationsWithPI);
         setCredit(cRes?.data?.balance || 0);
-        const qid = item.quotationData?.id || (qRes?.data?.[0]?.id || '');
+        
+        // Pre-select quotation if available
+        const qid = item.quotationData?.id || (quotationsWithPI?.[0]?.id || '');
         if (qid) {
           setSelectedQuotationId(qid);
           const [sRes, pRes, piRes] = await Promise.all([
@@ -751,6 +773,12 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
           setInstallments(pRes?.data || []);
           const pis = piRes?.data || [];
           setProformaInvoices(pis);
+          
+          // Auto-select first PI if available
+          if (pis.length > 0) {
+            setSelectedPIId(pis[0].id);
+          }
+          
           setPaymentData((p) => ({ 
             ...p, 
             installment_amount: String(s.remaining || ''),
@@ -758,7 +786,8 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
           }));
         }
       } catch (e) {
-        setError('Failed to initialize payment modal');
+        console.error('Init payment modal failed', e);
+        setError('Failed to load quotations. Please try again.');
       }
     };
     init();
@@ -780,9 +809,31 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
       setInstallments(pRes?.data || []);
       const pis = piRes?.data || [];
       setProformaInvoices(pis);
+      
+      // Auto-select first PI if available
+      if (pis.length > 0) {
+        setSelectedPIId(pis[0].id);
+      }
+      
       setPaymentData((p) => ({ ...p, installment_amount: String(s.remaining || '') }));
     } catch (e) {
       setProformaInvoices([]);
+      setError('Failed to load PI for selected quotation');
+    }
+  };
+
+  const handleReceiptUpload = async (file) => {
+    if (!file) return;
+    
+    setUploadingReceipt(true);
+    try {
+      const url = await uploadService.uploadFile(file, 'payments');
+      setPaymentData(prev => ({ ...prev, payment_receipt_url: url }));
+      setReceiptFile(file);
+    } catch (error) {
+      setError('Failed to upload receipt: ' + (error.message || 'Unknown error'));
+    } finally {
+      setUploadingReceipt(false);
     }
   };
 
@@ -792,15 +843,34 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
     setError(null);
 
     try {
+      // Validate PI is selected
+      if (!selectedPIId) {
+        setError('Please create PI first, then add payment. PI (Proforma Invoice) is required to add payment.');
+        setLoading(false);
+        return;
+      }
+
+      if (!selectedQuotationId) {
+        setError('Please select a quotation with PI created.');
+        setLoading(false);
+        return;
+      }
+
+      // Upload receipt if file is selected but URL is not set
+      let receiptUrl = paymentData.payment_receipt_url;
+      if (receiptFile && !receiptUrl) {
+        receiptUrl = await uploadService.uploadFile(receiptFile, 'payments');
+      }
+
       const paymentPayload = {
         lead_id: item.leadData?.id,
-        quotation_id: selectedQuotationId || null,
-        pi_id: selectedPIId || null,
+        quotation_id: selectedQuotationId,
+        pi_id: selectedPIId,
         installment_amount: parseFloat(paymentData.installment_amount),
         payment_method: paymentData.payment_method,
         payment_reference: paymentData.payment_reference,
         payment_status: paymentData.payment_status,
-        payment_receipt_url: paymentData.payment_receipt_url || undefined,
+        payment_receipt_url: receiptUrl || undefined,
         payment_date: new Date().toISOString(),
         notes: paymentData.delivery_note,
         remarks: paymentData.payment_remark,
@@ -813,12 +883,13 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
       if (response.success) {
         const { summary: responseSummary } = response.data;
         onClose();
-        onPaymentAdded({ leadId: item.leadData?.id, quotationId: selectedQuotationId || null });
+        onPaymentAdded({ leadId: item.leadData?.id, quotationId: selectedQuotationId });
         alert(`Payment installment #${responseSummary.installment_number} added successfully!\nPaid: ₹${responseSummary.total_paid.toLocaleString('en-IN')}\nRemaining: ₹${responseSummary.remaining.toLocaleString('en-IN')}`);
       } else {
         setError('Failed to add payment');
       }
     } catch (error) {
+      console.error('Error adding payment:', error);
       setError(error.response?.data?.message || 'Failed to add payment. Please try again.');
     } finally {
       setLoading(false);
@@ -844,41 +915,62 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
             <p className="text-sm text-gray-600">Lead ID: {item.leadId}</p>
             <div className="mt-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Quotation (approved only)</label>
-              <select
-                value={selectedQuotationId}
-                onChange={(e) => handleSelectQuotation(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">-- Select Approved Quotation --</option>
-                {approvedQuotations.map((q) => (
-                  <option key={q.id} value={q.id}>{q.quotation_number || q.id} - ₹{Number(q.total_amount || q.totalAmount || 0).toLocaleString()}</option>
-                ))}
-              </select>
-              <div className="text-xs text-gray-600 mt-2 grid grid-cols-2 gap-2">
-                <div>Total: ₹{Number(summary.total ?? 0).toLocaleString()}</div>
-                <div>Paid: ₹{Number(summary.paid ?? 0).toLocaleString()}</div>
-                <div>Remaining: ₹{Number(summary.remaining ?? 0).toLocaleString()}</div>
-                <div>Available credit: ₹{Number(credit ?? 0).toLocaleString()}</div>
-              </div>
+            <select
+              value={selectedQuotationId}
+              onChange={(e) => handleSelectQuotation(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">-- Select Approved Quotation --</option>
+              {approvedQuotations.map((q) => (
+                <option key={q.id} value={q.id}>{q.quotation_number || q.id} - ₹{Number(q.total_amount || q.totalAmount || 0).toLocaleString()}</option>
+              ))}
+            </select>
+              {selectedQuotationId && proformaInvoices.length > 0 && (
+                <div className="text-xs text-gray-600 mt-2 grid grid-cols-2 gap-2">
+                  <div>Total: ₹{Number(summary.total ?? 0).toLocaleString()}</div>
+                  <div>Paid: ₹{Number(summary.paid ?? 0).toLocaleString()}</div>
+                  <div>Remaining: ₹{Number(summary.remaining ?? 0).toLocaleString()}</div>
+                  <div>Available credit: ₹{Number(credit ?? 0).toLocaleString()}</div>
+                </div>
+              )}
             </div>
 
-            {selectedQuotationId && proformaInvoices.length > 0 && (
+            {selectedQuotationId && (
               <div className="mt-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Proforma Invoice (PI) - Optional</label>
-                <select
-                  value={selectedPIId}
-                  onChange={(e) => setSelectedPIId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">-- Select PI (Optional) --</option>
-                  {proformaInvoices.map((pi) => (
-                    <option key={pi.id} value={pi.id}>
-                      {pi.pi_number} - ₹{Number(pi.total_amount || 0).toLocaleString()} 
-                      {pi.status && ` (${pi.status})`}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">Select a PI if this payment is against a specific Proforma Invoice</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Proforma Invoice (PI) <span className="text-red-600">*</span>
+                </label>
+                {proformaInvoices.length > 0 ? (
+                  <>
+                    <select
+                      value={selectedPIId}
+                      onChange={(e) => setSelectedPIId(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">-- Select PI (Required) --</option>
+                      {proformaInvoices.map((pi) => (
+                        <option key={pi.id} value={pi.id}>
+                          {pi.pi_number} - ₹{Number(pi.total_amount || 0).toLocaleString()} 
+                          {pi.status && ` (${pi.status})`}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-blue-600 mt-1 font-medium">PI is required to add payment</p>
+                  </>
+                ) : (
+                  <div className="w-full px-3 py-2 border border-red-300 rounded-md bg-red-50">
+                    <p className="text-sm text-red-600 font-medium">⚠ No PI found for this quotation</p>
+                    <p className="text-xs text-red-500 mt-1">Please create PI first before adding payment</p>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {approvedQuotations.length === 0 && (
+              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-sm text-yellow-800 font-medium">⚠ No quotations with PI available</p>
+                <p className="text-xs text-yellow-700 mt-1">Please create a PI for an approved quotation first, then you can add payment.</p>
               </div>
             )}
           </div>
@@ -945,14 +1037,36 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Upload Payment Receipt (URL)</label>
-              <input
-                type="url"
-                value={paymentData.payment_receipt_url}
-                onChange={(e) => setPaymentData(prev => ({ ...prev, payment_receipt_url: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="https://..."
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Upload Payment Receipt {paymentData.payment_receipt_url && <span className="text-green-600 text-xs">✓ Uploaded</span>}
+              </label>
+              <div className="space-y-2">
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      handleReceiptUpload(file);
+                    }
+                  }}
+                  disabled={uploadingReceipt}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+                />
+                {uploadingReceipt && (
+                  <p className="text-sm text-blue-600">Uploading...</p>
+                )}
+                {paymentData.payment_receipt_url && (
+                  <a
+                    href={paymentData.payment_receipt_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline block"
+                  >
+                    View Receipt
+                  </a>
+                )}
+              </div>
             </div>
 
             <div>
@@ -1176,17 +1290,41 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
         });
         
         // Build payment tracking data with correct status logic
+        // ONLY show items with PI created
         const paymentTrackingData = [];
         
-        paymentMap.forEach(({ quotation, lead, payments }) => {
+        // Fetch PI for each quotation to filter
+        for (const [key, { quotation, lead, payments }] of paymentMap.entries()) {
+          // Skip if no quotation
+          if (!quotation) continue;
+          
+          // Check if PI exists for this quotation
+          let hasPIForQuotation = false;
+          try {
+            const piRes = await proformaInvoiceService.getPIsByQuotation(quotation.id);
+            const pis = piRes?.data || [];
+            hasPIForQuotation = pis.length > 0;
+          } catch (err) {
+            console.warn(`Error checking PI for quotation ${quotation.id}:`, err);
+            hasPIForQuotation = false;
+          }
+          
+          // Skip if no PI exists
+          if (!hasPIForQuotation) {
+            continue;
+          }
+          
           // Filter out refunds
           const validPayments = payments.filter(p => !p.is_refund);
           
           // Calculate payment totals using installment_amount
+          // ONLY count APPROVED payments
           const totalPaid = validPayments
             .filter(p => {
               const status = (p.payment_status || '').toLowerCase();
-              return status === 'completed' || status === 'paid' || status === 'success' || status === 'advance';
+              const approvalStatus = (p.approval_status || '').toLowerCase();
+              const isApproved = approvalStatus === 'approved';
+              return (status === 'completed' || status === 'paid' || status === 'success' || status === 'advance') && isApproved;
             })
             .reduce((sum, p) => sum + Number(p.installment_amount || p.paid_amount || 0), 0);
           
@@ -1264,7 +1402,7 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
             } : null,
             paymentsData: validPayments
           });
-        });
+        }
         
         // Filter only items with advance payments (paidAmount > 0 AND remainingAmount > 0)
         // Advance Payment page should show: items with partial payment (advance status)

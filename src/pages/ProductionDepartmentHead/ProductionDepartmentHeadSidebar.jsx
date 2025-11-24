@@ -124,9 +124,9 @@ const ProductionDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }
   ];
 
   return (
-    <div className={`bg-white shadow-lg transition-all duration-300 ${isExpanded ? 'w-64' : 'w-16'} h-screen flex flex-col border-r border-gray-200 overflow-y-auto overflow-x-hidden shrink-0`}>
+    <div className={`bg-white shadow-lg transition-all duration-300 ${isExpanded ? 'w-64' : 'w-16'} h-screen flex flex-col border-r border-gray-200 shrink-0`}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200 shrink-0">
         <div className="flex items-center justify-between">
           {isExpanded && (
             <div className="flex items-center space-x-3">
@@ -160,7 +160,7 @@ const ProductionDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 p-2">
+      <nav className="flex-1 p-2 overflow-y-auto overflow-x-hidden">
         <ul className="space-y-1">
           {sidebarItems.map((item) => (
             <li key={item.id}>

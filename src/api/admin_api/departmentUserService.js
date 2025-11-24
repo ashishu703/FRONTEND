@@ -6,6 +6,9 @@ export const DepartmentType = {
   MARKETING_SALES: 'marketing_sales',
   OFFICE_SALES: 'office_sales',
   HR: 'hr',
+  PRODUCTION: 'production',
+  ACCOUNTS: 'accounts',
+  IT: 'it',
 };
 
 export const CompanyName = {
@@ -19,6 +22,9 @@ export const uiToApiDepartment = (uiValue) => {
     'Sales Department': DepartmentType.OFFICE_SALES,
     'Marketing Department': DepartmentType.MARKETING_SALES,
     'HR Department': DepartmentType.HR,
+    'Production Department': DepartmentType.PRODUCTION,
+    'Accounts Department': DepartmentType.ACCOUNTS,
+    'IT Department': DepartmentType.IT,
   };
   return map[uiValue] || uiValue;
 };
@@ -28,6 +34,9 @@ export const apiToUiDepartment = (apiValue) => {
     [DepartmentType.OFFICE_SALES]: 'Sales Department',
     [DepartmentType.MARKETING_SALES]: 'Marketing Department',
     [DepartmentType.HR]: 'HR Department',
+    [DepartmentType.PRODUCTION]: 'Production Department',
+    [DepartmentType.ACCOUNTS]: 'Accounts Department',
+    [DepartmentType.IT]: 'IT Department',
   };
   return map[apiValue] || apiValue;
 };

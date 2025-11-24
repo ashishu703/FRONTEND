@@ -26,7 +26,8 @@ export default function PIPreviewModal({
         const shipping = piPreviewData?.shippingDetails || {}
         
         // Create PI with all data in ONE API call (DRY principle)
-        await proformaInvoiceService.createFromQuotation(approvedQuotationId, {
+        // Include adjusted amounts if available (for remaining amount PIs)
+        const piDataPayload = {
           piDate: today,
           validUntil,
           status: 'pending',
@@ -42,7 +43,22 @@ export default function PIPreviewModal({
           postService: shipping.postService || null,
           carrierName: shipping.carrierName || null,
           carrierNumber: shipping.carrierNumber || null
-        })
+        }
+        
+        // If adjusted amounts are available (for remaining amount PIs), send them
+        if (piPreviewData?.data) {
+          if (piPreviewData.data.subtotal !== undefined) {
+            piDataPayload.subtotal = piPreviewData.data.subtotal
+          }
+          if (piPreviewData.data.taxAmount !== undefined) {
+            piDataPayload.taxAmount = piPreviewData.data.taxAmount
+          }
+          if (piPreviewData.data.total !== undefined) {
+            piDataPayload.totalAmount = piPreviewData.data.total
+          }
+        }
+        
+        await proformaInvoiceService.createFromQuotation(approvedQuotationId, piDataPayload)
       }
 
       // Update lead status

@@ -16,6 +16,10 @@ import OfficeSalesPersonLayout from './pages/OfficeSalesPerson/OfficeSalesPerson
 import ProductionDepartmentHeadLayout from './pages/ProductionDepartmentHead/ProductionDepartmentHeadLayout.jsx'
 import ProductionDepartmentHeadDashboard from './pages/ProductionDepartmentHead/ProductionDepartmentHeadDashboard.jsx'
 import ProductionStaffLayout from './pages/production/productionlayout.jsx'
+import AccountsLayout from './pages/accounts/AccountsLayout.jsx'
+import AccountsDashboard from './pages/accounts/accountsdashboard.jsx'
+import ItLayout from './pages/it/ItLayout.jsx'
+import ItDashboard from './pages/it/itdashboard.jsx'
 import { getUserTypeForRole } from './constants/auth'
 import RoleGuard from './components/RoleGuard'
 
@@ -81,6 +85,24 @@ function AppContent() {
           <TeleSalesLayout />
         ) : userType === 'office-sales-person' ? (
           <OfficeSalesPersonLayout />
+        ) : userType === 'accountsdepartmenthead' || userType === 'accounts-user' ? (
+          <AccountsLayout
+            onLogout={handleLogout}
+            activeView={activeView}
+            setActiveView={setActiveView}
+            headerUserType={userType}
+          >
+            <AccountsDashboard activeView={activeView} setActiveView={setActiveView} />
+          </AccountsLayout>
+        ) : userType === 'itdepartmenthead' || userType === 'it-user' ? (
+          <ItLayout
+            onLogout={handleLogout}
+            activeView={activeView}
+            setActiveView={setActiveView}
+            headerUserType={userType}
+          >
+            <ItDashboard activeView={activeView} setActiveView={setActiveView} />
+          </ItLayout>
         ) : (
           <DashboardLayout onLogout={handleLogout} activeView={activeView} setActiveView={setActiveView}>
             <MainDashboard activeView={activeView} setActiveView={setActiveView} />
