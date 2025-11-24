@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TrendingUp, Users, Phone, Calendar, CheckCircle, Clock, Target, BarChart3, PieChart as PieChartIcon, Activity, Award, TrendingDown, ArrowRightLeft, Calendar as CalendarIcon, MapPin, PhoneOff, XCircle, UserPlus, CreditCard } from 'lucide-react';
+import { TrendingUp, Users, Phone, Calendar, CheckCircle, Clock, Target, BarChart3, PieChart as PieChartIcon, Activity, Award, TrendingDown, ArrowRightLeft, Calendar as CalendarIcon, MapPin, PhoneOff, XCircle, UserPlus, CreditCard, FileText, Receipt, ShoppingCart, DollarSign, AlertCircle } from 'lucide-react';
 
 // Simple Chart Components (without external dependencies)
 function CustomPieChart({ data, size = 200 }) {
@@ -73,29 +73,178 @@ function CustomPieChart({ data, size = 200 }) {
 
 function CustomBarChart({ data, height = 200 }) {
   const maxValue = Math.max(...data.map(item => item.value))
+  const barWidth = 40
+  const spacing = 20
+  const chartWidth = data.length * (barWidth + spacing)
   
   return (
-    <div className="w-full transition-all duration-300 hover:scale-105" style={{ height }}>
-      <div className="flex items-end justify-between h-full space-x-2">
-        {data.map((item, index) => {
-          const barHeight = (item.value / maxValue) * (height - 40)
-          return (
-            <div key={index} className="flex flex-col items-center flex-1 group">
-              <div className="text-xs text-gray-500 mb-1 transition-all duration-300 group-hover:text-gray-700 group-hover:font-semibold">{item.value}</div>
-              <div
-                className="w-full rounded-t transition-all duration-500 hover:opacity-80 hover:shadow-lg hover:scale-110 cursor-pointer relative"
-                style={{
-                  height: barHeight,
-                  backgroundColor: item.color,
-                  minHeight: '4px',
-                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
-                }}
-                title={`${item.label}: ${item.value}`}
+    <div className="flex items-end justify-center space-x-2 h-full">
+      {data.map((item, index) => (
+        <div key={index} className="flex flex-col items-center">
+          <div 
+            className="bg-blue-500 rounded-t transition-all duration-300 hover:bg-blue-600"
+            style={{
+              width: `${barWidth}px`,
+              height: `${(item.value / maxValue) * (height - 30)}px`,
+              minHeight: '4px'
+            }}
+          />
+          <span className="text-xs text-gray-600 mt-1">{item.label}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Stacked Bar Chart Component
+function StackedBarChart({ data, height = 200, isDarkMode = false }) {
+  const maxValue = Math.max(...data.map(item => item.accepted + item.rejected + item.pending))
+  const barWidth = 60
+  const spacing = 15
+  
+  return (
+    <div className="flex items-end justify-center space-x-3 h-full">
+      {data.map((item, index) => {
+        const total = item.accepted + item.rejected + item.pending
+        const acceptedHeight = (item.accepted / maxValue) * (height - 30)
+        const rejectedHeight = (item.rejected / maxValue) * (height - 30)
+        const pendingHeight = (item.pending / maxValue) * (height - 30)
+        
+        return (
+          <div key={index} className="flex flex-col items-center">
+            <div className="relative" style={{ width: `${barWidth}px`, height: `${height - 30}px` }}>
+              <div 
+                className="absolute bottom-0 w-full bg-green-500 rounded-t"
+                style={{ height: `${acceptedHeight}px` }}
               />
-              <div className="text-xs text-gray-600 mt-2 text-center transition-all duration-300 group-hover:text-gray-800 group-hover:font-medium">{item.label}</div>
+              <div 
+                className="absolute bottom-0 w-full bg-red-500"
+                style={{ height: `${rejectedHeight}px`, bottom: `${acceptedHeight}px` }}
+              />
+              <div 
+                className="absolute bottom-0 w-full bg-yellow-500 rounded-b"
+                style={{ height: `${pendingHeight}px`, bottom: `${acceptedHeight + rejectedHeight}px` }}
+              />
             </div>
-          )
-        })}
+            <span className="text-xs text-gray-600 mt-1">{item.week}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// Area Chart Component
+function AreaChart({ data, height = 200, isDarkMode = false }) {
+  const maxValue = Math.max(...data.map(item => Math.max(item.received, item.pending, item.overdue)))
+  const width = '100%'
+  const heightPx = height - 30
+  
+  return (
+    <div className="w-full h-full">
+      <svg width={width} height={heightPx} className="overflow-visible">
+        {/* Grid lines */}
+        {[0, 25, 50, 75, 100].map((percent) => (
+          <line
+            key={percent}
+            x1="0"
+            y1={`${heightPx - (percent / 100) * heightPx}px`}
+            x2="100%"
+            y2={`${heightPx - (percent / 100) * heightPx}px`}
+            stroke="#e5e7eb"
+            strokeWidth="1"
+          />
+        ))}
+        
+        {/* Received area */}
+        <path
+          d={`M 0,${heightPx} ${data.map((item, index) => {
+            const x = (index / (data.length - 1)) * 100
+            const y = heightPx - (item.received / maxValue) * heightPx
+            return `L ${x}%,${y}px`
+          }).join(' ')} L 100%,${heightPx} Z`}
+          fill="#10b981"
+          fillOpacity="0.3"
+          stroke="#10b981"
+          strokeWidth="2"
+        />
+        
+        {/* Pending area */}
+        <path
+          d={`M 0,${heightPx} ${data.map((item, index) => {
+            const x = (index / (data.length - 1)) * 100
+            const y = heightPx - (item.pending / maxValue) * heightPx
+            return `L ${x}%,${y}px`
+          }).join(' ')} L 100%,${heightPx} Z`}
+          fill="#f59e0b"
+          fillOpacity="0.3"
+          stroke="#f59e0b"
+          strokeWidth="2"
+        />
+        
+        {/* X-axis labels */}
+        {data.map((item, index) => (
+          <text
+            key={index}
+            x={`${(index / (data.length - 1)) * 100}%`}
+            y={heightPx + 15}
+            textAnchor="middle"
+            className="text-xs fill-gray-600"
+          >
+            {item.month}
+          </text>
+        ))}
+      </svg>
+    </div>
+  )
+}
+
+// Gauge Chart Component
+function GaugeChart({ value, max, height = 200, isDarkMode = false }) {
+  const percentage = (value / max) * 100
+  const radius = 80
+  const strokeWidth = 15
+  const center = radius + strokeWidth
+  
+  // Calculate the angle for the value (from -90deg to 90deg)
+  const angle = -90 + (percentage * 180) / 100
+  const radians = (angle * Math.PI) / 180
+  
+  // Calculate end point of the arc
+  const endX = center + radius * Math.cos(radians)
+  const endY = center + radius * Math.sin(radians)
+  
+  return (
+    <div className="flex flex-col items-center justify-center h-full">
+      <svg width={center * 2} height={center * 2} className="transform -rotate-90">
+        {/* Background arc */}
+        <circle
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="none"
+          stroke="#e5e7eb"
+          strokeWidth={strokeWidth}
+        />
+        
+        {/* Value arc */}
+        <circle
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="none"
+          stroke={percentage > 70 ? '#10b981' : percentage > 40 ? '#f59e0b' : '#ef4444'}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${radius * Math.PI} ${radius * Math.PI * 2}`}
+          strokeDashoffset={`${radius * Math.PI * 2 - (radius * Math.PI * percentage) / 100}`}
+          className="transition-all duration-500"
+        />
+      </svg>
+      
+      <div className="absolute flex flex-col items-center transform rotate-0">
+        <span className="text-2xl font-bold text-gray-800">{value}</span>
+        <span className="text-sm text-gray-500">of {max}</span>
+        <span className="text-xs text-gray-400">{percentage.toFixed(0)}%</span>
       </div>
     </div>
   )
@@ -125,8 +274,9 @@ function ProgressBar({ value, max, label, color = "bg-blue-500" }) {
 }
 
 const MobileDashboard = () => {
-  const [activeTab, setActiveTab] = useState('overview')
-  const [dateFilter, setDateFilter] = useState('')
+  const [activeTab, setActiveTab] = useState('overview');
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [dateFilter, setDateFilter] = useState('');
 
   // Demo data for leads
   const demoLeads = [
@@ -374,6 +524,41 @@ const MobileDashboard = () => {
     monthlyRevenue: calculateMonthlyRevenue()
   }
 
+  // Add dashboardData structure for new components
+  const dashboardData = {
+    quotationTrends: [
+      { week: 'Week 1', accepted: 12, rejected: 3, pending: 5 },
+      { week: 'Week 2', accepted: 15, rejected: 4, pending: 6 },
+      { week: 'Week 3', accepted: 18, rejected: 2, pending: 4 },
+      { week: 'Week 4', accepted: 14, rejected: 5, pending: 7 },
+    ],
+    proformaDistribution: [
+      { label: 'Draft', value: 8, color: '#94a3b8' },
+      { label: 'Sent', value: 12, color: '#3b82f6' },
+      { label: 'Accepted', value: 6, color: '#10b981' },
+      { label: 'Rejected', value: 2, color: '#ef4444' },
+    ],
+    paymentTrends: [
+      { month: 'Jan', received: 45000, pending: 12000, overdue: 3000 },
+      { month: 'Feb', received: 52000, pending: 15000, overdue: 2500 },
+      { month: 'Mar', received: 48000, pending: 18000, overdue: 4000 },
+      { month: 'Apr', received: 61000, pending: 14000, overdue: 2000 },
+    ],
+    saleOrderProgress: {
+      completed: 32,
+      total: 45
+    },
+    paymentOverview: {
+      totalReceived: 206000,
+      totalPending: 59000,
+      totalOverdue: 11500
+    },
+    paymentDueRatio: {
+      dueAmount: 70500,
+      totalAmount: 327500
+    }
+  }
+
   const overviewMetrics = overviewData.metrics
 
   const leadStatuses = [
@@ -560,6 +745,20 @@ const MobileDashboard = () => {
               </div>
               <div className="mt-2 text-center">
                 <span className="text-sm text-gray-500">Leads Generated This Week</span>
+              </div>
+            </div>
+
+            {/* Quotation Trends - Stacked Bar Chart */}
+            <div className="p-4 rounded-xl border-2 bg-white">
+              <div className="flex items-center gap-2 mb-4">
+                <FileText className="h-5 w-5 text-blue-600" />
+                <h3 className="text-lg font-semibold">Quotation Trends</h3>
+              </div>
+              <div className="h-48">
+                <StackedBarChart data={dashboardData.quotationTrends} height={200} isDarkMode={isDarkMode} />
+              </div>
+              <div className="mt-2 text-center">
+                <span className="text-sm text-gray-500">Weekly Quotation Status</span>
               </div>
             </div>
 

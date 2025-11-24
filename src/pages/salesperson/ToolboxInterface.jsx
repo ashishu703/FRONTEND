@@ -30,9 +30,12 @@ import {
   Download,
   Eye,
   Plus,
-  Trash2
+  Trash2,
+  Folder
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import apiClient from '../../utils/apiClient';
+import { API_ENDPOINTS } from '../../api/admin_api/api';
 
 const sections = [
   {
@@ -41,7 +44,7 @@ const sections = [
     icon: Package,
     tools: [
         { name: "Aerial Bunch Cable", description: "Overhead power distribution cable", icon: Image, imageUrl: "/images/products/aerial bunch cable.jpeg" },
-      { name: "Aluminium Conductor Galvanized Steel Reinforced", description: "ACSR conductor for transmission lines", icon: Image, imageUrl: "/images/products/all aluminium alloy conductor.jpeg" },
+      { name: "Aluminium Conductor Galvanized Steel Reinforced", description: "ACSR conductor for transmission lines", icon: Image, imageUrl: "/images/products/Aluminum Conductor Galvanised Steel Reinforced.jpg" },
       { name: "All Aluminium Alloy Conductor", description: "AAAC conductor for overhead lines", icon: Image, imageUrl: "/images/products/all aluminium alloy conductor.jpeg" },
       { name: "PVC Insulated Submersible Cable", description: "Water-resistant submersible cable", icon: Image, imageUrl: "/images/products/pvc insulated submersible cable.jpeg" },
       { name: "Multi Core XLPE Insulated Aluminium Unarmoured Cable", description: "Multi-core XLPE cable without armour", icon: Image, imageUrl: "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg" },
@@ -61,7 +64,7 @@ const sections = [
       { name: "Twin Twisted Copper Wire", description: "Twisted pair copper wire", icon: Image, imageUrl: "/images/products/twin twisted copper wire.jpeg" },
       { name: "Speaker Cable", description: "Audio speaker connection cable", icon: Image, imageUrl: "/images/products/speaker cable.jpeg" },
       { name: "CCTV Cable", description: "Closed-circuit television cable", icon: Image, imageUrl: "/images/products/cctv cable.jpeg" },
-      { name: "LAN Cable", description: "Local area network cable", icon: Image, imageUrl: "/images/products/telecom switch board cables.jpeg" },
+      { name: "LAN Cable", description: "Local area network cable", icon: Image, imageUrl: "/images/products/LAN Cable.jpg" },
       { name: "Automobile Cable", description: "Automotive electrical cable", icon: Image, imageUrl: "/images/products/automobile wire.jpeg" },
       { name: "PV Solar Cable", description: "Photovoltaic solar panel cable", icon: Image, imageUrl: "/images/products/pv solar cable.jpeg" },
       { name: "Co Axial Cable", description: "Coaxial transmission cable", icon: Image, imageUrl: "/images/products/co axial cable.jpeg" },
@@ -100,6 +103,65 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   const [showCompanyEmails, setShowCompanyEmails] = useState(false);
   const [showLocations, setShowLocations] = useState(false);
   const [showHelpingCalculators, setShowHelpingCalculators] = useState(false);
+  
+  // User data state
+  const [userData, setUserData] = useState({
+    name: 'User',
+    email: ''
+  });
+
+  // Fetch user data from API
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await apiClient.get(API_ENDPOINTS.PROFILE);
+        if (response && response.data && response.data.user) {
+          const user = response.data.user;
+          setUserData({
+            name: user.name || user.username || 'User',
+            email: user.email || ''
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+        // Fallback to localStorage if API fails
+        try {
+          const localUserData = JSON.parse(localStorage.getItem('user') || '{}');
+          setUserData({
+            name: localUserData.name || localUserData.username || 'User',
+            email: localUserData.email || ''
+          });
+        } catch {
+          // Keep default values
+        }
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  // Get QR code path based on user name
+  const getQRCodePath = (userName) => {
+    if (!userName || userName === 'User') return '/images/QRs/SAURABH.jpg'; // Default fallback
+    // Use first name only to match existing QR file naming (e.g., "SAURABH.jpg", "HIMANSHU.jpg")
+    const firstName = userName.split(' ')[0].toUpperCase();
+    return `/images/QRs/${firstName}.jpg`;
+  };
+
+  // Get user title based on name (only Saurabh Jhariya is Sales Head, others are Salesperson)
+  const getUserTitle = (userName) => {
+    if (!userName) return '(Salesperson)';
+    // Check if the name contains "Saurabh" and "Jhariya" (case insensitive)
+    const nameLower = userName.toLowerCase();
+    if (nameLower.includes('saurabh') && nameLower.includes('jhariya')) {
+      return '(Sales Head)';
+    }
+    return '(Salesperson)';
+  };
+
+  // Get QR code path
+  const qrCodePath = getQRCodePath(userData.name);
+  const userTitle = getUserTitle(userData.name);
   
   // Product detail state
   const [isProductDetailOpen, setIsProductDetailOpen] = useState(false);
@@ -148,6 +210,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   const [isCompanyEmailsOpen, setIsCompanyEmailsOpen] = useState(false);
   const [isGstDetailsOpen, setIsGstDetailsOpen] = useState(false);
   const [isApprovalsOpen, setIsApprovalsOpen] = useState(false);
+  const [isProductLicenseOpen, setIsProductLicenseOpen] = useState(false);
+  const [isSidebarLicenseOpen, setIsSidebarLicenseOpen] = useState(false);
+  const [isBisFolderOpen, setIsBisFolderOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredTools, setFilteredTools] = useState([]);
   // AB Cable - Costing calculator editable inputs (sheet row 30)
@@ -1963,50 +2028,56 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
       "Aluminium Conductor Galvanized Steel Reinforced": {
         title: "Aluminium Conductor Galvanized Steel Reinforced",
         description: "ACSR conductor for overhead transmission and distribution lines",
-        imageUrl: "/images/products/all aluminium alloy conductor.jpeg",
+        imageUrl: "/images/products/Aluminum Conductor Galvanised Steel Reinforced.jpg",
         priceList: [
-          { size: "10 SQMM", price: "", stock: "", image: "" },
-          { size: "18 SQMM", price: "", stock: "", image: "" },
-          { size: "20 SQMM", price: "", stock: "", image: "" },
-          { size: "30 SQMM", price: "", stock: "", image: "" },
-          { size: "50 SQMM", price: "", stock: "", image: "" },
-          { size: "80 SQMM", price: "", stock: "", image: "" },
-          { size: "100 SQMM", price: "", stock: "", image: "" }
+          { conductorCode: "MOLE", size: "10 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "SPECIAL", size: "18 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "SQIRREL", size: "20 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "WEASEL", size: "30 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "RABBIT", size: "50 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "RACCOON", size: "80 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "DOG", size: "100 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "WOLF", size: "150 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "PANTHER", size: "200 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "KUNDAH", size: "400 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "ZEBRA", size: "420 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "MOOSE", size: "520 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "BERSIMIS", size: "690 SQMM", price: "", stock: "", image: "" }
         ],
         technicalData: {},
         technicalTables: {
-          note: "ALUMINIUM CONDUCTOR GALVANISED STEEL REINFORCED IS 398 PT-II : 1996",
+          note: "ALUMINIUM, GALVANISED STEEL REINFORCED CONDUCTOR IS 398 PT-II : 1996",
           tables: [
             {
-              title: "ACSR CONDUCTOR SPECIFICATIONS",
+              title: "ALUMINIUM, GALVANISED STEEL REINFORCED CONDUCTOR IS 398 PT-II : 1996",
               columns: [
-                "ACSR Code",
-                "Nom. Aluminium Area (mm²)",
-                "Stranding and Wire Diameter - Aluminium (nos/mm)",
-                "Stranding and Wire Diameter - Steel (nos/mm)",
-                "DC Resistance at 20°C (Ω/km)",
-                "AC Resistance at 65°C (Ω/km)",
-                "AC Resistance at 75°C (Ω/km)",
-                "Current Capacity at 65°C (Amps)",
-                "Current Capacity at 75°C (Amps)"
+                "CONDUCTOR",
+                "ALUMINUM AREA (SQ MM)",
+                "SIZE (ALUMINIUM)",
+                "SIZE (STEEL)",
+                "CROSS-SECTIONAL AREA (ALUMINIUM)",
+                "CROSS-SECTIONAL AREA (STEEL)",
+                "OUTER DIA (MM)",
+                "WEIGHT KG/KM (ALUMINIUM)",
+                "WEIGHT KG/KM (STEEL)",
+                "WEIGHT KG/KM (ACSR)",
+                "RESISTANCE (Ω) 20°C (Ohms/Km)",
+                "BREAKING LOAD (KN)"
               ],
               rows: [
-                { code: "Mole", alArea: "10", alStrand: "6/1.50", steelStrand: "1/1.50", dcResistance: "2.780", acResistance65: "3.777", acResistance75: "3.905", current65: "58", current75: "70" },
-                { code: "Squirrel", alArea: "20", alStrand: "6/1.96", steelStrand: "1/1.96", dcResistance: "1.394", acResistance65: "1.894", acResistance75: "1.958", current65: "89", current75: "107" },
-                { code: "Weasel", alArea: "30", alStrand: "6/2.59", steelStrand: "1/2.59", dcResistance: "0.929", acResistance65: "1.262", acResistance75: "1.308", current65: "114", current75: "138" },
-                { code: "Rabbit", alArea: "50", alStrand: "6/3.35", steelStrand: "1/3.35", dcResistance: "0.552", acResistance65: "0.705", acResistance75: "0.776", current65: "157", current75: "190" },
-                { code: "Raccoon", alArea: "80", alStrand: "6/4.09", steelStrand: "1/4.09", dcResistance: "0.371", acResistance65: "0.504", acResistance75: "0.522", current65: "200", current75: "244" },
-                { code: "Dog", alArea: "100", alStrand: "6/4.72", steelStrand: "7/1.57", dcResistance: "0.279", acResistance65: "0.379", acResistance75: "0.392", current65: "239", current75: "291" },
-                { code: "Coyote", alArea: "130", alStrand: "26/2.54", steelStrand: "7/1.91", dcResistance: "0.225", acResistance65: "0.266", acResistance75: "0.275", current65: "292", current75: "358" },
-                { code: "Wolf", alArea: "150", alStrand: "30/2.59", steelStrand: "7/2.59", dcResistance: "0.187", acResistance65: "0.222", acResistance75: "0.230", current65: "329", current75: "405" },
-                { code: "Lynx", alArea: "180", alStrand: "30/2.79", steelStrand: "7/2.79", dcResistance: "0.161", acResistance65: "0.191", acResistance75: "0.197", current65: "361", current75: "445" },
-                { code: "Panther", alArea: "200", alStrand: "30/3.00", steelStrand: "7/3.00", dcResistance: "0.139", acResistance65: "0.165", acResistance75: "0.171", current65: "395", current75: "487" },
-                { code: "Goat", alArea: "320", alStrand: "30/3.71", steelStrand: "7/3.71", dcResistance: "0.091", acResistance65: "0.108", acResistance75: "0.112", current65: "510", current75: "634" },
-                { code: "Kundah", alArea: "400", alStrand: "42/3.50", steelStrand: "7/1.96", dcResistance: "0.073", acResistance65: "0.089", acResistance75: "0.092", current65: "566", current75: "705" },
-                { code: "Zebra", alArea: "420", alStrand: "54/3.18", steelStrand: "7/3.18", dcResistance: "0.069", acResistance65: "0.084", acResistance75: "0.087", current65: "590", current75: "737" },
-                { code: "Moose", alArea: "520", alStrand: "54/3.53", steelStrand: "7/3.53", dcResistance: "0.056", acResistance65: "0.069", acResistance75: "0.071", current65: "667", current75: "836" },
-                { code: "Morkulla", alArea: "560", alStrand: "42/4.13", steelStrand: "7/2.30", dcResistance: "0.052", acResistance65: "0.065", acResistance75: "0.067", current65: "688", current75: "862" },
-                { code: "Bersimis", alArea: "690", alStrand: "42/4.57", steelStrand: "7/2.54", dcResistance: "0.042", acResistance65: "0.051", acResistance75: "0.052", current65: "791", current75: "998" }
+                { conductor: "MOLE", alArea: "10", sizeAl: "6/1.50", sizeSteel: "1/1.50", crossAreaAl: "10.60", crossAreaSteel: "12.37", outerDia: "4.50", weightAl: "28.65", weightSteel: "13.94", weightAcsr: "42.58", resistance: "2.78", breakingLoad: "3.97" },
+                { conductor: "SPECIAL", alArea: "18", sizeAl: "6/1.96", sizeSteel: "1/1.96", crossAreaAl: "18.10", crossAreaSteel: "3.02", outerDia: "5.88", weightAl: "48.87", weightSteel: "3.40", weightAcsr: "52.27", resistance: "1.59", breakingLoad: "5.50" },
+                { conductor: "SQIRREL", alArea: "20", sizeAl: "6/1.96", sizeSteel: "1/1.96", crossAreaAl: "18.10", crossAreaSteel: "3.02", outerDia: "5.88", weightAl: "48.87", weightSteel: "3.40", weightAcsr: "52.27", resistance: "1.59", breakingLoad: "5.50" },
+                { conductor: "WEASEL", alArea: "30", sizeAl: "6/2.59", sizeSteel: "1/2.59", crossAreaAl: "31.67", crossAreaSteel: "5.27", outerDia: "7.77", weightAl: "85.51", weightSteel: "5.93", weightAcsr: "91.44", resistance: "0.91", breakingLoad: "7.50" },
+                { conductor: "RABBIT", alArea: "50", sizeAl: "6/3.35", sizeSteel: "1/3.35", crossAreaAl: "52.87", crossAreaSteel: "8.81", outerDia: "10.05", weightAl: "142.75", weightSteel: "9.92", weightAcsr: "152.67", resistance: "0.55", breakingLoad: "10.00" },
+                { conductor: "RACCOON", alArea: "80", sizeAl: "6/4.09", sizeSteel: "1/4.09", crossAreaAl: "78.85", crossAreaSteel: "13.14", outerDia: "12.27", weightAl: "212.90", weightSteel: "14.80", weightAcsr: "227.70", resistance: "0.37", breakingLoad: "13.50" },
+                { conductor: "DOG", alArea: "100", sizeAl: "6/4.72", sizeSteel: "7/1.57", crossAreaAl: "105.00", crossAreaSteel: "13.54", outerDia: "14.16", weightAl: "283.50", weightSteel: "15.25", weightAcsr: "298.75", resistance: "0.28", breakingLoad: "18.50" },
+                { conductor: "WOLF", alArea: "150", sizeAl: "30/2.59", sizeSteel: "7/2.59", crossAreaAl: "158.00", crossAreaSteel: "36.90", outerDia: "18.14", weightAl: "426.60", weightSteel: "41.55", weightAcsr: "468.15", resistance: "0.19", breakingLoad: "28.50" },
+                { conductor: "PANTHER", alArea: "200", sizeAl: "30/3.00", sizeSteel: "7/3.00", crossAreaAl: "212.00", crossAreaSteel: "49.50", outerDia: "21.00", weightAl: "572.40", weightSteel: "55.73", weightAcsr: "628.13", resistance: "0.14", breakingLoad: "38.00" },
+                { conductor: "KUNDAH", alArea: "400", sizeAl: "42/3.50", sizeSteel: "7/1.96", crossAreaAl: "404.00", crossAreaSteel: "21.15", outerDia: "24.50", weightAl: "1090.80", weightSteel: "23.82", weightAcsr: "1114.62", resistance: "0.07", breakingLoad: "55.00" },
+                { conductor: "ZEBRA", alArea: "420", sizeAl: "54/3.18", sizeSteel: "7/3.18", crossAreaAl: "429.00", crossAreaSteel: "55.60", outerDia: "28.56", weightAl: "1158.30", weightSteel: "62.61", weightAcsr: "1220.91", resistance: "0.07", breakingLoad: "65.00" },
+                { conductor: "MOOSE", alArea: "520", sizeAl: "54/3.53", sizeSteel: "7/3.53", crossAreaAl: "529.00", crossAreaSteel: "68.60", outerDia: "31.71", weightAl: "1428.30", weightSteel: "77.25", weightAcsr: "1505.55", resistance: "0.06", breakingLoad: "80.00" },
+                { conductor: "BERSIMIS", alArea: "690", sizeAl: "42/4.57", sizeSteel: "7/2.54", crossAreaAl: "688.90", crossAreaSteel: "724.40", outerDia: "35.04", weightAl: "1907.00", weightSteel: "280.00", weightAcsr: "2187.00", resistance: "0.04", breakingLoad: "146.87" }
               ]
             }
           ]
@@ -2017,12 +2088,23 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "All Aluminium Alloy Conductor for overhead lines",
         imageUrl: "/images/products/all aluminium alloy conductor.jpeg",
         priceList: [
-          { size: "MOLE - 15 SQMM", price: "", stock: "", image: "" },
-          { size: "SQUIRREL - 22 SQMM", price: "", stock: "", image: "" },
-          { size: "WEASEL - 34 SQMM", price: "", stock: "", image: "" },
-          { size: "RABBIT - 55 SQMM", price: "", stock: "", image: "" },
-          { size: "RACCOON - 80 SQMM", price: "", stock: "", image: "" },
-          { size: "DOG - 100 SQMM", price: "", stock: "", image: "" }
+          { conductorCode: "Mole", size: "15 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Squirrel", size: "20 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Weasel", size: "34 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Rabbit", size: "55 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Raccoon", size: "80 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Dog", size: "100 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Dog(up)", size: "125 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Coyote", size: "150 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Wolf", size: "175 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Wolf(up)", size: "200 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Panther", size: "232 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Panther (up)", size: "290 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Panther (up)", size: "345 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Kundah", size: "400 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Zebra", size: "465 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Zebra (up)", size: "525 SQMM", price: "", stock: "", image: "" },
+          { conductorCode: "Moose", size: "570 SQMM", price: "", stock: "", image: "" }
         ],
         technicalData: {
           voltage: "33 kV",
@@ -2386,11 +2468,17 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         description: "Water-resistant submersible cable",
         imageUrl: "/images/products/pvc insulated submersible cable.jpeg",
         priceList: [
-          { size: "1.0 mm² (32/0.20 | 32/0.00788)", price: "", stock: "", image: "" },
-          { size: "1.5 mm² (30/0.25 | 30/0.00985)", price: "", stock: "", image: "" },
-          { size: "2.5 mm² (50/0.25 | 50/0.00985)", price: "", stock: "", image: "" },
-          { size: "4.0 mm² (56/0.30 | 56/0.01181)", price: "", stock: "", image: "" },
-          { size: "6.0 mm² (84/0.30 | 84/0.01181)", price: "", stock: "", image: "" }
+          { size: "1.5 SQMM", price: "", stock: "", image: "" },
+          { size: "2.5 SQMM", price: "", stock: "", image: "" },
+          { size: "4 SQMM", price: "", stock: "", image: "" },
+          { size: "6 SQMM", price: "", stock: "", image: "" },
+          { size: "10 SQMM", price: "", stock: "", image: "" },
+          { size: "16 SQMM", price: "", stock: "", image: "" },
+          { size: "25 SQMM", price: "", stock: "", image: "" },
+          { size: "35 SQMM", price: "", stock: "", image: "" },
+          { size: "50 SQMM", price: "", stock: "", image: "" },
+          { size: "70 SQMM", price: "", stock: "", image: "" },
+          { size: "95 SQMM", price: "", stock: "", image: "" }
         ],
         technicalData: {
           voltage: "1.1 kV",
@@ -2519,7 +2607,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
       "LAN Cable": {
         title: "LAN Cable",
         description: "Local area network cable",
-        imageUrl: "/images/products/telecom switch board cables.jpeg",
+        imageUrl: "/images/products/LAN Cable.jpg",
         priceList: [
           { size: "CAT-5 4 Pair (1/0.574 mm)", price: "", stock: "Available", image: "" },
           { size: "CAT-6 4 Pair (1/0.574 mm)", price: "", stock: "Available", image: "" }
@@ -2727,6 +2815,37 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
       priceList: [],
       technicalData: {}
     };
+  };
+
+  // Helper function to get front view image path
+  const getFrontViewImage = (productName) => {
+    const frontViewMapping = {
+      "Aerial Bunch Cable": "/images/products/Aerial Bunch Cable (2).jpg",
+      "All Aluminium Alloy Conductor": "/images/products/All Aluminum Alloy Conductor (2).jpg",
+      "Aluminium Conductor Galvanized Steel Reinforced": "/images/products/Aluminum Conductor Galvanised Steel Reinforced (2).jpg",
+      "Armoured Unarmoured PVC Insulated Copper Control Cable": "/images/products/Armoured Unarmoured PVC Insulated Copper Control (2).jpg",
+      "Automobile Cable": "/images/products/Automobile Wire (2).jpg",
+      "CCTV Cable": "/images/products/CCTV Cable (2).jpg",
+      "Co Axial Cable": "/images/products/Co-axial Cable (2).jpg",
+      "LAN Cable": "/images/products/LAN Cable (2).jpg",
+      "Multi Core Copper Cable": "/images/products/Multi Core Copper Cable (2).jpg",
+      "Multi Core PVC Insulated Aluminium Armoured Cable": "/images/products/Multi core PVC Insulated Aluminum Armored Cable (2).jpg",
+      "Multi Core PVC Insulated Aluminium Unarmoured Cable": "/images/products/Multi core PVC Insulated Aluminum Unarmored Cable (2).jpg",
+      "Multi Core XLPE Insulated Aluminium Armoured Cable": "/images/products/Multi core XLPE Insulated Aluminum Armored Cable (2).jpg",
+      "Multi Core XLPE Insulated Aluminium Unarmoured Cable": "/images/products/Multi core PVC Insulated Aluminum Unarmored Cable (2).jpg",
+      "Multistrand Single Core Copper Cable": "/images/products/Multistrand Single Core Copper Wire (2).jpg",
+      "PVC Insulated Multicore Aluminium Cable": "/images/products/PVC Insulated Multicore Aluminium Cable (2).jpg",
+      "PVC Insulated Single Core Aluminium Cable": "/images/products/PVC Insulated Single Core Aluminum Cables (2).jpg",
+      "PVC Insulated Submersible Cable": "/images/products/PVC Insulated Submersible Cable (2).jpg",
+      "PV Solar Cable": "/images/products/PV Solar Cable (2).jpg",
+      "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable": "/images/products/Single Core PVC Insulated Aluminum _ Copper Armored (2).jpg",
+      "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable": "/images/products/Single Core PVC Insulated Aluminum _ Copper Armored (2).jpg",
+      "Speaker Cable": "/images/products/Speaker Cable (2).jpg",
+      "Telecom Switch Board Cables": "/images/products/Telecom Switch Board Cables (2).jpg",
+      "Twin Twisted Copper Wire": "/images/products/Twin Twisted Copper Wire (2).jpg",
+      "Uni-tube Unarmoured Optical Fibre Cable": "/images/products/Uni-Tube Un-Armoured Optical Fiber Cable (2).jpg"
+    };
+    return frontViewMapping[productName] || null;
   };
 
   const openFileViewer = (file) => {
@@ -2993,8 +3112,74 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   };
 
   const openLicense = () => {
-    // Show "DATA UPCOMING" popup
-    setShowDataUpcoming(true);
+    setIsSidebarLicenseOpen(true);
+  };
+
+  const closeSidebarLicense = () => {
+    setIsSidebarLicenseOpen(false);
+    setIsBisFolderOpen(false);
+  };
+
+  const openBisFolder = () => {
+    setIsBisFolderOpen(true);
+  };
+
+  const closeBisFolder = () => {
+    setIsBisFolderOpen(false);
+  };
+
+  const openBisComponentPdf = (componentCode) => {
+    const pdfMappings = {
+      '14255': 'aerial bunch cable, bis liscence .pdf',
+      '389 - P2': 'aluminium conductor galvanised steel reinforced, bis liscence.pdf',
+      '398 - P4': 'all aluminium alloy conductor,bis liscence.pdf',
+      '7098': 'multicore xlpe insulated aluminium unrmoured cable,bis liscence.pdf',
+      '7098 - P1': 'single core xlpe insulated aluminium:copper armoured:unarmoured cable bis liscence.pdf'
+    };
+
+    const pdfFileName = pdfMappings[componentCode];
+    
+    if (pdfFileName) {
+      const pdfUrl = `${window.location.origin}/pdf/${pdfFileName}`;
+      const newWindow = window.open(pdfUrl, '_blank');
+      if (!newWindow) {
+        alert('Please allow pop-ups for this site to view the license');
+      }
+    } else {
+      alert('BIS License not available for this component');
+    }
+  };
+
+  const openProductLicense = () => {
+    setIsProductLicenseOpen(true);
+  };
+
+  const closeProductLicense = () => {
+    setIsProductLicenseOpen(false);
+  };
+
+  const openProductBisLicense = () => {
+    const pdfMappings = {
+      "Aerial Bunch Cable": "aerial bunch cable, bis liscence .pdf",
+      "All Aluminium Alloy Conductor": "all aluminium alloy conductor,bis liscence.pdf",
+      "Aluminium Conductor Galvanized Steel Reinforced": "aluminium conductor galvanised steel reinforced, bis liscence.pdf",
+      "Multi Core XLPE Insulated Aluminium Unarmoured Cable": "multicore xlpe insulated aluminium unrmoured cable,bis liscence.pdf",
+      "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable": "single core xlpe insulated aluminium:copper armoured:unarmoured cable bis liscence.pdf"
+    };
+    
+    const productName = selectedProduct;
+    const pdfFileName = pdfMappings[productName];
+    
+    if (pdfFileName) {
+      const pdfUrl = `${window.location.origin}/pdf/${pdfFileName}`;
+      const newWindow = window.open(pdfUrl, '_blank');
+      if (!newWindow) {
+        alert('Please allow pop-ups for this site to view the license');
+      }
+      closeProductLicense();
+    } else {
+      alert('BIS License not available for this product');
+    }
   };
 
   const openCompanyEmails = () => {
@@ -4170,45 +4355,68 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 {[
                   { name: "TECHNICAL CALCULATIONS", description: "Advanced technical calculation tools", icon: Calculator },
                   { name: "CONVERSIONAL CALCULATIONS", description: "Unit conversion and calculation utilities", icon: Settings },
+                  { name: "COSTING CALCULATOR", description: "Calculate cable costing and pricing", icon: DollarSign },
                   { name: "WIRE GAUGE CHART", description: "Wire gauge reference and calculations", icon: BarChart3 },
                   { name: "TEMPERATURE CORRECTION FACTORS kt FOR CONDUCTOR RESISTANCE TO CORRECT THE MEASURED RESISTANCE AT t°C TO 20°C", description: "Temperature correction factor calculations", icon: Wrench },
-                ].map((calculator, index) => (
+                ].map((calculator, index) => {
+                  const isDisabled = calculator.name === 'COSTING CALCULATOR';
+                  return (
                   <div 
                     key={index}
-                    className={`p-3 rounded-lg border transition-all duration-200 shadow-sm cursor-pointer hover:shadow-md ${
-                      isDarkMode ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' : 'border-gray-200 bg-white hover:bg-teal-50'
+                      className={`p-3 rounded-lg border transition-all duration-200 shadow-sm ${
+                        isDisabled 
+                          ? 'cursor-not-allowed opacity-50' 
+                          : 'cursor-pointer hover:shadow-md'
+                      } ${
+                      isDarkMode 
+                          ? isDisabled 
+                            ? 'border-gray-700 bg-gray-800' 
+                            : 'border-gray-600 bg-gray-700 hover:bg-gray-600' 
+                          : isDisabled
+                            ? 'border-gray-300 bg-gray-100'
+                        : 'border-gray-200 bg-white hover:bg-teal-50'
                     }`}
-                    onClick={() => {
-                      if (calculator.name === 'TECHNICAL CALCULATIONS') {
-                        setHelpingCalcType('technical');
-                        setIsHelpingCalcOpen(true);
-                      } else if (calculator.name === 'CONVERSIONAL CALCULATIONS') {
-                        setHelpingCalcType('conversional');
-                        setIsHelpingCalcOpen(true);
-                      } else {
-                        handleToolClick(calculator);
-                      }
-                    }}
+                      onClick={() => {
+                        if (isDisabled) return;
+                        if (calculator.name === 'TECHNICAL CALCULATIONS') {
+                          setHelpingCalcType('technical');
+                          setIsHelpingCalcOpen(true);
+                        } else if (calculator.name === 'CONVERSIONAL CALCULATIONS') {
+                          setHelpingCalcType('conversional');
+                          setIsHelpingCalcOpen(true);
+                        } else {
+                          handleToolClick(calculator);
+                        }
+                      }}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-lg ${
-                        isDarkMode ? 'bg-gray-600' : 'bg-teal-100'
+                          isDarkMode 
+                            ? isDisabled ? 'bg-gray-700' : 'bg-gray-600'
+                            : isDisabled ? 'bg-gray-200' : 'bg-teal-100'
                       }`}>
                         <calculator.icon className={`h-4 w-4 ${
-                          isDarkMode ? 'text-teal-400' : 'text-teal-600'
+                            isDarkMode 
+                              ? isDisabled ? 'text-gray-500' : 'text-teal-400'
+                              : isDisabled ? 'text-gray-400' : 'text-teal-600'
                         }`} />
                       </div>
                       <div className="flex-1">
                         <span className={`text-sm font-medium ${
-                          isDarkMode ? 'text-white' : 'text-gray-900'
+                            isDarkMode 
+                              ? isDisabled ? 'text-gray-400' : 'text-white'
+                              : isDisabled ? 'text-gray-500' : 'text-gray-900'
                         }`}>{calculator.name}</span>
                         <p className={`text-xs mt-1 ${
-                          isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                            isDarkMode 
+                              ? isDisabled ? 'text-gray-500' : 'text-gray-300'
+                              : isDisabled ? 'text-gray-400' : 'text-gray-500'
                         }`}>{calculator.description}</p>
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -4252,1120 +4460,4467 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               )}
 
               {/* Technical Specifications Section - includes products with custom specs */}
-              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "All Aluminium Alloy Conductor" || selectedProduct === "PVC Insulated Submersible Cable" || selectedProduct === "Multi Core XLPE Insulated Aluminium Unarmoured Cable" || selectedProduct === "Multistrand Single Core Copper Cable" || selectedProduct === "Multi Core Copper Cable" || selectedProduct === "PVC Insulated Single Core Aluminium Cable" || selectedProduct === "PVC Insulated Multicore Aluminium Cable" || selectedProduct === "Submersible Winding Wire" || selectedProduct === "Twin Twisted Copper Wire" || selectedProduct === "Speaker Cable" || selectedProduct === "CCTV Cable" || selectedProduct === "LAN Cable" || selectedProduct === "Automobile Cable" || selectedProduct === "PV Solar Cable" || selectedProduct === "Co Axial Cable" || selectedProduct === "Uni-tube Unarmoured Optical Fibre Cable" || selectedProduct === "Armoured Unarmoured PVC Insulated Copper Control Cable" || selectedProduct === "Telecom Switch Board Cables" || selectedProduct === "Multi Core PVC Insulated Aluminium Unarmoured Cable" || selectedProduct === "Multi Core XLPE Insulated Aluminium Armoured Cable" || selectedProduct === "Multi Core PVC Insulated Aluminium Armoured Cable" || selectedProduct === "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable" || selectedProduct === "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable" || selectedProduct === "Paper Cover Aluminium Conductor") && (
+              {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" || selectedProduct === "All Aluminium Alloy Conductor" || selectedProduct === "PVC Insulated Submersible Cable" || selectedProduct === "Multi Core XLPE Insulated Aluminium Unarmoured Cable" || selectedProduct === "Multistrand Single Core Copper Cable" || selectedProduct === "Multi Core Copper Cable" || selectedProduct === "PVC Insulated Single Core Aluminium Cable" || selectedProduct === "PVC Insulated Multicore Aluminium Cable" || selectedProduct === "Submersible Winding Wire" || selectedProduct === "Twin Twisted Copper Wire" || selectedProduct === "Speaker Cable" || selectedProduct === "CCTV Cable" || selectedProduct === "LAN Cable" || selectedProduct === "Automobile Cable" || selectedProduct === "PV Solar Cable" || selectedProduct === "Co Axial Cable" || selectedProduct === "Uni-tube Unarmoured Optical Fibre Cable" || selectedProduct === "Armoured Unarmoured PVC Insulated Copper Control Cable" || selectedProduct === "Telecom Switch Board Cables" || selectedProduct === "Multi Core PVC Insulated Aluminium Unarmoured Cable" || selectedProduct === "Multi Core XLPE Insulated Aluminium Armoured Cable" || selectedProduct === "Multi Core PVC Insulated Aluminium Armoured Cable" || selectedProduct === "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable" || selectedProduct === "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable" || selectedProduct === "Paper Cover Aluminium Conductor") && (
                 <div className="mb-8">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                     <Wrench className="h-5 w-5 text-blue-600" />
                     Technical Specifications
                   </h3>
+                    <button
+                      disabled
+                      className="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg text-sm font-medium cursor-not-allowed opacity-60"
+                    >
+                      BROCHURE
+                    </button>
+                  </div>
                   <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                     <div className="p-6 flex flex-col lg:flex-row gap-8">
                       <div className="flex-1">
                         {selectedProduct === "All Aluminium Alloy Conductor" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Application</h4>
-                              <p className="text-sm text-gray-800">Over Head Power Transmission Purposes</p>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Material Used</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">All Aluminium Alloy Conductor (AAAC)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Stranded conductor made up of high-strength aluminium-magnesium-silicon alloy wires.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Material Grade</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium Alloy 6201-T81 (as per IS 398 Pt-4)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Combines good conductivity with higher tensile strength than pure aluminium.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Construction</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Concentric Stranding</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Multiple aluminium alloy wires stranded in layers around a central wire.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Surface Finish</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Smooth and Bright Finish</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Provides corrosion resistance and low oxidation tendency.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">None (Bare Conductor)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Designed for overhead transmission and distribution without insulation.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                             </div>
-                            <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>100% Pure EC Grade Aluminium.</li>
-                              </ul>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS-398 (PT-4):1994</p>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 398 (Part 4):1994</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for All Aluminium Alloy Conductors (AAAC).</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 61089</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">International standard for round wire concentric lay overhead conductors.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">ASTM B399 / B399M</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard specification for concentric-lay-stranded aluminium-alloy conductors.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Lead-free, environmentally safe materials.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                            </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Value / Range</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for overhead transmission up to 400 kV (depending on design).</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Resistivity</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Max. 0.0328 ohm·mm²/m at 20°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-5°C to +85°C (continuous operation)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Tensile Strength</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Higher than AAC; typically 250–350 MPa depending on alloy and strand design.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Current Carrying Capacity</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Comparable or higher than ACSR for equivalent sizes.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Thermal Expansion Coefficient</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">23 × 10⁻⁶ /°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Creep Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent under sustained mechanical loads.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Corrosion Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Superior – no galvanic action as no steel core is present.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                                 </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">Conductor Containing All Aluminium Alloy wire in Concentric Layer.</p>
                                 </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Resistivity</span>
-                                  <p className="text-sm text-gray-800">Resistivity of Material MAX. 0.0328 Ohm mm²/m at 20°C</p>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Overhead Power Transmission Lines</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for medium, high, and extra-high voltage transmission.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Urban and Coastal Distribution Lines</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for coastal regions due to excellent corrosion resistance.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Power Substations & Distribution Networks</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for both primary and secondary distribution.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Renewable Energy Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Commonly used in wind and solar power evacuation systems.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                                 </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Aerial Bunch Cable" ? (
+                          <div className="space-y-6">
+                            {/* Construction Details */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Material Used</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium / Aluminium Alloy Conductor (Class 2 as per IS 8130)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High conductivity, corrosion-resistant conductor ensuring minimal power loss.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cross-linked Polyethylene (XLPE)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Heat and UV resistant insulation providing enhanced dielectric strength and mechanical durability.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Messenger Wire</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium Alloy Conductor (as per IS 398 Pt-4)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Provides mechanical support and tensile strength to the aerial bundle.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Identification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Phase cores: Black with number marking; Neutral: Black with blue marking; Street lighting: Black with white marking</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Easy identification and installation.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath (if applicable)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">UV stabilized XLPE</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Offers superior resistance against environmental degradation and sunlight.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Layout Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2 to 4 Core + Messenger</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Configured for overhead LT distribution systems.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Standards Followed */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 14255:1995</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for Aerial Bunched Cables for working voltage up to and including 1100 V.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2023</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Conductors for insulated electric cables and flexible cords.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 398 (Part 4):1994</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium Alloy Conductors.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60502-1</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Power cables with extruded insulation and their accessories for rated voltages up to 1 kV (optional).</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environmentally friendly and lead-free materials.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Value / Range</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1100 V (1.1 kV)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-30°C to +90°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{'>'} 1 MΩ/km at 27°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance (Max.)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 8130:2023 for Aluminium / Aluminium Alloy</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UV Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent – tested for prolonged sunlight exposure</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Tensile Strength (Messenger)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 398 Pt-4</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Current Carrying Capacity</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Higher compared to conventional bare conductor systems</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Short Circuit Rating</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 14255:1995</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Overhead LT Power Distribution</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Widely used in power distribution lines for reliable power delivery.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Urban & Rural Electrification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for areas where safety, reliability, and reduced theft risk are required.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial & Street Lighting Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for power supply in industrial complexes and municipal lighting.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Hilly / Forested / Coastal Areas</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Performs efficiently under harsh weather, moisture, and UV exposure.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" ? (
+                          <div className="space-y-6">
+                            {/* Construction Details */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Material Used</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium Conductor Galvanized Steel Reinforced (ACSR)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Composite conductor consisting of a central core of galvanized steel wires surrounded by concentric layers of hard-drawn aluminium wires.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Aluminium Wire</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium (99.7% purity)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Provides high conductivity and low resistance for efficient power transmission.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Steel Core</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Steel Wire (as per IS 398 Pt-2)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Offers excellent tensile strength and mechanical support for long-span installations.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Construction</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Concentric Stranding</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Typically 6 Aluminium wires around 1 Steel core (can vary as per size and application).</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Surface Finish</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Smooth, bright, corrosion-resistant</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ensures durability and reduced oxidation during service.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">None (Bare Conductor)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Designed for overhead applications without insulation.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Standards Followed */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 398 (Part 2):1996</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for Aluminium Conductors, Galvanized Steel Reinforced (ACSR).</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 398 (Part 1):1996</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for Aluminium Conductors, Stranded and Solid.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 61089</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">International standard for round wire concentric lay overhead conductors.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">ASTM B232 / B232M</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard specification for concentric-lay-stranded aluminium conductors, steel-reinforced.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environment-friendly, lead-free manufacturing process.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Value / Range</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for overhead power transmission lines (up to 400 kV, depending on design).</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Resistivity (Aluminium)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Max. 0.032 ohm·mm²/m at 20°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-5°C to +85°C (Continuous Operation)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Tensile Strength</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Determined by steel core (varies with strand ratio and design).</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Current Carrying Capacity</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Depends on conductor size and ambient conditions; typically high due to aluminium's conductivity.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Galvanization Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Heavy / Standard coating as per IS 4826</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Thermal Expansion Coefficient</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">19.3 × 10⁻⁶ /°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Creep Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent – low elongation under sustained load.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Corona Onset Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High – designed for minimal corona loss at extra-high voltages.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Overhead Power Transmission Lines</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Widely used for medium, high, and extra-high voltage transmission.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rural and Urban Distribution Networks</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cost-effective solution for long-distance power supply.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">River Crossings & Long Spans</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal due to high tensile strength and mechanical support from steel core.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Substation Connections</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for bus-bar interconnections and outgoing feeders.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "PVC Insulated Submersible Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Application</h4>
-                              <p className="text-sm text-gray-800">Submersible pump connections and wet environments</p>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Material Used</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper (99.97% purity)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High conductivity, flexible, and oxygen-free copper for minimum power loss.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC (Polyvinyl Chloride) Type A / Type C</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specially formulated for submersible duty, offering excellent insulation resistance and protection against moisture, oil, and abrasion.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Identification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Color coded (Red, Yellow, Blue or Black, Blue, Brown)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For easy phase identification in 3-core cables.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 (as per IS 5831)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Highly abrasion resistant and water-tight outer sheath for durability under submerged conditions.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Layout Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3 Core Flat / Round Construction</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Flat for narrow boreholes and round for open wells or surface installations.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                             </div>
-                            <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>High quality multilayer PVC having greater IR Value.</li>
-                                <li>REACH and RoHS Compliant Cable.</li>
-                                <li>Flame Retardant Cable with higher Oxygen Index.</li>
-                                <li>Anti-Rodent, Anti-Termite.</li>
-                                <li>100% Pure EC Grade Aluminium.</li>
-                                <li>Super Annealed Conductor.</li>
-                              </ul>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">ISO & BIS License</span>
-                                  <p className="text-sm text-gray-800">Certified Company</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">Electrolytic grade annealed copper, Class 2/5 as per IS 8130</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">PVC Type A as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of Core</span>
-                                  <p className="text-sm text-gray-800">Red, Yellow, Blue</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
-                                  <p className="text-sm text-gray-800">PVC Type ST-1 / ST-2 as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of Sheath</span>
-                                  <p className="text-sm text-gray-800">Black and other colours as per customer demand</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
-                                  <p className="text-sm text-gray-800">Up to and including 1100V</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
-                                  <p className="text-sm text-gray-800">Standard packing of 300/500 mtr coil; other lengths on request. Cables printed with ‘ANOCAB’ marking.</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC insulated cables for working voltage up to and including 1100 Volts.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831:1984</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC insulation and sheath compound standards.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2023</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Conductors for insulated electric cables and flexible cords.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environment-friendly, lead-free materials.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Value / Range</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1100 V (1.1 kV)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +70°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">&gt; 1 MΩ/km at 27°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance (Max.)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 8130:2023 for class 5 flexible conductors</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Water Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent – designed for continuous underwater operation</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flexibility</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High – suitable for frequent movement and vibration of pumps</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Submersible Pumps</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for power supply connection to deep-well or borewell submersible motors.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Irrigation & Agriculture</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For connecting pumps in agricultural fields, wells, and reservoirs.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Water Supply Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For motors operating under water or in damp conditions.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Domestic Water Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in home borewells and water tanks for pumping operations.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Multi Core XLPE Insulated Aluminium Unarmoured Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>Premium Quality Compound having protection against UV, O₃, oil, grease and diverse weather conditions.</li>
-                                <li>100% Pure EC Grade Aluminium.</li>
-                                <li>Heavy duty cable suitable for outdoor installation.</li>
-                              </ul>
-                            </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Material Used</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium, Class 1 / Class 2 (as per IS 8130)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High-conductivity aluminium conductor ensuring low power loss and reliable performance.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">XLPE (Cross-Linked Polyethylene) as per IS 7098 Pt-1</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Thermoset insulation providing excellent electrical strength, heat resistance, and long service life.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Colour Identification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2 Core: Red & Black<br />3 Core: Red, Yellow, Blue<br />4 Core: Red, Yellow, Blue & Black</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard colour coding for easy phase identification during installation.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 (as per IS 5831)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Durable sheath providing protection against moisture, oil, and mechanical stress.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Colour</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black (other colours available on request)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">UV-stabilized outer sheath suitable for outdoor use.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Construction Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Multi-core, Unarmoured</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for fixed installation where mechanical protection is not required.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                                </div>
+                                </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS 7098 PT-1</p>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 7098 (Part 1):1988</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for XLPE Insulated Cables for working voltages up to and including 1100 V.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2023</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Conductors for insulated electric cables and flexible cords.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831:1984</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC insulation and sheath compounds.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60502-1</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Power cables with extruded insulation for rated voltages up to 1 kV.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environment-friendly, lead-free materials.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                                 </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">EC Grade Aluminium Class 1 & 2 as per IS 8130</p>
                                 </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">XLPE Insulation as per 7098 PT-1</p>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Value / Range</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">XLPE</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +90°C (continuous)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{'>'} 1 MΩ/km at 27°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Current Carrying Capacity</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 3961 (varies with size and installation conditions)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Weather Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent – resistant to UV, ozone, oil, grease, and chemicals</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">12 × overall diameter of cable (approx.)</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                                 </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of Core</span>
-                                  <p className="text-sm text-gray-800">Red & Black for 2 core cable; Red, Yellow, Blue for 3 core cable; Red, Yellow, Blue & Black for 4 core cable</p>
                                 </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
-                                  <p className="text-sm text-gray-800">PVC Type ST-1 / PVC Type ST-2 as per IS 5831</p>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Power Distribution</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for fixed installation in industrial plants and control panels.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Wiring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for internal and external power supply systems.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor Installations</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for open-air, conduit, or surface mounting under moderate mechanical stress.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Renewable Energy Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in solar and wind power applications for flexible distribution.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                                 </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of Sheath</span>
-                                  <p className="text-sm text-gray-800">Black and other colours as per requirement</p>
                                 </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
-                                  <p className="text-sm text-gray-800">Up to and including 1100 Volt</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
-                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr coil; other lengths available on request. Cables are printed with marking of ‘ANOCAB’.</p>
-                                </div>
+
+                            {/* Packing & Marking */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">6. Packing & Marking</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Details</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Standard Packing</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">500-meter coils (custom lengths available on request)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cables are sequentially marked and printed with <strong>"ANOCAB"</strong> and relevant specifications for traceability.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Multi Core Copper Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>Suitable for low voltage grade applications</li>
-                                <li>Transferring & connecting power for residential and commercial infrastructure</li>
-                                <li>Useful for control of motors and other electric appliances</li>
-                                <li>PVC insulated & sheathed multicore cables for general purpose; temperature range -15°C to 70°C</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Multicore flexible copper conductor cable</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Options</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2, 3, or 4 core</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Colours</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2 Core: Red & Black<br />3 Core: Red, Yellow & Blue<br />4 Core: Red, Yellow, Blue & Black</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Colour</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black (other colours on customer demand)</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS 694:2010</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">Electrolytic grade annealed copper Class 5 as per IS 8130</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">PVC Type A, HR PVC Type C, as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of Core</span>
-                                  <p className="text-sm text-gray-800">Red & black for 2 core; Red, Yellow, Blue for 3 core; Red, Yellow, Blue & Black for 4 core</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
-                                  <p className="text-sm text-gray-800">PVC Type ST-1, PVC Type ST-2 as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of Sheath</span>
-                                  <p className="text-sm text-gray-800">Black and other colours as per customer demand</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
-                                  <p className="text-sm text-gray-800">Up to and including 450/750V</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
-                                  <p className="text-sm text-gray-800">Standard packing of 100/300/500 mtr coil; other lengths on request. Cables printed with ‘ANOCAB’ marking.</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">General requirements for PVC insulated cables</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For conductor specifications</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For insulation and sheath properties</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 450/750V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 5 (Flexible)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type A / HR PVC Type C as per IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +70°C</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Power and control circuits</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Control of motors and appliances</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">General Use</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Fixed installations needing flexibility and flame retardance</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Packing & Marking */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Packing & Marking</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Details</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Printed with 'ANOCAB'</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100 / 300 / 500 mtr coils (custom lengths on request)</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Multistrand Single Core Copper Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>High quality multilayer PVC having greater IR Value</li>
-                                <li>REACH and RoHS Compliant Cable</li>
-                                <li>Flame Retardant Cable with higher Oxygen Index</li>
-                                <li>Anti-Rodent, Anti-Termite</li>
-                                <li>100% Pure Electrolytic grade Copper</li>
-                                <li>Super flexible conductor</li>
-                                <li>100% Conductivity</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100% Pure Electrolytic Grade Copper, Class 2 / 5 as per IS 8130:2013</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC conforming to IS 5831, formulated with Flame Retardant (FR) properties and heat resistance up to 85°C; also available in FRLSH & ZHFR insulation types (Type A/C 70°C / 85°C)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Not Applicable (Single Core Unarmoured)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Multilayer PVC with enhanced IR value</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colours Available</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red, Yellow, Blue, Black & other colours on customer demand</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS 694:2010</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Grade</span>
-                                  <p className="text-sm text-gray-800">Up to and including 1100V</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">Electrolytic Grade Copper class - 2, 5, as per IS: 8130:2013</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">PVC confirming to IS-5831 and formulated with FR properties and heat resistance up to 85°C. FRLSH & ZHFR insulation Type A/C 70/85°C.</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
-                                  <p className="text-sm text-gray-800">Red, yellow, blue, black & other colours on customer demand</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
-                                  <p className="text-sm text-gray-800">The cables are printed with marking of ‘ANOCAB’</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
-                                  <p className="text-sm text-gray-800">90 mtr. coil is packed in protective plastic bag; longer length available on customer demand</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 694:2010</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 8130:2013</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Compliance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">REACH and RoHS Compliant</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 V</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1100 V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +85°C (continuous operation)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">FR / FRLSH / ZHFR</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Oxygen Index</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Higher than standard FR cables</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Flexibility</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Super Flexible</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductivity</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100% conductivity of pure copper</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Domestic, Commercial & Industrial Wiring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for domestic, commercial, and industrial wiring</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels & Appliances</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for use in control panels, appliances, and conduit wiring</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Long-term Performance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Designed for safe, long-term performance under varying load conditions</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Special Requirements</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Recommended where flame retardancy, flexibility, and durability are essential</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "PVC Insulated Single Core Aluminium Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>High quality multilayer PVC having greater IR Value</li>
-                                <li>REACH and RoHS Compliant Cable</li>
-                                <li>Flame Retardant Cable with higher Oxygen Index</li>
-                                <li>Anti-Rodent, Anti-Termite</li>
-                                <li>100% Pure EC Grade Aluminium</li>
-                                <li>Super Annealed Conductor</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Component</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Single Core Aluminium Conductor Cable</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Annealed Aluminium</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 1 & 2 as per IS 8130:2013</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type A/C, Flame Retardant formulation</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour Options</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red, Yellow, Blue, Black & other colours on customer demand</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Printed with 'ANOCAB'</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">90 mtr & 270 mtr coils packed in protective plastic bags</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS 694:2010</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Grade</span>
-                                  <p className="text-sm text-gray-800">Up to and including 450/750V</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">EC grade Annealed Aluminium Class I, II as per IS 8130:2013</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">PVC confirming to IS-5831 and formulated with FR properties and ultraviolet rays; IS 5831 Type A/C FR 70°C</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
-                                  <p className="text-sm text-gray-800">Red, yellow, blue, black & other colours on customer demand</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
-                                  <p className="text-sm text-gray-800">The cables are printed with marking of ‘ANOCAB’</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
-                                  <p className="text-sm text-gray-800">90 mtr & 270 mtr coil packed in protective plastic bag</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For PVC insulated cables up to 1100V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2013</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For conductor construction and quality</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For insulation material and thermal properties</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 450/750V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Annealed Aluminium (Class 1 & 2)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC confirming to IS-5831, FR 70°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Rating</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to 70°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Yes — Higher Oxygen Index</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UV Resistant</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Yes</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Compliance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">REACH and RoHS Compliant</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Wiring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Power and lighting circuits</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Installations</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Control panels and conduits</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">General Use</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for low voltage distribution and fixed installations</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "PVC Insulated Multicore Aluminium Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>High quality multilayer PVC having greater IR Value</li>
-                                <li>REACH and RoHS Compliant Cable</li>
-                                <li>Flame Retardant Cable with higher Oxygen Index</li>
-                                <li>Anti-Rodent, Anti-Termite</li>
-                                <li>100% Pure EC Grade Aluminium</li>
-                                <li>Super Annealed Conductor</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Component</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Multicore Aluminium Conductor Cable</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 1 & 2 as per IS 8130</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type A as per IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red & Black (2 Core); Red, Yellow, Blue (3 Core); Red, Yellow, Blue & Black (4 Core)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black and other colours as per requirement</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Printed with 'ANOCAB'</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard 500 mtr coil; other lengths on request</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS 694:2010</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">EC Grade Aluminium Class 1 & 2 as per IS 8130</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">PVC Type A as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of Core</span>
-                                  <p className="text-sm text-gray-800">Red & black (2 core); Red, Yellow, Blue (3 core); Red, Yellow, Blue & Black (4 core)</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
-                                  <p className="text-sm text-gray-800">PVC Type ST-1, PVC Type ST-2 as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of Sheath</span>
-                                  <p className="text-sm text-gray-800">Black and other colours as per requirement</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
-                                  <p className="text-sm text-gray-800">Up to and including 450/750V</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
-                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr coil; other lengths available on request. Cables printed with ‘ANOCAB’ marking.</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For PVC insulated cables up to 1100V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For conductor quality and classification</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For insulation and sheath material specifications</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 450/750V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type A</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Yes – High Oxygen Index</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UV Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Yes</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Compliance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">REACH and RoHS Compliant</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to 70°C</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Wiring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Power and lighting distribution</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Installations</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Control panels and electrical circuits</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">General Use</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for fixed low-voltage connections and outdoor usage</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
-                        ) : selectedProduct === "Submersible Winding Wire" ? (
-                          <div className="space-y-6">
-                            <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>100% Pure CC Grade Copper</li>
-                              </ul>
-                            </div>
-                            <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS-8783 Part 4 Section 3 for Polyester & Polypropylene taped; IS-8783 Part 4 Section 1 for HR PVC</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">As per IS-8783 Part 1 Annealed Copper</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">Polypropylene and Polyester Tape; HR PVC as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Resistivity</span>
-                                  <p className="text-sm text-gray-800">Material Resistivity 0.01724 Ω·mm²/m at 20°C</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Test</span>
-                                  <p className="text-sm text-gray-800">Tested at 3 kV</p>
-                                </div>
-                              </div>
+                      ) : selectedProduct === "Submersible Winding Wire" ? (
+                        <div className="space-y-6">
+                          {/* Construction Details */}
+                          <div>
+                            <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                              <table className="min-w-full bg-white">
+                                <thead>
+                                  <tr className="bg-gray-50">
+                                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Component</th>
+                                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Submersible Winding Wire</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100% Pure CC Grade Copper</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Standard</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS-8783 Part 1 &ndash; Annealed Copper</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Polypropylene and Polyester Tape / HR PVC</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Applicable Insulation Standard</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS-8783 (Part 4, Sec 3) for PP & Polyester; IS-8783 (Part 4, Sec 1) for HR PVC</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per customer requirement</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard coil form suitable for submersible applications</td>
+                                  </tr>
+                                </tbody>
+                              </table>
                             </div>
                           </div>
+
+                          {/* Technical Properties */}
+                          <div>
+                            <h4 className="text-base font-semibold text-gray-900 mb-3">2. Technical Properties</h4>
+                            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                              <table className="min-w-full bg-white">
+                                <thead>
+                                  <tr className="bg-gray-50">
+                                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Material</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">CC Grade Copper</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Material Resistivity</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0.01724 Ω·mm²/m at 20°C</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Test</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Tested at 3 kV</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Types</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Polypropylene / Polyester Tape / HR PVC</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Yes (in HR PVC variant)</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Thermal Endurance</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for continuous submersible motor operations</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* Standards Followed */}
+                          <div>
+                            <h4 className="text-base font-semibold text-gray-900 mb-3">3. Standards Followed</h4>
+                            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                              <table className="min-w-full bg-white">
+                                <thead>
+                                  <tr className="bg-gray-50">
+                                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8783 (Part 1)</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for annealed copper conductor</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8783 (Part 4, Sec 3)</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for polyester & polypropylene taped winding wires</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8783 (Part 4, Sec 1)</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for HR PVC insulated winding wires</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard for PVC insulation materials</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* Applications */}
+                          <div>
+                            <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                              <table className="min-w-full bg-white">
+                                <thead>
+                                  <tr className="bg-gray-50">
+                                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Submersible Pumps</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Winding of motor coils for deep well and borewell pumps</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Electric Motors</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in wet-type or oil-filled submersible motor windings</td>
+                                  </tr>
+                                  <tr className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Applications</td>
+                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for rewinding and repair of submersible motors</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                        </div>
                         ) : selectedProduct === "Twin Twisted Copper Wire" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>High quality multilayer PVC having greater IR Value</li>
-                                <li>REACH and RoHS Compliant Cable</li>
-                                <li>Flame Retardant Cable with higher Oxygen Index</li>
-                                <li>Anti-Rodent, Anti-Termite</li>
-                                <li>100% Pure Electrolytic grade Copper</li>
-                                <li>Super flexible conductor</li>
-                                <li>100% Conductivity</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Component</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Twin Twisted Copper Wire</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100% Pure Electrolytic Grade Copper</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 2 / 5 as per IS 8130:2013</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC (Flame Retardant)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Applicable Insulation Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 5831 Type A / C FR 70°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Twisting</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Two cores twisted uniformly for flexibility</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colours</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red, Black & other colours on customer demand</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">90 m coil packed in protective plastic bag; longer lengths available on request</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS 694:2010</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Grade</span>
-                                  <p className="text-sm text-gray-800">Up to and including 1100V</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">Electrolytic Grade Copper Class 2/5 as per IS 8130:2013</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">PVC confirming to IS-5831 and formulated with FR properties and heat resistance up to 85°C; IS 5831 Type A/C FR 70°C</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
-                                  <p className="text-sm text-gray-800">Red, black & other colours on customer demand</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
-                                  <p className="text-sm text-gray-800">Cables printed with ‘ANOCAB’</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
-                                  <p className="text-sm text-gray-800">90 m coil packed in protective plastic bag; longer length on demand</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC insulated cables up to and including 1100V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2013</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for conductors for insulated electric cables</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC insulation and sheath materials</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 2 / 5 (Flexible)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Flame retardant PVC with heat resistance up to 70°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Twisting Pitch</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Uniform twisting for flexibility and reduced electromagnetic interference</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant Properties</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High oxygen index for enhanced fire safety</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Environmental Compliance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">REACH and RoHS compliant</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Domestic Wiring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for low-voltage residential wiring</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Connections</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for control wiring and internal circuits</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Electronic Appliances</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for power supply and interconnections</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Lighting Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Flexible wiring for lamps and fixtures</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Speaker Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>High quality multilayer PVC having greater IR Value</li>
-                                <li>REACH and RoHS Compliant Cable</li>
-                                <li>Flame Retardant Cable with higher Oxygen Index</li>
-                                <li>Anti-Rodent, Anti-Termite</li>
-                                <li>100% Pure Electrolytic grade Copper</li>
-                                <li>Super flexible conductor</li>
-                                <li>100% Conductivity</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Component</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Speaker Cable</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100% Pure Electrolytic Grade Copper</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 5 as per IS 8130:2013</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC (Flame Retardant)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Applicable Insulation Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 5831 Type A/C FR 70°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Transparent sheath with coloured strip for identification; other colours on demand</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Structure</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Twin parallel / twisted flexible copper conductors</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">90 m coil packed in protective plastic bag; longer lengths available on request</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS 694:2010</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Grade</span>
-                                  <p className="text-sm text-gray-800">Up to and including 450/750V</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">Electrolytic Grade Copper class-5, as per IS 8130:2013</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">PVC confirming to IS-5831 with FR properties and heat resistance up to 85°C; IS 5831 Type A/C FR 70°C</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
-                                  <p className="text-sm text-gray-800">Transparent colour with colored strip for core identification; other colours on demand</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
-                                  <p className="text-sm text-gray-800">Cables printed with ‘ANOCAB’</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
-                                  <p className="text-sm text-gray-800">90 m coil packed in protective plastic bag; longer lengths on demand</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC insulated cables up to and including 1100V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2013</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for conductors for insulated electric cables</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC insulation and sheath materials</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 450/750V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Electrolytic Grade Copper, Class 5</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type A/C FR 70°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to 85°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Yes (High Oxygen Index)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Electrical Conductivity</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100%</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flexibility</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Super flexible stranded conductor</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High insulation resistance and sound signal integrity</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Audio Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Speaker-to-amplifier connections for high-quality sound transmission</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Home Theatres</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Wiring for residential and commercial audio installations</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Public Address Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for long-distance and indoor wiring</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Musical Instruments</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in amplifiers and sound setups for clear audio signals</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "CCTV Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>High definition video signal transmission</li>
-                                <li>Minimum distortion or attenuation</li>
-                                <li>Suitable for outdoor application</li>
-                                <li>Super Annealed Copper</li>
-                                <li>Aluminium alloy braided</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Component</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">CCTV Cable</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 1 as per IS 8130</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Gas-injected Polyethylene Foam / Solid LDPE</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Shielding</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium Alloy Braided for signal protection</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Compound Type ST-1</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Grey & other colours on customer demand</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100 m coil packed in protective plastic bag; longer lengths available on request</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Grade</span>
-                                  <p className="text-sm text-gray-800">Up to and including 600/1000 V AC, 1800 V DC</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">Electrolytic Grade Annealed Copper class-1</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">Gas injected Polyethylene foam / solid LDPE</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
-                                  <p className="text-sm text-gray-800">PVC compound ST1</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
-                                  <p className="text-sm text-gray-800">Gray & other colours on customer demand</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
-                                  <p className="text-sm text-gray-800">The cables are printed with marking of ‘ANOCAB’</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
-                                  <p className="text-sm text-gray-800">100 mtr. coil packed in protective plastic bag; longer length on customer demand</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard for conductors for insulated cables</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC sheath materials</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC / ASTM</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">International guidelines for coaxial and CCTV cable performance</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 600/1000 V AC, 1800 V DC</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper, Class 1</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Gas-injected PE Foam / Solid LDPE</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Shielding</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium Alloy Braiding</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Compound ST-1</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Capacitance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Low for high-definition signal clarity</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Minimum signal loss over long distances</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Yes (on special request)</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">CCTV Surveillance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Transmission of high-definition video signals</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Security Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for indoor and outdoor camera wiring</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Video Monitoring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in commercial, industrial & residential setups</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Data Transmission</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for low-loss video and control signals</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "LAN Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>Low attenuation and cross talk</li>
-                                <li>Insulated with high quality Polyethylene</li>
-                                <li>Flame Retardant Cable with higher Oxygen Index</li>
-                                <li>Anti-Rodent, Anti-Termite</li>
-                                <li>Super Annealed Conductor</li>
-                                <li>Low structural return loss</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Unshielded Twisted Pair (UTP)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Category</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cat5e / Cat6 (as per requirement)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Annealed Solid Bare Copper</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Diameter</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0.5 mm ± 0.005 mm</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">No. of Pairs</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">4 twisted pairs</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High Quality Polyethylene Compound</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Jacket / Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Flame Retardant PVC</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rip Cord</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Provided for easy stripping</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Separator</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cross separator in Cat6 version for improved crosstalk performance</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">ISO/IEC 11801, TIA/EIA-568-C.2 : UTP cable</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage</span>
-                                  <p className="text-sm text-gray-800">72 Volt</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">Annealed Solid Bare Copper</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">High Quality Polyethylene compound</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
-                                  <p className="text-sm text-gray-800">White, Blue, Orange, Green, Brown</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
-                                  <p className="text-sm text-gray-800">Cables printed with ‘ANOCAB’</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
-                                  <p className="text-sm text-gray-800">100 mtr & 305 mtr coil packed in protective plastic bag</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Reference Standard</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">ISO/IEC 11801</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Generic cabling for customer premises</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">TIA/EIA-568-C.2</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">UTP Cable Standard for data communication</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UL 444</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Safety Standard for Communications Cables</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environmental compliance for non-toxic materials</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Value</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">72 Volt</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Impedance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100 ± 15 Ohms</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Frequency Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to 250 MHz (Cat6)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Capacitance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≤ 5.6 nF/100m</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≤ 22 dB/100m @100 MHz</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Near End Crosstalk (NEXT)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 35 dB/100m @100 MHz</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Return Loss</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 20 dB @100 MHz</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-20°C to +75°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">8 × cable outer diameter</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colours</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">White, Blue, Orange, Green, Brown</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">LAN & Networking</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for computer networking and structured cabling systems</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Internet Connectivity</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For routers, modems, and switches</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">CCTV & IP Camera Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Stable data and video signal transmission</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Office & Industrial Automation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Reliable for PLC and monitoring systems</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Data Centers</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for patch cords and rack interconnections</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Buildings</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For internal network wiring</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Packing & Marking */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Packing & Marking</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Details</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cables printed with 'ANOCAB'</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100 mtr & 305 mtr coil packed in protective plastic bag</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Automobile Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>Flame Retardant</li>
-                                <li>Highly resistant against acid, petrol, diesel, grease</li>
-                                <li>High temperature range -40°C to 105°C</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Low Voltage Flexible Automotive Cable</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">DIN 72551 Pt-6 FLRY-B</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Tinned / Bare Copper</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class-B as per DIN 13602</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Construction</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Fine stranded, flexible construction</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Plasticized PVC (Lead-free)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Properties</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Resistant to heat, oil, acids, fuel & abrasion</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per customer specification or automotive code</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-40°C to +105°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outer Diameter</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Varies by cross-section (0.35 mm² to 6 mm² typical)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath (Optional)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC or TPE sheath for added mechanical protection</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">DIN 72551 Pt-6 FLRY-B</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Test Voltage</span>
-                                  <p className="text-sm text-gray-800">3000 Volts</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">Class-B according to DIN 13602</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">Plasticized PVC with properties according to DIN 72551 & ISO 6722, lead free</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">DIN 72551 Pt-6 FLRY-B</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Automotive low-voltage cable standard</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">DIN 13602</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard for copper wire classification</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">ISO 6722</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Road vehicle cable performance and materials</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environmental safety and compliance standards</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Value</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">60V DC nominal (12V & 24V systems)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3000 Volts</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per DIN 72551 requirements</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 10 MΩ·km at 20°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-40°C to +105°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Test</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Self-extinguishing (Flame Retardant PVC)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Chemical Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Highly resistant to acids, petrol, diesel, grease, and engine oils</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Bending Radius</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 10 × cable diameter</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Thermal Stability</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to 105°C continuous operation, 120°C short term</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flexibility</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for continuous vibration and flexing conditions</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Usage Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Automotive Wiring Harness</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in cars, trucks, buses, and two-wheelers</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Engine Compartment Wiring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Performs reliably under high heat and vibration</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Battery & Lighting Circuits</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for 12V / 24V DC electrical systems</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels & Instrumentation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for dashboards and control units</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Vehicles</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Forklifts, tractors, and heavy machinery</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marine & Off-road Vehicles</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Resistant to oil and fuel, suitable for harsh conditions</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "PV Solar Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>High grade crosslinked halogen free & flame retardant compound with protection against UV, O₃, oil, grease and weather</li>
-                                <li>REACH and RoHS compliant cable</li>
-                                <li>High temperature grade</li>
-                                <li>Super annealed tinned copper</li>
-                                <li>Super flexible conductor</li>
-                                <li>Low smoke emission</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Single Core / Twin Core PV Solar Cable</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">TÜV: EN 50618 (H1Z2Z2-K)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Tinned Copper</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 5 – Flexible as per IEC 60228</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Construction</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Fine stranded for high flexibility</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cross-linked, Halogen Free, Flame Retardant (XLPO) compound</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">UV, Ozone, and Weather Resistant XLPO compound</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour Options</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red, Black (other colours on request)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-40°C to +90°C (continuous); up to 120°C short-term</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Bending Radius</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 5 × cable diameter</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100 mtr coil; longer lengths on demand</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">'ANOCAB' printed on sheath for traceability</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">TUV : EN50618</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Grade</span>
-                                  <p className="text-sm text-gray-800">Up to and including 600/1000 V AC, 1800 V DC</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">Electrolytic grade annealed tinned copper class-5</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">Crosslinked halogen free & flame retardant compound</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
-                                  <p className="text-sm text-gray-800">XLPO compound ozone and UV resistant</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
-                                  <p className="text-sm text-gray-800">Red, black & other colours on customer demand</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
-                                  <p className="text-sm text-gray-800">Cables printed with ‘ANOCAB’</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
-                                  <p className="text-sm text-gray-800">100 m coil packed in protective plastic bag; longer length on demand</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">EN 50618</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard for PV power cables (H1Z2Z2-K)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60228</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Conductors for electrical cables – Class 5 flexible conductors</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environmental and hazardous substance compliance</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60332-1</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Flame Retardant Test</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60811</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Mechanical & Thermal Test for Cables</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">TÜV Rheinland Certified</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ensures high performance & safety reliability</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Value</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">600/1000 V AC, 1800 V DC</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">6500 V (A.C. 50 Hz, 5 min)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IEC 60228 Class 5</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 1000 MΩ·km at 20°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-40°C to +90°C (continuous)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Short Circuit Temperature</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to 250°C (5 sec max)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UV & Ozone Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent, suitable for outdoor use</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Weather Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High resistance to sunlight, humidity & aging</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Smoke Emission</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Low smoke, halogen-free</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardancy</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IEC 60332-1 compliant</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Oil & Grease Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">5 × overall diameter</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Usage Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Photovoltaic Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for interconnection of solar panels and inverters</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">DC Power Transmission</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for DC side of solar systems</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rooftop Installations</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">UV & weather resistant, perfect for open-air environments</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Solar Farms</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Long life and consistent performance under harsh conditions</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Battery & Energy Storage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for DC connection between PV modules and batteries</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Commercial & Industrial Solar Projects</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ensures minimal power loss and long service life</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Co Axial Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>Low loss video signal transmission</li>
-                                <li>REACH and RoHS compliant cable</li>
-                                <li>Suitable for outdoor application</li>
-                                <li>Super annealed copper</li>
-                                <li>Aluminium alloy braided</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Co-Axial Cable</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 14459</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 1 – Solid Conductor as per IS 8130</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric / Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Gas Injected Polyethylene Foam / Solid LDPE</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Shield / Braid</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium Alloy Braided Shielding</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Compound Type ST-1 as per IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour Options</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black (other colours on demand)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Impedance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">50 Ω / 75 Ω (depending on type)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-20°C to +85°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100 mtr coil packed in protective plastic bag; longer lengths available</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">'ANOCAB' printed on sheath for brand traceability</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS 14459</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Grade</span>
-                                  <p className="text-sm text-gray-800">Up to and including 600/1000 V AC, 1800 V DC</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">Electrolytic Grade Annealed Copper class-1</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">Gas injected Polyethylene foam / solid LDPE</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
-                                  <p className="text-sm text-gray-800">PVC compound ST1</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
-                                  <p className="text-sm text-gray-800">Black & other colours on customer demand</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
-                                  <p className="text-sm text-gray-800">Cables printed with ‘ANOCAB’</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
-                                  <p className="text-sm text-gray-800">100 m coil packed in protective plastic bag; longer length on demand</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 14459</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for Co-Axial Cables for Communication</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Conductors for Insulated Cables and Flexible Cords</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Insulation and Sheath Materials</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Restriction of Hazardous Substances / Environmental Compliance</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60332-1</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Flame Retardant Test</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60811</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Mechanical and Thermal Test for Cables</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Value</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 600/1000 V AC, 1800 V DC</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Characteristic Impedance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">50 / 75 Ohm</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Low signal loss, suitable for long-distance transmission</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Capacitance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">67 ± 3 pF/m (typical)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3000 V AC (for 1 min)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 8130 standards</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 5000 MΩ·km at 20°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Shield Coverage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Minimum 85%</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-20°C to +85°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardancy</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IEC 60332-1 compliant</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UV & Weather Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent, suitable for outdoor use</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Usage Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">CCTV Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for surveillance and camera connections</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Television & Broadcasting</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for signal transmission in cable TV and DTH networks</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Communication Equipment</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for RF and data transmission systems</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Antenna Connections</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in connecting radio antennas and transmitters</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor Installations</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Weather and UV resistant for reliable performance</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Audio-Video Transmission</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ensures minimal distortion and high-quality signal output</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Uni-tube Unarmoured Optical Fibre Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>Longitudinal water protection</li>
-                                <li>UV Protected</li>
-                                <li>High Speed Signal transmission</li>
-                                <li>High Flexibility</li>
-                                <li>Totally Dielectric</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Uni-tube Unarmoured Optical Fibre Cable</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standards</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IEC 60794 Series, ANSI/ICEA S-87-640, ITU-T Rec. G.652D</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Fibre Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Single Mode / Multi Mode Optical Fibre</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Tube Construction</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Loose Uni-tube filled with thixotropic jelly for water blocking</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Strength Members</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aramid Yarn (Kevlar) for tensile strength</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outer Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">UV-stabilized HDPE sheath</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Water Protection</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Longitudinal water blocking with gel-filled tube</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Fully dielectric — non-metallic design</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Fibre Count</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2F to 24F (custom configurations available)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Fibres</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Blue, Orange, Green, Brown, Grey, White, Red, Black, Yellow, Violet, Pink, Aqua</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">20 × Outer Diameter</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2000 m coil packed in protective plastic bag</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cables printed with 'ANOCAB' marking</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IEC.60794 series, ANSI/ICEA S-87-640, ITU-T Rec. G 652 D</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Tensile Strength</span>
-                                  <p className="text-sm text-gray-800">500 N</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Bending Radius</span>
-                                  <p className="text-sm text-gray-800">20 D</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Crush Resistance (N/100mm)</span>
-                                  <p className="text-sm text-gray-800">1000</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Impact Strength (N.m)</span>
-                                  <p className="text-sm text-gray-800">50 N 0.5 m</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
-                                  <p className="text-sm text-gray-800">Blue, Orange, Green, Brown, Grey, White, Red, Black, Yellow, Violet, Pink and Aqua</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
-                                  <p className="text-sm text-gray-800">The cables are printed with marking of ‘ANOCAB’</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
-                                  <p className="text-sm text-gray-800">2000 mtr coil packed in protective Plastic bag</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60794 Series</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Optical Fibre Cable Construction and Test Methods</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">ANSI/ICEA S-87-640</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard for Optical Fibre Outside Plant Cables</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">ITU-T G.652D</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard for Single Mode Optical Fibre Specifications</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">ISO/IEC 11801</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Generic Cabling for Customer Premises</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environmental Compliance for Materials</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Tensile Strength</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">500 N</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Bending Radius</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">20 × Cable Diameter</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Crush Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1000 N / 100 mm</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Impact Strength</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">50 N × 0.5 m</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-40°C to +70°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation (1310 nm)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≤ 0.36 dB/km</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation (1550 nm)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≤ 0.22 dB/km</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Water Blocking</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Longitudinal (gel-filled)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UV Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High-grade UV-stabilized sheath</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Totally non-metallic design</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Fibre Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">ITU-T G.652D compliant single-mode fibre</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Jacket Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">HDPE (High-Density Polyethylene)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Cable Weight</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Approx. 20–35 kg/km (depending on fibre count)</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Usage Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Telecommunication Networks</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Long-distance and local area data transmission</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">FTTH / FTTx Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for high-speed internet and broadband networks</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Data Centres</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Reliable backbone interconnections</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Communication</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For process automation and monitoring systems</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor Installations</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for duct, trench, or direct aerial installation</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">CCTV and Security Networks</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For long-distance high-bandwidth data transmission</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Railway & Metro Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Communication and signaling applications</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Armoured Unarmoured PVC Insulated Copper Control Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>Premium quality compound with protection against UV, O₃, oil, grease and various weather conditions</li>
-                                <li>101% Pure Copper</li>
-                                <li>Flammability test as per IS 10810-53</li>
-                                <li>Heavy duty cable suitable for outdoor installation</li>
-                                <li>2 to 24 core, 1.5 & 2.5 sq mm control cable</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Armoured / Unarmoured PVC Insulated Copper Control Cable</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standards</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 1554 (Part-1)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">CC Grade Copper, Class 1 & 2 as per IS 8130</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type A / C as per IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armour</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Steel Round Wire / Strip (for armoured version)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Inner Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Extruded PVC or Tape Applied as per IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outer Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Identification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red & Black (2 Core); Red, Yellow, Blue (3 Core); Red, Yellow, Blue & Black (4 Core)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2 to 24 Cores</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Sizes</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1.5 sq.mm & 2.5 sq.mm</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black or as per customer requirement</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard 500 mtr coil; other lengths on request</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cables printed with 'ANOCAB' marking</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS 1554 PT-1</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">CC Grade Copper Class 1 & 2 as per IS 8130</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">PVC Type A, C as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of Core</span>
-                                  <p className="text-sm text-gray-800">Red & Black for 2 core; Red, Yellow, Blue for 3 core; Red, Yellow, Blue & Black for 4 core</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
-                                  <p className="text-sm text-gray-800">PVC Type ST-1, ST-2; PVC Type ST-2 as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of Sheath</span>
-                                  <p className="text-sm text-gray-800">Black and other colours as per requirement</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
-                                  <p className="text-sm text-gray-800">Up to and including 1100 Volt</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
-                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr coil; other lengths on request. Cables are printed with ‘ANOCAB’.</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 1554 (Part-1)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Insulated (Heavy Duty) Electric Cables</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Conductors for Insulated Electric Cables and Flexible Cords</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Insulation and Sheathing Compounds</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 10810-53</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Flammability Test for Cables</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environmental Compliance for Materials</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">101% Pure Copper (CC Grade)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 36.7 MΩ·km at 70°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flammability</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 10810-53</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +90°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.0 kV AC</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armour Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Steel (optional)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Bending Radius</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">12 × Overall Diameter</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UV, Oil & Ozone Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Configuration</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to 24 cores</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 1 (Solid) / Class 2 (Stranded)</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Usage Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For internal and external wiring in control panels</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Power Plants</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Control and signal transmission in electrical systems</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industries</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Automation, process control, and manufacturing units</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor Installations</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Armoured type suitable for direct burial and mechanical protection</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Buildings & Commercial Complexes</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in control circuits and power distribution</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Substations</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Reliable for signal and control connections</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Machinery & Equipment</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For flexible and durable control connectivity</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>Premium Quality Compound having Protection against UV, O3, Oil Grease and different weather conditions</li>
-                                <li>100% Pure EC Grade Aluminium/Copper</li>
-                                <li>Galvanized Iron Armoured Protected</li>
-                                <li>Heavy duty Cable suitable for outdoor installation</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Material Used</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium / Copper – Class 1 & 2 as per IS 8130</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High conductivity and flexibility for reliable electrical performance.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type-A (as per IS 5831)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Special grade PVC insulation providing electrical and mechanical protection.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Iron (GI) Wires or Strips (for Armoured Type)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Provides mechanical strength and protection against impact or rodents.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Colour Identification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red & Black (2-core), Red-Yellow-Blue (3-core), Red-Yellow-Blue-Black (4-core)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard colour coding for phase identification.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 (as per IS 5831)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Outer sheath provides resistance to oil, grease, UV, ozone, and moisture.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Colour</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black (other colours available on request)</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">UV stabilized for long-term outdoor use.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Construction Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Single Core – Armoured / Unarmoured</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Available in both configurations depending on application needs.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS 1554 PT-1</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">EC Grade Aluminium/Copper Class 1 & 2 as per IS 8130</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">PVC Type - A, as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of core</span>
-                                  <p className="text-sm text-gray-800">Red & black for 2 core cable, red, yellow, blue for 3 core cable, red, yellow, blue & black for 4 core cable</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
-                                  <p className="text-sm text-gray-800">PVC Type ST-1, PVC Type - ST 2 as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of sheath</span>
-                                  <p className="text-sm text-gray-800">Black and Other Colour as per requirement</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
-                                  <p className="text-sm text-gray-800">Up to and including 1100 Volt</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
-                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr. in coil. & Other length available on request, cables are printed with marking of 'ANOCAB'</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 1554 (Part 1):1988</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC Insulated (Heavy Duty) Electric Cables for working voltages up to and including 1100 V.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2023</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Conductors for insulated electric cables and flexible cords.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831:1984</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC insulation and sheath compounds.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 3975:1999</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for Armouring of Cables (GI Wire/Strip).</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60502-1</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Power cables with extruded insulation and rated voltage up to 1 kV.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Lead-free, non-toxic, and environmentally safe materials.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Value / Range</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium or Copper</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type-A</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +70°C (continuous operation)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{'>'} 1 MΩ/km at 27°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armouring Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Iron Wire or Strip (if applicable)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Weather Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent – resistant to UV, O₃, oil, grease, and adverse weather</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">12 × overall cable diameter (approx.)</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Power Distribution</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in electrical distribution networks, switchboards, and feeders.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Wiring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for heavy-duty and outdoor installations.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Buildings</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for internal power circuits and service connections.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Underground / Surface Installation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Armoured type provides additional mechanical protection in harsh conditions.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Packing & Marking */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Packing & Marking</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Details</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Standard Packing</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">500-meter coil (custom lengths available on request).</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Each cable is printed with <strong>'ANOCAB'</strong> and full specification details for identification and traceability.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Paper Cover Aluminium Conductor" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>100% Pure EC Grade Aluminium</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Material Used</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Round Aluminium Conductor</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Manufactured from high-purity EC Grade Aluminium as per IS 4026:1969.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Double Layer Paper Covering</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Insulated with high-quality kraft or crepe paper of <strong>O, F, or S grade</strong>, selected as per customer requirement.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Finish</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Smooth, Bright, Oxidation-Resistant</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ensures uniform insulation application and long operational life.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Application</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Helically applied overlapping paper tapes</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Provides consistent thickness, flexibility, and excellent dielectric strength.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS-6162 (Part-1):1971</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">Round Aluminium Conductor Pure EC grade Confirming to IS 4026-1969</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">Double Layer of Paper Covered with O, F & S Grade as per Customer Requirement</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Resistivity</span>
-                                  <p className="text-sm text-gray-800">0.028264 Ohm mm²/m at 20°C</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Test</span>
-                                  <p className="text-sm text-gray-800">Tested at 5.5 KV to 10 KV</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 6162 (Part 1):1971</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for Paper Covered Aluminium Conductors for Electrical Machines.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 4026:1969</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for Aluminium Conductors for Coils of Electrical Machines.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60317-27</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">International standard for paper-insulated conductors (optional compliance).</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environment-friendly and free from hazardous substances.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Value / Range</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100% Pure EC Grade Aluminium</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Resistivity</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Max. 0.028264 ohm·mm²/m at 20°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Test</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Tested at 5.5 kV to 10 kV depending on conductor size and insulation grade</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to 90°C (continuous)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Paper Grades Available</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">O (Ordinary), F (Fine), S (Superfine)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Thickness</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per customer specification and voltage class</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent – suitable for transformer and winding use</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Moisture Content</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Controlled to ensure long-term stability and performance</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Transformers</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used as winding conductors in oil-filled and dry-type transformers.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Motors & Generators</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for high-efficiency electrical machine windings.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Coil Windings</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for electromagnetic coils and other electrical equipment.</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Switchgear & Control Equipment</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in components requiring reliable dielectric insulation.</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>Premium Quality Compound having Protection against UV, O3, Oil Grease and different weather conditions</li>
-                                <li>100% Pure EC Grade Aluminium</li>
-                                <li>Galvanized Iron Armoured Protected</li>
-                                <li>Heavy duty Cable suitable for outdoor installation</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium / Copper, Class 1 & 2 as per IS 8130</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">XLPE Insulation as per IS 7098 (Part-1)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Iron Wire / Strip (for Armoured Type)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red, Yellow, Blue & Black</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black or as per customer requirement</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS - 7098 PT-1</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">EC Grade Aluminium/Copper Class 1 & 2 as per IS 8130</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">XLPE Insulation As per IS 7098 Pt-1</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of core</span>
-                                  <p className="text-sm text-gray-800">Red, yellow, blue & black</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
-                                  <p className="text-sm text-gray-800">PVC Type ST-1, PVC Type - ST 2 as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of sheath</span>
-                                  <p className="text-sm text-gray-800">Black and Other Colour as per requirement</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
-                                  <p className="text-sm text-gray-800">Up to and including 1100 Volt</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
-                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr. in coil. & Other length available on request, cables are printed with marking of 'ANOCAB'</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 7098 (Part-1)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 8130</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 Volts</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1100 V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-30°C to +90°C</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 7098 (Part-1)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Armoured / Unarmoured</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Power Transmission & Distribution</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for power transmission and distribution in industrial, residential, and commercial networks</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor & Direct Burial</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for outdoor installations and direct burial (armoured type)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels & Switchboards</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in control panels, switchboards, and electrical connections requiring safety and durability</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Multi Core PVC Insulated Aluminium Armoured Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>Premium Quality Compound having Protection against UV, O3, Oil Grease and different weather conditions</li>
-                                <li>100% Pure EC Grade Aluminium</li>
-                                <li>Galvanized Iron Armoured Protected</li>
-                                <li>Heavy duty Cable suitable for outdoor installation</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium, Class 1 & 2 as per IS 8130</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type-A as per IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Iron Wire / Strip (for mechanical protection)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red & Black for 2 Core; Red, Yellow, Blue for 3 Core; Red, Yellow, Blue & Black for 4 Core</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black or other colours as per requirement</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS 1554 PT-1</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">EC Grade Aluminium Class 1 & 2 as per IS 8130</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">PVC Type - A, as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of core</span>
-                                  <p className="text-sm text-gray-800">Red & black for 2 core cable, red, yellow, blue for 3 core cable, red, yellow, blue & black for 4 core cable</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
-                                  <p className="text-sm text-gray-800">PVC Type ST-1, PVC Type - ST 2 as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of sheath</span>
-                                  <p className="text-sm text-gray-800">Black and Other Colour as per requirement</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
-                                  <p className="text-sm text-gray-800">Up to and including 1100 Volt</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
-                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr. in coil. & Other length available on request, cables are printed with marking of 'ANOCAB'</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 1554 (Part-1)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 8130</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 Volts</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1100 V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +70°C (continuous operation)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 1554 (Part-1)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Armoured</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Power Transmission & Distribution</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for power transmission and distribution in industrial and commercial networks</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor & Underground Installation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for outdoor installations and underground cabling (armoured type)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Fixed Wiring Applications</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for fixed wiring in panels, switchboards, and machinery</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Multi Core XLPE Insulated Aluminium Armoured Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>Premium Quality Compound having Protection against UV, O3, Oil Grease and different weather conditions</li>
-                                <li>100% Pure EC Grade Aluminium</li>
-                                <li>Galvanized Iron Armoured Protected</li>
-                                <li>Heavy duty Cable suitable for outdoor installation</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium, Class 1 & 2 as per IS 8130</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">XLPE Insulation as per IS 7098 (Part-1)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Iron Wire / Strip (for mechanical protection)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red & Black for 2 Core; Red, Yellow, Blue for 3 Core; Red, Yellow, Blue & Black for 4 Core</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black or other colours as per requirement</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS 7098 PT-1</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">EC Grade Aluminium Class 1 & 2 as per IS 8130</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">XLPE insulated</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of core</span>
-                                  <p className="text-sm text-gray-800">Red & black for 2 core cable, red, yellow, blue for 3 core cable, red, yellow, blue & black for 4 core cable</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
-                                  <p className="text-sm text-gray-800">PVC Type ST-1, PVC Type - ST 2 as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of sheath</span>
-                                  <p className="text-sm text-gray-800">Black and Other Colour as per requirement</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
-                                  <p className="text-sm text-gray-800">Up to and including 1100 Volt</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing & Marking</span>
-                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr. in coil. & Other length available on request, cables are printed with marking of 'ANOCAB'</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 7098 (Part-1)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 8130</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 Volts</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1100 V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-30°C to +90°C (continuous operation)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 7098 (Part-1)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Armoured</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Power Transmission & Distribution</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Designed for power transmission and distribution in industrial, commercial, and residential networks</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor & Direct Burial</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for outdoor installations and direct burial (armoured type)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Fixed Wiring & Control Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for fixed wiring, control panels, and electrical switchgear systems</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Multi Core PVC Insulated Aluminium Unarmoured Cable" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>Premium Quality Compound having Protection against UV, O3, Oil Grease and different weather conditions</li>
-                                <li>100% Pure EC Grade Aluminium</li>
-                                <li>Heavy duty Cable suitable for outdoor installation</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium, Class 1 & 2 as per IS 8130</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type-A as per IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Not Applicable (Unarmoured Type)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red & Black for 2 Core; Red, Yellow, Blue for 3 Core; Red, Yellow, Blue & Black for 4 Core</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black or other colours as per requirement</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">IS 1554 PT-1</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">EC Grade Aluminium Class 1 & 2 as per IS 8130</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">PVC Type - A, as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Sheath</span>
-                                  <p className="text-sm text-gray-800">PVC Type ST-1, PVC Type - ST 2 as per IS 5831</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
-                                  <p className="text-sm text-gray-800">Red & black for 2 core cable, red, yellow, blue for 3 core cable, red, yellow, blue & black for 4 core cable</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Colour of sheath</span>
-                                  <p className="text-sm text-gray-800">Black and Other Colour as per requirement</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Voltage Rating</span>
-                                  <p className="text-sm text-gray-800">Up to and including 1100 Volt</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Marking & Packing</span>
-                                  <p className="text-sm text-gray-800">Standard packing of 500 mtr. in coil. & Other length available on request, cables are printed with marking of 'ANOCAB'</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 1554 (Part-1)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 8130</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 5831</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 Volts</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1100 V</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +70°C (continuous operation)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 1554 (Part-1)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Unarmoured</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Power Distribution & Fixed Wiring</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Designed for power distribution and fixed wiring in electrical installations</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Indoor & Outdoor Use</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for indoor and outdoor use where mechanical protection is not required</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels & Conduits</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Commonly used in control panels, conduits, and surface installations</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
                         ) : selectedProduct === "Telecom Switch Board Cables" ? (
                           <div className="space-y-6">
+                            {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-2">Features</h4>
-                              <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
-                                <li>High quality multilayer PVC having greater IR Value</li>
-                                <li>REACH and RoHS Compliant Cable</li>
-                                <li>Flame Retardant Cable with higher Oxygen Index</li>
-                                <li>Anti-Rodent, Anti-Termite</li>
-                                <li>Super Annealed Conductor</li>
-                              </ul>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Component</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Specification</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Annealed Tinned Copper Conductor</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Hard PVC confirming to IS-13176 (1991) Type-2</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour Code</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">White, Blue, Orange, Green, Brown & Grey (as per DOT)</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High-quality multilayer PVC providing greater IR value</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cables printed with marking of 'ANOCAB'</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100 mtr & 200 mtr coil packed in protective plastic bag</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
+
+                            {/* Standards Followed */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">Technical Data</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Reference</span>
-                                  <p className="text-sm text-gray-800">DOT TEC Spec No: G/WIR-06/02</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Test Voltage</span>
-                                  <p className="text-sm text-gray-800">2000 V spark Tester</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Conductor</span>
-                                  <p className="text-sm text-gray-800">Annealed Tinned Copper Conductor</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Insulation</span>
-                                  <p className="text-sm text-gray-800">Hard PVC confirming to IS-13176 (1991) type-2</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Colours</span>
-                                  <p className="text-sm text-gray-800">White, Blue, Orange, Green, Brown & Grey colour as per DOT</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-sm font-semibold text-gray-800">Marking</span>
-                                  <p className="text-sm text-gray-800">Cables printed with marking of ‘ANOCAB’</p>
-                                </div>
-                                <div className="space-y-1 md:col-span-2">
-                                  <span className="text-sm font-semibold text-gray-800">Packing</span>
-                                  <p className="text-sm text-gray-800">100 mtr. & 200 mtr. coil packed in protective Plastic bag</p>
-                                </div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Type</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Reference</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">DOT Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">DOT TEC Spec No: G/WIR-06/02</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Standard</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS-13176 (1991) Type-2</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Compliance</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">REACH and RoHS Compliant</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Technical Properties */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2000 V Spark Tester</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Higher Oxygen Index</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Durability</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Anti-Rodent and Anti-Termite</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Super Annealed for better flexibility and conductivity</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* Applications */}
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
+                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                                <table className="min-w-full bg-white">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Usage Area</th>
+                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Telecom Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for internal connection in telephone exchanges and telecom switchboards</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Communication Panels</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for data and voice signal transmission</td>
+                                    </tr>
+                                    <tr className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Control Systems</td>
+                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for low-voltage signal and control circuits</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </div>
@@ -5410,120 +8965,62 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           </>
                         )}
                       </div>
-                      {/* Vertical Buttons Section */}
-                      <div className="flex flex-col gap-3 lg:min-w-[140px]">
-                        <button 
-                          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
-                          onClick={() => {
-                            // Scroll to Approvals section
-                            const approvalsSection = document.querySelector('[data-section="approvals"]');
-                            if (approvalsSection) {
-                              approvalsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }
-                          }}
-                        >
-                          Approvals
-                        </button>
-                        <button 
-                          className="px-4 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
-                          onClick={() => {
-                            // Scroll to License section or open license
-                            const licenseSection = document.querySelector('[data-section="license"]');
-                            if (licenseSection) {
-                              licenseSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }
-                          }}
-                        >
-                          License
-                        </button>
-                        <button 
-                          className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
-                          onClick={() => {
-                            // Scroll to GTP section
-                            const gtpSection = document.querySelector('[data-section="gtp"]');
-                            if (gtpSection) {
-                              gtpSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }
-                          }}
-                        >
-                          GTP
-                        </button>
-                        <button 
-                          className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
-                          onClick={() => {
-                            // Scroll to Type Test section
-                            const typeTestSection = document.querySelector('[data-section="type-test"]');
-                            if (typeTestSection) {
-                              typeTestSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }
-                          }}
-                        >
-                          Type Test
-                        </button>
-                        <button 
-                          className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
-                          onClick={() => {
-                            // Scroll to Process Chart section
-                            const processChartSection = document.querySelector('[data-section="process-chart"]');
-                            if (processChartSection) {
-                              processChartSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }
-                          }}
-                        >
-                          Process Chart
-                        </button>
-                      </div>
-                      <div className="lg:w-1/3 flex flex-col items-center">
+                      <div className="lg:w-1/3 flex flex-col lg:flex-row gap-4 items-center lg:items-start">
+                        <div className="flex-1 flex flex-col items-center gap-4">
+                          {/* Side View Image */}
+                          <div className="w-full flex flex-col items-center">
                         <div className="w-full h-64 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
                           <img 
-                            src={selectedProduct === "All Aluminium Alloy Conductor" 
+                                src={selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced"
+                                      ? "/images/products/Aluminum Conductor Galvanised Steel Reinforced.jpg"
+                                      : selectedProduct === "All Aluminium Alloy Conductor" 
                                   ? "/images/products/all aluminium alloy conductor.jpeg" 
                                   : selectedProduct === "PVC Insulated Submersible Cable" 
                                   ? "/images/products/pvc insulated submersible cable.jpeg" 
-                                  : selectedProduct === "Multi Core XLPE Insulated Aluminium Unarmoured Cable"
-                                  ? "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg"
-                                  : selectedProduct === "Multi Core XLPE Insulated Aluminium Armoured Cable"
-                                  ? "/images/products/multi core xlpe insulated aluminium armoured cable.jpeg"
-                                  : selectedProduct === "Multi Core PVC Insulated Aluminium Armoured Cable"
-                                  ? "/images/products/multi core pvc isulated aluminium armoured cable.jpeg"
-                                  : selectedProduct === "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable"
-                                  ? "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg"
-                                  : selectedProduct === "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable"
-                                  ? "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg"
-                                  : selectedProduct === "Paper Cover Aluminium Conductor"
-                                  ? "/images/products/paper covered aluminium conductor.jpeg"
-                                  : selectedProduct === "Multistrand Single Core Copper Cable"
-                                  ? "/images/products/multistrand single core copper cable.jpeg"
-                                  : selectedProduct === "Multi Core Copper Cable"
-                                  ? "/images/products/multi core copper cable.jpeg"
-                                  : selectedProduct === "PVC Insulated Single Core Aluminium Cable"
-                                  ? "/images/products/pvc insulated single core aluminium cables.jpeg"
-                                  : selectedProduct === "PVC Insulated Multicore Aluminium Cable"
-                                  ? "/images/products/pvc insulated multicore aluminium cable.jpeg"
-                                  : selectedProduct === "Submersible Winding Wire"
-                                  ? "/images/products/submersible winding wire.jpeg"
-                                  : selectedProduct === "Twin Twisted Copper Wire"
-                                  ? "/images/products/twin twisted copper wire.jpeg"
-                                  : selectedProduct === "Speaker Cable"
-                                  ? "/images/products/speaker cable.jpeg"
-                                  : selectedProduct === "CCTV Cable"
-                                  ? "/images/products/cctv cable.jpeg"
-                                  : selectedProduct === "LAN Cable"
-                                  ? "/images/products/telecom switch board cables.jpeg"
-                                  : selectedProduct === "Automobile Cable"
-                                  ? "/images/products/automobile wire.jpeg"
-                                  : selectedProduct === "PV Solar Cable"
-                                  ? "/images/products/pv solar cable.jpeg"
-                                  : selectedProduct === "Co Axial Cable"
-                                  ? "/images/products/co axial cable.jpeg"
-                                  : selectedProduct === "Uni-tube Unarmoured Optical Fibre Cable"
-                                  ? "/images/products/unitube unarmoured optical fibre cable.jpeg"
-                                  : selectedProduct === "Armoured Unarmoured PVC Insulated Copper Control Cable"
-                                  ? "/images/products/armoured unarmoured pvc insulated copper control cable.jpeg"
-                                  : selectedProduct === "Telecom Switch Board Cables"
-                                  ? "/images/products/telecom switch board cables.jpeg"
-                                  : selectedProduct === "Multi Core PVC Insulated Aluminium Unarmoured Cable"
-                                  ? "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg"
+                                      : selectedProduct === "Multi Core XLPE Insulated Aluminium Unarmoured Cable"
+                                      ? "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg"
+                                      : selectedProduct === "Multi Core XLPE Insulated Aluminium Armoured Cable"
+                                      ? "/images/products/multi core xlpe insulated aluminium armoured cable.jpeg"
+                                      : selectedProduct === "Multi Core PVC Insulated Aluminium Armoured Cable"
+                                      ? "/images/products/multi core pvc isulated aluminium armoured cable.jpeg"
+                                      : selectedProduct === "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable"
+                                      ? "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg"
+                                      : selectedProduct === "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable"
+                                      ? "/images/products/single core pvc insulated aluminium copper armoured_unarmoured cable.jpeg"
+                                      : selectedProduct === "Paper Cover Aluminium Conductor"
+                                      ? "/images/products/paper covered aluminium conductor.jpeg"
+                                      : selectedProduct === "Multistrand Single Core Copper Cable"
+                                      ? "/images/products/multistrand single core copper cable.jpeg"
+                                      : selectedProduct === "Multi Core Copper Cable"
+                                      ? "/images/products/multi core copper cable.jpeg"
+                                      : selectedProduct === "PVC Insulated Single Core Aluminium Cable"
+                                      ? "/images/products/pvc insulated single core aluminium cables.jpeg"
+                                      : selectedProduct === "PVC Insulated Multicore Aluminium Cable"
+                                      ? "/images/products/pvc insulated multicore aluminium cable.jpeg"
+                                      : selectedProduct === "Submersible Winding Wire"
+                                      ? "/images/products/submersible winding wire.jpeg"
+                                      : selectedProduct === "Twin Twisted Copper Wire"
+                                      ? "/images/products/twin twisted copper wire.jpeg"
+                                      : selectedProduct === "Speaker Cable"
+                                      ? "/images/products/speaker cable.jpeg"
+                                      : selectedProduct === "CCTV Cable"
+                                      ? "/images/products/cctv cable.jpeg"
+                                      : selectedProduct === "LAN Cable"
+                                      ? "/images/products/LAN Cable.jpg"
+                                      : selectedProduct === "Automobile Cable"
+                                      ? "/images/products/automobile wire.jpeg"
+                                      : selectedProduct === "PV Solar Cable"
+                                      ? "/images/products/pv solar cable.jpeg"
+                                      : selectedProduct === "Co Axial Cable"
+                                      ? "/images/products/co axial cable.jpeg"
+                                      : selectedProduct === "Uni-tube Unarmoured Optical Fibre Cable"
+                                      ? "/images/products/unitube unarmoured optical fibre cable.jpeg"
+                                      : selectedProduct === "Armoured Unarmoured PVC Insulated Copper Control Cable"
+                                      ? "/images/products/armoured unarmoured pvc insulated copper control cable.jpeg"
+                                      : selectedProduct === "Telecom Switch Board Cables"
+                                      ? "/images/products/telecom switch board cables.jpeg"
+                                      : selectedProduct === "Multi Core PVC Insulated Aluminium Unarmoured Cable"
+                                      ? "/images/products/multi core pvc insulated aluminium unarmoured cable.jpeg"
                                   : "/images/products/aerial bunch cable.jpeg"}
                             alt={selectedProduct}
                             className="w-full h-full object-contain p-4"
@@ -5540,91 +9037,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             </div>
                           </div>
                         </div>
-                        <p className="text-sm text-gray-500 mt-2 text-center">{selectedProduct} Sample</p>
-                        
-                        <div className="mt-6 w-full">
-                          <h4 className="font-semibold text-gray-800 mb-3">Standards Compliance:</h4>
-                          <ul className="text-sm text-gray-700 space-y-1">
-                            {selectedProduct === "All Aluminium Alloy Conductor" ? (
-                              <>
-                                <li>• IS 398 (Part 4)</li>
-                              </>
-                            ) : selectedProduct === "PVC Insulated Submersible Cable" ? (
-                              <>
-                                <li>• IS 694 (PVC Insulated Cables)</li>
-                              </>
-                            ) : (
-                              <>
-                                <li>• IS 14255: 1995 (Reaffirmed 2020)</li>
-                                <li>• IS 8130: 1984 (Reaffirmed 2021)</li>
-                                <li>• IS 1554 (Part-1): 1988 (Reaffirmed 2021)</li>
-                                <li>• IS 7098 (Part-1): 1988 (Reaffirmed 2021)</li>
-                              </>
-                            )}
-                          </ul>
+                            <p className="text-sm text-gray-500 mt-2 text-center">Side View</p>
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Technical Specification Section - Only for ACSR (AAAC moved below after calculators) */}
-              {(selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced") && (
-                <div className="mb-8">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <Wrench className="h-5 w-5 text-blue-600" />
-                    Technical Specification
-                  </h3>
-                  <div className="bg-gray-50 rounded-lg p-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="md:col-span-2">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <span className="text-sm font-semibold text-gray-800">REFERENCE</span>
-                            <p className="text-sm text-gray-800">IS-398 (Pt-2): 1996</p>
-                          </div>
-                          <div className="space-y-2">
-                            <span className="text-sm font-semibold text-gray-800">APPLICATION</span>
-                            <p className="text-sm text-gray-800">Overhead power transmission purposes</p>
-                          </div>
-                          <div className="space-y-2">
-                            <span className="text-sm font-semibold text-gray-800">CONDUCTOR</span>
-                            <p className="text-sm text-gray-800">Conductor containing aluminium and galvanised steel wires built in concentric layers</p>
-                          </div>
-                          <div className="space-y-2">
-                            <span className="text-sm font-semibold text-gray-800">RESISTIVITY</span>
-                            <p className="text-sm text-gray-800">Max 0.032 ohm·mm²/m at 20°C</p>
-                          </div>
-                          <div className="space-y-2">
-                            <span className="text-sm font-semibold text-gray-800">INSULATION</span>
-                            <p className="text-sm text-gray-800">Not insulated (bare conductor)</p>
-                          </div>
-                        </div>
-                        <div className="space-y-2 mt-4">
-                          <span className="text-sm font-semibold text-gray-800">FEATURES</span>
-                          <div className="text-sm text-gray-800">
-                            <ul className="list-disc list-inside space-y-1">
-                              {selectedProduct === "All Aluminium Alloy Conductor" ? (
-                                <>
-                                  <li>Alloyed aluminium for improved strength</li>
-                                  <li>Lightweight, corrosion-resistant, long span capability</li>
-                                </>
-                              ) : (
-                                <>
-                                  <li>100% pure EC grade aluminium</li>
-                                  <li>Heavy duty cable suitable for outdoor installation</li>
-                                </>
-                              )}
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="md:col-span-1 flex flex-col items-center">
-                        <div className="w-full h-64 bg-white rounded-lg border border-gray-200 overflow-hidden">
-                          <img 
-                            src={getProductData(selectedProduct)?.imageUrl || "/images/products/acsr-conductor.jpg"}
-                            alt={getProductData(selectedProduct)?.title || selectedProduct}
+                          
+                          {/* Front View Image - Only show if available */}
+                          {getFrontViewImage(selectedProduct) && (
+                            <div className="w-full flex flex-col items-center">
+                              <div className="w-full h-64 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                                <img 
+                                  src={getFrontViewImage(selectedProduct)}
+                                  alt={`${selectedProduct} Front View`}
                             className="w-full h-full object-contain p-4"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
@@ -5635,16 +9057,465 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           <div className="hidden w-full h-full items-center justify-center text-gray-400">
                             <div className="text-center p-4">
                               <Image className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                              <p className="text-sm">ACSR Conductor</p>
-                            </div>
-                          </div>
+                                    <p className="text-sm">{selectedProduct} Front View</p>
                         </div>
-                        <p className="text-sm text-gray-500 mt-2 text-center">ACSR Conductor Sample</p>
+                      </div>
+                    </div>
+                              <p className="text-sm text-gray-500 mt-2 text-center">Front View</p>
+                  </div>
+                          )}
+                          
+                          {/* Key Features / Advantages - Only for PVC Insulated Submersible Cable */}
+                          {selectedProduct === "PVC Insulated Submersible Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>100% Pure Electrolytic Grade Annealed Copper — Ensures maximum conductivity and efficiency</li>
+                                <li>High Quality Multilayer PVC Insulation — Provides excellent insulation resistance and moisture protection</li>
+                                <li>Water-Tight Construction — Specially designed for submersible pump applications and wet environments</li>
+                                <li>Flame Retardant & UV Resistant — Offers enhanced fire safety and weather protection</li>
+                                <li>Anti-Rodent & Anti-Termite — Prolongs cable durability in harsh environments</li>
+                                <li>REACH & RoHS Compliant — Environmentally safe and non-toxic</li>
+                                <li>Available in Flat and Round Construction — Flexible design for various installation requirements</li>
+                              </ul>
+                            </div>
+                          )}
+                          
+                          {/* Key Features / Advantages - Only for AB Cable */}
+                          {selectedProduct === "Aerial Bunch Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>UV radiation protected for long outdoor life.</li>
+                                <li>High current carrying capacity with low power loss.</li>
+                                <li>Operates efficiently within a temperature range of -30°C to +90°C.</li>
+                                <li>Resistant to mechanical stress, corrosion, and atmospheric pollution.</li>
+                                <li>Reduced line faults and power theft due to insulated design.</li>
+                                <li>Maintenance-free and safe for overhead installations.</li>
+                                <li>Lightweight and easy to install on existing pole structures.</li>
+                          </ul>
+                        </div>
+              )}
+
+                          {/* Key Features / Advantages - Only for ACSR */}
+                          {selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>Manufactured with 100% pure EC Grade Aluminium for superior conductivity.</li>
+                                <li>High tensile strength due to galvanized steel core, ideal for long-span applications.</li>
+                                <li>Corrosion-resistant surface ensures long service life in outdoor conditions.</li>
+                                <li>Lightweight with excellent current-carrying capacity.</li>
+                                <li>Minimal sag and low maintenance over extended operation.</li>
+                                <li>Economical and efficient solution for high-voltage transmission systems.</li>
+                                <li>Custom stranding configurations available to suit project requirements.</li>
+                              </ul>
+                      </div>
+                          )}
+                          
+                          {/* Key Features / Advantages - Only for AAAC */}
+                          {selectedProduct === "All Aluminium Alloy Conductor" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>100% pure EC-grade aluminium alloy for improved conductivity and strength.</li>
+                                <li>Lightweight yet mechanically robust, ideal for long spans.</li>
+                                <li>Superior corrosion resistance — perfect for coastal and industrial environments.</li>
+                                <li>No steel core, eliminating galvanic corrosion issues.</li>
+                                <li>Higher ampacity-to-weight ratio than ACSR.</li>
+                                <li>Low sag characteristics ensuring consistent line clearance.</li>
+                                <li>Maintenance-free and cost-effective for long-term operation.</li>
+                              </ul>
+                    </div>
+                          )}
+                          
+                          {/* Key Features / Advantages - Only for Multi Core XLPE Insulated Aluminium Unarmoured Cable */}
+                          {selectedProduct === "Multi Core XLPE Insulated Aluminium Unarmoured Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>Manufactured with premium-grade XLPE compound resistant to UV, ozone, oil, grease, and weathering.</li>
+                                <li>100% pure EC Grade Aluminium for maximum conductivity and efficiency.</li>
+                                <li>High dielectric strength and long-term thermal stability.</li>
+                                <li>Maintenance-free and durable, ensuring reliable service life.</li>
+                                <li>Flexible construction for ease of handling and installation.</li>
+                                <li>Suitable for both indoor and outdoor applications.</li>
+                              </ul>
+                  </div>
+                          )}
+
+                          {/* Key Features / Advantages - Only for PVC Insulated Multicore Aluminium Cable */}
+                          {selectedProduct === "PVC Insulated Multicore Aluminium Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>100% Pure EC Grade Aluminium — Provides superior conductivity and efficiency</li>
+                                <li>High IR Value PVC Insulation — Ensures electrical safety and insulation reliability</li>
+                                <li>Flame Retardant & UV Resistant — Offers enhanced fire and weather protection</li>
+                                <li>Anti-Rodent & Anti-Termite — Prolongs cable durability</li>
+                                <li>Super Annealed Conductor — Increases flexibility and ease of installation</li>
+                                <li>REACH & RoHS Compliance — Environmentally safe and non-toxic</li>
+                              </ul>
+                </div>
+              )}
+
+                          {/* Key Features / Advantages - Only for Multi Core PVC Insulated Aluminium Unarmoured Cable */}
+                          {selectedProduct === "Multi Core PVC Insulated Aluminium Unarmoured Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>Premium quality PVC compound offering resistance to UV, O₃, oil, grease, and varying weather conditions</li>
+                                <li>100% Pure EC Grade Aluminium for superior electrical conductivity</li>
+                                <li>Flexible and lightweight design for easier installation and maintenance</li>
+                                <li>Heavy-duty performance suitable for long operational life</li>
+                                <li>Available in various core configurations and sheath colours</li>
+                                <li>Supplied in standard 500 mtr coils; other lengths available on request with 'ANOCAB' marking</li>
+                              </ul>
+                          </div>
+              )}
+
+                          {/* Key Features / Advantages - Only for Multistrand Single Core Copper Cable */}
+                          {selectedProduct === "Multistrand Single Core Copper Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>High-quality multilayer PVC insulation with superior IR value</li>
+                                <li>REACH & RoHS compliant for environmental safety</li>
+                                <li>Flame retardant, anti-rodent, and anti-termite properties</li>
+                                <li>Super flexible conductor for easy handling and installation</li>
+                                <li>100% pure electrolytic copper ensuring maximum conductivity and efficiency</li>
+                                <li>Available in standard 90 mtr coils; longer lengths available on customer request</li>
+                                <li>Cables are printed with 'ANOCAB' marking for authenticity</li>
+                              </ul>
+                          </div>
+                          )}
+                          
+                          {/* Key Features / Advantages - Only for Multi Core Copper Cable */}
+                          {selectedProduct === "Multi Core Copper Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>Low voltage suitability — Safe for domestic and industrial use</li>
+                                <li>High flexibility — Easy installation and handling</li>
+                                <li>Flame retardant insulation — Enhanced fire safety</li>
+                                <li>Moisture & mechanical resistance — Longer life and durability</li>
+                                <li>Colour-coded cores — Easy identification during wiring</li>
+                                <li>Customization — Available in various sheath colours & lengths</li>
+                              </ul>
+                          </div>
+                          )}
+                          
+                          {/* Key Features / Advantages - Only for Paper Covered Aluminium Conductor */}
+                          {selectedProduct === "Paper Cover Aluminium Conductor" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>Made from 100% pure EC-grade aluminium for superior conductivity.</li>
+                                <li>Double paper insulation ensures high dielectric strength and safety.</li>
+                                <li>Customizable insulation grades (O, F, S) as per project requirements.</li>
+                                <li>Tested between 5.5 kV and 10 kV for insulation reliability.</li>
+                                <li>Excellent flexibility and mechanical strength for easy coil winding.</li>
+                                <li>Uniform resistivity and smooth finish for consistent electrical performance.</li>
+                                <li>Moisture-resistant insulation, ideal for oil-immersed applications.</li>
+                              </ul>
+                          </div>
+                          )}
+                          
+                          {/* Key Features / Advantages - Only for Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable */}
+                          {selectedProduct === "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>Manufactured from 100% Pure EC Grade Aluminium / Copper.</li>
+                                <li>Premium quality PVC compound ensures superior insulation and weather protection.</li>
+                                <li>GI armouring provides high mechanical strength and resistance to damage.</li>
+                                <li>Heavy-duty construction suitable for both indoor and outdoor applications.</li>
+                                <li>Long service life with excellent resistance to UV, ozone, oil, and chemicals.</li>
+                                <li>Available in both armoured and unarmoured versions for flexible use.</li>
+                                <li>Smooth surface finish and easy installation properties.</li>
+                              </ul>
+                          </div>
+                          )}
+                          
+                          {/* Key Features / Advantages - Only for Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable */}
+                          {selectedProduct === "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>Premium quality compound with protection against UV, O₃, oil, grease, and adverse weather conditions</li>
+                                <li>100% Pure EC Grade Aluminium / Copper ensures high conductivity</li>
+                                <li>Galvanized iron armoured for superior mechanical protection</li>
+                                <li>Heavy-duty construction suitable for long service life</li>
+                                <li>Flexible design options — available in different sheath colours and core configurations</li>
+                                <li>Supplied in standard 500 mtr coils, with ANOCAB marking</li>
+                            </ul>
+                        </div>
+                          )}
+                          
+                          {/* Key Features / Advantages - Only for Multi Core PVC Insulated Aluminium Armoured Cable */}
+                          {selectedProduct === "Multi Core PVC Insulated Aluminium Armoured Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>Premium quality PVC compound resistant to UV, O₃, oil, grease, and harsh weather conditions</li>
+                                <li>100% Pure EC Grade Aluminium ensures high conductivity and long life</li>
+                                <li>Galvanized iron armouring provides enhanced mechanical protection</li>
+                                <li>Heavy duty cable ideal for outdoor and industrial applications</li>
+                                <li>Available in multiple core configurations and sheath colours</li>
+                                <li>Supplied in standard 500 mtr coils; other lengths available on request with 'ANOCAB' marking</li>
+                            </ul>
+                          </div>
+                          )}
+                          
+                          {/* Key Features / Advantages - Only for Multi Core XLPE Insulated Aluminium Armoured Cable */}
+                          {selectedProduct === "Multi Core XLPE Insulated Aluminium Armoured Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>Premium quality XLPE compound providing protection against UV, O₃, oil, grease, and extreme weather conditions</li>
+                                <li>100% Pure EC Grade Aluminium ensures excellent conductivity and strength</li>
+                                <li>Galvanized Iron Armouring provides superior mechanical and impact protection</li>
+                                <li>Heavy-duty cable designed for long service life and outdoor usage</li>
+                                <li>Available in various core configurations and sheath colours</li>
+                                <li>Supplied in standard 500 mtr coils; other lengths available on request with 'ANOCAB' marking</li>
+                            </ul>
+                        </div>
+                          )}
+                          
+                          {/* Key Features / Advantages - Only for PVC Insulated Single Core Aluminium Cable */}
+                          {selectedProduct === "PVC Insulated Single Core Aluminium Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>100% Pure EC Grade Aluminium — Ensures superior conductivity</li>
+                                <li>High IR Value PVC — Provides excellent insulation resistance</li>
+                                <li>Flame Retardant & UV Resistant — Increases fire safety and longevity</li>
+                                <li>Anti-Rodent & Anti-Termite — Enhances cable life in tough environments</li>
+                                <li>Flexible & Easy to Install — Suitable for compact wiring systems</li>
+                                <li>Compliant with REACH & RoHS — Environmentally safe and reliable</li>
+                              </ul>
+                      </div>
+                          )}
+
+                          {/* Key Features / Advantages - Only for Submersible Winding Wire */}
+                          {selectedProduct === "Submersible Winding Wire" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>100% Pure CC Grade Copper — Ensures maximum conductivity and efficiency</li>
+                                <li>Excellent Thermal Stability — Designed for continuous underwater operation</li>
+                                <li>High Dielectric Strength — Withstands high voltage testing up to 3 kV</li>
+                                <li>Moisture & Chemical Resistance — Ideal for long-term submersion and durability</li>
+                                <li>Flexible & Uniform Insulation — Enables easy winding without cracks or breaks</li>
+                                <li>Conforms to IS Standards — Ensures reliability and consistent performance</li>
+                              </ul>
+                            </div>
+                          )}
+                          
+                          {/* Key Features / Advantages - Only for CCTV Cable */}
+                          {selectedProduct === "CCTV Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>High Definition Signal Transmission — Ensures crystal-clear video output</li>
+                                <li>Aluminium Alloy Braiding — Reduces electromagnetic interference (EMI)</li>
+                                <li>Minimum Signal Attenuation — Maintains clarity even over long distances</li>
+                                <li>Super Annealed Copper Conductor — Enhances conductivity and performance</li>
+                                <li>Weather & UV Resistant — Suitable for outdoor applications</li>
+                                <li>Durable PVC Sheath — Provides mechanical protection and flexibility</li>
+                              </ul>
+                          </div>
+                          )}
+                          
+                          {/* Key Features / Advantages - Only for LAN Cable */}
+                          {selectedProduct === "LAN Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">6. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>Low Attenuation and Cross Talk — Ensures high-speed and clear data transfer</li>
+                                <li>High Quality Polyethylene — Excellent electrical insulation</li>
+                                <li>Flame Retardant — Safe for indoor installations</li>
+                                <li>Anti-Rodent, Anti-Termite — Longer service life</li>
+                                <li>Super Annealed Conductor — Better conductivity and flexibility</li>
+                                <li>Low Structural Return Loss — Improved signal quality</li>
+                                <li>Uniform Pair Twisting — Reduces electromagnetic interference</li>
+                                <li>Environment Friendly — Compliant with RoHS and REACH norms</li>
+                              </ul>
+                        </div>
+                          )}
+
+                          {/* Key Features / Advantages - Only for Speaker Cable */}
+                          {selectedProduct === "Speaker Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>100% Pure Electrolytic Copper delivers high-fidelity signal transmission</li>
+                                <li>Twin parallel / twisted design minimises interference and maintains clarity</li>
+                                <li>Flame retardant PVC insulation with high oxygen index enhances safety</li>
+                                <li>Transparent sheath with colour stripe simplifies polarity identification</li>
+                                <li>Super flexible construction eases routing through enclosures and channels</li>
+                                <li>REACH & RoHS compliant materials ensure environmentally safe installation</li>
+                              </ul>
+                      </div>
+                          )}
+
+                          {/* Key Features / Advantages - Only for Twin Twisted Copper Wire */}
+                          {selectedProduct === "Twin Twisted Copper Wire" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>100% Pure Electrolytic Copper for maximum conductivity</li>
+                                <li>Uniform twin twisting delivers flexibility and easy handling</li>
+                                <li>Flame retardant PVC insulation with higher oxygen index for enhanced safety</li>
+                                <li>Anti-rodent, anti-termite and moisture-resistant construction</li>
+                                <li>REACH & RoHS compliant materials ensure environmental safety</li>
+                                <li>High IR value insulation provides superior electrical reliability</li>
+                              </ul>
+                    </div>
+                          )}
+
+                          {/* Key Features / Advantages - Only for Automobile Cable */}
+                          {selectedProduct === "Automobile Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>Flame Retardant — Ensures high safety in automotive environments</li>
+                                <li>High Temperature Resistance — Withstands up to 105°C continuous operation</li>
+                                <li>Chemical & Oil Resistant — Durable against acid, petrol, diesel, and grease</li>
+                                <li>Flexible & Durable — Suitable for bending and confined routing</li>
+                                <li>Lead-Free Insulation — Environmentally friendly</li>
+                                <li>Excellent Electrical Conductivity — Due to pure copper Class-B conductor</li>
+                                <li>Long Service Life — Resistant to mechanical stress and corrosion</li>
+                              </ul>
+                  </div>
+                          )}
+
+                          {/* Key Features / Advantages - Only for PV Solar Cable */}
+                          {selectedProduct === "PV Solar Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>UV, Ozone & Weather Resistant — Ensures durability under outdoor exposure</li>
+                                <li>Flame Retardant & Halogen Free — Safer for environment and personnel</li>
+                                <li>High Temperature Resistance — Continuous operation up to 90°C</li>
+                                <li>Low Smoke Emission — Minimizes toxic release during fire</li>
+                                <li>Super Flexible — Facilitates easy installation and routing</li>
+                                <li>REACH & RoHS Compliant — Environmentally safe materials</li>
+                                <li>Excellent Electrical Conductivity — Due to pure tinned copper conductor</li>
+                                <li>Long Lifespan — {'>'}25 years in standard solar installations</li>
+                              </ul>
+                </div>
+              )}
+
+                          {/* Key Features / Advantages - Only for Co Axial Cable */}
+                          {selectedProduct === "Co Axial Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>Low Signal Loss — Ensures high-quality video and data transmission</li>
+                                <li>Aluminium Braided Shield — Provides superior noise and interference protection</li>
+                                <li>Flame Retardant — Meets IEC 60332-1 standard</li>
+                                <li>REACH & RoHS Compliant — Environmentally safe and non-toxic materials</li>
+                                <li>Durable Sheath — Resistant to oil, UV, and outdoor weathering</li>
+                                <li>High Flexibility — Suitable for tight routing in installations</li>
+                                <li>Long Service Life — Ensures consistent performance and reliability</li>
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Key Features / Advantages - Only for Uni-tube Unarmoured Optical Fibre Cable */}
+                          {selectedProduct === "Uni-tube Unarmoured Optical Fibre Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>High-Speed Transmission — Low attenuation and dispersion for reliable performance</li>
+                                <li>UV Protected — Ensures long life in outdoor exposure</li>
+                                <li>Longitudinal Water Blocking — Prevents moisture ingress and corrosion</li>
+                                <li>Totally Dielectric Design — Immune to electromagnetic interference</li>
+                                <li>Flexible & Lightweight — Easy handling and installation</li>
+                                <li>High Mechanical Strength — Withstands crush, tensile, and impact loads</li>
+                                <li>Standards Compliant — Meets international performance and safety norms</li>
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Key Features / Advantages - Only for Armoured Unarmoured PVC Insulated Copper Control Cable */}
+                          {selectedProduct === "Armoured Unarmoured PVC Insulated Copper Control Cable" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>101% Pure Copper — Ensures maximum conductivity and efficiency</li>
+                                <li>UV & Weather Resistant — Withstands outdoor environmental exposure</li>
+                                <li>Flame Retardant — Tested as per IS 10810-53</li>
+                                <li>High Mechanical Strength — Excellent resistance to impact and abrasion</li>
+                                <li>Superior Insulation — PVC A/C compound ensures long life</li>
+                                <li>Customizable — Available in multiple core configurations and sheath colours</li>
+                                <li>Safe & Reliable — Conforms to Indian and international safety standards</li>
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Key Features / Advantages - Only for Telecom Switch Board Cables */}
+                          {selectedProduct === "Telecom Switch Board Cables" && (
+                            <div className="w-full mt-6">
+                              <h4 className="text-base font-semibold text-gray-900 mb-3">5. Key Features / Advantages</h4>
+                              <ul className="list-disc list-inside space-y-2 text-sm text-gray-800">
+                                <li>Multilayer PVC — Ensures high insulation resistance and longevity</li>
+                                <li>Flame Retardant — Prevents fire spread, enhances safety</li>
+                                <li>RoHS & REACH Compliant — Environmentally safe and toxin-free</li>
+                                <li>Anti-Rodent & Anti-Termite — Increases cable life in harsh environments</li>
+                                <li>Superior Conductivity — Super annealed conductor ensures stable performance</li>
+                              </ul>
+                            </div>
+                          )}
+                      </div>
+                        {/* Vertical Buttons Section */}
+                        <div className="flex flex-col gap-3 lg:min-w-[120px]">
+                          <button 
+                            className="px-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                            onClick={() => {
+                              setShowDataUpcoming(true);
+                            }}
+                          >
+                            Approvals
+                          </button>
+                          <button 
+                            className="px-2 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                            onClick={openProductLicense}
+                          >
+                            License
+                          </button>
+                          <button 
+                            className="px-2 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                            onClick={() => {
+                              setShowDataUpcoming(true);
+                            }}
+                          >
+                            GTP
+                          </button>
+                          <button 
+                            className="px-2 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                            onClick={() => {
+                              setShowDataUpcoming(true);
+                            }}
+                          >
+                            Type Test
+                          </button>
+                          <button 
+                            className="px-2 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                            onClick={() => {
+                              setShowDataUpcoming(true);
+                            }}
+                          >
+                            Process Chart
+                          </button>
+                            </div>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
+
 
               {/* Price List Section - Only for Product Cards */}
               {getProductData(selectedProduct).priceList && getProductData(selectedProduct).priceList.length > 0 && (
@@ -5678,24 +9549,26 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       // Table headers
                       const startX = 10; // mm
                       let y = 30; // start Y
-                      const colW = [90, 50, 50];
-                      const headers = ['Size', 'Price per Meter', 'Stock Status'];
+                      const isAcsrProduct = productData.title === 'Aluminium Conductor Galvanized Steel Reinforced';
+                      const isAaacProduct = productData.title === 'AAAC Conductor';
+                      const hasConductorCode = isAcsrProduct || isAaacProduct;
+                      const colW = hasConductorCode ? [40, 90, 50, 50] : [90, 50, 50];
+                      const headers = hasConductorCode ? ['CONDUCTOR CODE', 'Size', 'Price per Meter', 'Stock Status'] : ['Size', 'Price per Meter', 'Stock Status'];
                       doc.setFillColor(243, 244, 246);
                       doc.setDrawColor(209, 213, 219);
                       doc.setTextColor(55, 65, 81);
                       doc.setFont('helvetica', 'bold');
                       doc.setFontSize(11);
                       // Header background
-                      doc.rect(startX, y - 6, colW[0] + colW[1] + colW[2], 8, 'F');
+                      doc.rect(startX, y - 6, colW.reduce((a, b) => a + b, 0), 8, 'F');
                       // Header text
                       let xCursor = startX + 2;
-                      doc.text(headers[0], xCursor, y);
-                      xCursor += colW[0];
-                      doc.text(headers[1], xCursor + 2, y);
-                      xCursor += colW[1];
-                      doc.text(headers[2], xCursor + 2, y);
+                      headers.forEach((header, idx) => {
+                        doc.text(header, xCursor, y);
+                        xCursor += colW[idx] + (idx > 0 ? 2 : 0);
+                      });
                       // Header border
-                      doc.rect(startX, y - 6, colW[0] + colW[1] + colW[2], 8);
+                      doc.rect(startX, y - 6, colW.reduce((a, b) => a + b, 0), 8);
 
                       y += 6; // move below header
                       doc.setFont('helvetica', 'normal');
@@ -5711,16 +9584,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         }
                         // Row borders
                         doc.setDrawColor(209, 213, 219);
-                        doc.rect(startX, y - 5.5, colW[0] + colW[1] + colW[2], lineHeight);
+                        doc.rect(startX, y - 5.5, colW.reduce((a, b) => a + b, 0), lineHeight);
                         // Text
                         let x = startX + 2;
+                        if (hasConductorCode && item.conductorCode) {
+                          doc.text(String(item.conductorCode || '-'), x, y);
+                          x += colW[0] + 2;
+                        }
                         const sizeTxt = String(item.size || '-');
                         const priceTxt = String(item.price || '-');
                         const stockTxt = String(item.stock || '-');
                         doc.text(sizeTxt, x, y);
-                        x += colW[0];
+                        x += colW[hasConductorCode ? 1 : 0];
                         doc.text(priceTxt, x + 2, y);
-                        x += colW[1];
+                        x += colW[hasConductorCode ? 2 : 1];
                         doc.text(stockTxt, x + 2, y);
                         y += lineHeight;
                       }
@@ -5733,12 +9610,18 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     }
 
                     // APPROACH 2: html2pdf fallback (keep only required columns)
+                    const isAcsrProductPdf = productData.title === 'Aluminium Conductor Galvanized Steel Reinforced';
+                    const isAaacProductPdf = productData.title === 'AAAC Conductor';
                     const rows = productData.priceList.map(item => {
                       const stockClass = item.stock === 'Available'
                         ? 'background-color: #d1fae5; color: #065f46;'
                         : 'background-color: #f3f4f6; color: #374151;';
+                      const conductorCodeCell = (isAcsrProductPdf || isAaacProductPdf) && item.conductorCode
+                        ? `<td style=\"padding: 10px; border: 1px solid #d1d5db; font-size: 12px;\">${item.conductorCode || '-'}<\/td>`
+                        : '';
                       return `
                         <tr>
+                          ${conductorCodeCell}
                           <td style=\"padding: 10px; border: 1px solid #d1d5db; font-size: 12px;\">${item.size || '-'}<\/td>
                           <td style=\"padding: 10px; border: 1px solid #d1d5db; font-size: 12px;\">${item.price || '-'}<\/td>
                           <td style=\"padding: 10px; border: 1px solid #d1d5db; font-size: 12px;\"><span style=\"${stockClass} padding: 4px 8px; border-radius: 12px; font-size: 10px; display: inline-block;\">${item.stock || '-'}<\/span><\/td>
@@ -5759,6 +9642,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     tempDiv.style.zIndex = '-1';
                     tempDiv.style.opacity = '0.01';
                     tempDiv.style.visibility = 'visible';
+                    const conductorCodeHeader = (isAcsrProductPdf || isAaacProductPdf)
+                      ? '<th style=\"padding: 10px; border: 1px solid #d1d5db; background-color: #f3f4f6; font-weight: 600; color: #374151; text-align: left; font-size: 12px;\">CONDUCTOR CODE<\/th>'
+                      : '';
                     tempDiv.innerHTML = `
                       <div style=\"text-align: center; margin-bottom: 16px;\">
                         <h1 style=\"color: #2563eb; margin: 0 0 8px 0; font-size: 22px;\">${productData.title} - Price List<\/h1>
@@ -5767,6 +9653,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       <table style=\"width: 100%; border-collapse: collapse; margin-top: 12px;\">
                             <thead>
                               <tr>
+                            ${conductorCodeHeader}
                             <th style=\"padding: 10px; border: 1px solid #d1d5db; background-color: #f3f4f6; font-weight: 600; color: #374151; text-align: left; font-size: 12px;\">Size<\/th>
                             <th style=\"padding: 10px; border: 1px solid #d1d5db; background-color: #f3f4f6; font-weight: 600; color: #374151; text-align: left; font-size: 12px;\">Price per Meter<\/th>
                             <th style=\"padding: 10px; border: 1px solid #d1d5db; background-color: #f3f4f6; font-weight: 600; color: #374151; text-align: left; font-size: 12px;\">Stock Status<\/th>
@@ -5823,6 +9710,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   <table className="w-full border-collapse border border-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
+                        {(selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" || selectedProduct === "All Aluminium Alloy Conductor") && (
+                          <th className="px-4 py-1.5 text-left font-medium text-gray-700 border border-gray-200 text-sm">CONDUCTOR CODE</th>
+                        )}
                         <th className="px-4 py-1.5 text-left font-medium text-gray-700 border border-gray-200 text-sm">Size</th>
                         <th className="px-4 py-1.5 text-left font-medium text-gray-700 border border-gray-200 text-sm">Price per Meter</th>
                         <th className="px-4 py-1.5 text-left font-medium text-gray-700 border border-gray-200 text-sm">Stock Status</th>
@@ -5833,6 +9723,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     <tbody>
                       {getProductData(selectedProduct).priceList.map((item, index) => (
                         <tr key={index} className="hover:bg-gray-50">
+                          {(selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" || selectedProduct === "All Aluminium Alloy Conductor") && (
+                            <td className="px-4 py-1.5 border border-gray-200 text-sm font-medium">{item.conductorCode || '-'}</td>
+                          )}
                           <td className="px-4 py-1.5 border border-gray-200 text-sm font-medium">{item.size}</td>
                           <td className="px-4 py-1.5 border border-gray-200 text-sm text-blue-600 font-semibold">{item.price}</td>
                           <td className="px-4 py-1.5 border border-gray-200 text-sm">
@@ -5934,6 +9827,211 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Cable Selection for Submersible Motor Calculator (PVC Submersible) */}
+              {selectedProduct === "PVC Insulated Submersible Cable" && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-blue-600" />
+                    Cable Selection for Submersible Motor Calculator
+                  </h3>
+                  <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                    <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
+                      <p className="text-sm text-gray-600">3 PHASE, 220-240 V, 50Hz | Direct on line Starter</p>
+                    </div>
+                    <div className="p-4">
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Motor Rating</label>
+                          <div className="space-y-2">
+                            <input 
+                              type="number" 
+                              value={subMotorRating}
+                              onChange={(e) => setSubMotorRating(Number(e.target.value) || 0)}
+                              className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                            />
+                            <select 
+                              value={subMotorUnit}
+                              onChange={(e) => setSubMotorUnit(e.target.value)}
+                              className="w-full px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              <option>HP</option>
+                              <option>KW</option>
+                              <option>WATT</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Length</label>
+                          <div className="space-y-2">
+                            <input 
+                              type="number" 
+                              value={subMotorLen}
+                              onChange={(e) => setSubMotorLen(Number(e.target.value) || 0)}
+                              className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                            />
+                            <select 
+                              value={subMotorLenUnit}
+                              onChange={(e) => setSubMotorLenUnit(e.target.value)}
+                              className="w-full px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              <option>MTR</option>
+                              <option>FT</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Voltage Drop</label>
+                          <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subVoltDrop).toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Current (Ω)</label>
+                          <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subCurrent).toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Actual Gauge</label>
+                          <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subActualGauge).toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Cable Size</label>
+                          <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{subCableSize}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Cable Size vs Max Length Table (PVC Submersible) */}
+              {selectedProduct === "PVC Insulated Submersible Cable" && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-blue-600" />
+                    CABLE SIZE IN SQ. MM. (Max Length in Meters)
+                  </h3>
+                  <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table className="min-w-full bg-white">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">V</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">kW</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">HP</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">1.5</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">2.5</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">4</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">6</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">10</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">16</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">25</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">35</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">50</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">70</th>
+                          <th className="px-3 py-2 text-center text-xs font-semibold text-gray-700 border border-gray-200">95</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
+                          { v: "220-240", kw: "0.37", hp: "0.50", s15: "120", s25: "200", s4: "320", s6: "480", s10: "810", s16: "1260", s25mm: "1900", s35: "2590", s50: "3580", s70: "4770", s95: "5920" },
+                          { v: "220-240", kw: "0.55", hp: "0.75", s15: "80", s25: "130", s4: "250", s6: "320", s10: "550", s16: "850", s25mm: "1290", s35: "1760", s50: "2430", s70: "3230", s95: "4000" },
+                          { v: "220-240", kw: "0.75", hp: "1.00", s15: "60", s25: "100", s4: "170", s6: "250", s10: "430", s16: "670", s25mm: "1010", s35: "1380", s50: "1910", s70: "2550", s95: "3160" },
+                          { v: "220-240", kw: "1.10", hp: "1.50", s15: "40", s25: "70", s4: "120", s6: "180", s10: "300", s16: "470", s25mm: "710", s35: "980", s50: "1360", s70: "1850", s95: "2320" },
+                          { v: "220-240", kw: "1.50", hp: "2.00", s15: "30", s25: "60", s4: "90", s6: "130", s10: "230", s16: "360", s25mm: "550", s35: "760", s50: "1060", s70: "1440", s95: "1820" },
+                          { v: "220-240", kw: "2.20", hp: "3.00", s15: "-", s25: "40", s4: "60", s6: "100", s10: "170", s16: "280", s25mm: "430", s35: "600", s50: "820", s70: "1080", s95: "1310" }
+                        ].map((row, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.v}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.kw}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.hp}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s15}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s25}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s4}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s6}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s10}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s16}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s25mm}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s35}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s50}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s70}</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s95}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <p className="px-3 py-2 text-xs text-gray-600 italic">Note: Values are in meters (MTR) for 220-240V, 50Hz systems</p>
+                  </div>
+                </div>
+              )}
+
+              {/* HP Vs Current Table (PVC Submersible) */}
+              {selectedProduct === "PVC Insulated Submersible Cable" && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-blue-600" />
+                    HP Vs Current - Full Load Current for Submersible Pump Motors
+                  </h3>
+                  <div className="space-y-4">
+                    {/* First Table */}
+                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                      <table className="min-w-full bg-white">
+                        <tbody>
+                          <tr className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">HP</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">5</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">7.5</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">10</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">12.5</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">15.5</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">17.5</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">20</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">25</td>
+                          </tr>
+                          <tr className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">Amp</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">7.50</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">11.00</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">14.90</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">18.90</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">25.20</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">25.20</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">28.40</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">35.60</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    {/* Second Table */}
+                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                      <table className="min-w-full bg-white">
+                        <tbody>
+                          <tr className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">HP</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">30</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">35</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">40</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">45</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">50</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">55</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">60</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">65</td>
+                          </tr>
+                          <tr className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">Amp</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">42.30</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">50.40</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">58.10</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">62.10</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">67.50</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">73.80</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">81.00</td>
+                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">87.30</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="px-3 py-2 text-xs text-gray-600 italic">Note: For 3 Phase, 50 Cycles, 415-425 V submersible pump motors</p>
                   </div>
                 </div>
               )}
@@ -6049,11 +10147,30 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 const tableKeyOrders = {
                   'PHASE Φ': ['sqmm','strands','conductorDia','insulationThickness','insulatedCoreDia','maxResistance'],
                   'MESSENGER Φ': ['sqmm','strands','conductorDia','insulationThickness','maxResistance','maxBreakingLoad'],
-                  'ACSR CONDUCTOR SPECIFICATIONS': ['code', 'alArea', 'alStrand', 'steelStrand', 'dcResistance', 'acResistance65', 'acResistance75', 'current65', 'current75']
+                  'ACSR CONDUCTOR SPECIFICATIONS': ['code', 'alArea', 'alStrand', 'steelStrand', 'dcResistance', 'acResistance65', 'acResistance75', 'current65', 'current75'],
+                  'ALUMINIUM, GALVANISED STEEL REINFORCED CONDUCTOR IS 398 PT-II : 1996': ['conductor', 'alArea', 'sizeAl', 'sizeSteel', 'crossAreaAl', 'crossAreaSteel', 'outerDia', 'weightAl', 'weightSteel', 'weightAcsr', 'resistance', 'breakingLoad']
                 };
                 
                 // Shortened headers for ACSR table
                 const getShortHeader = (originalHeader, tableTitle) => {
+                  if (tableTitle === 'ALUMINIUM, GALVANISED STEEL REINFORCED CONDUCTOR IS 398 PT-II : 1996') {
+                    const headerMap = {
+                      'CONDUCTOR': 'CONDUCTOR',
+                      'ALUMINUM AREA (SQ MM)': 'ALUMINUM\nAREA\n(SQ MM)',
+                      'SIZE (ALUMINIUM)': 'SIZE\n(ALUMINIUM)',
+                      'SIZE (STEEL)': 'SIZE\n(STEEL)',
+                      'CROSS-SECTIONAL AREA (ALUMINIUM)': 'CROSS-SECTIONAL\nAREA\n(ALUMINIUM)',
+                      'CROSS-SECTIONAL AREA (STEEL)': 'CROSS-SECTIONAL\nAREA\n(STEEL)',
+                      'OUTER DIA (MM)': 'OUTER\nDIA\n(MM)',
+                      'WEIGHT KG/KM (ALUMINIUM)': 'WEIGHT\nKG/KM\n(ALUMINIUM)',
+                      'WEIGHT KG/KM (STEEL)': 'WEIGHT\nKG/KM\n(STEEL)',
+                      'WEIGHT KG/KM (ACSR)': 'WEIGHT\nKG/KM\n(ACSR)',
+                      'RESISTANCE (Ω) 20°C (Ohms/Km)': 'RESISTANCE\n(Ω) 20°C\n(Ohms/Km)',
+                      'BREAKING LOAD (KN)': 'BREAKING\nLOAD\n(KN)'
+                    };
+                    return headerMap[originalHeader] || originalHeader;
+                  }
+                  
                   if (tableTitle !== 'ACSR CONDUCTOR SPECIFICATIONS') return originalHeader;
                   
                   const headerMap = {
@@ -6071,7 +10188,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   return headerMap[originalHeader] || originalHeader;
                 };
                 
-                const isAcsrTable = techTables.tables.some(t => t.title === 'ACSR CONDUCTOR SPECIFICATIONS');
+                const isAcsrTable = techTables.tables.some(t => t.title === 'ACSR CONDUCTOR SPECIFICATIONS' || t.title === 'ALUMINIUM, GALVANISED STEEL REINFORCED CONDUCTOR IS 398 PT-II : 1996');
                 
                 return (
                   <div className="mb-8">
@@ -6081,7 +10198,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     </h3>
                     <div className="space-y-4">
                       {techTables.tables.map((tbl, idx) => {
-                        const isAcsr = tbl.title === 'ACSR CONDUCTOR SPECIFICATIONS';
+                        const isAcsr = tbl.title === 'ACSR CONDUCTOR SPECIFICATIONS' || tbl.title === 'ALUMINIUM, GALVANISED STEEL REINFORCED CONDUCTOR IS 398 PT-II : 1996';
                         const isPhaseOrMessenger = tbl.title === 'PHASE Φ' || tbl.title === 'MESSENGER Φ';
                         return (
                         <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden">
@@ -6123,403 +10240,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   </div>
                 );
               })()}
-              {/* Costing Calculator Section - For Aerial Bunch Cable, ACSR, AAAC and PVC Submersible */}
-              {selectedProduct === "Aerial Bunch Cable" && (
-              <div className="mb-8">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Calculator className="h-5 w-5 text-blue-600" />
-                  Costing Calculator
-                </h3>
-                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">DISC.</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">CORE Φ</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">N/O STRAND</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">STAND SIZE</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">CALCUS</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">GAUGE</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">KG/MTR</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">TOTAL</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {/* PHASE Row */}
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PHASE</td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <div className="flex items-center gap-1">
-                              <input type="number" value={abPhaseInputs.cores}
-                                onChange={(e) => setAbPhaseInputs(v => ({ ...v, cores: Number(e.target.value) }))}
-                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                              {reverseMode && targetSalePrice && targetProfitPercent && (
-                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
-                                  {abPhaseInputs.cores}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <div className="flex items-center gap-1">
-                              <input type="number" value={abPhaseInputs.strands}
-                                onChange={(e) => setAbPhaseInputs(v => ({ ...v, strands: Number(e.target.value) }))}
-                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                              {reverseMode && targetSalePrice && targetProfitPercent && (
-                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
-                                  {abPhaseInputs.strands}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <div className="flex items-center gap-1">
-                              <input type="number" step="0.01" value={abPhaseInputs.strandSize}
-                                onChange={(e) => setAbPhaseInputs(v => ({ ...v, strandSize: Number(e.target.value) }))}
-                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                              {reverseMode && targetSalePrice && targetProfitPercent && (
-                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
-                                  {abPhaseInputs.strandSize.toFixed(2)}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abPhaseCalcus.toFixed(3)}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhaseGauge)} SQMM`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhaseKgPerM)}/KG`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow1)}</td>
-                        </tr>
-                        {/* PH INN INS Row */}
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PH INN INS</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" step="0.01" value={abPhInnIns.thickness}
-                              onChange={(e) => setAbPhInnIns({ thickness: Number(e.target.value) })}
-                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                          </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abPhInnCalcus.toFixed(3)}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abPhInnGauge.toFixed(2)}`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhInnKgPerM)}/KG`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow2)}</td>
-                        </tr>
-                        {/* PH OUT INS Row */}
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PH OUT INS</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" step="0.01" value={abPhOutIns.thickness}
-                              onChange={(e) => setAbPhOutIns({ thickness: Number(e.target.value) })}
-                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                          </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abPhInnGauge.toFixed(2)}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abPhOutGauge.toFixed(2)}`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhOutKgPerM)}/KG`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow3)}</td>
-                        </tr>
-                        {/* STREET LIGHT Row */}
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STREET LIGHT</td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <div className="flex items-center gap-1">
-                              <input type="number" value={abStreetInputs.cores}
-                                onChange={(e) => setAbStreetInputs(v => ({ ...v, cores: Number(e.target.value) }))}
-                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                              {reverseMode && targetSalePrice && targetProfitPercent && (
-                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
-                                  {abStreetInputs.cores}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <div className="flex items-center gap-1">
-                              <input type="number" value={abStreetInputs.strands}
-                                onChange={(e) => setAbStreetInputs(v => ({ ...v, strands: Number(e.target.value) }))}
-                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                              {reverseMode && targetSalePrice && targetProfitPercent && (
-                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
-                                  {abStreetInputs.strands}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <div className="flex items-center gap-1">
-                              <input type="number" step="0.01" value={abStreetInputs.strandSize}
-                                onChange={(e) => setAbStreetInputs(v => ({ ...v, strandSize: Number(e.target.value) }))}
-                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                              {reverseMode && targetSalePrice && targetProfitPercent && (
-                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
-                                  {abStreetInputs.strandSize.toFixed(2)}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abStreetCalcus.toFixed(3)}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStreetGauge)} SQMM`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStreetKgPerM)}/KG`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow4)}</td>
-                        </tr>
-                        {/* STL INN INS Row */}
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STL INN INS</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" step="0.01" value={stlInnIns.thickness}
-                              onChange={(e) => setStlInnIns({ thickness: Number(e.target.value) })}
-                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                          </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abStlInnCalcus.toFixed(3)}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${stlInnGauge.toFixed(2)}`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStlInnKgPerM)}/KG`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow5)}</td>
-                        </tr>
-                        {/* STL OUT INS Row */}
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STL OUT INS</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" step="0.01" value={stlOutIns.thickness}
-                              onChange={(e) => setStlOutIns({ thickness: Number(e.target.value) })}
-                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                          </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{stlInnGauge.toFixed(2)}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${stlOutGauge.toFixed(2)}`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStlOutKgPerM)}/KG`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow6)}</td>
-                        </tr>
-                        {/* MESSENGER Row */}
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MESSENGER</td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <div className="flex items-center gap-1">
-                              <input type="number" value={abMessengerInputs.cores}
-                                onChange={(e) => setAbMessengerInputs(v => ({ ...v, cores: Number(e.target.value) }))}
-                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                              {reverseMode && targetSalePrice && targetProfitPercent && (
-                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
-                                  {abMessengerInputs.cores}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <div className="flex items-center gap-1">
-                              <input type="number" value={abMessengerInputs.strands}
-                                onChange={(e) => setAbMessengerInputs(v => ({ ...v, strands: Number(e.target.value) }))}
-                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                              {reverseMode && targetSalePrice && targetProfitPercent && (
-                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
-                                  {abMessengerInputs.strands}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <div className="flex items-center gap-1">
-                              <input type="number" step="0.01" value={abMessengerInputs.strandSize}
-                                onChange={(e) => setAbMessengerInputs(v => ({ ...v, strandSize: Number(e.target.value) }))}
-                                className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                              {reverseMode && targetSalePrice && targetProfitPercent && (
-                                <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
-                                  {abMessengerInputs.strandSize.toFixed(2)}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abMessengerCalcus.toFixed(3)}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMessengerGauge)} SQMM`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMessengerKgPerM)}/KG`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow7)}</td>
-                        </tr>
-                        {/* MSN INN INS Row */}
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MSN INN INS</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" step="0.01" value={abMsnInn.thickness}
-                              onChange={(e) => setAbMsnInn({ thickness: Number(e.target.value) })}
-                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                          </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abMsnInnCalcus.toFixed(3)}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abMsnInnGauge.toFixed(2)}`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMsnInnKgPerM)}/KG`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow8)}</td>
-                        </tr>
-                        {/* MSN OUT INS Row */}
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MSN OUT INS</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <input type="number" step="0.01" value={abMsnOut.thickness}
-                              onChange={(e) => setAbMsnOut({ thickness: Number(e.target.value) })}
-                              className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                          </td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abMsnInnGauge.toFixed(2)}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abMsnOutGauge.toFixed(2)}`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMsnOutKgPerM)}/KG`}</td>
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow9)}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  {/* Bottom Summary Tables */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50">
-                    {/* Material Inputs */}
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-gray-800 text-sm">Material Inputs</h4>
-                      <div className="space-y-1">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">ALUMINIUM:</span>
-                          <div className="flex items-center gap-1">
-                            <input type="number" step="0.01" value={aluminiumRate} onChange={(e)=>setAluminiumRate(Number(e.target.value))} className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
-                            {reverseMode && targetSalePrice && targetProfitPercent && (
-                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
-                                {effectiveAluminiumRate.toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">ALLOY:</span>
-                          <div className="flex items-center gap-1">
-                            <input type="number" step="0.01" value={alloyRate} onChange={(e)=>setAlloyRate(Number(e.target.value))} className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
-                            {reverseMode && targetSalePrice && targetProfitPercent && (
-                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
-                                {effectiveAlloyRate.toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">INNER INSU:</span>
-                          <div className="flex items-center gap-1">
-                            <input type="number" step="0.01" value={innerInsuRate} onChange={(e)=>setInnerInsuRate(Number(e.target.value))} className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
-                            {reverseMode && targetSalePrice && targetProfitPercent && (
-                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
-                                {effectiveInnerInsuRate.toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">OUTER INSU:</span>
-                          <div className="flex items-center gap-1">
-                            <input type="number" step="0.01" value={outerInsuRate} onChange={(e)=>setOuterInsuRate(Number(e.target.value))} className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
-                            {reverseMode && targetSalePrice && targetProfitPercent && (
-                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
-                                {effectiveOuterInsuRate.toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Cable Weights */}
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-gray-800 text-sm">Cable Weights</h4>
-                      <div className="space-y-1">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">CABLE WT:</span>
-                          <span className="text-xs text-gray-800 font-semibold">{`${cableWt} KG`}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">ALUMINUM WT:</span>
-                          <span className="text-xs text-gray-800 font-semibold">{`${aluminiumWt} KG`}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">ALLOY WT:</span>
-                          <span className="text-xs text-gray-800 font-semibold">{`${alloyWt} KG`}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">INN XLPE WT:</span>
-                          <span className="text-xs text-gray-800 font-semibold">{`${innerXlpeWt} KG`}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">OUT XLPE WT:</span>
-                          <span className="text-xs text-gray-800 font-semibold">{`${outerXlpeWt} KG`}</span>
-                        </div>
-                      </div>
-                    </div>
-                    {/* Pricing and Drum Details */}
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-gray-800 text-sm">Pricing & Details</h4>
-                      <div className="space-y-1">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-1">
-                            <select 
-                              value={drumType}
-                              onChange={(e)=>setDrumType(e.target.value)}
-                              className="text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent cursor-pointer"
-                            >
-                              <option value="COIL">COIL</option>
-                              <option value="DRUM 3.5 FT">DRUM 3.5 FT</option>
-                              <option value="DRUM 4.5 FT">DRUM 4.5 FT</option>
-                              <option value="DRUM 2X">DRUM 2X</option>
-                              <option value="DRUM">DRUM</option>
-                            </select>
-                          </div>
-                          <span className="text-xs text-gray-800 font-semibold">{Math.round(drumCost)}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">FREIGHT:</span>
-                          <input type="number" step="0.01" defaultValue="0" className="w-20 text-right text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">LENGTH:</span>
-                            <div className="flex items-center justify-end w-28">
-                              <input type="number" value={lengthMeters} onChange={(e)=>setLengthMeters(Number(e.target.value))} className="w-16 text-right text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
-                            <span className="text-xs text-red-600 font-semibold ml-1">MTR</span>
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">SALE PRICE:</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-green-600 font-semibold">{`₹ ${salePrice.toFixed(2)}`}</span>
-                            <input 
-                              type="number" 
-                              step="0.01" 
-                              value={targetSalePrice || ''} 
-                              onChange={(e)=>setTargetSalePrice(Number(e.target.value))} 
-                              onFocus={() => setReverseMode(true)}
-                              className="w-20 text-xs text-red-600 font-semibold border border-gray-300 rounded px-1 focus:ring-1 focus:ring-blue-500 focus:outline-none" 
-                              placeholder="Target ₹"
-                              title="Enter target sale price for reverse calculation"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-600">PROFIT:</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-green-600 font-semibold">{`${profitPercent.toFixed(0)} %`}</span>
-                            <input 
-                              type="number" 
-                              step="0.01" 
-                              value={targetProfitPercent || ''} 
-                              onChange={(e)=>setTargetProfitPercent(Number(e.target.value))} 
-                              onFocus={() => setReverseMode(true)}
-                              className="w-20 text-xs text-red-600 font-semibold border border-gray-300 rounded px-1 focus:ring-1 focus:ring-blue-500 focus:outline-none" 
-                              placeholder="Target %"
-                              title="Enter target profit % for reverse calculation"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              )}
+              {/* Costing Calculator has been moved to Helping Calculators */}
 
               {/* Reduction Gauge Calculator Section - For Aerial Bunch Cable, ACSR and AAAC */}
               {selectedProduct === "Aerial Bunch Cable" && (
@@ -6538,8 +10259,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">REDUCTION %</th>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">STRAND</th>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">WIRE</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">INSULATION</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">OUTER DIA</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -6564,8 +10283,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           </td>
                           <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgPhaseStrand}</td>
                           <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgPhaseWire > 0 ? `${rgPhaseWire.toFixed(2)} MM` : '-'}</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgPhaseInsulation > 0 ? `${rgPhaseInsulation.toFixed(2)} MM` : '-'}</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgPhaseOuterDia > 0 ? `${rgPhaseOuterDia.toFixed(2)} MM` : '-'}</td>
                         </tr>
                         {/* STREET LIGHT Row */}
                         <tr className="hover:bg-gray-50">
@@ -6581,8 +10298,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           
                           <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgStreetStrand}</td>
                           <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgStreetWire > 0 ? `${rgStreetWire.toFixed(2)} MM` : '-'}</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgStreetInsulation > 0 ? `${rgStreetInsulation.toFixed(2)} MM` : '-'}</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgStreetOuterDia > 0 ? `${rgStreetOuterDia.toFixed(2)} MM` : '-'}</td>
                         </tr>
                         {/* MESSENGER Row */}
                         <tr className="hover:bg-gray-50">
@@ -6598,8 +10313,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           
                           <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgMessengerStrand}</td>
                           <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgMessengerWire > 0 ? `${rgMessengerWire.toFixed(2)} MM` : '-'}</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgMessengerInsulation > 0 ? `${rgMessengerInsulation.toFixed(2)} MM` : '-'}</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgMessengerOuterDia > 0 ? `${rgMessengerOuterDia.toFixed(2)} MM` : '-'}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -6610,63 +10323,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
               </div>
               )}
-              {/* Wire Selection Calculator Section - For Aerial Bunch Cable, ACSR and AAAC */}
+              {/* Cable Selection Calculator Section - For Aerial Bunch Cable, ACSR and AAAC */}
               {selectedProduct === "Aerial Bunch Cable" && (
               <div className="mb-8">
                 <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-blue-600" />
-                  Wire Selection Calculator
+                  Cable Selection Calculator
                 </h3>
-                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white">
-                      <thead>
-                        <tr className="bg-black">
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-white border border-gray-200">PHASE Φ</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-white border border-gray-200">POWER CONSUMPTION</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-white border border-gray-200">LENGTH OF CABLE</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-white border border-gray-200">CURRENT (Ω)</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-white border border-gray-200">ACTUAL GAUGE</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-white border border-gray-200">WIRE SIZE</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-3 py-2 border border-gray-200">
-                            <select
-                              value={wsPhase}
-                              onChange={(e)=>setWsPhase(Number(e.target.value))}
-                              className="text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent"
-                            >
-                              <option value={1}>1</option>
-                              <option value={3}>3</option>
-                            </select>
-                          </td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <div className="flex items-center">
-                              <input type="number" step="0.01" value={wsPower} onChange={(e)=>setWsPower(Number(e.target.value))} className="w-20 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                              <select value={wsPowerUnit} onChange={(e)=>setWsPowerUnit(e.target.value)} className="ml-2 text-xs text-red-600 border-0 focus:ring-0 focus:outline-none bg-transparent font-semibold">
-                                <option value="HP">HP</option>
-                                <option value="KW">KW</option>
-                                <option value="WATT">WATT</option>
-                              </select>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 border border-gray-200">
-                            <div className="flex items-center">
-                              <input type="number" value={wsLength} onChange={(e)=>setWsLength(Number(e.target.value))} className="w-20 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
-                              <select value={wsLengthUnit} onChange={(e)=>setWsLengthUnit(e.target.value)} className="ml-2 text-xs text-red-600 border-0 focus:ring-0 focus:outline-none bg-transparent font-semibold">
-                                <option value="MTR">MTR</option>
-                                <option value="FT">FT</option>
-                              </select>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{wsCurrent.toFixed(2)}</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{wsActualGauge.toFixed(2)}</td>
-                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{wsWireSize}</td>
-                        </tr>
-                      </tbody>
-                    </table>
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden p-8">
+                  <div className="text-center">
+                    <p className="text-lg font-semibold text-gray-600">Coming Soon</p>
                   </div>
                 </div>
               </div>
@@ -6713,10 +10379,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     <div className="mt-6 p-4 bg-blue-50 rounded-lg max-w-2xl mx-auto">
                       <h6 className="font-semibold text-blue-800 mb-2">Key Points:</h6>
                       <ul className="text-sm text-blue-700 space-y-1">
-                        <li>• Phase conductors: 1, 2, or 3 ridges for identification</li>
-                        <li>• Neutral conductors: 4 ridges for identification</li>
-                        <li>• Street lighting conductor: No identification marks</li>
-                        <li>• Messenger conductor: No identification marks (if insulated)</li>
+                        <li>• PHASE CONDUCTORS: 1, 2, OR 3 RIDGES FOR IDENTIFICATION</li>
+                        <li>• STREET LIGHTING CONDUCTOR: NO IDENTIFICATION MARKS</li>
+                        <li>• NEUTRAL CONDUCTOR HAS NO IDENTIFIFCATION MARK AS PER IS14255 OR 4 RIDGES AS ON DEMAND (if insulated)</li>
                       </ul>
                     </div>
                   </div>
@@ -6810,354 +10475,414 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
               </div>
               )}
-
-              
-              {/* Approvals, Licenses, GTP, Type Test, Others - Only for Product Cards */}
-              {getProductData(selectedProduct).priceList && getProductData(selectedProduct).priceList.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Approvals */}
-                <div className="p-4 border border-gray-200 rounded-lg" data-section="approvals">
-                  <div className="flex items-center gap-2 mb-3">
-                    <CheckCircle className="h-5 w-5 text-blue-600" />
-                    <h4 className="font-semibold text-gray-900">Approvals</h4>
                   </div>
-                  <div className="space-y-2">
-                    {(() => {
-                      // Map PDFs to products
-                      const pdfMappings = {
-                        "Aerial Bunch Cable": "aerial bunch cable, bis liscence .pdf",
-                        "All Aluminium Alloy Conductor": "all aluminium alloy conductor,bis liscence.pdf",
-                        "Aluminium Conductor Galvanized Steel Reinforced": "aluminium conductor galvanised steel reinforced, bis liscence.pdf",
-                        "Multi Core XLPE Insulated Aluminium Unarmoured Cable": "multicore xlpe insulated aluminium unrmoured cable,bis liscence.pdf",
-                        "PVC Insulated Submersible Cable": "pvc insulated submersible cable, bis liscence .pdf",
-                        "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable": "single core xlpe insulated aluminium:copper armoured:unarmoured cable bis liscence.pdf"
-                      };
-                      
-                      // List of products that actually have licenses uploaded and available
-                      // Buttons will be disabled for products not in this list
-                      const availableCertificates = [
-                        "Aerial Bunch Cable",
-                        "All Aluminium Alloy Conductor",
-                        "Aluminium Conductor Galvanized Steel Reinforced",
-                        "Multi Core XLPE Insulated Aluminium Unarmoured Cable",
-                        "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable"
-                        // "PVC Insulated Submersible Cable" - license not uploaded yet, buttons will be disabled
-                      ];
-                      
-                      const productName = selectedProduct; // Use the original product name from tools array
-                      const relevantPdfs = [];
-                      
-                      // Show BIS license for all products in pdfMappings, but buttons will be disabled if not in availableCertificates
-                      if (pdfMappings[productName]) {
-                        relevantPdfs.push({
-                          type: `BIS License - ${productName}`,
-                          status: "Valid",
-                          expiry: "2025-12-31",
-                          file: pdfMappings[productName],
-                          isAvailable: availableCertificates.includes(productName)
-                        });
-                      }
-                      
-                      // Add general certifications (always available)
-                      relevantPdfs.push(
-                        { type: "ISO 9001:2015", status: "Valid", expiry: "2024-06-30", file: "ISO_9001_2015_Certificate.pdf", isAvailable: false },
-                        { type: "CE Marking", status: "Valid", expiry: "2025-03-15", file: "CE_Marking_Certificate.pdf", isAvailable: false }
-                      );
-                      
-                      return relevantPdfs.map((approval, index) => (
-                      <div key={index} className="p-2 bg-gray-50 rounded text-sm">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="font-medium">{approval.type}</div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={async (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                
-                                // Check if certificate is available (not disabled)
-                                const isCertificateAvailable = approval.isAvailable || false;
-                                
-                                if (!isCertificateAvailable) {
-                                  return; // Button is disabled, do nothing
-                                }
-                                
-                                // Check if PDF exists for this product
-                                if (pdfMappings[productName] && approval.file === pdfMappings[productName]) {
-                                  const pdfUrl = `${window.location.origin}/pdf/${approval.file}`;
-                                  
-                                  // Verify PDF exists before downloading
-                                  try {
-                                    const response = await fetch(pdfUrl, { method: 'HEAD' });
-                                    if (response.ok) {
-                                      console.log('Downloading PDF:', pdfUrl);
-                                  const link = document.createElement('a');
-                                  link.href = pdfUrl;
-                                  link.download = approval.file;
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
-                                    } else {
-                                      alert('Certificate not available for download. The file does not exist.');
-                                    }
-                                  } catch (error) {
-                                    console.error('Error checking PDF:', error);
-                                    alert('Certificate not available for download. The file does not exist.');
-                                  }
-                                } else if (approval.type.includes('ISO') || approval.type.includes('CE')) {
-                                  // For general certifications, show placeholder message
-                                  alert('Certificate not available for download');
-                                }
-                              }}
-                              disabled={approval.isAvailable === false}
-                              className={`${approval.isAvailable ? 'text-green-600 hover:text-green-800 cursor-pointer' : 'text-gray-400 cursor-not-allowed opacity-50'} transition-colors`}
-                              title={approval.isAvailable ? "Download PDF" : "PDF not available"}
-                            >
-                              <Download className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={async (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                
-                                // Check if certificate is available (not disabled)
-                                const isCertificateAvailable = approval.isAvailable || false;
-                                
-                                if (!isCertificateAvailable) {
-                                  return; // Button is disabled, do nothing
-                                }
-                                
-                                // Check if PDF exists for this product
-                                if (pdfMappings[productName] && approval.file === pdfMappings[productName]) {
-                                  const pdfUrl = `${window.location.origin}/pdf/${approval.file}`;
-                                  
-                                  // Verify PDF exists before opening
-                                  try {
-                                    const response = await fetch(pdfUrl, { method: 'HEAD' });
-                                    if (response.ok) {
-                                      console.log('Opening PDF:', pdfUrl);
-                                  const newWindow = window.open(pdfUrl, '_blank');
-                                  if (!newWindow) {
-                                    alert('Please allow pop-ups for this site to view the PDF');
-                                      }
-                                    } else {
-                                      alert('Certificate not available for viewing. The file does not exist.');
-                                    }
-                                  } catch (error) {
-                                    console.error('Error checking PDF:', error);
-                                    alert('Certificate not available for viewing. The file does not exist.');
-                                  }
-                                } else if (approval.type.includes('ISO') || approval.type.includes('CE')) {
-                                  // For general certifications, show placeholder message
-                                  alert('Certificate not available for viewing');
-                                }
-                              }}
-                              disabled={approval.isAvailable === false}
-                              className={`${approval.isAvailable ? 'text-blue-600 hover:text-blue-800 cursor-pointer' : 'text-gray-400 cursor-not-allowed opacity-50'} transition-colors`}
-                              title={approval.isAvailable ? "View Document" : "PDF not available"}
-                            >
-                              <Eye className="h-4 w-4" />
+          </div>
+        </div>
+      )}
+
+      {/* Costing Calculator Modal */}
+      {isHelpingCalcOpen && helpingCalcType === 'costing' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="w-full max-w-7xl max-h-[95vh] overflow-y-auto bg-white rounded-lg">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Costing Calculator</h3>
+              <button onClick={closeHelpingCalc} className="text-gray-400 hover:text-gray-600">
+                <X className="h-6 w-6" />
                             </button>
                           </div>
+            <div className="p-6">
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">DISC.</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">CORE Φ</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">N/O STRAND</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">STAND SIZE</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">CALCUS</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">GAUGE</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">KG/MTR</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">TOTAL</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* PHASE Row */}
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PHASE</td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <div className="flex items-center gap-1">
+                            <input type="number" value={abPhaseInputs.cores}
+                              onChange={(e) => setAbPhaseInputs(v => ({ ...v, cores: Number(e.target.value) }))}
+                              className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            {reverseMode && targetSalePrice && targetProfitPercent && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                {abPhaseInputs.cores}
+                              </span>
+                            )}
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            approval.status === "Valid" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                          }`}>
-                            {approval.status}
+                        </td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <div className="flex items-center gap-1">
+                            <input type="number" value={abPhaseInputs.strands}
+                              onChange={(e) => setAbPhaseInputs(v => ({ ...v, strands: Number(e.target.value) }))}
+                              className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            {reverseMode && targetSalePrice && targetProfitPercent && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                {abPhaseInputs.strands}
                           </span>
-                          <span className="text-xs text-gray-500">{approval.expiry}</span>
+                            )}
                         </div>
+                        </td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <div className="flex items-center gap-1">
+                            <input type="number" step="0.01" value={abPhaseInputs.strandSize}
+                              onChange={(e) => setAbPhaseInputs(v => ({ ...v, strandSize: Number(e.target.value) }))}
+                              className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            {reverseMode && targetSalePrice && targetProfitPercent && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                {abPhaseInputs.strandSize.toFixed(2)}
+                              </span>
+                            )}
                       </div>
-                    ));
-                    })()}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abPhaseCalcus.toFixed(3)}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhaseGauge)} SQMM`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhaseKgPerM)}/KG`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow1)}</td>
+                      </tr>
+                      {/* PH INN INS Row */}
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PH INN INS</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <input type="number" step="0.01" value={abPhInnIns.thickness}
+                            onChange={(e) => setAbPhInnIns({ thickness: Number(e.target.value) })}
+                            className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abPhInnCalcus.toFixed(3)}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abPhInnGauge.toFixed(2)}`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhInnKgPerM)}/KG`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow2)}</td>
+                      </tr>
+                      {/* PH OUT INS Row */}
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PH OUT INS</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <input type="number" step="0.01" value={abPhOutIns.thickness}
+                            onChange={(e) => setAbPhOutIns({ thickness: Number(e.target.value) })}
+                            className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abPhInnGauge.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abPhOutGauge.toFixed(2)}`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhOutKgPerM)}/KG`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow3)}</td>
+                      </tr>
+                      {/* STREET LIGHT Row */}
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STREET LIGHT</td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <div className="flex items-center gap-1">
+                            <input type="number" value={abStreetInputs.cores}
+                              onChange={(e) => setAbStreetInputs(v => ({ ...v, cores: Number(e.target.value) }))}
+                              className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            {reverseMode && targetSalePrice && targetProfitPercent && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                {abStreetInputs.cores}
+                              </span>
+                            )}
                   </div>
+                        </td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <div className="flex items-center gap-1">
+                            <input type="number" value={abStreetInputs.strands}
+                              onChange={(e) => setAbStreetInputs(v => ({ ...v, strands: Number(e.target.value) }))}
+                              className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            {reverseMode && targetSalePrice && targetProfitPercent && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                {abStreetInputs.strands}
+                              </span>
+                            )}
                 </div>
-
-                {/* Licenses */}
-                <div className="p-4 border border-gray-200 rounded-lg" data-section="license">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Shield className="h-5 w-5 text-blue-600" />
-                    <h4 className="font-semibold text-gray-900">Licenses</h4>
+                        </td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <div className="flex items-center gap-1">
+                            <input type="number" step="0.01" value={abStreetInputs.strandSize}
+                              onChange={(e) => setAbStreetInputs(v => ({ ...v, strandSize: Number(e.target.value) }))}
+                              className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            {reverseMode && targetSalePrice && targetProfitPercent && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                {abStreetInputs.strandSize.toFixed(2)}
+                              </span>
+                            )}
                   </div>
-                  <div className="space-y-2">
-                    {[
-                      { type: "Manufacturing License", number: "ML/2023/001", status: "Active", file: "Manufacturing_License_2023.pdf" },
-                      { type: "Trade License", number: "TL/2023/045", status: "Active", file: "Trade_License_2023.pdf" }
-                    ].map((license, index) => (
-                      <div key={index} className="p-2 bg-gray-50 rounded text-sm">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="font-medium">{license.type}</div>
-                          <div className="flex gap-2">
-                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                              <Download className="h-4 w-4" />
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abStreetCalcus.toFixed(3)}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStreetGauge)} SQMM`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStreetKgPerM)}/KG`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow4)}</td>
+                      </tr>
+                      {/* STL INN INS Row */}
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STL INN INS</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <input type="number" step="0.01" value={stlInnIns.thickness}
+                            onChange={(e) => setStlInnIns({ thickness: Number(e.target.value) })}
+                            className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abStlInnCalcus.toFixed(3)}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${stlInnGauge.toFixed(2)}`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStlInnKgPerM)}/KG`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow5)}</td>
+                      </tr>
+                      {/* STL OUT INS Row */}
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STL OUT INS</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <input type="number" step="0.01" value={stlOutIns.thickness}
+                            onChange={(e) => setStlOutIns({ thickness: Number(e.target.value) })}
+                            className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{stlInnGauge.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${stlOutGauge.toFixed(2)}`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStlOutKgPerM)}/KG`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow6)}</td>
+                      </tr>
+                      {/* MESSENGER Row */}
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MESSENGER</td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <div className="flex items-center gap-1">
+                            <input type="number" value={abMessengerInputs.cores}
+                              onChange={(e) => setAbMessengerInputs(v => ({ ...v, cores: Number(e.target.value) }))}
+                              className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            {reverseMode && targetSalePrice && targetProfitPercent && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                {abMessengerInputs.cores}
                             </span>
-                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                              <Eye className="h-4 w-4" />
-                            </span>
+                            )}
                           </div>
-                        </div>
-                        <div className="text-xs text-gray-500 mb-1">{license.number}</div>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          license.status === "Active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                        }`}>
-                          {license.status}
+                        </td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <div className="flex items-center gap-1">
+                            <input type="number" value={abMessengerInputs.strands}
+                              onChange={(e) => setAbMessengerInputs(v => ({ ...v, strands: Number(e.target.value) }))}
+                              className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            {reverseMode && targetSalePrice && targetProfitPercent && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                {abMessengerInputs.strands}
+                            </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <div className="flex items-center gap-1">
+                            <input type="number" step="0.01" value={abMessengerInputs.strandSize}
+                              onChange={(e) => setAbMessengerInputs(v => ({ ...v, strandSize: Number(e.target.value) }))}
+                              className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                            {reverseMode && targetSalePrice && targetProfitPercent && (
+                              <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                                {abMessengerInputs.strandSize.toFixed(2)}
                         </span>
+                            )}
                       </div>
-                    ))}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abMessengerCalcus.toFixed(3)}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMessengerGauge)} SQMM`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMessengerKgPerM)}/KG`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow7)}</td>
+                      </tr>
+                      {/* MSN INN INS Row */}
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MSN INN INS</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <input type="number" step="0.01" value={abMsnInn.thickness}
+                            onChange={(e) => setAbMsnInn({ thickness: Number(e.target.value) })}
+                            className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abMsnInnCalcus.toFixed(3)}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abMsnInnGauge.toFixed(2)}`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMsnInnKgPerM)}/KG`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow8)}</td>
+                      </tr>
+                      {/* MSN OUT INS Row */}
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MSN OUT INS</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                        <td className="px-3 py-2 border border-gray-200">
+                          <input type="number" step="0.01" value={abMsnOut.thickness}
+                            onChange={(e) => setAbMsnOut({ thickness: Number(e.target.value) })}
+                            className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abMsnInnGauge.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abMsnOutGauge.toFixed(2)}`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMsnOutKgPerM)}/KG`}</td>
+                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow9)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                   </div>
-                </div>
-                {/* GTP */}
-                <div className="p-4 border border-gray-200 rounded-lg" data-section="gtp">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Wrench className="h-5 w-5 text-blue-600" />
-                    <h4 className="font-semibold text-gray-900">GTP</h4>
-                  </div>
+                
+                {/* Bottom Summary Tables */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50">
+                  {/* Material Inputs */}
                   <div className="space-y-2">
-                    {[
-                      { process: "Raw Material Testing", status: "Completed", date: "2024-01-15", file: "Raw_Material_Testing_Report.pdf" },
-                      { process: "Conductor Testing", status: "Completed", date: "2024-01-16", file: "Conductor_Testing_Report.pdf" },
-                      { process: "Insulation Testing", status: "Completed", date: "2024-01-17", file: "Insulation_Testing_Report.pdf" },
-                      { process: "Final Inspection", status: "Completed", date: "2024-01-18", file: "Final_Inspection_Report.pdf" }
-                    ].map((process, index) => (
-                      <div key={index} className="p-2 bg-gray-50 rounded text-sm">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="font-medium">{process.process}</div>
-                          <div className="flex gap-2">
-                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                              <Download className="h-4 w-4" />
+                    <h4 className="font-semibold text-gray-800 text-sm">Material Inputs</h4>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">ALUMINIUM:</span>
+                        <div className="flex items-center gap-1">
+                          <input type="number" step="0.01" value={aluminiumRate} onChange={(e)=>setAluminiumRate(Number(e.target.value))} className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                          {reverseMode && targetSalePrice && targetProfitPercent && (
+                            <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                              {effectiveAluminiumRate.toFixed(2)}
                             </span>
-                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                              <Eye className="h-4 w-4" />
+                          )}
+                </div>
+                  </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">ALLOY:</span>
+                        <div className="flex items-center gap-1">
+                          <input type="number" step="0.01" value={alloyRate} onChange={(e)=>setAlloyRate(Number(e.target.value))} className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                          {reverseMode && targetSalePrice && targetProfitPercent && (
+                            <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                              {effectiveAlloyRate.toFixed(2)}
                             </span>
+                          )}
                           </div>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            process.status === "Completed" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                          }`}>
-                            {process.status}
+                        <span className="text-xs text-gray-600">INNER INSU:</span>
+                        <div className="flex items-center gap-1">
+                          <input type="number" step="0.01" value={innerInsuRate} onChange={(e)=>setInnerInsuRate(Number(e.target.value))} className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                          {reverseMode && targetSalePrice && targetProfitPercent && (
+                            <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                              {effectiveInnerInsuRate.toFixed(2)}
                           </span>
-                          <span className="text-xs text-gray-500">{process.date}</span>
+                          )}
                         </div>
                       </div>
-                    ))}
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">OUTER INSU:</span>
+                        <div className="flex items-center gap-1">
+                          <input type="number" step="0.01" value={outerInsuRate} onChange={(e)=>setOuterInsuRate(Number(e.target.value))} className="w-20 text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                          {reverseMode && targetSalePrice && targetProfitPercent && (
+                            <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
+                              {effectiveOuterInsuRate.toFixed(2)}
+                            </span>
+                          )}
                   </div>
                 </div>
-                {/* Type Test */}
-                <div className="p-4 border border-gray-200 rounded-lg" data-section="type-test">
-                  <div className="flex items-center gap-2 mb-3">
-                    <FileText className="h-5 w-5 text-blue-600" />
-                    <h4 className="font-semibold text-gray-900">Type Test</h4>
                   </div>
+                  </div>
+                  
+                  {/* Cable Weights */}
                   <div className="space-y-2">
-                    {[
-                      { test: "Electrical Properties", result: "Pass", certificate: "ET/2024/001", file: "Electrical_Properties_Test_Report.pdf" },
-                      { test: "Mechanical Properties", result: "Pass", certificate: "MT/2024/001", file: "Mechanical_Properties_Test_Report.pdf" },
-                      { test: "Fire Resistance", result: "Pass", certificate: "FR/2024/001", file: "Fire_Resistance_Test_Report.pdf" },
-                      { test: "Weather Resistance", result: "Pass", certificate: "WR/2024/001", file: "Weather_Resistance_Test_Report.pdf" }
-                    ].map((test, index) => (
-                      <div key={index} className="p-2 bg-gray-50 rounded text-sm">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="font-medium">{test.test}</div>
-                          <div className="flex gap-2">
-                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                              <Download className="h-4 w-4" />
-                            </span>
-                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                              <Eye className="h-4 w-4" />
-                            </span>
+                    <h4 className="font-semibold text-gray-800 text-sm">Cable Weights</h4>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">CABLE WT:</span>
+                        <span className="text-xs text-gray-800 font-semibold">{`${cableWt} KG`}</span>
                           </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">ALUMINUM WT:</span>
+                        <span className="text-xs text-gray-800 font-semibold">{`${aluminiumWt} KG`}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            test.result === "Pass" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                          }`}>
-                            {test.result}
-                          </span>
-                          <span className="text-xs text-gray-500">{test.certificate}</span>
+                        <span className="text-xs text-gray-600">ALLOY WT:</span>
+                        <span className="text-xs text-gray-800 font-semibold">{`${alloyWt} KG`}</span>
                         </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">INN XLPE WT:</span>
+                        <span className="text-xs text-gray-800 font-semibold">{`${innerXlpeWt} KG`}</span>
                       </div>
-                    ))}
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">OUT XLPE WT:</span>
+                        <span className="text-xs text-gray-800 font-semibold">{`${outerXlpeWt} KG`}</span>
                   </div>
                 </div>
-                {/* Process Chart */}
-                <div className="p-4 border border-gray-200 rounded-lg" data-section="process-chart">
-                  <div className="flex items-center gap-2 mb-3">
-                    <BarChart3 className="h-5 w-5 text-blue-600" />
-                    <h4 className="font-semibold text-gray-900">Process Chart</h4>
                   </div>
+                  {/* Pricing and Drum Details */}
                   <div className="space-y-2">
-                    {[
-                      { chart: "Manufacturing Process Flow", status: "Available", lastUpdated: "2024-01-10", file: "Manufacturing_Process_Flow_Chart.pdf" },
-                      { chart: "Quality Control Process", status: "Available", lastUpdated: "2024-01-12", file: "Quality_Control_Process_Chart.pdf" }
-                    ].map((chart, index) => (
-                      <div key={index} className="p-2 bg-gray-50 rounded text-sm">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="font-medium">{chart.chart}</div>
-                          <div className="flex gap-2">
-                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                              <Download className="h-4 w-4" />
-                            </span>
-                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                              <Eye className="h-4 w-4" />
-                            </span>
+                    <h4 className="font-semibold text-gray-800 text-sm">Pricing & Details</h4>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-1">
+                          <select 
+                            value={drumType}
+                            onChange={(e)=>setDrumType(e.target.value)}
+                            className="text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent cursor-pointer"
+                          >
+                            <option value="COIL">COIL</option>
+                            <option value="DRUM 3.5 FT">DRUM 3.5 FT</option>
+                            <option value="DRUM 4.5 FT">DRUM 4.5 FT</option>
+                            <option value="DRUM 2X">DRUM 2X</option>
+                            <option value="DRUM">DRUM</option>
+                          </select>
                           </div>
+                        <span className="text-xs text-gray-800 font-semibold">{Math.round(drumCost)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            chart.status === "Available" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                          }`}>
-                            {chart.status}
-                          </span>
-                          <span className="text-xs text-gray-500">{chart.lastUpdated}</span>
+                        <span className="text-xs text-gray-600">FREIGHT:</span>
+                        <input type="number" step="0.01" defaultValue="0" className="w-20 text-right text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                        </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">LENGTH:</span>
+                        <div className="flex items-center justify-end w-28">
+                          <input type="number" value={lengthMeters} onChange={(e)=>setLengthMeters(Number(e.target.value))} className="w-16 text-right text-xs text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none bg-transparent" />
+                          <span className="text-xs text-red-600 font-semibold ml-1">MTR</span>
+                      </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">SALE PRICE:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-green-600 font-semibold">{`₹ ${salePrice.toFixed(2)}`}</span>
+                          <input 
+                            type="number" 
+                            step="0.01" 
+                            value={targetSalePrice || ''} 
+                            onChange={(e)=>setTargetSalePrice(Number(e.target.value))} 
+                            onFocus={() => setReverseMode(true)}
+                            className="w-20 text-xs text-red-600 font-semibold border border-gray-300 rounded px-1 focus:ring-1 focus:ring-blue-500 focus:outline-none" 
+                            placeholder="Target ₹"
+                            title="Enter target sale price for reverse calculation"
+                          />
                         </div>
                       </div>
-                    ))}
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">PROFIT:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-green-600 font-semibold">{`${profitPercent.toFixed(0)} %`}</span>
+                          <input 
+                            type="number" 
+                            step="0.01" 
+                            value={targetProfitPercent || ''} 
+                            onChange={(e)=>setTargetProfitPercent(Number(e.target.value))} 
+                            onFocus={() => setReverseMode(true)}
+                            className="w-20 text-xs text-red-600 font-semibold border border-gray-300 rounded px-1 focus:ring-1 focus:ring-blue-500 focus:outline-none" 
+                            placeholder="Target %"
+                            title="Enter target profit % for reverse calculation"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                {/* Others */}
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Building className="h-5 w-5 text-blue-600" />
-                    <h4 className="font-semibold text-gray-900">Others</h4>
-                  </div>
-                  <div className="space-y-2">
-                    {[
-                      { document: "Plant Layout", status: "Available", lastUpdated: "2024-01-10", file: "Plant_Layout_Diagram.pdf" },
-                      { document: "Equipment List", status: "Available", lastUpdated: "2024-01-12", file: "Equipment_List_Document.pdf" },
-                      { document: "Machine List", status: "Available", lastUpdated: "2024-01-14", file: "Machine_List_Document.pdf" },
-                      { document: "Experience Certificate", status: "Available", lastUpdated: "2024-01-16", file: "Experience_Certificate.pdf" }
-                    ].map((doc, index) => (
-                      <div key={index} className="p-2 bg-gray-50 rounded text-sm">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="font-medium">{doc.document}</div>
-                          <div className="flex gap-2">
-                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                              <Download className="h-4 w-4" />
-                            </span>
-                            <span className="text-gray-300 cursor-not-allowed" title="Document not available">
-                              <Eye className="h-4 w-4" />
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            doc.status === "Available" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                          }`}>
-                            {doc.status}
-                          </span>
-                          <span className="text-xs text-gray-500">{doc.lastUpdated}</span>
-                        </div>
-                      </div>
-                    ))}
+              </div>
                   </div>
                 </div>
               </div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Helping Calculators Modal */}
       {isHelpingCalcOpen && helpingCalcType === 'technical' && (
@@ -7167,14 +10892,14 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               <h3 className="text-lg font-semibold text-gray-900">Technical Calculations</h3>
               <button onClick={closeHelpingCalc} className="text-gray-400 hover:text-gray-600">
                 <X className="h-6 w-6" />
-              </button>
+                            </button>
             </div>
             <div className="p-4 space-y-6">
               {/* AERIAL BUNCHED CABLE PARAMETERS */}
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                 <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
                   <h5 className="text-sm font-semibold text-gray-900">AERIAL BUNCHED CABLE PARAMETERS CALCULATOR</h5>
-                </div>
+                        </div>
                 <div className="p-4">
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-xs border border-gray-300">
@@ -7186,8 +10911,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           <th className="px-2 py-2 border border-gray-300">NO OF STRANDS</th>
                           <th className="px-2 py-2 border border-gray-300">WIRE SIZE OF GAUGE</th>
                           <th className="px-2 py-2 border border-gray-300">SELECTIONAL AREA</th>
-                          <th className="px-2 py-2 border border-gray-300">INSULATION THICKNESS</th>
-                          <th className="px-2 py-2 border border-gray-300">OD OF CABLE</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -7204,8 +10927,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{phaseNoOfStrands}</td>
                           <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{phaseWireSize > 0 ? `${phaseWireSize.toFixed(2)} MM` : '-'}</td>
                           <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{phaseSelectionalArea > 0 ? `${Math.round(phaseSelectionalArea)} SQMM` : '-'}</td>
-                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{phaseInsulationThickness > 0 ? `${phaseInsulationThickness.toFixed(2)} MM` : '-'}</td>
-                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{phaseOdOfCable > 0 ? `${phaseOdOfCable.toFixed(2)} MM` : '-'}</td>
                         </tr>
                         {/* Row 2 - ST LIGHT (skip reduction column since merged above) */}
                         <tr className="bg-white">
@@ -7216,8 +10937,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{streetNoOfStrands}</td>
                           <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{streetWireSize > 0 ? `${streetWireSize.toFixed(2)} MM` : '-'}</td>
                           <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{streetSelectionalArea > 0 ? `${Math.round(streetSelectionalArea)} SQMM` : '-'}</td>
-                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{streetInsulationThickness > 0 ? `${streetInsulationThickness.toFixed(2)} MM` : '-'}</td>
-                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{streetOdOfCable > 0 ? `${streetOdOfCable.toFixed(2)} MM` : '-'}</td>
                         </tr>
                         {/* Row 3 - MESSENGER (skip reduction column) */}
                         <tr className="bg-white">
@@ -7228,59 +10947,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{messengerNoOfStrands}</td>
                           <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{messengerWireSize > 0 ? `${messengerWireSize.toFixed(2)} MM` : '-'}</td>
                           <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{messengerSelectionalArea > 0 ? `${Math.round(messengerSelectionalArea)} SQMM` : '-'}</td>
-                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{messengerInsulationThickness > 0 ? `${messengerInsulationThickness.toFixed(2)} MM` : '-'}</td>
-                          <td className="px-2 py-2 border border-gray-300 text-blue-600 font-semibold text-center">{messengerOdOfCable > 0 ? `${messengerOdOfCable.toFixed(2)} MM` : '-'}</td>
                         </tr>
                       </tbody>
                     </table>
+                        </div>
                   </div>
                 </div>
-              </div>
-
-              {/* CURRENT CARRYING CAPACITY & RESISTANCE CALCULATOR */}
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-                <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
-                  <h5 className="text-sm font-semibold text-gray-900">CURRENT CARRYING CAPACITY & RESISTANCE CALCULATOR</h5>
-                  <p className="text-[11px] text-gray-600">CURRENT CARRYING CAPACITY & RESISTANCE ACCORDING TO INDIAN STANDARDS</p>
-                </div>
-                <div className="p-4 space-y-3">
-                  <div className="grid grid-cols-1 gap-2">
-                    <div className="flex items-center gap-2">
-                      <select value={tcConductorType} onChange={(e)=>setTcConductorType(e.target.value)} className="flex-1 px-2 py-1 border border-gray-300 rounded">
-                        <option>AAAC Conductor</option>
-                        <option>AB Cable</option>
-                        <option>ACSR Conductor</option>
-                        <option>Submersible Flat Cable</option>
-                        <option>Copper House Wire</option>
-                        <option>Agricultural Wire</option>
-                      </select>
-                      <input value={tcStandard} onChange={(e)=>setTcStandard(e.target.value)} className="flex-1 px-2 py-1 border border-gray-300 rounded" />
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full text-xs border border-gray-300">
-                        <thead>
-                          <tr className="bg-black text-white">
-                            <th className="px-2 py-2 border">SELECTION AREA</th>
-                            <th className="px-2 py-2 border">CCC (Amps/km)</th>
-                            <th className="px-2 py-2 border">At °C (Amps)</th>
-                            <th className="px-2 py-2 border">AC RESISTANCE (Ω/km)</th>
-                            <th className="px-2 py-2 border">At °C (Amps)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="bg-white">
-                            <td className="px-2 py-2 border"><input value={tcSelectionArea} onChange={(e)=>setTcSelectionArea(e.target.value)} className="w-28 text-center text-blue-700 font-semibold border-0 focus:ring-0 focus:outline-none" /></td>
-                            <td className="px-2 py-2 border"><input value={tcCCCAmpsKm} onChange={(e)=>setTcCCCAmpsKm(e.target.value)} className="w-20 text-center border-0 focus:ring-0 focus:outline-none" /></td>
-                            <td className="px-2 py-2 border"><input value={tcAtCAmp1} onChange={(e)=>setTcAtCAmp1(e.target.value)} className="w-20 text-center border-0 focus:ring-0 focus:outline-none" /></td>
-                            <td className="px-2 py-2 border"><input value={tcACResistance} onChange={(e)=>setTcACResistance(e.target.value)} className="w-24 text-center border-0 focus:ring-0 focus:outline-none" /></td>
-                            <td className="px-2 py-2 border"><input value={tcAtCAmp2} onChange={(e)=>setTcAtCAmp2(e.target.value)} className="w-20 text-center border-0 focus:ring-0 focus:outline-none" /></td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
               {/* AAAC CONDUCTOR PARAMETERS */}
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -7296,7 +10968,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           <th className="px-2 py-2 border">CONDUCTOR CODE</th>
                           <th className="px-2 py-2 border">SELECTIONAL AREA<br/>mm²</th>
                           <th className="px-2 py-2 border">STRANDING & WIRE DIA.<br/>nos/mm</th>
-                          <th className="px-2 py-2 border">DC RESISTANCE<br/>(N) NORMAL<br/>Ω/km</th>
+                          <th className="px-2 py-2 border">DC RESISTANCE<br/>(N) NOMINAL<br/>Ω/km</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -7308,9 +10980,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         </tr>
                       </tbody>
                     </table>
-                  </div>
-                </div>
-              </div>
+                          </div>
+                        </div>
+                        </div>
 
               {/* ACSR CONDUCTOR PARAMETERS */}
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -7318,7 +10990,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 <div className="p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <select value={acsrSelected} onChange={(e)=>setAcsrSelected(e.target.value)} className="w-60 px-2 py-1 border border-gray-300 rounded">{acsrOptions.map(o => (<option key={o.name}>{o.name}</option>))}</select>
-                  </div>
+                      </div>
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-xs border border-gray-300">
                       <thead>
@@ -7340,7 +11012,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     </table>
                   </div>
                 </div>
-              </div>
+                  </div>
             </div>
           </div>
         </div>
@@ -7823,14 +11495,25 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       }`}>Managing Director</p>
                     </div>
                   </div>
-                  <a 
-                    href="mailto:MD@anocab.in" 
-                    className={`text-sm font-mono hover:underline cursor-pointer ${
-                      isDarkMode ? 'text-blue-300 hover:text-blue-200' : 'text-blue-600 hover:text-blue-700'
-                    }`}
-                  >
-                    MD@anocab.in
-                  </a>
+                  <div className="space-y-1">
+                    <a 
+                      href="mailto:MD@anocab.in" 
+                      className={`text-sm font-mono hover:underline cursor-pointer block ${
+                        isDarkMode ? 'text-blue-300 hover:text-blue-200' : 'text-blue-600 hover:text-blue-700'
+                      }`}
+                    >
+                      MD@anocab.in
+                    </a>
+                    <a 
+                      href="tel:6262002101" 
+                      className={`text-sm font-mono hover:underline cursor-pointer flex items-center gap-1 ${
+                        isDarkMode ? 'text-blue-300 hover:text-blue-200' : 'text-blue-600 hover:text-blue-700'
+                      }`}
+                    >
+                      <Phone className="h-3 w-3" />
+                      6262002101
+                    </a>
+                  </div>
                 </div>
 
                 {/* Suraj Gehani - Chief Executive Officer */}
@@ -8354,11 +12037,11 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               {/* Middle Section - Name, Title, and QR Code */}
               <div className="px-6 py-3 flex items-start justify-between bg-white">
                 <div className="flex-1 pr-3">
-                  <h1 className="text-2xl font-bold text-black mb-1 leading-tight" style={{ fontFamily: 'serif' }}>Saurabh Jhariya</h1>
-                  <p className="text-base text-black" style={{ fontFamily: 'serif' }}>(Sales Head)</p>
+                  <h1 className="text-2xl font-bold text-black mb-1 leading-tight" style={{ fontFamily: 'serif' }}>{userData.name}</h1>
+                  <p className="text-base text-black" style={{ fontFamily: 'serif' }}>{userTitle}</p>
                 </div>
                 <img
-                  src="/images/QRs/SAURABH.jpg"
+                  src={qrCodePath}
                   alt="QR Code"
                   className="w-20 h-20 object-contain flex-shrink-0 border border-gray-300 bg-white"
                   onError={(e) => {
@@ -8372,13 +12055,15 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               <div className="px-6 py-5 bg-white border-t border-gray-100 mt-auto">
                 <h2 className="text-xl font-bold text-black text-center mb-4" style={{ fontFamily: "'Playfair Display', 'Cormorant Garamond', 'Bodoni Moda', 'Didot', serif", fontWeight: 700, letterSpacing: '0.02em' }}>Anode Electric Pvt. Ltd.</h2>
                   <div className="space-y-2.5 text-sm">
-                    <div className="flex items-start gap-2">
-                      <Phone className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
-                      <span className="text-teal-700 font-mono text-xs">6262002116</span>
+                    {userData.mobileNo && (
+                      <div className="flex items-start gap-2">
+                        <Phone className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-teal-700 font-mono text-xs">{userData.mobileNo}</span>
                 </div>
+                    )}
                     <div className="flex items-start gap-2">
                       <Mail className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
-                      <span className="text-teal-700 font-mono text-xs">Saurabh@anocab.com</span>
+                      <span className="text-teal-700 font-mono text-xs">{userData.email || 'N/A'}</span>
               </div>
                     <div className="flex items-start gap-2">
                       <Globe className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
@@ -8457,11 +12142,11 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 {/* Name, Title, and QR Code Row */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1 pr-3">
-                    <h1 className="text-2xl font-bold text-black mb-1 leading-tight" style={{ fontFamily: 'serif' }}>Saurabh Jhariya</h1>
-                    <p className="text-base text-black" style={{ fontFamily: 'serif' }}>(Sales Head)</p>
+                    <h1 className="text-2xl font-bold text-black mb-1 leading-tight" style={{ fontFamily: 'serif' }}>{userData.name}</h1>
+                    <p className="text-base text-black" style={{ fontFamily: 'serif' }}>{userTitle}</p>
                 </div>
                   <img
-                    src="/images/QRs/SAURABH.jpg"
+                    src={qrCodePath}
                     alt="QR Code"
                     className="w-20 h-20 object-contain flex-shrink-0 border border-gray-300 bg-white"
                     onError={(e) => {
@@ -8488,13 +12173,15 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               {/* Bottom Section - Contact Details */}
               <div className="px-6 py-5 bg-white border-t border-gray-100 mt-auto">
                 <div className="space-y-2.5 text-sm">
-                  <div className="flex items-start gap-2">
-                    <Phone className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
-                    <span className="text-teal-700 font-mono text-xs">6262002116</span>
-                  </div>
+                  {userData.mobileNo && (
+                    <div className="flex items-start gap-2">
+                      <Phone className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                      <span className="text-teal-700 font-mono text-xs">{userData.mobileNo}</span>
+                    </div>
+                  )}
                   <div className="flex items-start gap-2">
                     <Mail className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
-                    <span className="text-teal-700 font-mono text-xs">Saurabh@anocab.com</span>
+                    <span className="text-teal-700 font-mono text-xs">{userData.email || 'N/A'}</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <Globe className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
@@ -8542,10 +12229,10 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 {/* CHHATTISGARH */}
                 <button
                   onClick={() => openApprovalPdf('CHHATTISGARH')}
-                  className={`w-full p-4 rounded-lg border-2 transition-all duration-200 ${
+                  className={`w-full p-4 rounded-lg border transition-all duration-200 ${
                     isDarkMode 
-                      ? 'border-gray-600 bg-gray-700 hover:bg-gray-600 hover:border-gray-500' 
-                      : 'border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-300'
+                      ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' 
+                      : 'border-gray-200 bg-white hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -8553,7 +12240,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>CHHATTISGARH</h4>
                     <FileText className={`h-5 w-5 ${
-                      isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                      isDarkMode ? 'text-gray-400' : 'text-gray-600'
                     }`} />
                   </div>
                 </button>
@@ -8561,10 +12248,10 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 {/* MADHYA PRADESH */}
                 <button
                   onClick={() => openApprovalPdf('MADHYA PRADESH')}
-                  className={`w-full p-4 rounded-lg border-2 transition-all duration-200 ${
+                  className={`w-full p-4 rounded-lg border transition-all duration-200 ${
                     isDarkMode 
-                      ? 'border-gray-600 bg-gray-700 hover:bg-gray-600 hover:border-gray-500' 
-                      : 'border-green-200 bg-green-50 hover:bg-green-100 hover:border-green-300'
+                      ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' 
+                      : 'border-gray-200 bg-white hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -8572,7 +12259,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>MADHYA PRADESH</h4>
                     <FileText className={`h-5 w-5 ${
-                      isDarkMode ? 'text-green-400' : 'text-green-600'
+                      isDarkMode ? 'text-gray-400' : 'text-gray-600'
                     }`} />
                   </div>
                 </button>
@@ -8580,10 +12267,10 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 {/* MAHARASHTRA */}
                 <button
                   onClick={() => openApprovalPdf('MAHARASHTRA')}
-                  className={`w-full p-4 rounded-lg border-2 transition-all duration-200 ${
+                  className={`w-full p-4 rounded-lg border transition-all duration-200 ${
                     isDarkMode 
-                      ? 'border-gray-600 bg-gray-700 hover:bg-gray-600 hover:border-gray-500' 
-                      : 'border-purple-200 bg-purple-50 hover:bg-purple-100 hover:border-purple-300'
+                      ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' 
+                      : 'border-gray-200 bg-white hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -8591,10 +12278,196 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>MAHARASHTRA</h4>
                     <FileText className={`h-5 w-5 ${
-                      isDarkMode ? 'text-purple-400' : 'text-purple-600'
+                      isDarkMode ? 'text-gray-400' : 'text-gray-600'
                     }`} />
                   </div>
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sidebar License Modal */}
+      {isSidebarLicenseOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeSidebarLicense}>
+          <div 
+            className={`rounded-lg shadow-2xl overflow-hidden border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex flex-col max-w-md w-full bg-white`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+              <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>License</h3>
+              <button 
+                onClick={closeSidebarLicense}
+                className="p-2 rounded-lg hover:bg-red-100 text-red-600 transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              {!isBisFolderOpen ? (
+                <div className="space-y-3">
+                  {/* BIS Folder */}
+                  <button
+                    onClick={openBisFolder}
+                    className={`w-full p-4 rounded-lg border transition-all duration-200 cursor-pointer ${
+                      isDarkMode 
+                        ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' 
+                        : 'border-gray-200 bg-white hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Folder className={`h-8 w-8 ${
+                        isDarkMode ? 'text-yellow-400' : 'text-yellow-500'
+                      }`} />
+                      <h4 className={`text-lg font-semibold ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>BIS</h4>
+                    </div>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Back Button */}
+                  <button
+                    onClick={closeBisFolder}
+                    className={`w-full p-2 mb-2 rounded-lg border transition-all duration-200 ${
+                      isDarkMode 
+                        ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' 
+                        : 'border-gray-200 bg-white hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ChevronRight className={`h-4 w-4 rotate-180 ${
+                        isDarkMode ? 'text-gray-400' : 'text-gray-600'
+                      }`} />
+                      <span className={`text-sm font-medium ${
+                        isDarkMode ? 'text-white' : 'text-gray-900'
+                      }`}>Back</span>
+                    </div>
+                  </button>
+
+                  {/* BIS Components */}
+                  <div className="space-y-2">
+                    {['14255', '694', '389 - P2', '398 - P4', '1554 - P1', '7098 - P1'].map((component, index) => {
+                      const pdfMappings = {
+                        '14255': 'aerial bunch cable, bis liscence .pdf',
+                        '389 - P2': 'aluminium conductor galvanised steel reinforced, bis liscence.pdf',
+                        '398 - P4': 'all aluminium alloy conductor,bis liscence.pdf',
+                        '7098': 'multicore xlpe insulated aluminium unrmoured cable,bis liscence.pdf',
+                        '7098 - P1': 'single core xlpe insulated aluminium:copper armoured:unarmoured cable bis liscence.pdf'
+                      };
+                      const hasPdf = pdfMappings[component] !== undefined;
+                      
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            if (hasPdf) {
+                              openBisComponentPdf(component);
+                            }
+                          }}
+                          disabled={!hasPdf}
+                          className={`w-full p-4 rounded-lg border transition-all duration-200 ${
+                            hasPdf
+                              ? isDarkMode 
+                                ? 'border-gray-600 bg-gray-700 hover:bg-gray-600 cursor-pointer' 
+                                : 'border-gray-200 bg-white hover:bg-gray-50 cursor-pointer'
+                              : isDarkMode
+                                ? 'border-gray-700 bg-gray-800 opacity-50 cursor-not-allowed'
+                                : 'border-gray-300 bg-gray-100 opacity-50 cursor-not-allowed'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <FileText className={`h-5 w-5 ${
+                              isDarkMode ? hasPdf ? 'text-gray-400' : 'text-gray-600' : hasPdf ? 'text-gray-600' : 'text-gray-400'
+                            }`} />
+                            <h4 className={`text-lg font-semibold ${
+                              isDarkMode ? 'text-white' : hasPdf ? 'text-gray-900' : 'text-gray-500'
+                            }`}>{component}</h4>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product License Modal */}
+      {isProductLicenseOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeProductLicense}>
+          <div 
+            className={`rounded-lg shadow-2xl overflow-hidden border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex flex-col max-w-md w-full bg-white`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+              <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>License</h3>
+              <button 
+                onClick={closeProductLicense}
+                className="p-2 rounded-lg hover:bg-red-100 text-red-600 transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <div className="space-y-3">
+                {/* BIS */}
+                {(() => {
+                  const pdfMappings = {
+                    "Aerial Bunch Cable": "aerial bunch cable, bis liscence .pdf",
+                    "All Aluminium Alloy Conductor": "all aluminium alloy conductor,bis liscence.pdf",
+                    "Aluminium Conductor Galvanized Steel Reinforced": "aluminium conductor galvanised steel reinforced, bis liscence.pdf",
+                    "Multi Core XLPE Insulated Aluminium Unarmoured Cable": "multicore xlpe insulated aluminium unrmoured cable,bis liscence.pdf",
+                    "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable": "single core xlpe insulated aluminium:copper armoured:unarmoured cable bis liscence.pdf"
+                  };
+                  const productName = selectedProduct;
+                  const hasBisLicense = pdfMappings[productName] !== undefined;
+                  
+                  return (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (hasBisLicense) {
+                          openProductBisLicense();
+                        } else {
+                          closeProductLicense();
+                          setShowDataUpcoming(true);
+                        }
+                      }}
+                      className={`w-full p-4 rounded-lg border transition-all duration-200 ${
+                        hasBisLicense
+                          ? isDarkMode 
+                            ? 'border-gray-600 bg-gray-700 hover:bg-gray-600 cursor-pointer' 
+                            : 'border-gray-200 bg-white hover:bg-gray-50 cursor-pointer'
+                          : isDarkMode
+                            ? 'border-gray-700 bg-gray-800 opacity-50 cursor-pointer hover:opacity-70'
+                            : 'border-gray-300 bg-gray-100 opacity-50 cursor-pointer hover:opacity-70'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <h4 className={`text-lg font-semibold ${
+                          isDarkMode ? 'text-white' : hasBisLicense ? 'text-gray-900' : 'text-gray-500'
+                        }`}>BIS</h4>
+                        <FileText className={`h-5 w-5 ${
+                          isDarkMode ? hasBisLicense ? 'text-gray-400' : 'text-gray-600' : hasBisLicense ? 'text-gray-600' : 'text-gray-400'
+                        }`} />
+                      </div>
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           </div>
