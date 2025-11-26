@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Server, 
   Mail, 
@@ -17,8 +17,12 @@ import {
   Users,
   FileText,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Cloud,
+  Key,
+  Loader
 } from 'lucide-react';
+import configurationService from '../../api/admin_api/configurationService';
 
 const Configuration = () => {
   const [activeTab, setActiveTab] = useState('smtp');
@@ -52,23 +56,82 @@ const Configuration = () => {
     phoneNumber: ''
   });
 
+  // Cloudinary Settings State
+  const [cloudinarySettings, setCloudinarySettings] = useState({
+    cloudName: '',
+    apiKey: '',
+    apiSecret: '',
+    uploadPreset: '',
+    folder: ''
+  });
+
   // Templates State
-  const [templates, setTemplates] = useState([
-    {
-      id: 1,
-      name: 'Welcome Email',
-      subject: 'Welcome to our platform',
-      description: 'Welcome new users',
-      createdAt: '2024-01-15'
-    },
-    {
-      id: 2,
-      name: 'Password Reset',
-      subject: 'Reset your password',
-      description: 'Password reset instructions',
-      createdAt: '2024-01-16'
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
+
+  // Load configurations on mount
+  useEffect(() => {
+    loadConfigurations();
+  }, []);
+
+  const loadConfigurations = async () => {
+    setLoading(true);
+    try {
+      const response = await configurationService.getAll();
+      if (response.success) {
+        const { email, whatsapp, cloudinary, templates: emailTemplates } = response.data;
+        
+        if (email) {
+          setSmtpSettings({
+            host: email.host || '',
+            port: email.port || '',
+            username: email.username || '',
+            password: email.password || '',
+            fromName: email.from_name || '',
+            fromEmail: email.from_email || '',
+            recipients: email.recipients || '',
+            ccRecipients: email.cc_recipients || '',
+            bccRecipients: email.bcc_recipients || ''
+          });
+        }
+        
+        if (whatsapp) {
+          setWhatsappSettings({
+            flowId: whatsapp.flow_id || '',
+            flowName: whatsapp.flow_name || '',
+            apiKey: whatsapp.api_key || '',
+            phoneNumber: whatsapp.phone_number || ''
+          });
+        }
+        
+        if (cloudinary) {
+          setCloudinarySettings({
+            cloudName: cloudinary.cloud_name || '',
+            apiKey: cloudinary.api_key || '',
+            apiSecret: cloudinary.api_secret || '',
+            uploadPreset: cloudinary.upload_preset || '',
+            folder: cloudinary.default_folder || ''
+          });
+        }
+        
+        if (emailTemplates) {
+          setTemplates(emailTemplates);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading configurations:', error);
+      setMessage({ type: 'error', text: 'Failed to load configurations' });
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  const showMessage = (type, text) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+  };
 
   const handleSmtpChange = (field, value) => {
     setSmtpSettings(prev => ({
@@ -79,6 +142,13 @@ const Configuration = () => {
 
   const handleWhatsappChange = (field, value) => {
     setWhatsappSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleCloudinaryChange = (field, value) => {
+    setCloudinarySettings(prev => ({
       ...prev,
       [field]: value
     }));
@@ -106,18 +176,31 @@ const Configuration = () => {
     }
   };
 
-  const handleSaveTemplate = () => {
-    if (templateForm.name && templateForm.subject && templateForm.description) {
-      const newTemplate = {
-        id: templates.length + 1,
+  const handleSaveTemplate = async () => {
+    if (!templateForm.name || !templateForm.subject || !templateForm.htmlContent) {
+      showMessage('error', 'Please fill all required fields');
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      const response = await configurationService.createEmailTemplate({
         name: templateForm.name,
         subject: templateForm.subject,
         description: templateForm.description,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setTemplates([...templates, newTemplate]);
-      setTemplateForm({ name: '', subject: '', description: '', content: null, htmlContent: '' });
-      setShowTemplateModal(false);
+        htmlContent: templateForm.htmlContent
+      });
+      
+      if (response.success) {
+        showMessage('success', 'Template created successfully');
+        setTemplateForm({ name: '', subject: '', description: '', content: null, htmlContent: '' });
+        setShowTemplateModal(false);
+        loadConfigurations();
+      }
+    } catch (error) {
+      showMessage('error', error.message || 'Failed to create template');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -126,14 +209,70 @@ const Configuration = () => {
     console.log('Testing SMTP configuration...', smtpSettings);
   };
 
-  const handleSaveSmtp = () => {
-    // Save SMTP configuration
-    console.log('Saving SMTP configuration...', smtpSettings);
+  const handleSaveSmtp = async () => {
+    setSaving(true);
+    try {
+      const response = await configurationService.saveEmail({
+        host: smtpSettings.host,
+        port: parseInt(smtpSettings.port),
+        username: smtpSettings.username,
+        password: smtpSettings.password,
+        fromName: smtpSettings.fromName,
+        fromEmail: smtpSettings.fromEmail,
+        recipients: smtpSettings.recipients,
+        ccRecipients: smtpSettings.ccRecipients,
+        bccRecipients: smtpSettings.bccRecipients
+      });
+      
+      if (response.success) {
+        showMessage('success', 'SMTP configuration saved successfully');
+      }
+    } catch (error) {
+      showMessage('error', error.message || 'Failed to save SMTP configuration');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleSaveWhatsapp = () => {
-    // Save WhatsApp configuration
-    console.log('Saving WhatsApp configuration...', whatsappSettings);
+  const handleSaveWhatsapp = async () => {
+    setSaving(true);
+    try {
+      const response = await configurationService.saveWhatsApp({
+        flowId: whatsappSettings.flowId,
+        flowName: whatsappSettings.flowName,
+        apiKey: whatsappSettings.apiKey,
+        phoneNumber: whatsappSettings.phoneNumber
+      });
+      
+      if (response.success) {
+        showMessage('success', 'WhatsApp configuration saved successfully');
+      }
+    } catch (error) {
+      showMessage('error', error.message || 'Failed to save WhatsApp configuration');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveCloudinary = async () => {
+    setSaving(true);
+    try {
+      const response = await configurationService.saveCloudinary({
+        cloudName: cloudinarySettings.cloudName,
+        apiKey: cloudinarySettings.apiKey,
+        apiSecret: cloudinarySettings.apiSecret,
+        uploadPreset: cloudinarySettings.uploadPreset,
+        folder: cloudinarySettings.folder
+      });
+      
+      if (response.success) {
+        showMessage('success', 'Cloudinary configuration saved successfully');
+      }
+    } catch (error) {
+      showMessage('error', error.message || 'Failed to save Cloudinary configuration');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const renderSmtpSettings = () => (
@@ -285,10 +424,11 @@ const Configuration = () => {
         </button>
         <button
           onClick={handleSaveSmtp}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+          disabled={saving}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Save className="w-4 h-4" />
-          <span>Save Config</span>
+          {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          <span>{saving ? 'Saving...' : 'Save Config'}</span>
         </button>
       </div>
     </div>
@@ -432,14 +572,112 @@ const Configuration = () => {
       <div className="flex justify-end">
         <button
           onClick={handleSaveWhatsapp}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+          disabled={saving}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Save className="w-4 h-4" />
-          <span>Save Config</span>
+          {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          <span>{saving ? 'Saving...' : 'Save Config'}</span>
         </button>
       </div>
     </div>
   );
+
+  const renderCloudinarySettings = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <Cloud className="w-5 h-5 mr-2 text-blue-600" />
+          Cloudinary Configuration
+        </h3>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Cloud Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={cloudinarySettings.cloudName}
+                onChange={(e) => handleCloudinaryChange('cloudName', e.target.value)}
+                placeholder="your-cloud-name"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                API Key <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={cloudinarySettings.apiKey}
+                onChange={(e) => handleCloudinaryChange('apiKey', e.target.value)}
+                placeholder="Enter API Key"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                API Secret <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                value={cloudinarySettings.apiSecret}
+                onChange={(e) => handleCloudinaryChange('apiSecret', e.target.value)}
+                placeholder="Enter API Secret"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Upload Preset
+              </label>
+              <input
+                type="text"
+                value={cloudinarySettings.uploadPreset}
+                onChange={(e) => handleCloudinaryChange('uploadPreset', e.target.value)}
+                placeholder="Enter Upload Preset (optional)"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Default Folder
+            </label>
+            <input
+              type="text"
+              value={cloudinarySettings.folder}
+              onChange={(e) => handleCloudinaryChange('folder', e.target.value)}
+              placeholder="folder-name (optional)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">Optional: Default folder path for uploads</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={handleSaveCloudinary}
+          disabled={saving}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          <span>{saving ? 'Saving...' : 'Save Config'}</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+        <Loader className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -449,6 +687,20 @@ const Configuration = () => {
         <p className="text-gray-600">Manage your system settings and configurations</p>
       </div>
 
+      {/* Message Alert */}
+      {message.text && (
+        <div className={`mb-4 p-4 rounded-lg flex items-center space-x-2 ${
+          message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+        }`}>
+          {message.type === 'success' ? (
+            <CheckCircle className="w-5 h-5" />
+          ) : (
+            <AlertCircle className="w-5 h-5" />
+          )}
+          <span>{message.text}</span>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
         <div className="border-b border-gray-200">
@@ -456,7 +708,8 @@ const Configuration = () => {
             {[
               { id: 'smtp', label: 'SMTP Settings', icon: Server },
               { id: 'templates', label: 'Email Templates', icon: Mail },
-              { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare }
+              { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
+              { id: 'cloudinary', label: 'File Upload', icon: Cloud }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -478,6 +731,7 @@ const Configuration = () => {
           {activeTab === 'smtp' && renderSmtpSettings()}
           {activeTab === 'templates' && renderEmailTemplates()}
           {activeTab === 'whatsapp' && renderWhatsappSettings()}
+          {activeTab === 'cloudinary' && renderCloudinarySettings()}
         </div>
       </div>
 
@@ -585,10 +839,11 @@ const Configuration = () => {
               </button>
               <button
                 onClick={handleSaveTemplate}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                disabled={saving}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="w-4 h-4" />
-                <span>Save Template</span>
+                {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span>{saving ? 'Saving...' : 'Save Template'}</span>
               </button>
             </div>
           </div>

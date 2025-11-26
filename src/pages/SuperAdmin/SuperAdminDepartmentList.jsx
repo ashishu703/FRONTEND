@@ -170,8 +170,14 @@ const DepartmentManagement = () => {
         departmentType: uiToApiDepartment(selectedDept.departmentType),
         companyName: selectedDept.companyName,
         role: 'department_head',
-        monthlyTarget: selectedDept.monthlyTarget,
       };
+      // Only include monthlyTarget for sales, marketing, and telesales departments
+      const apiDeptType = uiToApiDepartment(selectedDept.departmentType);
+      if (apiDeptType === 'office_sales' || 
+          apiDeptType === 'marketing_sales' || 
+          apiDeptType === 'telesales') {
+        payload.monthlyTarget = selectedDept.monthlyTarget || selectedDept.target || 0;
+      }
       if (selectedDept.password) payload.password = selectedDept.password;
       await departmentHeadService.updateHead(selectedDept.id, payload);
       await fetchUsers();
@@ -588,8 +594,13 @@ const DepartmentManagement = () => {
                       departmentType: newDept.departmentType,
                       companyName: newDept.companyName,
                       role: newDept.role,
-                      monthlyTarget: newDept.monthlyTarget,
                     };
+                    // Only include monthlyTarget for sales, marketing, and telesales departments
+                    if (newDept.departmentType === 'office_sales' || 
+                        newDept.departmentType === 'marketing_sales' || 
+                        newDept.departmentType === 'telesales') {
+                      payload.monthlyTarget = newDept.monthlyTarget || 0;
+                    }
                     // Use admin department heads endpoint instead of auth/register
                     try {
                       await departmentHeadService.createHead(payload);
@@ -665,6 +676,8 @@ const DepartmentManagement = () => {
                       <option value="marketing_sales">Marketing Department</option>
                       <option value="hr">HR Department</option>
                       <option value="production">Production Department</option>
+                      <option value="accounts">Accounts Department</option>
+                      <option value="it">IT Department</option>
                       <option value="telesales">Telesales Department</option>
                     </select>
                   </div>
@@ -690,17 +703,21 @@ const DepartmentManagement = () => {
                       <option value="department_head">Department Head</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Monthly Target (Rs)</label>
-                    <input
-                      type="number"
-                      required
-                      value={newDept.monthlyTarget}
-                      onChange={(e) => setNewDept({ ...newDept, monthlyTarget: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                      placeholder="Enter monthly target in Rs"
-                    />
-                  </div>
+                  {(newDept.departmentType === 'office_sales' || 
+                    newDept.departmentType === 'marketing_sales' || 
+                    newDept.departmentType === 'telesales') && (
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Monthly Target (Rs)</label>
+                      <input
+                        type="number"
+                        required
+                        value={newDept.monthlyTarget}
+                        onChange={(e) => setNewDept({ ...newDept, monthlyTarget: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        placeholder="Enter monthly target in Rs"
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
                   <button
@@ -794,6 +811,8 @@ const DepartmentManagement = () => {
                       <option>Sales Department</option>
                       <option>Marketing Department</option>
                       <option>Production Department</option>
+                      <option>Accounts Department</option>
+                      <option>IT Department</option>
                       <option>Telesales Department</option>
                     </select>
                   </div>
@@ -819,16 +838,20 @@ const DepartmentManagement = () => {
                       <option>Department Head</option>
                     </select>
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs text-gray-600 mb-1">Monthly Target (Rs)</label>
-                    <input
-                      type="number"
-                      value={selectedDept.monthlyTarget || selectedDept.target || ''}
-                      onChange={(e) => setSelectedDept({ ...selectedDept, monthlyTarget: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                      placeholder="Enter monthly target in Rs"
-                    />
-                  </div>
+                  {(selectedDept.departmentType === 'Sales Department' || 
+                    selectedDept.departmentType === 'Marketing Department' || 
+                    selectedDept.departmentType === 'Telesales Department') && (
+                    <div className="md:col-span-2">
+                      <label className="block text-xs text-gray-600 mb-1">Monthly Target (Rs)</label>
+                      <input
+                        type="number"
+                        value={selectedDept.monthlyTarget || selectedDept.target || ''}
+                        onChange={(e) => setSelectedDept({ ...selectedDept, monthlyTarget: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        placeholder="Enter monthly target in Rs"
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
                   <button

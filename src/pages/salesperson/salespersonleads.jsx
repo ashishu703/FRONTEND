@@ -590,6 +590,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
   const [piStore, setPiStore] = React.useState({})
   const [savedPiPreview, setSavedPiPreview] = React.useState(null) // { data, selectedBranch }
   const [quotationPIs, setQuotationPIs] = React.useState({}) // Store PIs by quotation ID
+  const [quotationPayments, setQuotationPayments] = React.useState({}) // Store approved payments by quotation ID
 
   React.useEffect(() => {
     function handlePiSaved(e) {
@@ -889,7 +890,58 @@ export default function CustomerListContent({ isDarkMode = false }) {
       const taxableAmount = Math.max(0, subtotal - discountAmount)
       const taxRate = Number(completeQuotation.tax_rate ?? completeQuotation.taxRate ?? 18)
       const taxAmount = Number(completeQuotation.tax_amount ?? completeQuotation.taxAmount ?? (taxableAmount * taxRate) / 100)
-      const total = Number(completeQuotation.total_amount ?? completeQuotation.total ?? taxableAmount + taxAmount)
+      
+      // Use PI total_amount if available (for remaining amount PIs), otherwise use quotation total
+      const piTotal = Number(pi.total_amount ?? 0)
+      const quotationTotal = Number(completeQuotation.total_amount ?? completeQuotation.total ?? 0)
+      const total = piTotal > 0 ? piTotal : (quotationTotal > 0 ? quotationTotal : (taxableAmount + taxAmount))
+      
+      // Fetch payments to calculate advance payment (sum of ALL approved payments)
+      let advancePayment = 0
+      let originalQuotationTotal = quotationTotal
+      
+      try {
+        const payRes = await apiClient.get(`/api/payments/quotation/${quotation.id}`)
+        const allPayments = payRes?.data || []
+        // Calculate total of ALL approved payments (multiple advance payments)
+        advancePayment = allPayments
+          .filter(p => {
+            const approvalStatus = (p.approval_status || p.accounts_approval_status || '').toLowerCase()
+            return approvalStatus === 'approved'
+          })
+          .reduce((sum, p) => {
+            const amount = Number(p.installment_amount || p.paid_amount || p.amount || 0)
+            return sum + (isNaN(amount) ? 0 : amount)
+          }, 0)
+        
+        // If we have advance payment, use quotation total as original
+        if (advancePayment > 0 && quotationTotal > 0) {
+          originalQuotationTotal = quotationTotal
+        }
+      } catch (e) {
+        console.warn('Failed to fetch payments for advance calculation:', e)
+        // If PI total is less than quotation total, calculate advance from difference
+        if (piTotal > 0 && quotationTotal > 0 && piTotal < quotationTotal) {
+          advancePayment = quotationTotal - piTotal
+          originalQuotationTotal = quotationTotal
+        }
+      }
+      
+      // Calculate remaining amount correctly
+      // If advance payment exists, remaining = original - advance
+      // Otherwise use the PI total or quotation total
+      let finalTotal = total
+      if (advancePayment > 0 && originalQuotationTotal > 0) {
+        // Calculate remaining amount
+        finalTotal = originalQuotationTotal - advancePayment
+        // If PI total exists and is different, prefer PI total (it's the actual remaining)
+        if (piTotal > 0 && Math.abs(piTotal - finalTotal) > 0.01) {
+          // Use PI total if it's reasonable (within 1% difference)
+          if (piTotal <= originalQuotationTotal) {
+            finalTotal = piTotal
+          }
+        }
+      }
 
       const billTo = {
         business: viewingCustomer.business || completeQuotation.customer_business || completeQuotation.billTo?.business || '',
@@ -909,7 +961,9 @@ export default function CustomerListContent({ isDarkMode = false }) {
         taxableAmount,
         taxRate,
         taxAmount,
-        total,
+        total: finalTotal,
+        originalQuotationTotal: advancePayment > 0 ? originalQuotationTotal : 0,
+        advancePayment: advancePayment,
         billTo,
         dispatchMode: pi.dispatch_mode,
         shippingDetails: {
@@ -957,6 +1011,28 @@ export default function CustomerListContent({ isDarkMode = false }) {
 
       const populateFrom = async () => {
         try {
+          // Fetch payments for this quotation to calculate available amount FIRST
+          const quotationId = approvedQuotation.id
+          let approvedAmount = 0
+          try {
+            const paymentsRes = await apiClient.get(`/api/payments/quotation/${quotationId}`)
+            const allPayments = paymentsRes?.data || []
+            // Calculate approved payments amount
+            approvedAmount = allPayments
+              .filter(p => {
+                const status = (p.approval_status || p.accounts_approval_status || p.accountsApprovalStatus || '').toLowerCase()
+                return status === 'approved'
+              })
+              .reduce((sum, p) => {
+                const amount = Number(p.installment_amount || p.paid_amount || p.amount || p.payment_amount || 0)
+                return sum + amount
+              }, 0)
+            setQuotationPayments(prev => ({ ...prev, [quotationId]: approvedAmount }))
+          } catch (e) {
+            console.warn('Failed to fetch payments for quotation', e)
+            setQuotationPayments(prev => ({ ...prev, [quotationId]: 0 }))
+          }
+
           // Always fetch full quotation to get items with authoritative values
           let source = approvedQuotation
           const res = await quotationService.getCompleteData(approvedQuotation.id)
@@ -969,30 +1045,88 @@ export default function CustomerListContent({ isDarkMode = false }) {
             }
           }
 
-          const mappedItems = (source.items || []).map(item => ({
-            id: item.id || Math.random(),
-            description: item.product_name || item.productName || item.description || 'Product',
-            subDescription: item.description || '',
-            hsn: item.hsn_code || item.hsn || item.hsnCode || '85446090',
-            dueOn: new Date().toISOString().split('T')[0],
-            quantity: Number(item.quantity) || 1,
-            unit: item.unit || 'Nos',
-            rate: Number(item.buyer_rate || item.unit_price || item.unitPrice || 0),
-            buyerRate: Number(item.unit_price || item.buyer_rate || item.unitPrice || 0),
-            amount: Number(
+          const mappedItems = (source.items || []).map(item => {
+            // Get original values
+            const originalBuyerRate = Number(item.buyer_rate || item.unit_price || item.unitPrice || 0)
+            const originalTaxableAmount = Number(
               item.taxable_amount ?? item.amount ?? item.taxable ?? item.total_amount ?? item.total ?? 0
-            ),
-            gstRate: Number(item.gst_rate ?? item.gstRate ?? 18),
-            gstMultiplier: 1 + Number(item.gst_rate ?? item.gstRate ?? 18) / 100
-          }))
+            )
+            const gstRate = Number(item.gst_rate ?? item.gstRate ?? 18)
+            
+            return {
+              id: item.id || Math.random(),
+              description: item.product_name || item.productName || item.description || 'Product',
+              subDescription: item.description || '',
+              hsn: item.hsn_code || item.hsn || item.hsnCode || '85446090',
+              dueOn: new Date().toISOString().split('T')[0],
+              quantity: Number(item.quantity) || 1,
+              unit: item.unit || 'Nos',
+              rate: originalBuyerRate,
+              buyerRate: originalBuyerRate,
+              amount: originalTaxableAmount, // This is taxable value (before GST)
+              gstRate: gstRate,
+              gstMultiplier: 1 + gstRate / 100
+            }
+          })
 
-          const subtotal = mappedItems.reduce((s, i) => s + (Number(i.amount) || 0), 0)
+          // Calculate original quotation totals
+          const originalSubtotal = mappedItems.reduce((s, i) => s + (Number(i.amount) || 0), 0)
           const discountRate = Number(source.discount_rate ?? source.discountRate ?? 0)
-          const discountAmount = Number(source.discount_amount ?? source.discountAmount ?? (subtotal * discountRate) / 100)
-          const taxableAmount = Math.max(0, subtotal - discountAmount)
+          const originalDiscountAmount = Number(source.discount_amount ?? source.discountAmount ?? (originalSubtotal * discountRate) / 100)
+          const originalTaxableAmount = Math.max(0, originalSubtotal - originalDiscountAmount)
           const taxRate = Number(source.tax_rate ?? source.taxRate ?? 18)
-          const taxAmount = Number(source.tax_amount ?? source.taxAmount ?? (taxableAmount * taxRate) / 100)
-          const total = Number(source.total_amount ?? source.total ?? taxableAmount + taxAmount)
+          const originalTaxAmount = Number(source.tax_amount ?? source.taxAmount ?? (originalTaxableAmount * taxRate) / 100)
+          const originalTotal = Number(source.total_amount ?? source.total ?? originalTaxableAmount + originalTaxAmount)
+
+          // Calculate available amount (remaining after approved payments)
+          // Use the approvedAmount we just fetched, or fallback to state
+          const finalApprovedAmount = approvedAmount || (quotationPayments[approvedQuotation.id] || 0)
+          const availableAmount = Math.max(0, originalTotal - finalApprovedAmount)
+
+          // If there's remaining amount, adjust PI to match remaining amount proportionally
+          let subtotal, discountAmount, taxableAmount, taxAmount, total
+          let adjustedItems = mappedItems
+
+          if (availableAmount > 0 && availableAmount < originalTotal) {
+            // Calculate ratio to adjust amounts
+            const ratio = availableAmount / originalTotal
+            
+            // Adjust items proportionally - adjust both amount and buyerRate
+            adjustedItems = mappedItems.map(item => {
+              const originalItemAmount = Number(item.amount || 0)
+              const originalBuyerRate = Number(item.buyerRate || item.rate || 0)
+              const adjustedItemAmount = originalItemAmount * ratio
+              const adjustedBuyerRate = originalBuyerRate * ratio
+              return {
+                ...item,
+                amount: adjustedItemAmount,
+                buyerRate: adjustedBuyerRate,
+                rate: adjustedBuyerRate
+              }
+            })
+
+            // Recalculate totals based on adjusted items
+            subtotal = adjustedItems.reduce((s, i) => s + (Number(i.amount) || 0), 0)
+            discountAmount = originalDiscountAmount * ratio
+            taxableAmount = Math.max(0, subtotal - discountAmount)
+            taxAmount = (taxableAmount * taxRate) / 100
+            total = taxableAmount + taxAmount
+
+            // Fine-tune to match exact available amount (handle rounding)
+            const totalDifference = availableAmount - total
+            if (Math.abs(totalDifference) > 0.01) {
+              // Adjust tax amount to match exact total
+              taxAmount = availableAmount - taxableAmount
+              total = availableAmount
+            }
+          } else {
+            // Use original amounts if no payment or full amount available
+            subtotal = originalSubtotal
+            discountAmount = originalDiscountAmount
+            taxableAmount = originalTaxableAmount
+            taxAmount = originalTaxAmount
+            total = originalTotal
+          }
 
           const billTo = {
             business: selectedCustomerForPI.business || source.customer_business || source.billTo?.business || '',
@@ -1003,16 +1137,21 @@ export default function CustomerListContent({ isDarkMode = false }) {
             transport: source.billTo?.transport || null
           }
 
+          // Calculate advance payment amount
+          const advancePaymentAmount = finalApprovedAmount || (quotationPayments[approvedQuotation.id] || 0)
+          
           const previewData = {
             quotationNumber: source.quotation_number || approvedQuotation.quotationNumber || '',
-            items: mappedItems,
+            items: adjustedItems,
             subtotal,
             discountRate,
             discountAmount,
             taxableAmount,
             taxRate,
             taxAmount,
-            total,
+            total, // This is the adjusted PI total (remaining amount)
+            originalQuotationTotal: originalTotal, // Store original quotation total for display
+            advancePayment: advancePaymentAmount, // Store advance payment amount for display
             billTo,
             shippingDetails: shippingDetails,
             dispatchMode: dispatchMode
@@ -1021,7 +1160,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
           setSavedPiPreview({ data: previewData, selectedBranch: source.branch || selectedBranch })
 
           setPiFormData({
-            items: mappedItems.length > 0 ? mappedItems : [{
+            items: adjustedItems.length > 0 ? adjustedItems : [{
               id: 1,
               description: '',
               subDescription: '',
@@ -3522,6 +3661,57 @@ export default function CustomerListContent({ isDarkMode = false }) {
                   />
                 </div>
 
+                {/* PI Amount Summary */}
+                {selectedCustomerForPI?.approvedQuotation && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-blue-900 mb-3">PI Amount Information</h3>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600">Quotation Total</p>
+                        <p className="text-lg font-semibold text-gray-900">
+                          ₹{(savedPiPreview?.data?.originalQuotationTotal || savedPiPreview?.data?.total || 0).toLocaleString('en-IN')}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Already Paid (Approved Payments)</p>
+                        <p className="text-lg font-semibold text-orange-600">
+                          ₹{(() => {
+                            const quotationId = selectedCustomerForPI?.approvedQuotation?.id
+                            const approvedPayments = quotationPayments[quotationId] || 0
+                            return approvedPayments.toLocaleString('en-IN')
+                          })()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Available for New PI</p>
+                        <p className="text-lg font-semibold text-green-600">
+                          ₹{(() => {
+                            const originalQuotationTotal = savedPiPreview?.data?.originalQuotationTotal || savedPiPreview?.data?.total || 0
+                            const quotationId = selectedCustomerForPI?.approvedQuotation?.id
+                            const approvedPayments = quotationPayments[quotationId] || 0
+                            const available = originalQuotationTotal - approvedPayments
+                            return Math.max(0, available).toLocaleString('en-IN')
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                    {(() => {
+                      const originalQuotationTotal = savedPiPreview?.data?.originalQuotationTotal || savedPiPreview?.data?.total || 0
+                      const quotationId = selectedCustomerForPI?.approvedQuotation?.id
+                      const approvedPayments = quotationPayments[quotationId] || 0
+                      const available = originalQuotationTotal - approvedPayments
+                      if (available <= 0) {
+                        return (
+                          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                            ⚠️ Cannot create new PI: Full quotation amount already paid by customer.
+                          </div>
+                        )
+                      }
+                      return null
+                    })()}
+                  </div>
+                )}
+
                 {/* Customer Information (hidden) */}
                 {false && (
                 <div className="bg-gray-50 p-4 rounded-lg">
@@ -3961,12 +4151,47 @@ export default function CustomerListContent({ isDarkMode = false }) {
               </button>
               <button
                 onClick={() => {
+                  // Validate available amount based on approved payments
+                  const originalQuotationTotal = savedPiPreview?.data?.originalQuotationTotal || savedPiPreview?.data?.total || 0
+                  const quotationId = selectedCustomerForPI?.approvedQuotation?.id
+                  const approvedPayments = quotationPayments[quotationId] || 0
+                  const available = originalQuotationTotal - approvedPayments
+                  
+                  if (available <= 0) {
+                    alert('Cannot create new PI: Full quotation amount already paid by customer.')
+                    return
+                  }
+                  
+                  // Update preview data with current shipping details
+                  setSavedPiPreview(prev => ({
+                    ...prev,
+                    data: {
+                      ...prev?.data,
+                      dispatchMode: dispatchMode,
+                      shippingDetails: shippingDetails
+                    }
+                  }))
                   // Show PI preview modal
                   setShowPIPreview(true)
                   // Close the create PI modal
                   setShowCreatePI(false)
                 }}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 inline-flex items-center gap-2"
+                disabled={(() => {
+                  const originalQuotationTotal = savedPiPreview?.data?.originalQuotationTotal || savedPiPreview?.data?.total || 0
+                  const quotationId = selectedCustomerForPI?.approvedQuotation?.id
+                  const approvedPayments = quotationPayments[quotationId] || 0
+                  const available = originalQuotationTotal - approvedPayments
+                  return available <= 0
+                })()}
+                className={`px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md inline-flex items-center gap-2 ${
+                  (() => {
+                    const originalQuotationTotal = savedPiPreview?.data?.originalQuotationTotal || savedPiPreview?.data?.total || 0
+                    const quotationId = selectedCustomerForPI?.approvedQuotation?.id
+                    const approvedPayments = quotationPayments[quotationId] || 0
+                    const available = originalQuotationTotal - approvedPayments
+                    return available <= 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+                  })()
+                }`}
               >
                 <Eye className="h-4 w-4" />
                 Preview & Save PI

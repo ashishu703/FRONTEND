@@ -17,6 +17,63 @@ import toastManager from '../../utils/ToastManager';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 
+// Helper: normalize and summarise payments by accounts approval status
+const buildPaymentSummary = (payments, rawSummary = {}) => {
+  const safeNumber = (v) => {
+    const n = Number(v || 0)
+    return isNaN(n) ? 0 : n
+  }
+
+  const total =
+    safeNumber(rawSummary.total) ||
+    safeNumber(rawSummary.total_amount) ||
+    safeNumber(rawSummary.totalAmount)
+
+  let approvedAmount = 0
+  let pendingAmount = 0
+  let hasRejected = false
+
+  payments.forEach((p) => {
+    const status = (p.approval_status || p.accounts_approval_status || p.accountsApprovalStatus || '').toLowerCase()
+    const amount = safeNumber(
+      p.installment_amount ||
+      p.paid_amount ||
+      p.amount ||
+      p.payment_amount
+    )
+
+    if (status === 'approved') {
+      approvedAmount += amount
+    } else if (status === 'rejected') {
+      hasRejected = true
+    } else if (amount > 0) {
+      // Treat any non-approved, non-rejected payment with amount as pending approval
+      pendingAmount += amount
+    }
+  })
+
+  const remaining = Math.max(0, total - approvedAmount)
+
+  let approvalStatus = 'PENDING'
+  if (total > 0 && approvedAmount >= total) {
+    approvalStatus = 'COMPLETED'
+  } else if (approvedAmount > 0) {
+    approvalStatus = 'PARTIAL'
+  } else if (pendingAmount > 0) {
+    approvalStatus = 'PENDING APPROVAL'
+  } else if (hasRejected) {
+    approvalStatus = 'REJECTED'
+  }
+
+  return {
+    ...rawSummary,
+    total,
+    paid: approvedAmount,
+    remaining,
+    approvalStatus
+  }
+}
+
 // Customer Timeline Component (same styling as LeadStatus.jsx)
 const CustomerTimeline = ({ lead, onClose, onQuotationView, onPIView, setSelectedQuotation, setShowQuotationModal, toastManager }) => {
   if (!lead) return null;
@@ -62,9 +119,11 @@ const CustomerTimeline = ({ lead, onClose, onQuotationView, onPIView, setSelecte
           const piList = (piRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
           if (!cancelled) setLatestPI(piList[0] || null);
           const payRes = await apiClient.get(`/api/payments/quotation/${q.id}`);
-          if (!cancelled) setPayments(payRes?.data || []);
+          const allPayments = payRes?.data || [];
+          if (!cancelled) setPayments(allPayments);
           const sumRes = await apiClient.get(`/api/quotations/${q.id}/summary`);
-          if (!cancelled) setPaymentSummary(sumRes?.data || null);
+          const summaryData = buildPaymentSummary(allPayments, sumRes?.data || sumRes || {});
+          if (!cancelled) setPaymentSummary(summaryData);
         } else if (!cancelled) {
           setLatestPI(null);
           setPayments([]);
@@ -340,6 +399,15 @@ const CustomerTimeline = ({ lead, onClose, onQuotationView, onPIView, setSelecte
                     </div>
                     <div className="text-[10px] text-gray-700" style={{ marginBottom: '2px' }}>
                       <div>No.: {latestPI?.pi_number || 'N/A'}</div>
+                      <div>Amount: ₹{Number(latestPI?.total_amount || 0).toLocaleString('en-IN')}</div>
+                      <div>Date: {latestPI?.pi_date ? new Date(latestPI.pi_date).toLocaleDateString('en-GB') : 'N/A'}</div>
+                      <div>Valid Until: {latestPI?.valid_until ? new Date(latestPI.valid_until).toLocaleDateString('en-GB') : 'N/A'}</div>
+                      {latestPI?.dispatch_mode && (
+                        <div>Dispatch: {latestPI.dispatch_mode}</div>
+                      )}
+                      {latestPI?.transport_name && (
+                        <div>Transport: {latestPI.transport_name}</div>
+                      )}
                     </div>
                     {/* Action Buttons for Pending PIs - Only show for pending status, hide for approved/rejected */}
                     {((latestPI?.status || '').toLowerCase() === 'pending' || 
@@ -399,9 +467,174 @@ const CustomerTimeline = ({ lead, onClose, onQuotationView, onPIView, setSelecte
                           Reject
                         </button>
                         <button
-                          onClick={() => {
-                            if (onPIView) {
-                              onPIView(latestPI);
+                          onClick={async () => {
+                            if (latestPI?.id) {
+                              try {
+                                console.log('Fetching PI:', latestPI.id);
+                                // Fetch PI details with items
+                                const piResponse = await proformaInvoiceService.getPI(latestPI.id);
+                                console.log('PI Response:', piResponse);
+                                if (piResponse?.success && piResponse.data) {
+                                  const pi = piResponse.data;
+                                  console.log('PI Data:', pi);
+                                  console.log('Quotation ID:', pi.quotation_id);
+                                  // Fetch complete quotation data
+                                  const quotationResponse = await quotationService.getCompleteData(pi.quotation_id);
+                                  console.log('Quotation Response:', quotationResponse);
+                                  if (quotationResponse?.success) {
+                                    const completeQuotation = quotationResponse.data?.quotation || quotationResponse.data || {};
+                                    console.log('Complete Quotation:', completeQuotation);
+                                    const quotationItems = completeQuotation.items || [];
+                                    console.log('Quotation Items:', quotationItems);
+                                    
+                                    if (quotationItems.length > 0) {
+                                      // Map quotation items to PI format
+                                      const mappedItems = quotationItems.map((item) => {
+                                        const productName = item.product_name || item.productName || item.description || 'Product';
+                                        const taxableAmount = Number(item.taxable_amount ?? item.amount ?? item.taxable ?? item.total_amount ?? item.total ?? 0);
+                                        return {
+                                          id: item.id || Math.random(),
+                                          productName: productName, // CorporateStandardInvoice expects productName
+                                          description: productName, // Also keep description for compatibility
+                                          subDescription: item.description || '',
+                                          hsn: item.hsn_code || item.hsn || item.hsnCode || '85446090',
+                                          dueOn: new Date().toISOString().split('T')[0],
+                                          quantity: Number(item.quantity) || 1,
+                                          unit: item.unit || 'Nos',
+                                          rate: Number(item.unit_price || item.buyer_rate || item.unitPrice || 0),
+                                          buyerRate: Number(item.unit_price || item.buyer_rate || item.unitPrice || 0),
+                                          amount: taxableAmount,
+                                          taxable: taxableAmount, // Also keep taxable for compatibility
+                                          total: taxableAmount * (1 + Number(item.gst_rate ?? item.gstRate ?? 18) / 100),
+                                          gstRate: Number(item.gst_rate ?? item.gstRate ?? 18),
+                                          gstMultiplier: 1 + Number(item.gst_rate ?? item.gstRate ?? 18) / 100
+                                        };
+                                      });
+
+                                      const subtotal = mappedItems.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+                                      const discountRate = Number(completeQuotation.discount_rate ?? completeQuotation.discountRate ?? 0);
+                                      const discountAmount = Number(completeQuotation.discount_amount ?? completeQuotation.discountAmount ?? (subtotal * discountRate) / 100);
+                                      const taxableAmount = Math.max(0, subtotal - discountAmount);
+                                      const taxRate = Number(completeQuotation.tax_rate ?? completeQuotation.taxRate ?? 18);
+                                      const taxAmount = Number(completeQuotation.tax_amount ?? completeQuotation.taxAmount ?? (taxableAmount * taxRate) / 100);
+                                      const piTotal = Number(pi.total_amount ?? 0);
+                                      const quotationTotal = Number(completeQuotation.total_amount ?? completeQuotation.total ?? 0);
+                                      const total = piTotal > 0 ? piTotal : (quotationTotal > 0 ? quotationTotal : (taxableAmount + taxAmount));
+                                      
+                                      // Fetch payments to calculate advance payment (sum of ALL approved payments)
+                                      let advancePayment = 0;
+                                      let originalQuotationTotal = quotationTotal;
+                                      
+                                      try {
+                                        const payRes = await apiClient.get(`/api/payments/quotation/${pi.quotation_id}`);
+                                        const allPayments = payRes?.data || [];
+                                        // Calculate total of ALL approved payments (multiple advance payments)
+                                        advancePayment = allPayments
+                                          .filter(p => {
+                                            const approvalStatus = (p.approval_status || p.accounts_approval_status || '').toLowerCase();
+                                            return approvalStatus === 'approved';
+                                          })
+                                          .reduce((sum, p) => {
+                                            const amount = Number(p.installment_amount || p.paid_amount || p.amount || 0);
+                                            return sum + (isNaN(amount) ? 0 : amount);
+                                          }, 0);
+                                        
+                                        // If we have advance payment, use quotation total as original
+                                        if (advancePayment > 0 && quotationTotal > 0) {
+                                          originalQuotationTotal = quotationTotal;
+                                        }
+                                      } catch (e) {
+                                        console.warn('Failed to fetch payments for advance calculation:', e);
+                                        // If PI total is less than quotation total, calculate advance from difference
+                                        if (piTotal > 0 && quotationTotal > 0 && piTotal < quotationTotal) {
+                                          advancePayment = quotationTotal - piTotal;
+                                          originalQuotationTotal = quotationTotal;
+                                        }
+                                      }
+                                      
+                                      // Calculate remaining amount correctly
+                                      // If advance payment exists, remaining = original - advance
+                                      // Otherwise use the PI total or quotation total
+                                      let finalTotal = total;
+                                      if (advancePayment > 0 && originalQuotationTotal > 0) {
+                                        // Calculate remaining amount
+                                        finalTotal = originalQuotationTotal - advancePayment;
+                                        // If PI total exists and is different, prefer PI total (it's the actual remaining)
+                                        if (piTotal > 0 && Math.abs(piTotal - finalTotal) > 0.01) {
+                                          // Use PI total if it's reasonable (within 1% difference)
+                                          if (piTotal <= originalQuotationTotal) {
+                                            finalTotal = piTotal;
+                                          }
+                                        }
+                                      }
+
+                                      const previewData = {
+                                        quotationNumber: completeQuotation.quotation_number || pi.pi_number || 'N/A',
+                                        items: mappedItems,
+                                        subtotal,
+                                        discountRate,
+                                        discountAmount,
+                                        taxableAmount,
+                                        taxRate,
+                                        taxAmount,
+                                        total: finalTotal,
+                                        originalQuotationTotal: advancePayment > 0 ? originalQuotationTotal : 0,
+                                        advancePayment: advancePayment,
+                                        billTo: {
+                                          business: lead.business || completeQuotation.customer_business || lead.name || 'Customer',
+                                          address: lead.address || completeQuotation.customer_address || '',
+                                          phone: lead.phone || completeQuotation.customer_phone || '',
+                                          gstNo: lead.gstNo || completeQuotation.customer_gst_no || '',
+                                          state: lead.state || completeQuotation.customer_state || ''
+                                        },
+                                        shippingDetails: {
+                                          transportName: pi.transport_name || null,
+                                          vehicleNumber: pi.vehicle_number || null,
+                                          transportId: pi.transport_id || null,
+                                          lrNo: pi.lr_no || null,
+                                          courierName: pi.courier_name || null,
+                                          consignmentNo: pi.consignment_no || null,
+                                          byHand: pi.by_hand || null,
+                                          postService: pi.post_service || null,
+                                          carrierName: pi.carrier_name || null,
+                                          carrierNumber: pi.carrier_number || null
+                                        },
+                                        dispatchMode: pi.dispatch_mode || null
+                                      };
+
+                                      console.log('Final Preview Data:', JSON.stringify(previewData, null, 2));
+                                      if (onPIView) {
+                                        onPIView({
+                                          data: previewData,
+                                          selectedBranch: completeQuotation.branch || 'ANODE'
+                                        });
+                                      } else {
+                                        console.error('onPIView callback is not available');
+                                        if (toastManager) {
+                                          toastManager.error('View handler not available');
+                                        }
+                                      }
+                                    } else {
+                                      if (toastManager) {
+                                        toastManager.error('No items found in quotation for this PI');
+                                      }
+                                    }
+                                  } else {
+                                    if (toastManager) {
+                                      toastManager.error('Failed to load quotation details');
+                                    }
+                                  }
+                                } else {
+                                  if (toastManager) {
+                                    toastManager.error('Failed to load PI details');
+                                  }
+                                }
+                              } catch (e) {
+                                console.error('Error loading PI for view:', e);
+                                if (toastManager) {
+                                  toastManager.error('Failed to load PI: ' + (e?.message || 'Unknown error'));
+                                }
+                              }
                             }
                           }}
                           className="text-[9px] px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium"
@@ -428,13 +661,19 @@ const CustomerTimeline = ({ lead, onClose, onQuotationView, onPIView, setSelecte
                     <div className="flex items-center gap-1.5" style={{ marginBottom: '1px' }}>
                       <CreditCard className="h-3 w-3 text-purple-600" />
                       <span className="text-[11px] font-medium text-gray-900">Payment Status</span>
-                      <span className={`ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded ${
-                        paymentSummary && paymentSummary.remaining <= 0 ? 'bg-green-100 text-green-800' :
-                        paymentSummary && paymentSummary.paid > 0 ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {paymentSummary && paymentSummary.remaining <= 0 ? 'COMPLETED' :
-                         paymentSummary && paymentSummary.paid > 0 ? 'PARTIAL' : 'PENDING'}
+                      <span
+                        className={`ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded ${
+                          (() => {
+                            const status = (paymentSummary?.approvalStatus || '').toLowerCase()
+                            if (status === 'completed' || status === 'approved') return 'bg-green-100 text-green-800'
+                            if (status === 'partial') return 'bg-yellow-100 text-yellow-800'
+                            if (status === 'pending approval') return 'bg-yellow-100 text-yellow-800'
+                            if (status === 'rejected') return 'bg-red-100 text-red-800'
+                            return 'bg-gray-100 text-gray-800'
+                          })()
+                        }`}
+                      >
+                        {(paymentSummary?.approvalStatus || 'PENDING').toUpperCase()}
                       </span>
                     </div>
                     <div className="text-[10px] text-gray-700" style={{ gap: '1px' }}>
@@ -449,6 +688,22 @@ const CustomerTimeline = ({ lead, onClose, onQuotationView, onPIView, setSelecte
                               <div className="flex justify-between">
                                 <span className="font-medium">Advance Payment #{idx + 1}</span>
                                 <span className="text-green-700 font-medium">₹{Number(payment.installment_amount || 0).toLocaleString('en-IN')}</span>
+                              </div>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span className="text-gray-500">Status:</span>
+                                {(() => {
+                                  const accountsStatus = (payment.approval_status || payment.accounts_approval_status || payment.accountsApprovalStatus || '').toLowerCase()
+                                  if (accountsStatus === 'approved') {
+                                    return <span className="px-1 py-0.5 text-[8px] font-medium rounded bg-green-100 text-green-800">APPROVED</span>
+                                  }
+                                  if (accountsStatus === 'pending' || accountsStatus === 'pending_approval') {
+                                    return <span className="px-1 py-0.5 text-[8px] font-medium rounded bg-yellow-100 text-yellow-800">PENDING APPROVAL</span>
+                                  }
+                                  if (accountsStatus === 'rejected') {
+                                    return <span className="px-1 py-0.5 text-[8px] font-medium rounded bg-red-100 text-red-800">REJECTED</span>
+                                  }
+                                  return <span className="px-1 py-0.5 text-[8px] font-medium rounded bg-gray-100 text-gray-800">PENDING</span>
+                                })()}
                               </div>
                               <div className="text-gray-500 mt-0.5">
                                 Method: {payment.payment_method || 'N/A'}
@@ -557,6 +812,10 @@ const LeadsSimplified = () => {
   const [selectedQuotation, setSelectedQuotation] = useState(null);
   const [proformaInvoices, setProformaInvoices] = useState([]);
   const [loadingPIs, setLoadingPIs] = useState(false);
+  const [allLeadsData, setAllLeadsData] = useState([]);
+  const [loadingAllLeads, setLoadingAllLeads] = useState(false);
+  const [allLeadsRefreshKey, setAllLeadsRefreshKey] = useState(0);
+  const allLeadsFetchPromiseRef = useRef(null);
   const [showPIPreview, setShowPIPreview] = useState(false);
   const [piPreviewData, setPiPreviewData] = useState(null);
   const [selectedPIBranch, setSelectedPIBranch] = useState('ANODE');
@@ -574,7 +833,6 @@ const LeadsSimplified = () => {
     }
   };
 
-  // Mock user data for QuotationPreview
   const user = {
     name: 'Department Head',
     email: 'department.head@anocab.com'
@@ -582,7 +840,6 @@ const LeadsSimplified = () => {
 
   const importFileInputRef = useRef(null);
 
-  // Fetch quotations for a specific lead
   const fetchQuotations = async (leadId) => {
     try {
       setLoadingQuotations(true);
@@ -600,13 +857,11 @@ const LeadsSimplified = () => {
     }
   };
 
-  // Handle quotation approval
   const handleApproveQuotation = async (quotationId) => {
     try {
       const response = await quotationService.approveQuotation(quotationId, 'Approved by department head');
       if (response && response.success) {
         toastManager.success('Quotation approved successfully');
-        // Refresh quotations for the current lead
         if (previewLead && previewLead.id) {
           await fetchQuotations(previewLead.id);
         }
@@ -1243,6 +1498,7 @@ const LeadsSimplified = () => {
       if (response && response.data) {
         const transformedData = transformApiData(response.data);
         setLeadsData(transformedData);
+        requestAllLeadsRefresh();
       }
       const inserted = resp?.data?.importedCount ?? leadsPayload.length;
       const duplicates = resp?.data?.duplicatesCount ?? 0;
@@ -1313,6 +1569,54 @@ const LeadsSimplified = () => {
     }));
   };
 
+  const requestAllLeadsRefresh = () => {
+    setAllLeadsRefreshKey((prev) => prev + 1);
+  };
+
+  const loadAllLeadsForFilters = async (force = false) => {
+    if (!force) {
+      if (allLeadsFetchPromiseRef.current) {
+        await allLeadsFetchPromiseRef.current;
+        return allLeadsData;
+      }
+      if (allLeadsData.length > 0) {
+        return allLeadsData;
+      }
+    }
+
+    const fetchPromise = (async () => {
+      setLoadingAllLeads(true);
+      try {
+        const aggregated = [];
+        let pageNumber = 1;
+        const batchSize = 200;
+        let totalPages = 1;
+
+        do {
+          const response = await departmentHeadService.getAllLeads({ page: pageNumber, limit: batchSize });
+          if (Array.isArray(response?.data)) {
+            aggregated.push(...response.data);
+          }
+          totalPages = response?.pagination?.pages || 1;
+          pageNumber += 1;
+        } while (pageNumber <= totalPages);
+
+        const transformed = transformApiData(aggregated);
+        setAllLeadsData(transformed);
+        return transformed;
+      } catch (error) {
+        console.error('Error fetching full lead list for filters:', error);
+        throw error;
+      } finally {
+        setLoadingAllLeads(false);
+        allLeadsFetchPromiseRef.current = null;
+      }
+    })();
+
+    allLeadsFetchPromiseRef.current = fetchPromise;
+    return fetchPromise;
+  };
+
   // Fetch leads function
   const fetchLeads = async () => {
     try {
@@ -1334,6 +1638,11 @@ const LeadsSimplified = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleManualRefresh = () => {
+    fetchLeads();
+    requestAllLeadsRefresh();
   };
 
   // Fetch quotation and PI counts
@@ -1422,6 +1731,11 @@ const LeadsSimplified = () => {
     fetchQuotationAndPICounts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, searchTerm]);
+
+  useEffect(() => {
+    loadAllLeadsForFilters(true).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allLeadsRefreshKey]);
 
   // Load department usernames when edit modal opens
   useEffect(() => {
@@ -1555,8 +1869,11 @@ const LeadsSimplified = () => {
     });
   };
 
+  const hasStatusFilter = Boolean(statusFilter.type && statusFilter.status);
+  const activeLeadPool = hasStatusFilter && allLeadsData.length > 0 ? allLeadsData : leadsData;
+
   // Filter leads based on search, status filter, and assignment filter
-  const filteredLeads = leadsData.filter(lead => {
+  const filteredLeads = activeLeadPool.filter(lead => {
     const matchesSearch = !searchTerm || 
       lead.customer?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1590,6 +1907,14 @@ const LeadsSimplified = () => {
 
     return matchesSearch;
   });
+  const tableLoading = loading || (hasStatusFilter && loadingAllLeads && allLeadsData.length === 0);
+  const paginationDisabled = hasStatusFilter;
+  const totalPages = Math.max(1, Math.ceil(total / limit) || 1);
+  const pageStart = total === 0 ? 0 : (page - 1) * limit + 1;
+  const pageEnd = total === 0 ? 0 : Math.min(page * limit, total);
+  const paginationSummary = paginationDisabled
+    ? `${filteredLeads.length} matching lead${filteredLeads.length === 1 ? '' : 's'}`
+    : `${pageStart} - ${pageEnd} of ${total}`;
   
   // Calculate assigned and unassigned counts
   const assignedCount = leadsData.filter(lead => isLeadAssigned(lead)).length;
@@ -1605,6 +1930,9 @@ const LeadsSimplified = () => {
     }
     
     setStatusFilter({ type, status });
+    try {
+      await loadAllLeadsForFilters();
+    } catch (_) {}
     
     // If filtering by PI, we need to get customer IDs from quotations
     if (type === 'pi') {
@@ -1688,6 +2016,7 @@ const LeadsSimplified = () => {
             return [transformedLead];
           }
         });
+        requestAllLeadsRefresh();
         
         toastManager.success('Customer created successfully');
         setShowAddCustomer(false);
@@ -1706,6 +2035,7 @@ const LeadsSimplified = () => {
               if (response.pagination) {
                 setTotal(Number(response.pagination.total) || 0);
               }
+              requestAllLeadsRefresh();
             }
           } catch (error) {
             console.error('Error refreshing leads:', error);
@@ -1828,7 +2158,56 @@ const LeadsSimplified = () => {
       const taxableAmount = Math.max(0, subtotal - discountAmount);
       const taxRate = Number(completeQuotation.tax_rate ?? completeQuotation.taxRate ?? 18);
       const taxAmount = Number(completeQuotation.tax_amount ?? completeQuotation.taxAmount ?? (taxableAmount * taxRate) / 100);
-      const total = Number(completeQuotation.total_amount ?? completeQuotation.total ?? taxableAmount + taxAmount);
+      const piTotal = Number(pi.total_amount ?? 0);
+      const quotationTotal = Number(completeQuotation.total_amount ?? completeQuotation.total ?? 0);
+      const total = piTotal > 0 ? piTotal : (quotationTotal > 0 ? quotationTotal : (taxableAmount + taxAmount));
+      
+      // Fetch payments to calculate advance payment (sum of ALL approved payments)
+      let advancePayment = 0;
+      let originalQuotationTotal = quotationTotal;
+      
+      try {
+        const payRes = await apiClient.get(`/api/payments/quotation/${pi.quotation_id}`);
+        const allPayments = payRes?.data || [];
+        // Calculate total of ALL approved payments (multiple advance payments)
+        advancePayment = allPayments
+          .filter(p => {
+            const approvalStatus = (p.approval_status || p.accounts_approval_status || '').toLowerCase();
+            return approvalStatus === 'approved';
+          })
+          .reduce((sum, p) => {
+            const amount = Number(p.installment_amount || p.paid_amount || p.amount || 0);
+            return sum + (isNaN(amount) ? 0 : amount);
+          }, 0);
+        
+        // If we have advance payment, use quotation total as original
+        if (advancePayment > 0 && quotationTotal > 0) {
+          originalQuotationTotal = quotationTotal;
+        }
+      } catch (e) {
+        console.warn('Failed to fetch payments for advance calculation:', e);
+        // If PI total is less than quotation total, calculate advance from difference
+        if (piTotal > 0 && quotationTotal > 0 && piTotal < quotationTotal) {
+          advancePayment = quotationTotal - piTotal;
+          originalQuotationTotal = quotationTotal;
+        }
+      }
+      
+      // Calculate remaining amount correctly
+      // If advance payment exists, remaining = original - advance
+      // Otherwise use the PI total or quotation total
+      let finalTotal = total;
+      if (advancePayment > 0 && originalQuotationTotal > 0) {
+        // Calculate remaining amount
+        finalTotal = originalQuotationTotal - advancePayment;
+        // If PI total exists and is different, prefer PI total (it's the actual remaining)
+        if (piTotal > 0 && Math.abs(piTotal - finalTotal) > 0.01) {
+          // Use PI total if it's reasonable (within 1% difference)
+          if (piTotal <= originalQuotationTotal) {
+            finalTotal = piTotal;
+          }
+        }
+      }
 
       const billTo = {
         business: completeQuotation.customer_business || completeQuotation.billTo?.business || pi.customer_business || '',
@@ -1848,7 +2227,9 @@ const LeadsSimplified = () => {
         taxableAmount,
         taxRate,
         taxAmount,
-        total,
+        total: finalTotal,
+        originalQuotationTotal: advancePayment > 0 ? originalQuotationTotal : 0,
+        advancePayment: advancePayment,
         billTo,
         dispatchMode: pi.dispatch_mode,
         shippingDetails: {
@@ -1932,6 +2313,7 @@ const LeadsSimplified = () => {
             : lead
         );
         setLeadsData(updatedLeads);
+        requestAllLeadsRefresh();
 
         toastManager.success('Lead updated successfully');
         setShowEditModal(false);
@@ -2059,7 +2441,7 @@ const LeadsSimplified = () => {
             </button>
               
             <button
-            onClick={fetchLeads}
+            onClick={handleManualRefresh}
             className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <RefreshCw className="w-4 h-4" />
@@ -2390,7 +2772,7 @@ const LeadsSimplified = () => {
                </tr>
              </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
+              {tableLoading ? (
                 <tr>
                   <td colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} className="px-4 py-8 text-center text-gray-500">
                     <div className="flex items-center justify-center space-x-2">
@@ -2402,7 +2784,9 @@ const LeadsSimplified = () => {
               ) : filteredLeads.length === 0 ? (
                 <tr>
                   <td colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} className="px-4 py-8 text-center text-gray-500">
-                    No leads found. Add a new customer to get started.
+                    {hasStatusFilter
+                      ? 'No leads match this filter. Clear filter to see all leads.'
+                      : 'No leads found. Add a new customer to get started.'}
                   </td>
                 </tr>
               ) : (
@@ -2559,29 +2943,38 @@ const LeadsSimplified = () => {
                 setPage(1);
                 setLimit(Number(e.target.value));
               }}
-              className="border border-gray-300 rounded px-2 py-1 text-sm"
+              disabled={paginationDisabled}
+              className={`border border-gray-300 rounded px-2 py-1 text-sm ${paginationDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
               <option value={10}>10</option>
               <option value={20}>20</option>
               <option value={50}>50</option>
             </select>
-            <span>
-              {total === 0 ? '0-0' : `${(page - 1) * limit + 1} - ${Math.min(page * limit, total)}`} of {total}
-            </span>
+            <span>{paginationSummary}</span>
           </div>
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className={`px-3 py-1 border rounded ${page === 1 ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              disabled={paginationDisabled || page === 1}
+              className={`px-3 py-1 border rounded ${
+                paginationDisabled || page === 1
+                  ? 'text-gray-300 border-gray-200 cursor-not-allowed'
+                  : 'text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
             >
               Prev
             </button>
-            <span className="text-sm text-gray-600">Page {page} of {Math.max(1, Math.ceil(total / limit) || 1)}</span>
+            <span className="text-sm text-gray-600">
+              {paginationDisabled ? 'Filtered view' : `Page ${page} of ${totalPages}`}
+            </span>
             <button
-              onClick={() => setPage((p) => (p < Math.ceil(total / limit) ? p + 1 : p))}
-              disabled={page >= Math.ceil(total / limit) || total === 0}
-              className={`px-3 py-1 border rounded ${(page >= Math.ceil(total / limit) || total === 0) ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              onClick={() => setPage((p) => (p < totalPages ? p + 1 : p))}
+              disabled={paginationDisabled || page >= totalPages || total === 0}
+              className={`px-3 py-1 border rounded ${
+                paginationDisabled || page >= totalPages || total === 0
+                  ? 'text-gray-300 border-gray-200 cursor-not-allowed'
+                  : 'text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
             >
               Next
             </button>
@@ -3340,6 +3733,7 @@ const LeadsSimplified = () => {
                         const transformedData = transformApiData(response.data);
                         setLeadsData(transformedData);
                         if (response.pagination) setTotal(Number(response.pagination.total) || 0);
+                        requestAllLeadsRefresh();
                       }
                     } catch (e) {}
                     setShowAssignModal(false);

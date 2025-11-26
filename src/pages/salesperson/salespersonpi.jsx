@@ -100,6 +100,9 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
     const taxRate = selectedQuotation?.taxRate ?? 18
     const taxAmount = selectedQuotation?.taxAmount ?? (taxableAmount * taxRate / 100)
     const total = selectedQuotation?.total ?? (taxableAmount + taxAmount)
+    // Get advance payment amount if available (for remaining amount PIs)
+    const advancePayment = selectedQuotation?.advancePayment || 0
+    const originalQuotationTotal = selectedQuotation?.originalQuotationTotal || 0
 
     const handlePrint = async () => {
       // Create a new window for printing
@@ -369,14 +372,26 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                 </div>
                 <div className="flex justify-between">
                   <span>Taxable Amount</span>
-                  <span>{(typeof subtotal === 'number' ? (subtotal - (discountAmount || 0)).toFixed(2) : (taxableAmount || '')).toString()}</span>
+                  <span>{(taxableAmount != null ? (typeof taxableAmount === 'number' ? taxableAmount.toFixed(2) : taxableAmount.toString()) : (typeof subtotal === 'number' ? (subtotal - (discountAmount || 0)).toFixed(2) : '0.00')).toString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Add: Total GST ({taxRate || 18}%)</span>
                   <span>{taxAmount?.toFixed ? taxAmount.toFixed(2) : (taxAmount || '0.00')}</span>
                 </div>
+                {advancePayment > 0 && originalQuotationTotal > 0 && (
+                  <>
+                    <div className="flex justify-between border-t pt-1 mt-1">
+                      <span className="font-semibold">Original Quotation Total</span>
+                      <span className="font-semibold">₹ {originalQuotationTotal?.toFixed ? originalQuotationTotal.toFixed(2) : (originalQuotationTotal || '0.00')}</span>
+                    </div>
+                    <div className="flex justify-between text-green-700">
+                      <span>Less: Advance Payment Received</span>
+                      <span>₹ {advancePayment?.toFixed ? advancePayment.toFixed(2) : (advancePayment || '0.00')}</span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between font-bold border-t pt-1">
-                  <span>Total Amount After Tax</span>
+                  <span>Total Amount After Tax {advancePayment > 0 && originalQuotationTotal > 0 ? '(Remaining)' : ''}</span>
                   <span>₹ {total?.toFixed ? total.toFixed(2) : (total || '0.00')}</span>
                 </div>
               </div>

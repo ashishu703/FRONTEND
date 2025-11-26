@@ -3,6 +3,7 @@ import { Search, Filter, Download, User, DollarSign, Clock, Calendar, Link, Copy
 import paymentService from '../../api/admin_api/paymentService';
 import quotationService from '../../api/admin_api/quotationService';
 import departmentHeadService from '../../api/admin_api/departmentHeadService';
+import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 
@@ -46,15 +47,20 @@ const PaymentsDashboard = () => {
     pages: 0
   });
 
-  // Fetch all payments for all leads under department head
+  // Fetch all payments for all leads under department head using BATCH APIs
   const fetchAllPayments = async () => {
     try {
       setLoading(true);
+      console.log('=== PAYMENT INFO: Starting Batch Data Fetch ===');
       
-      // Fetch all leads under department head
+      // STEP 1: Fetch all leads under department head
+      console.log('Step 1: Fetching all leads...');
       const leadsResponse = await departmentHeadService.getAllLeads();
+      console.log('Leads response:', leadsResponse);
+      
       const allLeads = leadsResponse?.data || [];
-      const leadIds = allLeads.map(lead => lead.id);
+      const leadIds = allLeads.map(lead => lead.id).filter(id => id != null);
+      console.log(`✅ Fetched ${allLeads.length} leads, Lead IDs:`, leadIds);
       
       // Create a map of lead ID to lead data
       const leadsMap = {};
@@ -62,154 +68,267 @@ const PaymentsDashboard = () => {
         leadsMap[lead.id] = lead;
       });
       
-      // Fetch ALL quotations for all leads
-      const allQuotations = [];
-      for (const leadId of leadIds) {
-        try {
-          const qRes = await quotationService.getQuotationsByCustomer(leadId);
-          const quotations = Array.isArray(qRes?.data) ? qRes.data : [];
-          allQuotations.push(...quotations);
-        } catch (err) {
-          console.warn(`Error fetching quotations for lead ${leadId}:`, err);
+      if (leadIds.length === 0) {
+        console.warn('⚠️ No leads found');
+        setAllPaymentsData([]);
+        setPayments([]);
+        setLoading(false);
+        return;
+      }
+      
+      // STEP 2: Fetch ALL quotations in ONE batch API call
+      console.log('Step 2: Fetching all quotations in bulk...');
+      let allQuotations = [];
+      try {
+        const bulkQuotationsRes = await quotationService.getBulkQuotationsByCustomers(leadIds);
+        console.log('Bulk quotations response:', bulkQuotationsRes);
+        allQuotations = bulkQuotationsRes?.data || [];
+      } catch (err) {
+        console.error('❌ Error fetching bulk quotations, falling back to individual calls:', err);
+        // Fallback: fetch individually
+        for (const leadId of leadIds) {
+          try {
+            const qRes = await quotationService.getQuotationsByCustomer(leadId);
+            const quotations = Array.isArray(qRes?.data) ? qRes.data : [];
+            allQuotations.push(...quotations);
+          } catch (e) {
+            console.warn(`Failed to fetch quotations for lead ${leadId}:`, e);
+          }
         }
       }
       
-      // Fetch ALL payments from payment_history table for all leads
-      const allPayments = [];
-      for (const leadId of leadIds) {
-        try {
-          const paymentRes = await paymentService.getPaymentsByCustomer(leadId);
-          const payments = Array.isArray(paymentRes?.data) ? paymentRes.data : [];
-          allPayments.push(...payments);
-        } catch (err) {
-          console.warn(`Error fetching payments for lead ${leadId}:`, err);
-        }
-      }
+      console.log(`✅ Fetched ${allQuotations.length} quotations`);
       
-      // Also fetch payments by quotation to catch any missed payments
-      for (const quotation of allQuotations) {
-        try {
-          const pRes = await paymentService.getPaymentsByQuotation(quotation.id);
-          const payments = Array.isArray(pRes?.data) ? pRes.data : [];
-          // Add payments that aren't already in allPayments
-          payments.forEach(p => {
-            const exists = allPayments.some(ap => ap.id === p.id || 
-              (ap.payment_reference && p.payment_reference && ap.payment_reference === p.payment_reference));
-            if (!exists) {
-              allPayments.push(p);
-            }
-          });
-        } catch (err) {
-          console.warn(`Error fetching payments for quotation ${quotation.id}:`, err);
-        }
-      }
-      
-      // Group payments by quotation_id and lead_id
-      const paymentMap = new Map(); // key: quotation_id or lead_id, value: { quotation, lead, payments }
-      
-      // Process all quotations
-      allQuotations.forEach(quotation => {
-        const lead = leadsMap[quotation.customer_id] || {};
-        const key = quotation.id || `lead_${quotation.customer_id}`;
-        if (!paymentMap.has(key)) {
-          paymentMap.set(key, {
-            quotation,
-            lead,
-            payments: []
-          });
+      // Remove duplicates based on quotation ID
+      const uniqueQuotations = new Map();
+      allQuotations.forEach(q => {
+        if (q.id && !uniqueQuotations.has(q.id)) {
+          uniqueQuotations.set(q.id, q);
         }
       });
+      allQuotations = Array.from(uniqueQuotations.values());
+      console.log(`✅ Unique quotations: ${allQuotations.length}`);
       
-      // Add payments to the map
-      allPayments.forEach(payment => {
-        const key = payment.quotation_id || `lead_${payment.lead_id}`;
-        if (paymentMap.has(key)) {
-          paymentMap.get(key).payments.push(payment);
-        } else {
-          // Payment without quotation - create entry for lead
-          const lead = leadsMap[payment.lead_id] || {};
-          paymentMap.set(key, {
-            quotation: null,
-            lead,
-            payments: [payment]
-          });
+      const quotationIds = allQuotations.map(q => q.id).filter(id => id != null);
+      
+      if (quotationIds.length === 0) {
+        console.warn('⚠️ No quotations found');
+        setAllPaymentsData([]);
+        setPayments([]);
+        setLoading(false);
+        return;
+      }
+      
+      // STEP 3: Fetch ALL PIs in ONE batch API call
+      console.log('Step 3: Fetching all PIs in bulk...');
+      let allPIs = [];
+      try {
+        const bulkPIsRes = await proformaInvoiceService.getBulkPIsByQuotations(quotationIds);
+        console.log('Bulk PIs response:', bulkPIsRes);
+        allPIs = bulkPIsRes?.data || [];
+      } catch (err) {
+        console.error('❌ Error fetching bulk PIs, falling back to individual calls:', err);
+        // Fallback: fetch individually
+        for (const quotationId of quotationIds) {
+          try {
+            const piRes = await proformaInvoiceService.getPIsByQuotation(quotationId);
+            const pis = piRes?.data || [];
+            allPIs.push(...pis);
+          } catch (e) {
+            console.warn(`Failed to fetch PIs for quotation ${quotationId}:`, e);
+          }
         }
-      });
+      }
       
-      // Build individual payment records (not grouped)
+      console.log(`✅ Fetched ${allPIs.length} PIs`);
+      
+      // Create a Set of quotation IDs that have at least one PI
+      const quotationsWithPI = new Set(
+        allPIs
+          .map(pi => pi.quotation_id)
+          .filter(id => id != null)
+      );
+      console.log(`✅ Quotations with PI: ${quotationsWithPI.size}, IDs:`, Array.from(quotationsWithPI).slice(0, 10));
+      
+      // STEP 4: Fetch ALL payments in TWO batch API calls
+      console.log('Step 4: Fetching all payments in bulk...');
+      let allPayments = [];
+      try {
+        const [bulkQuotationPaymentsRes, bulkCustomerPaymentsRes] = await Promise.all([
+          paymentService.getBulkPaymentsByQuotations(quotationIds).catch(e => ({ data: [] })),
+          paymentService.getBulkPaymentsByCustomers(leadIds).catch(e => ({ data: [] }))
+        ]);
+        
+        console.log('Bulk quotation payments response:', bulkQuotationPaymentsRes);
+        console.log('Bulk customer payments response:', bulkCustomerPaymentsRes);
+        
+        const quotationPayments = bulkQuotationPaymentsRes?.data || [];
+        const customerPayments = bulkCustomerPaymentsRes?.data || [];
+        
+        // Merge and deduplicate payments
+        const paymentMap = new Map();
+        [...quotationPayments, ...customerPayments].forEach(p => {
+          const key = p.id || p.payment_reference || `${p.quotation_id}_${p.lead_id}_${p.payment_date}_${p.installment_amount}`;
+          if (!paymentMap.has(key)) {
+            paymentMap.set(key, p);
+          }
+        });
+        
+        allPayments = Array.from(paymentMap.values());
+      } catch (err) {
+        console.error('❌ Error fetching bulk payments, falling back to individual calls:', err);
+        // Fallback: fetch individually
+        for (const leadId of leadIds) {
+          try {
+            const pRes = await paymentService.getPaymentsByCustomer(leadId);
+            const payments = Array.isArray(pRes?.data) ? pRes.data : [];
+            allPayments.push(...payments);
+          } catch (e) {
+            console.warn(`Failed to fetch payments for lead ${leadId}:`, e);
+          }
+        }
+      }
+      
+      console.log(`✅ Total payments fetched: ${allPayments.length}`);
+      console.log('Sample payment:', allPayments[0]);
+      console.log('=== BATCH FETCH COMPLETE ===\n')
+      
+      // Build individual payment records (only for quotations with PI)
+      console.log('Processing payments...');
       const paymentTrackingData = [];
       
       // Create a map to store quotation totals and paid amounts for status calculation
       const quotationTotalsMap = new Map();
       const quotationPaidMap = new Map();
       
-      paymentMap.forEach(({ quotation, lead, payments }) => {
-        // Filter out refunds
-        const validPayments = payments.filter(p => !p.is_refund);
+      // First, calculate totals and paid amounts for each quotation
+      allQuotations.forEach(quotation => {
+        const quotationId = quotation.id;
+        const quotationTotal = Number(quotation.total_amount || quotation.total || 0);
         
-        const quotationId = quotation?.id || `lead_${quotation?.customer_id || lead.id}`;
-        const quotationTotal = quotation ? Number(quotation.total_amount || 0) : 0;
+        // Get all approved completed payments for this quotation
+        const quotationPayments = allPayments.filter(p => {
+          if (p.quotation_id !== quotation.id) return false;
+          if (p.is_refund) return false;
+          
+          const status = (p.payment_status || p.status || '').toLowerCase();
+          const isCompleted = status === 'completed' || status === 'paid' || status === 'success' || status === 'advance';
+          
+          // Check approval status
+          const approvalStatus = (p.approval_status || p.accounts_approval_status || p.accountsApprovalStatus || '').toLowerCase();
+          const isApproved = approvalStatus === 'approved';
+          
+          return isCompleted && isApproved;
+        });
         
-        // Calculate total paid for this quotation
-        const totalPaid = validPayments
-          .filter(p => {
-            const status = (p.payment_status || '').toLowerCase();
-            return status === 'completed' || status === 'paid' || status === 'success' || status === 'advance';
-          })
-          .reduce((sum, p) => sum + Number(p.installment_amount || p.paid_amount || 0), 0);
+        const totalPaid = quotationPayments.reduce((sum, p) => {
+          return sum + Number(p.installment_amount || p.paid_amount || p.amount || 0);
+        }, 0);
         
         quotationTotalsMap.set(quotationId, quotationTotal);
         quotationPaidMap.set(quotationId, totalPaid);
       });
       
-      // Now create individual payment records
-      allPayments.forEach(payment => {
-        // Filter out refunds
-        if (payment.is_refund) return;
+      // Now create individual payment records - ONLY for quotations with PI
+      console.log('Creating payment records...');
+      console.log(`Total payments to process: ${allPayments.length}`);
+      
+      let skippedRefund = 0;
+      let skippedStatus = 0;
+      let skippedApproval = 0;
+      let skippedNoQuotation = 0;
+      let skippedNoPI = 0;
+      let processedCount = 0;
+      
+      allPayments.forEach((payment, idx) => {
+        // Debug first few payments
+        if (idx < 3) {
+          console.log(`Payment ${idx + 1}:`, {
+            id: payment.id,
+            quotation_id: payment.quotation_id,
+            lead_id: payment.lead_id,
+            payment_status: payment.payment_status,
+            status: payment.status,
+            approval_status: payment.approval_status,
+            accounts_approval_status: payment.accounts_approval_status,
+            is_refund: payment.is_refund,
+            amount: payment.installment_amount || payment.paid_amount || payment.amount
+          });
+        }
         
-        const status = (payment.payment_status || '').toLowerCase();
+        // Filter out refunds
+        if (payment.is_refund) {
+          skippedRefund++;
+          return;
+        }
+        
+        const status = (payment.payment_status || payment.status || '').toLowerCase();
         const isValidPayment = status === 'completed' || status === 'paid' || status === 'success' || status === 'advance';
         
-        if (!isValidPayment) return;
+        if (!isValidPayment) {
+          skippedStatus++;
+          if (idx < 3) console.log(`  ❌ Skipped: Invalid status '${status}'`);
+          return;
+        }
         
-        // Find the lead and quotation for this payment
-        const lead = leadsMap[payment.lead_id] || {};
+        // Check if payment is approved by accounts
+        const approvalStatus = (payment.approval_status || payment.accounts_approval_status || payment.accountsApprovalStatus || '').toLowerCase();
+        const isApproved = approvalStatus === 'approved';
+        
+        if (!isApproved) {
+          skippedApproval++;
+          if (idx < 3) console.log(`  ❌ Skipped: Not approved '${approvalStatus}'`);
+          return; // Only show approved payments
+        }
+        
+        // Find the quotation for this payment
         const quotation = allQuotations.find(q => q.id === payment.quotation_id) || null;
-        const quotationId = payment.quotation_id || `lead_${payment.lead_id}`;
+        
+        if (!quotation) {
+          skippedNoQuotation++;
+          if (idx < 3) console.log(`  ❌ Skipped: No quotation found for quotation_id ${payment.quotation_id}`);
+          return;
+        }
+        
+        // CRITICAL: ONLY include payments for quotations that have a PI created
+        if (!quotationsWithPI.has(quotation.id)) {
+          skippedNoPI++;
+          if (idx < 3) console.log(`  ❌ Skipped: Quotation ${quotation.id} has no PI`);
+          return; // Skip if quotation doesn't have PI
+        }
+        
+        if (idx < 3) console.log(`  ✅ Processing payment...`);
+        
+        // Find the lead
+        const lead = leadsMap[payment.lead_id] || leadsMap[quotation.customer_id] || {};
+        const quotationId = quotation.id;
         
         const quotationTotal = quotationTotalsMap.get(quotationId) || 0;
         const totalPaidForQuotation = quotationPaidMap.get(quotationId) || 0;
         const remainingAmount = Math.max(0, quotationTotal - totalPaidForQuotation);
         
         // Determine payment status for this individual payment
-        let paymentStatus = 'Due';
         let displayStatus = 'Due';
         
         if (quotationTotal > 0) {
           if (totalPaidForQuotation >= quotationTotal) {
-            paymentStatus = 'Paid';
             displayStatus = 'Paid';
           } else if (totalPaidForQuotation > 0) {
-            paymentStatus = 'Advance';
             displayStatus = 'Advance';
-          } else {
-            paymentStatus = 'Due';
-            displayStatus = 'Due';
           }
         } else if (totalPaidForQuotation > 0) {
-          paymentStatus = 'Advance';
           displayStatus = 'Advance';
         }
         
-        const leadIdNum = quotation ? (quotation.customer_id || lead.id) : (lead.id || payment.lead_id);
-        const paymentAmount = Number(payment.installment_amount || payment.paid_amount || 0);
+        const leadIdNum = quotation.customer_id || lead.id || payment.lead_id;
+        const paymentAmount = Number(payment.installment_amount || payment.paid_amount || payment.amount || 0);
         
         paymentTrackingData.push({
           id: payment.id || `payment_${payment.lead_id}_${payment.quotation_id}_${Date.now()}`,
           leadId: leadIdNum,
           leadIdDisplay: `LD-${leadIdNum}`,
           customer: {
-            name: quotation?.customer_name || lead.customer || lead.name || payment.customer_name || 'N/A',
+            name: quotation.customer_name || lead.customer || lead.name || payment.customer_name || 'N/A',
             email: lead.email || payment.lead_email || 'N/A',
             phone: lead.phone || payment.lead_phone || 'N/A'
           },
@@ -218,17 +337,28 @@ const PaymentsDashboard = () => {
           totalAmount: quotationTotal, // Total quotation amount
           dueAmount: remainingAmount, // Remaining amount for the quotation
           status: displayStatus,
-          paymentStatus: paymentStatus,
+          paymentStatus: displayStatus,
           created: payment.payment_date ? new Date(payment.payment_date).toLocaleString() : (payment.created_at ? new Date(payment.created_at).toLocaleString() : ''),
           paymentDate: payment.payment_date || payment.created_at, // For date filtering
           paymentLink: payment.payment_receipt_url || '',
-          quotationId: quotation?.quotation_number || (quotation ? `QT-${quotation.id}` : 'N/A'),
+          quotationId: quotation.quotation_number || `QT-${quotation.id}`,
           // Store for reference
           leadData: lead,
           quotationData: quotation,
           paymentData: payment
         });
+        processedCount++;
       });
+      
+      console.log('\n=== PAYMENT PROCESSING SUMMARY ===');
+      console.log(`✅ Total payments processed: ${processedCount}`);
+      console.log(`❌ Skipped (refund): ${skippedRefund}`);
+      console.log(`❌ Skipped (invalid status): ${skippedStatus}`);
+      console.log(`❌ Skipped (not approved): ${skippedApproval}`);
+      console.log(`❌ Skipped (no quotation): ${skippedNoQuotation}`);
+      console.log(`❌ Skipped (no PI): ${skippedNoPI}`);
+      console.log(`📊 Total payment records created: ${paymentTrackingData.length}`);
+      console.log('=================================\n');
       
       // Sort by Lead ID (numeric) first, then by payment date (most recent first)
       paymentTrackingData.sort((a, b) => {
@@ -246,14 +376,25 @@ const PaymentsDashboard = () => {
         return bDate - aDate; // Most recent first within same Lead ID
       });
       
+      console.log('Setting payment data to state...');
       setAllPaymentsData(paymentTrackingData);
       setPayments(paymentTrackingData);
+      
+      console.log('\n✅ PAYMENT INFO PAGE READY ✅');
+      console.log(`Total payment records available: ${paymentTrackingData.length}`);
+      if (paymentTrackingData.length > 0) {
+        console.log('Sample payment record:', paymentTrackingData[0]);
+      }
+      
     } catch (e) {
-      console.error('Failed to load payments', e);
+      console.error('❌ Failed to load payments:', e);
+      console.error('Error stack:', e.stack);
+      setAllPaymentsData([]);
       setPayments([]);
       setPagination({ page: 1, limit: 50, total: 0, pages: 0 });
     } finally {
       setLoading(false);
+      console.log('Loading state set to false');
     }
   };
 
@@ -909,7 +1050,27 @@ const PaymentsDashboard = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan="10" className="px-6 py-8 text-center text-gray-500">Loading payments...</td>
+                    <td colSpan="10" className="px-6 py-8 text-center text-gray-500">
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                        Loading payments...
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredPayments.length === 0 ? (
+                  <tr>
+                    <td colSpan="10" className="px-6 py-8 text-center">
+                      <div className="flex flex-col items-center justify-center text-gray-500">
+                        <AlertCircle className="w-12 h-12 mb-3 text-gray-400" />
+                        <p className="text-lg font-medium mb-1">No Payments Found</p>
+                        <p className="text-sm">
+                          {allPaymentsData.length === 0 
+                            ? 'No payment data available. Payments will appear here once quotations have PIs and payments are approved.'
+                            : 'No payments match your current filters. Try adjusting your search or filter criteria.'
+                          }
+                        </p>
+                      </div>
+                    </td>
                   </tr>
                 ) : filteredPayments.map((payment, index) => (
                   <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
