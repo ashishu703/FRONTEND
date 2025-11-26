@@ -65,6 +65,26 @@ const Configuration = () => {
     folder: ''
   });
 
+  // Indiamart Settings State
+  const [indiamartSettings, setIndiamartSettings] = useState({
+    apiKey: '',
+    apiSecret: '',
+    accessToken: '',
+    refreshToken: '',
+    tokenExpiresAt: '',
+    webhookUrl: ''
+  });
+
+  // TradeIndia Settings State
+  const [tradeindiaSettings, setTradeindiaSettings] = useState({
+    apiKey: '',
+    apiSecret: '',
+    accessToken: '',
+    refreshToken: '',
+    tokenExpiresAt: '',
+    webhookUrl: ''
+  });
+
   // Templates State
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -81,7 +101,7 @@ const Configuration = () => {
     try {
       const response = await configurationService.getAll();
       if (response.success) {
-        const { email, whatsapp, cloudinary, templates: emailTemplates } = response.data;
+        const { email, whatsapp, cloudinary, indiamart, tradeindia, templates: emailTemplates } = response.data;
         
         if (email) {
           setSmtpSettings({
@@ -113,6 +133,28 @@ const Configuration = () => {
             apiSecret: cloudinary.api_secret || '',
             uploadPreset: cloudinary.upload_preset || '',
             folder: cloudinary.default_folder || ''
+          });
+        }
+        
+        if (indiamart) {
+          setIndiamartSettings({
+            apiKey: indiamart.api_key || '',
+            apiSecret: indiamart.api_secret || '',
+            accessToken: indiamart.access_token || '',
+            refreshToken: indiamart.refresh_token || '',
+            tokenExpiresAt: indiamart.token_expires_at || '',
+            webhookUrl: indiamart.webhook_url || ''
+          });
+        }
+        
+        if (tradeindia) {
+          setTradeindiaSettings({
+            apiKey: tradeindia.api_key || '',
+            apiSecret: tradeindia.api_secret || '',
+            accessToken: tradeindia.access_token || '',
+            refreshToken: tradeindia.refresh_token || '',
+            tokenExpiresAt: tradeindia.token_expires_at || '',
+            webhookUrl: tradeindia.webhook_url || ''
           });
         }
         
@@ -149,6 +191,20 @@ const Configuration = () => {
 
   const handleCloudinaryChange = (field, value) => {
     setCloudinarySettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleIndiamartChange = (field, value) => {
+    setIndiamartSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleTradeIndiaChange = (field, value) => {
+    setTradeindiaSettings(prev => ({
       ...prev,
       [field]: value
     }));
@@ -270,6 +326,50 @@ const Configuration = () => {
       }
     } catch (error) {
       showMessage('error', error.message || 'Failed to save Cloudinary configuration');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveIndiamart = async () => {
+    setSaving(true);
+    try {
+      const response = await configurationService.saveIndiamart({
+        apiKey: indiamartSettings.apiKey,
+        apiSecret: indiamartSettings.apiSecret,
+        accessToken: indiamartSettings.accessToken,
+        refreshToken: indiamartSettings.refreshToken,
+        tokenExpiresAt: indiamartSettings.tokenExpiresAt || null,
+        webhookUrl: indiamartSettings.webhookUrl
+      });
+      
+      if (response.success) {
+        showMessage('success', 'Indiamart configuration saved successfully');
+      }
+    } catch (error) {
+      showMessage('error', error.message || 'Failed to save Indiamart configuration');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveTradeIndia = async () => {
+    setSaving(true);
+    try {
+      const response = await configurationService.saveTradeIndia({
+        apiKey: tradeindiaSettings.apiKey,
+        apiSecret: tradeindiaSettings.apiSecret,
+        accessToken: tradeindiaSettings.accessToken,
+        refreshToken: tradeindiaSettings.refreshToken,
+        tokenExpiresAt: tradeindiaSettings.tokenExpiresAt || null,
+        webhookUrl: tradeindiaSettings.webhookUrl
+      });
+      
+      if (response.success) {
+        showMessage('success', 'TradeIndia configuration saved successfully');
+      }
+    } catch (error) {
+      showMessage('error', error.message || 'Failed to save TradeIndia configuration');
     } finally {
       setSaving(false);
     }
@@ -582,6 +682,208 @@ const Configuration = () => {
     </div>
   );
 
+  const renderIndiamartSettings = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <Key className="w-5 h-5 mr-2 text-orange-600" />
+          Indiamart API Configuration
+        </h3>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                API Key <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                value={indiamartSettings.apiKey}
+                onChange={(e) => handleIndiamartChange('apiKey', e.target.value)}
+                placeholder="Enter Indiamart API Key"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                API Secret <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                value={indiamartSettings.apiSecret}
+                onChange={(e) => handleIndiamartChange('apiSecret', e.target.value)}
+                placeholder="Enter Indiamart API Secret"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Access Token
+              </label>
+              <input
+                type="password"
+                value={indiamartSettings.accessToken}
+                onChange={(e) => handleIndiamartChange('accessToken', e.target.value)}
+                placeholder="Access Token (auto-generated)"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Refresh Token
+              </label>
+              <input
+                type="password"
+                value={indiamartSettings.refreshToken}
+                onChange={(e) => handleIndiamartChange('refreshToken', e.target.value)}
+                placeholder="Refresh Token (auto-generated)"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Token Expires At
+              </label>
+              <input
+                type="datetime-local"
+                value={indiamartSettings.tokenExpiresAt}
+                onChange={(e) => handleIndiamartChange('tokenExpiresAt', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Webhook URL
+              </label>
+              <input
+                type="url"
+                value={indiamartSettings.webhookUrl}
+                onChange={(e) => handleIndiamartChange('webhookUrl', e.target.value)}
+                placeholder="https://your-domain.com/webhook/indiamart"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={handleSaveIndiamart}
+          disabled={saving}
+          className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          <span>{saving ? 'Saving...' : 'Save Config'}</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderTradeIndiaSettings = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <Key className="w-5 h-5 mr-2 text-blue-600" />
+          TradeIndia API Configuration
+        </h3>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                API Key <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                value={tradeindiaSettings.apiKey}
+                onChange={(e) => handleTradeIndiaChange('apiKey', e.target.value)}
+                placeholder="Enter TradeIndia API Key"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                API Secret <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                value={tradeindiaSettings.apiSecret}
+                onChange={(e) => handleTradeIndiaChange('apiSecret', e.target.value)}
+                placeholder="Enter TradeIndia API Secret"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Access Token
+              </label>
+              <input
+                type="password"
+                value={tradeindiaSettings.accessToken}
+                onChange={(e) => handleTradeIndiaChange('accessToken', e.target.value)}
+                placeholder="Access Token (auto-generated)"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Refresh Token
+              </label>
+              <input
+                type="password"
+                value={tradeindiaSettings.refreshToken}
+                onChange={(e) => handleTradeIndiaChange('refreshToken', e.target.value)}
+                placeholder="Refresh Token (auto-generated)"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Token Expires At
+              </label>
+              <input
+                type="datetime-local"
+                value={tradeindiaSettings.tokenExpiresAt}
+                onChange={(e) => handleTradeIndiaChange('tokenExpiresAt', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Webhook URL
+              </label>
+              <input
+                type="url"
+                value={tradeindiaSettings.webhookUrl}
+                onChange={(e) => handleTradeIndiaChange('webhookUrl', e.target.value)}
+                placeholder="https://your-domain.com/webhook/tradeindia"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={handleSaveTradeIndia}
+          disabled={saving}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          <span>{saving ? 'Saving...' : 'Save Config'}</span>
+        </button>
+      </div>
+    </div>
+  );
+
   const renderCloudinarySettings = () => (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -709,7 +1011,9 @@ const Configuration = () => {
               { id: 'smtp', label: 'SMTP Settings', icon: Server },
               { id: 'templates', label: 'Email Templates', icon: Mail },
               { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
-              { id: 'cloudinary', label: 'File Upload', icon: Cloud }
+              { id: 'cloudinary', label: 'File Upload', icon: Cloud },
+              { id: 'indiamart', label: 'Indiamart', icon: Key },
+              { id: 'tradeindia', label: 'TradeIndia', icon: Key }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -732,6 +1036,8 @@ const Configuration = () => {
           {activeTab === 'templates' && renderEmailTemplates()}
           {activeTab === 'whatsapp' && renderWhatsappSettings()}
           {activeTab === 'cloudinary' && renderCloudinarySettings()}
+          {activeTab === 'indiamart' && renderIndiamartSettings()}
+          {activeTab === 'tradeindia' && renderTradeIndiaSettings()}
         </div>
       </div>
 
