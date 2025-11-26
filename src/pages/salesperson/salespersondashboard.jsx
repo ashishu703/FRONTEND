@@ -9,6 +9,8 @@ import paymentService from '../../api/admin_api/paymentService'
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService'
 import departmentUserService from '../../api/admin_api/departmentUserService'
 
+const MS_IN_DAY = 24 * 60 * 60 * 1000
+
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")
 }
@@ -770,6 +772,16 @@ export default function DashboardContent({ isDarkMode = false }) {
   })
   const [loadingMetrics, setLoadingMetrics] = useState(false)
 
+  const getCalendarDaysRemaining = (targetDate) => {
+    if (!targetDate || isNaN(targetDate.getTime())) return 0
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const endDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate())
+    if (endDay < today) return 0
+    const diffTime = endDay - today
+    return Math.max(0, Math.round(diffTime / MS_IN_DAY))
+  }
+
   // Fetch real leads from API
   const fetchLeads = async () => {
     try {
@@ -1458,21 +1470,14 @@ export default function DashboardContent({ isDarkMode = false }) {
   // Calculate days left based on target period
   const daysLeftInTarget = (() => {
     if (!userTarget.targetEndDate) {
-      // If no target end date, calculate days left in current month
       const now = new Date()
       const last = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      return Math.max(0, last.getDate() - now.getDate())
+      return getCalendarDaysRemaining(last)
     }
     
-    const now = new Date()
     const endDate = new Date(userTarget.targetEndDate)
     endDate.setHours(23, 59, 59, 999)
-    
-    if (endDate < now) return 0
-    
-    const diffTime = endDate - now
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return Math.max(0, diffDays)
+    return getCalendarDaysRemaining(endDate)
   })()
   
   // Use actual user target data

@@ -5,6 +5,18 @@ import departmentHeadService from '../../api/admin_api/departmentHeadService';
 import { useAuth } from '../../context/AuthContext';
 import toastManager from '../../utils/ToastManager';
 
+const MS_IN_DAY = 24 * 60 * 60 * 1000;
+
+const calculateDaysFromToday = (targetDate) => {
+  if (!targetDate || isNaN(targetDate.getTime())) return 0;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+  if (endDay < today) return 0;
+  const diffTime = endDay - today;
+  return Math.max(0, Math.round(diffTime / MS_IN_DAY));
+};
+
 const SalesDepartmentUser = ({ setActiveView }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const { user: currentUser } = useAuth();
@@ -73,9 +85,6 @@ const SalesDepartmentUser = ({ setActiveView }) => {
           let expirationDate = null;
           if (headStartDate) {
             const startDate = new Date(headStartDate);
-            const now = new Date();
-            
-            // Calculate month end from start date (target expires at end of the month it started)
             const monthEnd = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
             monthEnd.setHours(23, 59, 59, 999);
             
@@ -87,12 +96,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
             setTargetExpirationDate(expirationDate);
             
             // Calculate days remaining until month end
-            if (monthEnd < now) {
-              daysRemaining = 0;
-            } else {
-              const diffTime = monthEnd - now;
-              daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            }
+            daysRemaining = calculateDaysFromToday(monthEnd);
           } else {
             setTargetExpirationDate(null);
           }
@@ -137,9 +141,6 @@ const SalesDepartmentUser = ({ setActiveView }) => {
           
           if (headStartDate) {
             const startDate = new Date(headStartDate);
-            const now = new Date();
-            
-            // Calculate month end from start date (target expires at end of the month it started)
             const monthEnd = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
             monthEnd.setHours(23, 59, 59, 999);
             
@@ -151,12 +152,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
             setTargetExpirationDate(expirationDate);
             
             // Calculate days remaining until month end
-            if (monthEnd < now) {
-              daysRemaining = 0;
-            } else {
-              const diffTime = monthEnd - now;
-              daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            }
+            daysRemaining = calculateDaysFromToday(monthEnd);
           } else {
             setTargetExpirationDate(null);
           }
@@ -307,37 +303,21 @@ const SalesDepartmentUser = ({ setActiveView }) => {
         let targetDaysRemaining = null;
         if (u.targetEndDate || u.target_end_date) {
           const endDate = new Date(u.targetEndDate || u.target_end_date);
-          const now = new Date();
           endDate.setHours(23, 59, 59, 999);
-          
-          if (endDate < now) {
-            targetDaysRemaining = 0;
-          } else {
-            const diffTime = endDate - now;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            targetDaysRemaining = Math.max(0, diffDays);
-          }
+          targetDaysRemaining = calculateDaysFromToday(endDate);
         } else if (u.targetStartDate || u.target_start_date) {
           // If no target_end_date, calculate from target_start_date (month end logic)
           const startDate = new Date(u.targetStartDate || u.target_start_date);
-          const now = new Date();
           
           // Calculate month end from start date
           const monthEnd = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
           monthEnd.setHours(23, 59, 59, 999);
-          
-          if (monthEnd < now) {
-            targetDaysRemaining = 0;
-          } else {
-            const diffTime = monthEnd - now;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            targetDaysRemaining = Math.max(0, diffDays);
-          }
+          targetDaysRemaining = calculateDaysFromToday(monthEnd);
         } else {
           // If no target dates at all, calculate days left in current month (like dashboard)
           const now = new Date();
           const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-          targetDaysRemaining = Math.max(0, last.getDate() - now.getDate());
+          targetDaysRemaining = calculateDaysFromToday(last);
         }
         
         return {
