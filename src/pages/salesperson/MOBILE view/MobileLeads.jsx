@@ -379,16 +379,10 @@ const MobileLeads = () => {
           break;
           
         case 'Lead Source':
-          if (value && !leadSources.includes(value)) {
-            errors.push(`Lead Source must be one of: ${leadSources.join(', ')}`);
-          }
           data.leadSource = value || 'N/A';
           break;
           
         case 'Customer Type':
-          if (value && !customerTypes.includes(value)) {
-            errors.push(`Customer Type must be one of: ${customerTypes.join(', ')}`);
-          }
           data.customerType = value || 'N/A';
           break;
           

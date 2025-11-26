@@ -86,11 +86,11 @@ function AppContent() {
         </div>
       )
     }
-    // If path is /support, show support page
+    // Support page is now protected - redirect to login if not authenticated
     if (currentPath === '/support' || currentPath.startsWith('/support')) {
       return (
         <div className="App">
-          <SupportPage />
+          <LoginPage />
         </div>
       )
     }
@@ -98,6 +98,15 @@ function AppContent() {
     return (
       <div className="App">
         <AnocabLanding />
+      </div>
+    )
+  }
+  
+  // Handle support route for authenticated users
+  if (shouldShowDashboard && (currentPath === '/support' || currentPath.startsWith('/support'))) {
+    return (
+      <div className="App">
+        <SupportPage />
       </div>
     )
   }

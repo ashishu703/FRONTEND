@@ -446,21 +446,23 @@ function LineChart({ data, height = 250, isDarkMode = false }) {
   const [hoverIndex, setHoverIndex] = useState(null)
   const maxValue = Math.max(...data.map(item => item.value), 1)
   const padding = 20
+  const topPadding = 20
+  const bottomPadding = 40
   
   // Calculate points for the line
   const points = data.map((item, index) => {
-    const x = ((index / (data.length - 1 || 1)) * (100 - (padding * 2) / 10)) + (padding / 10)
-    const y = 100 - ((item.value / maxValue) * (100 - (padding * 2)))
+    const x = data.length > 1 ? ((index / (data.length - 1)) * (100 - padding * 2)) + padding : 50
+    const y = 100 - bottomPadding - ((item.value / maxValue) * (100 - topPadding - bottomPadding))
     return { xPercent: x, yPercent: y, value: item.value, originalValue: item.originalValue ?? item.value, label: item.label }
   })
 
   const pathData = points.map((point, index) => 
-    `${index === 0 ? 'M' : 'L'} ${point.xPercent}% ${point.yPercent}%`
+    `${index === 0 ? 'M' : 'L'} ${point.xPercent} ${point.yPercent}`
   ).join(' ')
 
   return (
     <div className="w-full relative overflow-hidden" style={{ height, maxWidth: '100%' }}>
-      <svg className="absolute w-full h-full" preserveAspectRatio="none" style={{ maxWidth: '100%' }}>
+      <svg className="absolute w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ maxWidth: '100%' }}>
         {/* Grid lines */}
         {[0, 1, 2, 3, 4].map(i => (
           <line
@@ -568,7 +570,7 @@ function MultiLineChart({ dataSeries = [], height = 250, isDarkMode = false }) {
       }
       const valueRatio = maxValue > 0 ? (item.value / maxValue) : 0
       const yPercent = 100 - bottomPadding - (valueRatio * (100 - topPadding - bottomPadding))
-      return { x: `${xPercent}%`, y: `${yPercent}%`, value: item.value }
+      return { x: xPercent, y: yPercent, xPercent, yPercent, value: item.value }
     })
 
     const pathData = points.map((point, index) => 

@@ -10,7 +10,8 @@ import {
   CheckCircle,
   BookOpen,
   Building2,
-  UserPlus
+  UserPlus,
+  HelpCircle
 } from 'lucide-react';
 
 const HRDepartmentSidebar = ({ activeView, setActiveView }) => {
@@ -56,6 +57,17 @@ const HRDepartmentSidebar = ({ activeView, setActiveView }) => {
           );
         })}
       </nav>
+      
+      {/* Support Button */}
+      <div className="p-4 border-t border-gray-200">
+        <button
+          onClick={() => window.location.href = '/support'}
+          className="w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+        >
+          <HelpCircle className="w-5 h-5 mr-3" />
+          <span className="font-medium">Support</span>
+        </button>
+      </div>
     </div>
   );
 };
