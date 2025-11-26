@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, CreditCard, LogOut, Shield } from 'lucide-react';
+import { BarChart3, CreditCard, LogOut, Shield, HelpCircle } from 'lucide-react';
 
 const menuItems = [
   {
@@ -57,6 +57,20 @@ const AccountsSidebar = ({ activeView, setActiveView, onLogout, userType = 'acco
           );
         })}
       </nav>
+      
+      {/* Support Button */}
+      <div className="px-4 py-3 border-t border-slate-200">
+        <button
+          onClick={() => window.location.href = '/support'}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition text-slate-600 hover:bg-slate-100"
+        >
+          <HelpCircle className="w-5 h-5" />
+          <div>
+            <p className="text-sm font-semibold">Support</p>
+            <p className="text-xs text-slate-500">Get help & assistance</p>
+          </div>
+        </button>
+      </div>
 
       <div className="px-4 py-5 border-t border-slate-200">
         <button

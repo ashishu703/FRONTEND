@@ -1,4 +1,5 @@
-import { Star, Target, Zap, Globe, BarChart3, Headphones, Plug } from "lucide-react"
+import { Star, Target, Zap, Globe, BarChart3, Headphones, Plug, ChevronDown, ChevronUp, Mail, Phone, MapPin } from "lucide-react"
+import { useState } from "react"
 import AshvayChat from "../components/AshvayChat"
 
 const ANOCAB_LOGO = "https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
@@ -38,11 +39,81 @@ const FEATURES = [
   { icon: Plug, title: "Seamless Integration", desc: "Connect Anocab with 500+ business tools and applications. Create a unified tech stack that works for your business." },
 ]
 
+const FAQS = [
+  {
+    question: "What is Anocab and how does it work?",
+    answer: "Anocab is a comprehensive Customer Relationship Management (CRM) platform designed to help businesses build lasting customer relationships. It provides tools for lead management, customer engagement, sales automation, and analytics to help you connect better, manage smarter, and grow faster."
+  },
+  {
+    question: "Is there a free trial available?",
+    answer: "Yes! We offer a free trial so you can experience all the features of Anocab before making a commitment. Sign up today and start your free trial - no credit card required."
+  },
+  {
+    question: "What are the different pricing plans?",
+    answer: "We offer three main plans: Standard ($12/user/month) for small businesses, Premium ($29/user/month) for growing teams with advanced features, and Custom pricing for enterprises with specific requirements. All plans include our core CRM features."
+  },
+  {
+    question: "Can I integrate Anocab with other business tools?",
+    answer: "Absolutely! Anocab offers seamless integration with 500+ business tools and applications. This includes email platforms, accounting software, marketing tools, and more. Our API access is available in Premium and Custom plans."
+  },
+  {
+    question: "What kind of support do you provide?",
+    answer: "We provide 24/7 world-class support across all plans. Standard plan includes email support, while Premium and Custom plans include priority support with faster response times. Our dedicated support team is always ready to help you succeed."
+  },
+  {
+    question: "Is my data secure with Anocab?",
+    answer: "Security is our top priority. We use enterprise-grade encryption, regular security audits, and comply with industry standards to ensure your data is safe and secure. We also offer on-premise deployment options for Custom plans."
+  },
+  {
+    question: "Can I customize Anocab for my business needs?",
+    answer: "Yes! Our Custom plan offers extensive customization options including custom features development, white-label options, and tailored workflows. Our team works closely with you to create a solution that perfectly fits your business."
+  },
+  {
+    question: "How do I get started?",
+    answer: "Getting started is easy! Simply click the 'Get Started' button, sign up for your free trial, and you'll be guided through a quick setup process. Our onboarding team is also available to help you get up and running quickly."
+  }
+]
+
 export default function AnocabLanding() {
+  const [openFaqIndex, setOpenFaqIndex] = useState(null)
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    email: "",
+    company: "",
+    phone: "",
+    message: ""
+  })
+  const [formSubmitted, setFormSubmitted] = useState(false)
+
   const handleNavigation = (path) => window.location.href = path
   const scrollToPricing = () => {
     const pricingSection = document.getElementById('pricing-section')
     pricingSection?.scrollIntoView({ behavior: 'smooth' })
+  }
+  
+  const scrollToContact = () => {
+    const contactSection = document.getElementById('contact-section')
+    contactSection?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const toggleFaq = (index) => {
+    setOpenFaqIndex(openFaqIndex === index ? null : index)
+  }
+
+  const handleContactFormChange = (e) => {
+    setContactForm({
+      ...contactForm,
+      [e.target.name]: e.target.value
+    })
+  }
+
+  const handleContactSubmit = (e) => {
+    e.preventDefault()
+    // Here you would typically send the form data to your backend
+    console.log('Contact form submitted:', contactForm)
+    setFormSubmitted(true)
+    setContactForm({ name: "", email: "", company: "", phone: "", message: "" })
+    setTimeout(() => setFormSubmitted(false), 5000)
   }
 
   return (
@@ -66,9 +137,12 @@ export default function AnocabLanding() {
           </button>
           <button 
             className="rounded-full bg-transparent border border-gray-300 px-4 py-2 hover:bg-gray-50 transition-colors"
-            onClick={() => handleNavigation('/support')}
+            onClick={() => {
+              const faqSection = document.getElementById('faq-section')
+              faqSection?.scrollIntoView({ behavior: 'smooth' })
+            }}
           >
-            Support
+            FAQs
           </button>
           <button 
             className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 transition-colors"
@@ -391,12 +465,188 @@ export default function AnocabLanding() {
                 </ul>
                 <button 
                   className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white font-bold py-3 rounded-lg transition-all"
-                  onClick={() => handleNavigation('/support')}
+                  onClick={scrollToContact}
                 >
                   Contact Sales
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Form Section */}
+      <section id="contact-section" className="bg-white px-8 py-16 border-b border-gray-200">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center space-y-4 mb-12">
+            <h2 className="text-4xl font-bold text-gray-900">Get in Touch</h2>
+            <p className="text-gray-700 text-lg">Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-12">
+            {/* Contact Information */}
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <h3 className="text-2xl font-bold text-gray-900">Contact Information</h3>
+                <p className="text-gray-700">Fill out the form or reach out to us directly using the contact information below.</p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-1">Email</h4>
+                    <p className="text-gray-700">info@anocab.com</p>
+                    <p className="text-gray-700">support@anocab.com</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-1">Phone</h4>
+                    <p className="text-gray-700">+1 (555) 123-4567</p>
+                    <p className="text-gray-700">+1 (555) 987-6543</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-1">Address</h4>
+                    <p className="text-gray-700">123 Business Street, Suite 100</p>
+                    <p className="text-gray-700">City, State 12345, Country</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Form */}
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-8 border-2 border-blue-200">
+              <form onSubmit={handleContactSubmit} className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2">Full Name *</label>
+                    <input
+                      type="text"
+                      id="name"
+                      name="name"
+                      value={contactForm.name}
+                      onChange={handleContactFormChange}
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="John Doe"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-semibold text-gray-900 mb-2">Email *</label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={contactForm.email}
+                      onChange={handleContactFormChange}
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="john@company.com"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="company" className="block text-sm font-semibold text-gray-900 mb-2">Company</label>
+                    <input
+                      type="text"
+                      id="company"
+                      name="company"
+                      value={contactForm.company}
+                      onChange={handleContactFormChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Company Name"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-semibold text-gray-900 mb-2">Phone</label>
+                    <input
+                      type="tel"
+                      id="phone"
+                      name="phone"
+                      value={contactForm.phone}
+                      onChange={handleContactFormChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="+1 (555) 000-0000"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="message" className="block text-sm font-semibold text-gray-900 mb-2">Message *</label>
+                  <textarea
+                    id="message"
+                    name="message"
+                    value={contactForm.message}
+                    onChange={handleContactFormChange}
+                    required
+                    rows={5}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Tell us how we can help you..."
+                  />
+                </div>
+
+                {formSubmitted && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-green-800 font-semibold">Thank you! Your message has been sent. We'll get back to you soon.</p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 rounded-lg transition-all"
+                >
+                  Send Message
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQs Section */}
+      <section id="faq-section" className="bg-gradient-to-br from-blue-50 via-cyan-50 to-purple-50 px-8 py-16 border-b border-gray-200">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center space-y-4 mb-12">
+            <h2 className="text-4xl font-bold text-gray-900">Frequently Asked Questions</h2>
+            <p className="text-gray-700 text-lg">Find answers to common questions about Anocab</p>
+          </div>
+
+          <div className="space-y-4">
+            {FAQS.map((faq, index) => (
+              <div key={index} className="bg-white rounded-lg border-2 border-blue-200 shadow-sm overflow-hidden">
+                <button
+                  onClick={() => toggleFaq(index)}
+                  className="w-full flex items-center justify-between p-6 text-left hover:bg-blue-50 transition-colors"
+                >
+                  <span className="text-lg font-semibold text-gray-900 pr-4">{faq.question}</span>
+                  {openFaqIndex === index ? (
+                    <ChevronUp className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                  )}
+                </button>
+                {openFaqIndex === index && (
+                  <div className="px-6 pb-6">
+                    <p className="text-gray-700 leading-relaxed">{faq.answer}</p>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </section>

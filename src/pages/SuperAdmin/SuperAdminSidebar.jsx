@@ -11,7 +11,8 @@ import {
   Menu,
   X,
   LogOut,
-  Calendar
+  Calendar,
+  HelpCircle
 } from 'lucide-react';
 
 const Sidebar = ({ onLogout, activeView, setActiveView }) => {
@@ -241,6 +242,16 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
         </ul>
       </nav>
 
+      {/* Support Button */}
+      <div className="p-4 border-t border-gray-200 mt-auto">
+        <button 
+          onClick={() => window.location.href = '/support'}
+          className={`w-full flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors`}
+        >
+          <HelpCircle className="w-5 h-5" />
+          {isExpanded && <span className="text-sm font-medium">Support</span>}
+        </button>
+      </div>
 
       {/* Logout Button */}
       <div className="p-4 border-t border-gray-200">

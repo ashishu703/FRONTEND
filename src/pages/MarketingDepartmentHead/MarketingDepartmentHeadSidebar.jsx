@@ -13,7 +13,8 @@ import {
   Calendar,
   TrendingUp,
   Package,
-  Megaphone
+  Megaphone,
+  HelpCircle
 } from 'lucide-react';
 
 const MarketingDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => {
@@ -179,8 +180,19 @@ const MarketingDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView })
         </ul>
       </nav>
 
-      {/* Logout Button */}
+      {/* Support Button */}
       <div className="p-4 border-t border-gray-200 mt-auto">
+        <button 
+          onClick={() => window.location.href = '/support'}
+          className={`w-full flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors`}
+        >
+          <HelpCircle className="w-5 h-5" />
+          {isExpanded && <span className="text-sm font-medium">Support</span>}
+        </button>
+      </div>
+
+      {/* Logout Button */}
+      <div className="p-4 border-t border-gray-200">
         <button 
           onClick={onLogout}
           className="w-full flex items-center space-x-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
