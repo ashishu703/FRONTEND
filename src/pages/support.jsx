@@ -1,111 +1,80 @@
 import { useState } from "react"
+import { Clock, CheckCircle, Circle } from "lucide-react"
+import AshvayChat from "../components/AshvayChat"
 
-const initialTickets = [
-  {
-    id: "TKT-001234",
-    status: "in-progress",
-    subject: "Login issues on mobile app",
-    department: "Technical Support",
-    date: "2024-01-15",
-    priority: "High",
-  },
-  {
-    id: "TKT-001235",
-    status: "resolved",
-    subject: "Billing inquiry",
-    department: "Billing",
-    date: "2024-01-10",
-    priority: "Medium",
-  },
-]
+const ANOCAB_LOGO = "https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
+const DEPARTMENTS = ["IT Department", "Accounts Department", "Sales", "Marketing Sales", "Production", "Gate Entry", "Transportation Department"]
+const PRIORITIES = ["low", "medium", "high", "critical"]
+const INITIAL_FORM_DATA = { name: "", email: "", phone: "", department: "", priority: "", subject: "", description: "", screenshot: null }
+
+const STATUS_CONFIG = {
+  pending: { color: "bg-orange-100 text-orange-800", icon: Circle, iconColor: "text-orange-600" },
+  inprogress: { color: "bg-blue-100 text-blue-800", icon: Clock, iconColor: "text-blue-600" },
+  resolved: { color: "bg-green-100 text-green-800", icon: CheckCircle, iconColor: "text-green-600" }
+}
 
 export default function SupportPage() {
-  const ANOCAB_LOGO =
-    "https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
   const [activeTab, setActiveTab] = useState("report")
-  const [tickets, setTickets] = useState(initialTickets)
-
-  const handleNavigation = (path) => {
-    window.location.href = path
-  }
-
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    department: "",
-    priority: "",
-    subject: "",
-    description: "",
-    screenshot: null,
-  })
-
+  const [tickets, setTickets] = useState([])
+  const [trackTicketId, setTrackTicketId] = useState("")
+  const [trackedTicket, setTrackedTicket] = useState(null)
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA)
   const [ticketNumber, setTicketNumber] = useState("")
 
-  const handleInputChange = (event) => {
-    const { name, value } = event.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+  const handleNavigation = (path) => window.location.href = path
+
+  const updateFormData = (field, value) => setFormData(prev => ({ ...prev, [field]: value }))
+  
+  const handleInputChange = (e) => updateFormData(e.target.name, e.target.value)
+  
+  const handleSelectChange = (field, value) => updateFormData(field, value)
+  
+  const handleFileChange = (e) => {
+    if (e.target.files?.[0]) updateFormData("screenshot", e.target.files[0])
   }
 
-  const handleSelectChange = (fieldName, value) => {
-    setFormData((prev) => ({ ...prev, [fieldName]: value }))
-  }
+  const generateTicketId = () => `TKT-${String(Math.floor(Math.random() * 1000000)).padStart(6, "0")}`
 
-  const handleFileChange = (event) => {
-    if (event.target.files && event.target.files[0]) {
-      setFormData((prev) => ({ ...prev, screenshot: event.target.files[0] }))
-    }
-  }
-
-  const handleSubmit = (event) => {
-    event.preventDefault()
-    const newTicketId = `TKT-${String(Math.floor(Math.random() * 1000000)).padStart(6, "0")}`
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    const newTicketId = generateTicketId()
     setTicketNumber(newTicketId)
 
     const newTicket = {
       id: newTicketId,
-      status: "open",
-      subject: formData.subject,
-      department: formData.department,
+      status: "pending",
+      ...formData,
       date: new Date().toISOString().split("T")[0],
-      priority: formData.priority,
+      statusHistory: [{
+        status: "pending",
+        timestamp: new Date().toISOString(),
+        message: "Ticket created and submitted"
+      }]
     }
 
-    setTickets((prev) => [newTicket, ...prev])
-
-    // Reset form
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      department: "",
-      priority: "",
-      subject: "",
-      description: "",
-      screenshot: null,
-    })
-
-    // Show success message
+    setTickets(prev => [newTicket, ...prev])
+    setFormData(INITIAL_FORM_DATA)
     setTimeout(() => setTicketNumber(""), 5000)
   }
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "open":
-        return "bg-red-100 text-red-800"
-      case "in-progress":
-        return "bg-yellow-100 text-yellow-800"
-      case "resolved":
-        return "bg-green-100 text-green-800"
-      case "closed":
-        return "bg-gray-100 text-gray-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
+  const handleTrackTicket = () => {
+    if (!trackTicketId.trim()) return
+    const ticket = tickets.find(t => t.id.toUpperCase() === trackTicketId.toUpperCase().trim())
+    setTrackedTicket(ticket || null)
   }
 
+  const getStatusConfig = (status) => STATUS_CONFIG[status] || { color: "bg-gray-100 text-gray-800", icon: Circle, iconColor: "text-gray-600" }
+  
+  const getStatusColor = (status) => getStatusConfig(status).color
+  
+  const getStatusIcon = (status) => {
+    const { icon: Icon, iconColor } = getStatusConfig(status)
+    return <Icon className={`w-5 h-5 ${iconColor}`} />
+  }
+
+
   return (
-    <div className="w-full min-h-screen bg-gray-50">
+    <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-purple-50">
       {/* Navigation */}
       <nav className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between shadow-sm">
         <div
@@ -119,7 +88,6 @@ export default function SupportPage() {
             height={48}
             className="object-contain"
           />
-          <span className="text-2xl font-bold text-gray-900">Anocab</span>
         </div>
         <button 
           className="rounded-full bg-transparent border border-gray-300 px-4 py-2 hover:bg-gray-50 transition-colors"
@@ -130,24 +98,27 @@ export default function SupportPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-12 text-center">
+      <section className="bg-gradient-to-r from-blue-100 to-cyan-100 px-8 py-6 text-center">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl font-bold text-white mb-4">Support & Ticket System</h1>
-          <p className="text-blue-100 text-lg">Report issues, track tickets, and get help from our support team</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Support & Ticket System</h1>
+          <p className="text-gray-600">Report issues, track tickets, and get help from our support team</p>
         </div>
       </section>
+
+      {/* Ashvay Chat Component */}
+      <AshvayChat />
 
       {/* Main Content */}
       <section className="px-8 py-12">
         <div className="max-w-6xl mx-auto">
           {/* Tabs */}
-          <div className="flex gap-4 mb-8 border-b border-gray-200">
+          <div className="flex gap-4 mb-8 border-b-2 border-purple-200">
             <button
               onClick={() => setActiveTab("report")}
               className={`px-6 py-3 font-semibold border-b-2 transition-all ${
                 activeTab === "report"
-                  ? "text-blue-600 border-blue-600"
-                  : "text-gray-600 border-transparent hover:text-gray-900"
+                  ? "text-purple-600 border-purple-600"
+                  : "text-gray-600 border-transparent hover:text-purple-500"
               }`}
             >
               Report Issue
@@ -156,8 +127,8 @@ export default function SupportPage() {
               onClick={() => setActiveTab("status")}
               className={`px-6 py-3 font-semibold border-b-2 transition-all ${
                 activeTab === "status"
-                  ? "text-blue-600 border-blue-600"
-                  : "text-gray-600 border-transparent hover:text-gray-900"
+                  ? "text-purple-600 border-purple-600"
+                  : "text-gray-600 border-transparent hover:text-purple-500"
               }`}
             >
               Track Tickets
@@ -169,7 +140,7 @@ export default function SupportPage() {
             <div className="grid grid-cols-3 gap-8">
               {/* Form */}
               <div className="col-span-2">
-                <div className="p-8 shadow-lg bg-white rounded-lg">
+                <div className="p-8 shadow-xl bg-gradient-to-br from-white to-blue-50 rounded-2xl border-2 border-blue-200">
                   <h2 className="text-2xl font-bold text-gray-900 mb-6">Report a New Issue</h2>
 
                   {ticketNumber && (
@@ -229,16 +200,10 @@ export default function SupportPage() {
                         <select
                           value={formData.department}
                           onChange={(e) => handleSelectChange("department", e.target.value)}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                         >
                           <option value="">Select Department</option>
-                          <option value="technical">Technical Support</option>
-                          <option value="billing">Billing & Payments</option>
-                          <option value="sales">Sales Inquiry</option>
-                          <option value="feature">Feature Request</option>
-                          <option value="account">Account & Access</option>
-                          <option value="integration">Integration Help</option>
-                          <option value="other">Other</option>
+                          {DEPARTMENTS.map(dept => <option key={dept} value={dept}>{dept}</option>)}
                         </select>
                       </div>
                       <div>
@@ -249,10 +214,7 @@ export default function SupportPage() {
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="">Select Priority</option>
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                          <option value="critical">Critical</option>
+                          {PRIORITIES.map(priority => <option key={priority} value={priority}>{priority.charAt(0).toUpperCase() + priority.slice(1)}</option>)}
                         </select>
                       </div>
                     </div>
@@ -320,7 +282,7 @@ export default function SupportPage() {
                     {/* Submit Button */}
                     <button
                       type="submit"
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-all"
+                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 rounded-lg transition-all shadow-lg"
                     >
                       Submit Support Ticket
                     </button>
@@ -328,42 +290,48 @@ export default function SupportPage() {
                 </div>
               </div>
 
-              {/* Sidebar Info */}
-              <div className="col-span-1 space-y-6">
-                <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Help</h3>
-                  <ul className="space-y-3 text-sm text-gray-700">
-                    <li className="flex gap-2">
-                      <span className="text-blue-600 font-bold">•</span>
-                      <span>Provide as much detail as possible to help us resolve faster</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-blue-600 font-bold">•</span>
-                      <span>Screenshots help us understand the issue better</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-blue-600 font-bold">•</span>
-                      <span>Critical issues get priority response within 1 hour</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-blue-600 font-bold">•</span>
-                      <span>You'll receive updates via email</span>
-                    </li>
-                  </ul>
-                </div>
+              {/* Sidebar Info - Merged */}
+              <div className="col-span-1">
+                <div className="p-6 bg-gradient-to-br from-blue-100 to-cyan-100 border-2 border-blue-300 rounded-xl shadow-lg">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Help & Support</h3>
+                  
+                  {/* Quick Help Section */}
+                  <div className="mb-6">
+                    <h4 className="text-sm font-semibold text-gray-800 mb-3">Tips:</h4>
+                    <ul className="space-y-2 text-sm text-gray-700">
+                      <li className="flex gap-2">
+                        <span className="text-blue-600 font-bold">•</span>
+                        <span>Provide as much detail as possible to help us resolve faster</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-blue-600 font-bold">•</span>
+                        <span>Screenshots help us understand the issue better</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-blue-600 font-bold">•</span>
+                        <span>Critical issues get priority response within 1 hour</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-blue-600 font-bold">•</span>
+                        <span>You'll receive updates via email</span>
+                      </li>
+                    </ul>
+                  </div>
 
-                <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">Support Hours</h3>
-                  <div className="space-y-2 text-sm text-gray-700">
-                    <p>
-                      <span className="font-semibold">Technical:</span> 24/7
-                    </p>
-                    <p>
-                      <span className="font-semibold">Sales:</span> 9am - 6pm EST
-                    </p>
-                    <p>
-                      <span className="font-semibold">Billing:</span> 9am - 5pm EST
-                    </p>
+                  {/* Support Hours Section */}
+                  <div className="border-t-2 border-blue-200 pt-4">
+                    <h4 className="text-sm font-semibold text-gray-800 mb-3">Support Hours:</h4>
+                    <div className="space-y-2 text-sm text-gray-700">
+                      <p>
+                        <span className="font-semibold">AI Support (Ashvay):</span> 24/7
+                      </p>
+                      <p>
+                        <span className="font-semibold">Human Support:</span> Mon-Sat (6 days)
+                      </p>
+                      <p>
+                        <span className="font-semibold">All Departments:</span> Mon-Sat (6 days)
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -372,67 +340,110 @@ export default function SupportPage() {
 
           {/* Track Tickets Tab */}
           {activeTab === "status" && (
-            <div>
-              <div className="p-8 shadow-lg bg-white rounded-lg">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Support Tickets</h2>
-
-                {tickets.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-600 text-lg">No support tickets found</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-100">
-                        <tr className="border-b border-gray-300">
-                          <th className="text-left py-3 px-4 font-semibold text-gray-900">Ticket ID</th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-900">Subject</th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-900">Department</th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-900">Status</th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-900">Priority</th>
-                          <th className="text-left py-3 px-4 font-semibold text-gray-900">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tickets.map((ticket) => (
-                          <tr key={ticket.id} className="border-b border-gray-200 hover:bg-gray-50">
-                            <td className="py-4 px-4">
-                              <span className="text-blue-600 font-semibold hover:underline cursor-pointer">
-                                {ticket.id}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4 text-gray-900">{ticket.subject}</td>
-                            <td className="py-4 px-4 text-gray-600">{ticket.department}</td>
-                            <td className="py-4 px-4">
-                              <span
-                                className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(ticket.status)}`}
-                              >
-                                {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4">
-                              <span
-                                className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                  ticket.priority === "Critical"
-                                    ? "bg-red-100 text-red-800"
-                                    : ticket.priority === "High"
-                                      ? "bg-orange-100 text-orange-800"
-                                      : ticket.priority === "Medium"
-                                        ? "bg-yellow-100 text-yellow-800"
-                                        : "bg-green-100 text-green-800"
-                                }`}
-                              >
-                                {ticket.priority}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4 text-gray-600">{ticket.date}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+            <div className="space-y-6">
+              {/* Ticket Search */}
+              <div className="p-6 bg-white rounded-2xl shadow-lg border border-purple-200">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Track Your Ticket</h2>
+                <div className="flex gap-4">
+                  <input
+                    type="text"
+                    placeholder="Enter Ticket ID (e.g., TKT-123456)"
+                    value={trackTicketId}
+                    onChange={(e) => setTrackTicketId(e.target.value)}
+                    className="flex-1 px-4 py-3 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                  <button
+                    onClick={handleTrackTicket}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-3 rounded-lg transition-all"
+                  >
+                    Track
+                  </button>
+                </div>
               </div>
+
+              {/* Timeline View */}
+              {trackedTicket ? (
+                <div className="p-8 bg-white rounded-2xl shadow-lg border border-blue-200">
+                  <div className="mb-6">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Ticket Details</h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-semibold text-gray-700">Ticket ID:</span>
+                        <span className="ml-2 text-purple-600 font-bold">{trackedTicket.id}</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-700">Subject:</span>
+                        <span className="ml-2">{trackedTicket.subject}</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-700">Department:</span>
+                        <span className="ml-2">{trackedTicket.department}</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-700">Priority:</span>
+                        <span className="ml-2">{trackedTicket.priority}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t-2 border-purple-200 pt-6">
+                    <h4 className="text-xl font-bold text-gray-900 mb-6">Status Timeline</h4>
+                    <div className="relative">
+                      {/* Timeline Line */}
+                      <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-orange-400 via-blue-400 to-green-400"></div>
+                      
+                      {/* Timeline Items */}
+                      <div className="space-y-8">
+                        {trackedTicket.statusHistory && trackedTicket.statusHistory.length > 0 ? (
+                          trackedTicket.statusHistory.map((historyItem, index) => (
+                            <div key={index} className="relative flex items-start gap-4">
+                              <div className="relative z-10 flex-shrink-0">
+                                {getStatusIcon(historyItem.status)}
+                              </div>
+                              <div className="flex-1 bg-white rounded-lg p-4 shadow-md border-2 border-purple-100">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(historyItem.status)}`}>
+                                    {historyItem.status.charAt(0).toUpperCase() + historyItem.status.slice(1)}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {new Date(historyItem.timestamp).toLocaleString()}
+                                  </span>
+                                </div>
+                                <p className="text-gray-700">{historyItem.message}</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="relative flex items-start gap-4">
+                            <div className="relative z-10 flex-shrink-0">
+                              {getStatusIcon(trackedTicket.status)}
+                            </div>
+                            <div className="flex-1 bg-white rounded-lg p-4 shadow-md border-2 border-purple-100">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(trackedTicket.status)}`}>
+                                  {trackedTicket.status.charAt(0).toUpperCase() + trackedTicket.status.slice(1)}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {trackedTicket.date}
+                                </span>
+                              </div>
+                              <p className="text-gray-700">Ticket created and submitted</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : trackTicketId ? (
+                <div className="p-8 bg-white rounded-2xl shadow-lg border border-red-200 text-center">
+                  <p className="text-red-600 font-semibold text-lg">Ticket not found. Please check your Ticket ID.</p>
+                </div>
+              ) : (
+                <div className="p-8 bg-white rounded-2xl shadow-lg border border-blue-200 text-center">
+                  <p className="text-gray-600 font-semibold text-lg">Enter a Ticket ID to track its status</p>
+                </div>
+              )}
             </div>
           )}
         </div>

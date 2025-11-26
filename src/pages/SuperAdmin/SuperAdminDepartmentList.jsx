@@ -5,11 +5,10 @@ import departmentUserService from '../../api/admin_api/departmentUserService';
 import { useAuth } from '../../context/AuthContext';
 
 const DepartmentManagement = () => {
-  const { register, login, impersonate, user } = useAuth();
+  const { login, impersonate, user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All Departments');
   const [showFilters, setShowFilters] = useState(false);
-  const [roleFilter, setRoleFilter] = useState('All Roles');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
@@ -44,7 +43,6 @@ const DepartmentManagement = () => {
   const [stats, setStats] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const isSuperAdmin = (user?.role === 'superadmin');
-  const isDepartmentHead = (user?.role === 'department_head');
 
   const getDepartmentTypeColor = (type) => {
     switch (type) {
@@ -70,7 +68,6 @@ const DepartmentManagement = () => {
   };
 
   const mapUserFromApi = (user) => {
-    const createdAtRaw = user.createdAt || user.created_at;
     return {
       id: user.id,
       username: user.username,
@@ -81,7 +78,8 @@ const DepartmentManagement = () => {
       role: 'Department Head',
       target: user.target ?? user.monthlyTarget ?? '',
       isActive: user.isActive ?? user.is_active,
-      createdAt: createdAtRaw ? new Date(createdAtRaw).toDateString() : '',
+      createdAt: user.createdAt || user.created_at ? new Date(user.createdAt || user.created_at).toDateString() : '',
+      targetDaysRemaining: user.targetDaysRemaining ?? null,
     };
   };
 
@@ -120,7 +118,7 @@ const DepartmentManagement = () => {
       const res = await departmentUserService.getStats();
       setStats(res);
     } catch (err) {
-      console.warn('Failed to load stats', err);
+      // Silently fail stats loading
     }
   };
 
@@ -132,7 +130,7 @@ const DepartmentManagement = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [page, limit, selectedFilter, roleFilter, searchTerm]);
+  }, [page, limit, selectedFilter, searchTerm]);
 
   useEffect(() => {
     fetchStats();
@@ -308,31 +306,7 @@ const DepartmentManagement = () => {
             </div>
           </div>
           {showFilters && (
-            <div id="advanced-filters" className="mt-4 border-t border-gray-100 pt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-              {isSuperAdmin && (
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Role</label>
-                <select 
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
-                >
-                  <option>All Roles</option>
-                  <option>Department Head</option>
-                  <option>Department User</option>
-                </select>
-              </div>
-              )}
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Head User</label>
-                <input
-                  type="text"
-                  placeholder="e.g. admin@mbg.com"
-                  value={headUserFilter}
-                  onChange={(e) => setHeadUserFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
-              </div>
+            <div id="advanced-filters" className="mt-4 border-t border-gray-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs text-gray-500 mb-1">From</label>
                 <input
@@ -351,12 +325,10 @@ const DepartmentManagement = () => {
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 />
               </div>
-              <div className="md:col-span-4 flex items-center justify-end gap-3">
+              <div className="md:col-span-2 flex items-center justify-end gap-3">
                 <button
                   className="px-4 py-2 text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50"
                   onClick={() => {
-                    setRoleFilter('All Roles');
-                    setHeadUserFilter('');
                     setDateFrom('');
                     setDateTo('');
                   }}
@@ -447,6 +419,12 @@ const DepartmentManagement = () => {
                     </th>
                     <th className="text-left py-4 px-6 text-sm font-medium text-gray-700">
                       <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-red-600" />
+                        Target Expiry
+                      </div>
+                    </th>
+                    <th className="text-left py-4 px-6 text-sm font-medium text-gray-700">
+                      <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-purple-600" />
                         Created At
                       </div>
@@ -481,6 +459,15 @@ const DepartmentManagement = () => {
                         </span>
                       </td>
                       <td className="py-3 px-6 text-sm text-gray-700">{String(dept.target ?? '')}</td>
+                      <td className="py-3 px-6 text-xs text-gray-500 whitespace-nowrap">
+                        {dept.targetDaysRemaining !== null && dept.targetDaysRemaining !== undefined ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-50 text-orange-600 border border-orange-200">
+                            {dept.targetDaysRemaining} days left
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 italic">Not set</span>
+                        )}
+                      </td>
                       <td className="py-3 px-6 text-xs text-gray-500 whitespace-nowrap">{dept.createdAt}</td>
                       <td className="py-3 px-6">
                         <div className="flex items-center gap-2">
@@ -601,20 +588,10 @@ const DepartmentManagement = () => {
                         newDept.departmentType === 'telesales') {
                       payload.monthlyTarget = newDept.monthlyTarget || 0;
                     }
-                    // Use admin department heads endpoint instead of auth/register
-                    try {
-                      await departmentHeadService.createHead(payload);
-                      const result = { success: true };
-                      if (result.success) {
-                        await fetchUsers();
-                        setShowAddModal(false);
-                        setNewDept({ username: '', email: '', password: '', departmentType: 'office_sales', companyName: 'Anode Electric Pvt. Ltd.', role: 'department_head', monthlyTarget: '' });
-                      } else {
-                        alert('Failed to create user');
-                      }
-                    } catch (e) {
-                      alert(e.message || 'Failed to create user');
-                    }
+                    await departmentHeadService.createHead(payload);
+                    await fetchUsers();
+                    setShowAddModal(false);
+                    setNewDept({ username: '', email: '', password: '', departmentType: 'office_sales', companyName: 'Anode Electric Pvt. Ltd.', role: 'department_head', monthlyTarget: '' });
                   } catch (err) {
                     alert(err.message || 'Failed to create user');
                   } finally {

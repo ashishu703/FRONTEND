@@ -31,7 +31,10 @@ import {
   Eye,
   Plus,
   Trash2,
-  Folder
+  Folder,
+  Share2,
+  ExternalLink,
+  Copy
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import apiClient from '../../utils/apiClient';
@@ -101,7 +104,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   const [selectedLocation, setSelectedLocation] = useState("IT Park, Jabalpur");
   const [showBusinessCard, setShowBusinessCard] = useState(false);
   const [showCompanyEmails, setShowCompanyEmails] = useState(false);
-  const [showLocations, setShowLocations] = useState(false);
+  const [isLocationOpen, setIsLocationOpen] = useState(false);
   const [showHelpingCalculators, setShowHelpingCalculators] = useState(false);
   
   // User data state
@@ -3190,6 +3193,64 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     setIsCompanyEmailsOpen(false);
   };
 
+  const openGstDetails = () => {
+    setIsGstDetailsOpen(true);
+  };
+
+  const closeGstDetails = () => {
+    setIsGstDetailsOpen(false);
+  };
+
+  const openLocation = () => {
+    setIsLocationOpen(true);
+  };
+
+  const closeLocation = () => {
+    setIsLocationOpen(false);
+  };
+
+  // Google Maps locations
+  const locationMaps = {
+    "IT Park, Jabalpur": {
+      address: "Plot No 10, IT Park, Bargi Hills, Jabalpur, M.P.",
+      googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Plot+No+10+IT+Park+Bargi+Hills+Jabalpur+Madhya+Pradesh"
+    },
+    "Dadda Nagar": {
+      address: "Ward no. 73 in front of Dadda Nagar, Karmeta Road, Jabalpur, M.P.",
+      googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=Ward+73+Dadda+Nagar+Karmeta+Road+Jabalpur+Madhya+Pradesh"
+    }
+  };
+
+  const openGoogleMaps = (locationName, e) => {
+    e.stopPropagation();
+    const mapsUrl = locationMaps[locationName]?.googleMapsUrl;
+    if (mapsUrl) {
+      window.open(mapsUrl, '_blank');
+    }
+  };
+
+  const copyLocationLink = async (locationName, e) => {
+    e.stopPropagation();
+    const mapsUrl = locationMaps[locationName]?.googleMapsUrl;
+    if (mapsUrl) {
+      try {
+        await navigator.clipboard.writeText(mapsUrl);
+        // You could add a toast notification here if needed
+        alert('Location link copied to clipboard!');
+      } catch (err) {
+        console.error('Failed to copy:', err);
+        // Fallback: select text
+        const textArea = document.createElement('textarea');
+        textArea.value = mapsUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('Location link copied to clipboard!');
+      }
+    }
+  };
+
 
   const openHelpingCalculators = () => {
     setShowHelpingCalculators(!showHelpingCalculators);
@@ -4129,7 +4190,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
                   : 'border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50 hover:from-purple-100 hover:to-violet-100'
               }`}
-              onClick={() => setIsGstDetailsOpen(!isGstDetailsOpen)}
+              onClick={openGstDetails}
             >
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-sm">
@@ -4145,55 +4206,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
                 <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                } ${isGstDetailsOpen ? 'rotate-90' : ''}`} />
+                }`} />
               </div>
             </div>
-            
-            {isGstDetailsOpen && (
-              <div className="mt-3 space-y-3">
-                {/* ANODE ELECTRIC PVT LTD */}
-                <div className={`p-3 rounded-lg border ${
-                  isDarkMode 
-                    ? 'bg-gray-700 border-gray-600' 
-                    : 'bg-white border-gray-200'
-                }`}>
-                  <div className={`font-semibold text-xs mb-1 ${
-                    isDarkMode ? 'text-purple-300' : 'text-purple-700'
-                  }`}>ANODE ELECTRIC PVT LTD.</div>
-                  <div className={`font-mono text-xs ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}>23AANCA7455R1ZX</div>
-                </div>
-                
-                {/* SAMRIDDHI CABLE INDUSTRIES PVT LTD */}
-                <div className={`p-3 rounded-lg border ${
-                  isDarkMode 
-                    ? 'bg-gray-700 border-gray-600' 
-                    : 'bg-white border-gray-200'
-                }`}>
-                  <div className={`font-semibold text-xs mb-1 ${
-                    isDarkMode ? 'text-purple-300' : 'text-purple-700'
-                  }`}>SAMRIDDHI CABLE INDUSTRIES PVT LTD.</div>
-                  <div className={`font-mono text-xs ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}>23ABPCS7684F1ZT</div>
-                </div>
-                
-                {/* SAMRIDDHI INDUSTRIES */}
-                <div className={`p-3 rounded-lg border ${
-                  isDarkMode 
-                    ? 'bg-gray-700 border-gray-600' 
-                    : 'bg-white border-gray-200'
-                }`}>
-                  <div className={`font-semibold text-xs mb-1 ${
-                    isDarkMode ? 'text-purple-300' : 'text-purple-700'
-                  }`}>SAMRIDDHI INDUSTRIES</div>
-                  <div className={`font-mono text-xs ${
-                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                  }`}>23ABWFS1117M1ZT</div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Company Emails */}
@@ -4233,7 +4248,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
                   : 'border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50 hover:from-slate-100 hover:to-gray-100'
               }`}
-              onClick={() => setShowLocations(!showLocations)}
+              onClick={openLocation}
             >
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-xl bg-gradient-to-br from-slate-500 to-gray-600 shadow-sm">
@@ -4249,77 +4264,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
                 <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                } ${showLocations ? 'rotate-90' : ''}`} />
+                }`} />
               </div>
             </div>
-            
-            {showLocations && (
-              <div className="mt-3 space-y-2">
-                {/* IT Park, Jabalpur */}
-                <div 
-                  className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
-                    selectedLocation === "IT Park, Jabalpur" 
-                      ? isDarkMode 
-                        ? "bg-gray-600 border-gray-500 shadow-md" 
-                        : "bg-slate-50 border-slate-200 shadow-md"
-                      : isDarkMode 
-                        ? "bg-gray-700 border-gray-600 hover:bg-gray-600" 
-                        : "bg-white border-gray-200 hover:bg-slate-50"
-                  }`}
-                  onClick={() => setSelectedLocation("IT Park, Jabalpur")}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      isDarkMode ? 'bg-gray-600' : 'bg-slate-100'
-                    }`}>
-                      <MapPin className={`h-4 w-4 ${
-                        isDarkMode ? 'text-slate-300' : 'text-slate-600'
-                      }`} />
-                    </div>
-                    <div className="flex-1">
-                      <div className={`text-sm font-semibold mb-1 ${
-                        isDarkMode ? 'text-white' : 'text-gray-900'
-                      }`}>IT Park, Jabalpur</div>
-                      <div className={`text-xs ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                      }`}>Plot No 10, IT Park, Bargi Hills, Jabalpur, M.P.</div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Dadda Nagar */}
-                <div 
-                  className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
-                    selectedLocation === "Dadda Nagar" 
-                      ? isDarkMode 
-                        ? "bg-gray-600 border-gray-500 shadow-md" 
-                        : "bg-slate-50 border-slate-200 shadow-md"
-                      : isDarkMode 
-                        ? "bg-gray-700 border-gray-600 hover:bg-gray-600" 
-                        : "bg-white border-gray-200 hover:bg-slate-50"
-                  }`}
-                  onClick={() => setSelectedLocation("Dadda Nagar")}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      isDarkMode ? 'bg-gray-600' : 'bg-slate-100'
-                    }`}>
-                      <MapPin className={`h-4 w-4 ${
-                        isDarkMode ? 'text-slate-300' : 'text-slate-600'
-                      }`} />
-                    </div>
-                    <div className="flex-1">
-                      <div className={`text-sm font-semibold mb-1 ${
-                        isDarkMode ? 'text-white' : 'text-gray-900'
-                      }`}>Dadda Nagar</div>
-                      <div className={`text-xs ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                      }`}>Ward no. 73 in front of Dadda Nagar, Karmeta Road, Jabalpur, M.P.</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
           
           {/* Helping Calculators */}
@@ -11438,10 +11385,10 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
       {/* Company Emails Modal */}
       {isCompanyEmailsOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className={`rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto ${
+          <div className={`rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto ${
             isDarkMode ? 'bg-gray-800' : 'bg-white'
           }`}>
-            <div className={`flex items-center justify-between p-6 border-b ${
+            <div className={`flex items-center justify-between p-4 border-b ${
               isDarkMode ? 'border-gray-700' : 'border-gray-200'
             }`}>
               <div className="flex items-center gap-3">
@@ -11470,10 +11417,10 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="p-6">
-              <div className="space-y-3">
+            <div className="p-4">
+              <div className="space-y-2">
                 {/* Anshul Gupta - Managing Director */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11517,7 +11464,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
 
                 {/* Suraj Gehani - Chief Executive Officer */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11550,7 +11497,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
 
                 {/* Akash Gupta - General Manager */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11583,7 +11530,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
 
                 {/* Anushree Namdeo - CM */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11616,7 +11563,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
 
                 {/* Chief Financial Officer - CFO */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11649,7 +11596,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
 
                 {/* Saurabh Jhariya - Area Sales Manager */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11682,7 +11629,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
 
                 {/* Deepshikha Jhariya - Junior Accountant */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11715,7 +11662,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
 
                 {/* Rajvansh Samal - Production Planning Controller */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11748,7 +11695,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
 
                 {/* Tukesh Bisen - Senior Supervisor */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11781,7 +11728,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
 
                 {/* Abhishek Namdeo - Employee */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11814,7 +11761,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
 
                 {/* Vivian James - Security */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11847,7 +11794,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
             </div>
 
                 {/* Sameer Giri - COO */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11880,7 +11827,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
 
                 {/* Himanshu Sen - Sales Executive */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11913,7 +11860,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
 
                 {/* Vaishnavi Rajbhar - Sales Executive */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11946,7 +11893,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
 
                 {/* Radhika Jhariya - Sales Executive */}
-                <div className={`p-4 rounded-lg border ${
+                <div className={`p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
@@ -11976,6 +11923,270 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   >
                     radhika@anocab.com
                   </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GST Details Modal */}
+      {isGstDetailsOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto ${
+            isDarkMode ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <div className={`flex items-center justify-between p-4 border-b ${
+              isDarkMode ? 'border-gray-700' : 'border-gray-200'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${
+                  isDarkMode ? 'bg-purple-900' : 'bg-purple-100'
+                }`}>
+                  <CreditCard className={`h-6 w-6 ${
+                    isDarkMode ? 'text-purple-400' : 'text-purple-600'
+                  }`} />
+                </div>
+                <div>
+                  <h2 className={`text-xl font-semibold ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>GST Details</h2>
+                  <p className={`text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>Tax registration information</p>
+                </div>
+              </div>
+              <button 
+                onClick={closeGstDetails}
+                className={`${
+                  isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="space-y-2">
+                {/* ANODE ELECTRIC PVT LTD */}
+                <div className={`p-3 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className={`font-semibold text-xs mb-1 ${
+                    isDarkMode ? 'text-purple-300' : 'text-purple-700'
+                  }`}>ANODE ELECTRIC PVT LTD.</div>
+                  <div className={`font-mono text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>23AANCA7455R1ZX</div>
+                </div>
+                
+                {/* SAMRIDDHI CABLE INDUSTRIES PVT LTD */}
+                <div className={`p-3 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className={`font-semibold text-xs mb-1 ${
+                    isDarkMode ? 'text-purple-300' : 'text-purple-700'
+                  }`}>SAMRIDDHI CABLE INDUSTRIES PVT LTD.</div>
+                  <div className={`font-mono text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>23ABPCS7684F1ZT</div>
+                </div>
+                
+                {/* SAMRIDDHI INDUSTRIES */}
+                <div className={`p-3 rounded-lg border ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className={`font-semibold text-xs mb-1 ${
+                    isDarkMode ? 'text-purple-300' : 'text-purple-700'
+                  }`}>SAMRIDDHI INDUSTRIES</div>
+                  <div className={`font-mono text-xs ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>23ABWFS1117M1ZT</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Location Modal */}
+      {isLocationOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto ${
+            isDarkMode ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <div className={`flex items-center justify-between p-4 border-b ${
+              isDarkMode ? 'border-gray-700' : 'border-gray-200'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${
+                  isDarkMode ? 'bg-slate-700' : 'bg-slate-100'
+                }`}>
+                  <MapPin className={`h-6 w-6 ${
+                    isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                  }`} />
+                </div>
+                <div>
+                  <h2 className={`text-xl font-semibold ${
+                    isDarkMode ? 'text-white' : 'text-gray-900'
+                  }`}>Location</h2>
+                  <p className={`text-sm ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                  }`}>Company locations</p>
+                </div>
+              </div>
+              <button 
+                onClick={closeLocation}
+                className={`${
+                  isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="space-y-2">
+                {/* IT Park, Jabalpur */}
+                <div 
+                  className={`p-3 rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md ${
+                    selectedLocation === "IT Park, Jabalpur" 
+                      ? isDarkMode 
+                        ? "bg-gray-600 border-gray-500 shadow-md" 
+                        : "bg-slate-50 border-slate-200 shadow-md"
+                      : isDarkMode 
+                        ? "bg-gray-700 border-gray-600 hover:bg-gray-600" 
+                        : "bg-white border-gray-200 hover:bg-slate-50"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div 
+                      className={`p-2 rounded-lg cursor-pointer ${
+                        isDarkMode ? 'bg-gray-600' : 'bg-slate-100'
+                      }`}
+                      onClick={() => {
+                        setSelectedLocation("IT Park, Jabalpur");
+                        closeLocation();
+                      }}
+                    >
+                      <MapPin className={`h-4 w-4 ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <div 
+                        className={`text-sm font-semibold mb-1 cursor-pointer ${
+                          isDarkMode ? 'text-white' : 'text-gray-900'
+                        }`}
+                        onClick={() => {
+                          setSelectedLocation("IT Park, Jabalpur");
+                          closeLocation();
+                        }}
+                      >IT Park, Jabalpur</div>
+                      <div className={`text-xs mb-2 ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>Plot No 10, IT Park, Bargi Hills, Jabalpur, M.P.</div>
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={(e) => openGoogleMaps("IT Park, Jabalpur", e)}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                            isDarkMode
+                              ? 'bg-gray-600 hover:bg-gray-500 text-gray-200'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                          }`}
+                          title="Open in Google Maps"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Open Maps
+                        </button>
+                        <button
+                          onClick={(e) => copyLocationLink("IT Park, Jabalpur", e)}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                            isDarkMode
+                              ? 'bg-gray-600 hover:bg-gray-500 text-gray-200'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                          }`}
+                          title="Copy location link"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                          Copy Link
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Dadda Nagar */}
+                <div 
+                  className={`p-3 rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md ${
+                    selectedLocation === "Dadda Nagar" 
+                      ? isDarkMode 
+                        ? "bg-gray-600 border-gray-500 shadow-md" 
+                        : "bg-slate-50 border-slate-200 shadow-md"
+                      : isDarkMode 
+                        ? "bg-gray-700 border-gray-600 hover:bg-gray-600" 
+                        : "bg-white border-gray-200 hover:bg-slate-50"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div 
+                      className={`p-2 rounded-lg cursor-pointer ${
+                        isDarkMode ? 'bg-gray-600' : 'bg-slate-100'
+                      }`}
+                      onClick={() => {
+                        setSelectedLocation("Dadda Nagar");
+                        closeLocation();
+                      }}
+                    >
+                      <MapPin className={`h-4 w-4 ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <div 
+                        className={`text-sm font-semibold mb-1 cursor-pointer ${
+                          isDarkMode ? 'text-white' : 'text-gray-900'
+                        }`}
+                        onClick={() => {
+                          setSelectedLocation("Dadda Nagar");
+                          closeLocation();
+                        }}
+                      >Dadda Nagar</div>
+                      <div className={`text-xs mb-2 ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                      }`}>Ward no. 73 in front of Dadda Nagar, Karmeta Road, Jabalpur, M.P.</div>
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={(e) => openGoogleMaps("Dadda Nagar", e)}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                            isDarkMode
+                              ? 'bg-gray-600 hover:bg-gray-500 text-gray-200'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                          }`}
+                          title="Open in Google Maps"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Open Maps
+                        </button>
+                        <button
+                          onClick={(e) => copyLocationLink("Dadda Nagar", e)}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                            isDarkMode
+                              ? 'bg-gray-600 hover:bg-gray-500 text-gray-200'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                          }`}
+                          title="Copy location link"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                          Copy Link
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

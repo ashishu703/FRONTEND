@@ -45,6 +45,28 @@ class ConfigurationService {
     }
   }
 
+  // Save Indiamart configuration
+  async saveIndiamart(config) {
+    try {
+      const response = await apiClient.post('/api/configuration/indiamart', config);
+      return response;
+    } catch (error) {
+      console.error('Error saving Indiamart configuration:', error);
+      throw error;
+    }
+  }
+
+  // Save TradeIndia configuration
+  async saveTradeIndia(config) {
+    try {
+      const response = await apiClient.post('/api/configuration/tradeindia', config);
+      return response;
+    } catch (error) {
+      console.error('Error saving TradeIndia configuration:', error);
+      throw error;
+    }
+  }
+
   // Get global settings
   async getGlobalSettings() {
     try {
