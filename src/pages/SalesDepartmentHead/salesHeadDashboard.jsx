@@ -750,6 +750,8 @@ function GaugeChart({ value, max = 100, height = 200, isDarkMode = false }) {
   )
 }
 
+const MS_IN_DAY = 24 * 60 * 60 * 1000;
+
 const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('overview')
@@ -761,6 +763,16 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   const [refreshing, setRefreshing] = useState(false)
   const [allPayments, setAllPayments] = useState([])
   const [topPerformers, setTopPerformers] = useState([])
+
+  const getCalendarDaysRemaining = (targetDate) => {
+    if (!targetDate || isNaN(targetDate.getTime())) return 0
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const endDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate())
+    if (endDay < today) return 0
+    const diffTime = endDay - today
+    return Math.max(0, Math.round(diffTime / MS_IN_DAY))
+  }
   
   // Department head target state
   const [userTarget, setUserTarget] = useState({
@@ -1811,21 +1823,13 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   // Calculate days left based on target period
   const daysLeftInTarget = (() => {
     if (!userTarget.targetEndDate) {
-      // If no target end date, calculate days left in current month
       const now = new Date()
-      const last = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      return Math.max(0, last.getDate() - now.getDate())
+      const fallbackEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      return getCalendarDaysRemaining(fallbackEnd)
     }
     
-    const now = new Date()
     const endDate = new Date(userTarget.targetEndDate)
-    endDate.setHours(23, 59, 59, 999)
-    
-    if (endDate < now) return 0
-    
-    const diffTime = endDate - now
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return Math.max(0, diffDays)
+    return getCalendarDaysRemaining(endDate)
   })()
   
   // Use actual department head target data
