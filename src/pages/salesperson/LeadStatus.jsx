@@ -1161,7 +1161,7 @@ export default function LeadStatusPage() {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Business Name
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[200px]">
                     Address
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1202,8 +1202,10 @@ export default function LeadStatusPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {lead.business || 'N/A'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {lead.address || 'N/A'}
+                      <td className="px-6 py-4 text-sm text-gray-500 max-w-[200px] align-top">
+                        <div className="break-words whitespace-normal" style={{ wordBreak: 'break-word', maxWidth: '200px', lineHeight: '1.4em' }}>
+                          {lead.address || 'N/A'}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="space-y-1">

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Menu, X, LayoutDashboard, Users, Package, Box, Wrench, LogOut, Monitor, Bell, User, ChevronDown, ChevronRight, Clock, Calendar, CheckCircle, AlertTriangle, BarChart3, CreditCard, DollarSign } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Menu, X, LayoutDashboard, Users, Package, Box, Wrench, LogOut, Monitor, Bell, User, ChevronDown, ChevronRight, Clock, Calendar, CheckCircle, AlertTriangle, BarChart3, CreditCard, DollarSign, ArrowRightLeft } from 'lucide-react';
 import MobileDashboard from './MobileDashboard';
 import MobileLeads from './MobileLeads';
 import MobileStock from './MobileStock';
@@ -26,10 +26,14 @@ const MobileLayout = ({ onLogout, onToggleDesktopView }) => {
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState(null);
+  const notificationIdsRef = useRef(new Set());
 
   // Notification type icons
+  const [expandedNotificationId, setExpandedNotificationId] = useState(null);
+
   const typeIcon = (type) => {
     switch(type) {
+      case 'transfer': return <ArrowRightLeft className="w-4 h-4 text-purple-500" />;
       case 'lead': return <Users className="w-4 h-4 text-blue-500" />;
       case 'reminder': return <Calendar className="w-4 h-4 text-orange-500" />;
       case 'payment': return <CheckCircle className="w-4 h-4 text-green-500" />;
@@ -39,6 +43,28 @@ const MobileLayout = ({ onLogout, onToggleDesktopView }) => {
   };
 
   // Load notifications
+  const playNotificationSound = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.0001, ctx.currentTime);
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      gainNode.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.4);
+      setTimeout(() => ctx.close(), 500);
+    } catch (error) {
+      console.warn('Notification sound failed:', error);
+    }
+  };
+
   const loadNotifications = async () => {
     try {
       setNotificationsLoading(true);
@@ -50,7 +76,21 @@ const MobileLayout = ({ onLogout, onToggleDesktopView }) => {
       });
       const json = await res.json();
       if (!json?.success) throw new Error(json?.message || 'Failed to load notifications');
-      setNotifications(json.data || []);
+
+      const data = json.data || [];
+      const newIds = new Set(data.map(n => n.id));
+      let hasNew = false;
+      data.forEach(n => {
+        if (!notificationIdsRef.current.has(n.id)) {
+          hasNew = true;
+        }
+      });
+      if (hasNew && notificationIdsRef.current.size) {
+        playNotificationSound();
+      }
+      notificationIdsRef.current = newIds;
+
+      setNotifications(data);
     } catch (e) {
       setNotificationsError(e.message);
     } finally {
@@ -273,6 +313,27 @@ const MobileLayout = ({ onLogout, onToggleDesktopView }) => {
                             </div>
                           </div>
                           <div className="text-sm text-gray-600">{n.message}</div>
+                          {n.details && (
+                            <div className="mt-2">
+                              <button
+                                onClick={() => setExpandedNotificationId(expandedNotificationId === n.id ? null : n.id)}
+                                className="text-xs text-blue-600 font-semibold"
+                              >
+                                {expandedNotificationId === n.id ? 'Hide Details' : 'View Details'}
+                              </button>
+                              {expandedNotificationId === n.id && (
+                                <div className="mt-2 text-xs text-gray-600 space-y-1">
+                                  <div><span className="font-semibold">Customer:</span> {n.details.customer || 'N/A'}</div>
+                                  <div><span className="font-semibold">Business:</span> {n.details.business || 'N/A'}</div>
+                                  <div><span className="font-semibold">Product:</span> {n.details.product || 'N/A'}</div>
+                                  <div><span className="font-semibold">Phone:</span> {n.details.phone || 'N/A'}</div>
+                                  <div><span className="font-semibold">Email:</span> {n.details.email || 'N/A'}</div>
+                                  <div><span className="font-semibold">Address:</span> {n.details.address || 'N/A'}</div>
+                                  <div><span className="font-semibold">Transferred From:</span> {n.details.transferredFrom || 'N/A'}</div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

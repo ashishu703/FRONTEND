@@ -265,7 +265,7 @@ export default function QuotationPreview({ data, companyBranches, user, hideSign
                 {section.points.map((point, idx) => (
                   <p key={idx}>• {point}</p>
                 ))}
-              </div>
+            </div>
             ))}
           </div>
         </div>
@@ -275,9 +275,9 @@ export default function QuotationPreview({ data, companyBranches, user, hideSign
           <p className="mb-8">This is computer generated invoice no signature required.</p>
           {!hideSignatory && (
             <div className="quotation-signatory-section">
-              <p className="font-bold">Authorized Signatory</p>
-              {user && (
-                <p className="mt-2 text-sm font-semibold text-gray-800">{user.username || user.email || 'User'}</p>
+          <p className="font-bold">Authorized Signatory</p>
+          {user && (
+            <p className="mt-2 text-sm font-semibold text-gray-800">{user.username || user.email || 'User'}</p>
               )}
             </div>
           )}

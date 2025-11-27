@@ -278,13 +278,13 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
     e.preventDefault()
     try {
       await onSave({
-        ...quotationData,
-        customer: customer,
-        createdAt: new Date().toISOString()
-      })
+      ...quotationData,
+      customer: customer,
+      createdAt: new Date().toISOString()
+    })
       // Let parent decide whether to close (onSave may handle it)
       if (!standalone && typeof onClose === 'function') {
-        onClose()
+    onClose()
       }
     } catch (error) {
       console.error('Failed to save quotation:', error)
@@ -479,19 +479,19 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
   const formContent = (
     <>
       <CardHeader className={`flex flex-row items-center justify-between space-y-0 pb-4 border-b ${standalone ? 'pt-6' : ''}`}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-            <FileText className="h-5 w-5 text-white" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+              <FileText className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-semibold">Create Quotation</CardTitle>
+              <p className="text-sm text-gray-600">For {customer?.name}</p>
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-xl font-semibold">Create Quotation</CardTitle>
-            <p className="text-sm text-gray-600">For {customer?.name}</p>
-          </div>
-        </div>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </CardHeader>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </CardHeader>
 
       <div className="flex flex-row gap-4 p-6" style={{ minHeight: 'calc(100vh - 200px)' }}>
         {/* Left Side - Form */}
@@ -788,13 +788,13 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                       />
                     </div>
                     <div className="p-4">
-                      <textarea
+              <textarea
                         value={section.points.join('\n')}
                         onChange={(e) => handleTermPointsChange(sectionIndex, e.target.value)}
                         rows={Math.max(3, section.points.length)}
                         className="w-full text-xs text-gray-700 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                         placeholder="Enter each bullet point on a new line"
-                      />
+              />
                     </div>
                   </div>
                 ))}
@@ -833,7 +833,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
               </div>
             </div>
           </form>
-          </CardContent>
+        </CardContent>
         </div>
 
         {/* Right Side - Live Preview */}

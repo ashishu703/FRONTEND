@@ -2072,6 +2072,20 @@ export default function CustomerListContent({ isDarkMode = false }) {
 
       try {
         await apiClient.putFormData(API_ENDPOINTS.SALESPERSON_LEAD_BY_ID(editingCustomer.id), formData);
+        
+        // If lead is being transferred, call the transfer API
+        if (updatedCustomer.transferredTo) {
+          try {
+            await apiClient.post(API_ENDPOINTS.LEAD_TRANSFER(editingCustomer.id), {
+              transferredTo: updatedCustomer.transferredTo,
+              reason: `Transferred via edit form`
+            });
+            alert(`Lead successfully transferred to ${updatedCustomer.transferredTo}`);
+          } catch (transferErr) {
+            console.error('Failed to transfer lead:', transferErr);
+            alert('Lead updated but transfer failed. Please try again.');
+          }
+        }
       } catch (err) {
         console.error('Failed to update salesperson lead:', err);
       }
@@ -3085,18 +3099,6 @@ export default function CustomerListContent({ isDarkMode = false }) {
                             isDarkMode ? 'bg-gray-600' : 'bg-gray-800'
                           }`}>
                             Edit Customer
-                          </span>
-                        </button>
-                        <button onClick={() => handleView(customer)} className={`p-1.5 rounded-md relative group ${
-                          isDarkMode 
-                            ? 'hover:bg-gray-700' 
-                            : 'hover:bg-gray-100'
-                        }`} title="View Details">
-                          <Eye className={`h-4 w-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
-                          <span className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none ${
-                            isDarkMode ? 'bg-gray-600' : 'bg-gray-800'
-                          }`}>
-                            View Details
                           </span>
                         </button>
                         <button onClick={() => handleQuotation(customer)} className={`p-1.5 rounded-md relative group ${

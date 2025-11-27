@@ -125,7 +125,7 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
     
     const stateCode = getStateCode(billTo.gstNo || currentBranch.gstNumber)
     const stateName = billTo.state || 'Madhya Pradesh'
-    
+
     const handlePrint = async () => {
       // Create a new window for printing
       const printWindow = window.open('', '_blank')
@@ -208,8 +208,8 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                   className="h-16 w-auto bg-white p-1 rounded"
                 />
               </div>
+              </div>
             </div>
-          </div>
 
           {/* Invoice Details Section */}
           <div className="border-2 border-black mb-2">
@@ -256,51 +256,51 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                 <div className="grid grid-cols-2 gap-1">
                   <span className="font-semibold">Mode/Terms of Payment:</span>
                   <span></span>
-                </div>
+            </div>
                 <div className="grid grid-cols-2 gap-1">
                   <span className="font-semibold">Reference No. & Date:</span>
                   <span>{referenceNo} dt. {new Date(invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}</span>
-                </div>
+          </div>
                 <div className="grid grid-cols-2 gap-1">
                   <span className="font-semibold">Other References:</span>
                   <span>DIRECT SALE</span>
-                </div>
+            </div>
                 <div className="grid grid-cols-2 gap-1">
                   <span className="font-semibold">Buyer's Order No.:</span>
                   <span></span>
-                </div>
+              </div>
                 <div className="grid grid-cols-2 gap-1">
                   <span className="font-semibold">Dated:</span>
                   <span></span>
-                </div>
+              </div>
                 <div className="grid grid-cols-2 gap-1">
                   <span className="font-semibold">Dispatch Doc No.:</span>
                   <span>{dispatchDocNo}</span>
-                </div>
+              </div>
                 <div className="grid grid-cols-2 gap-1">
                   <span className="font-semibold">Delivery Note Date:</span>
                   <span></span>
-                </div>
+              </div>
                 <div className="grid grid-cols-2 gap-1">
                   <span className="font-semibold">Dispatched through:</span>
                   <span>SELF VEHICLE</span>
-                </div>
+            </div>
                 <div className="grid grid-cols-2 gap-1">
                   <span className="font-semibold">Destination:</span>
                   <span>{stateName.toUpperCase()}</span>
-                </div>
+            </div>
                 <div className="grid grid-cols-2 gap-1">
                   <span className="font-semibold">Bill of Lading/LR-RR No. dt. {new Date(invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}:</span>
                   <span></span>
-                </div>
+          </div>
                 <div className="grid grid-cols-2 gap-1">
                   <span className="font-semibold">Motor Vehicle No.:</span>
                   <span></span>
-                </div>
+              </div>
                 <div className="grid grid-cols-2 gap-1">
                   <span className="font-semibold">Terms of Delivery:</span>
                   <span></span>
-                </div>
+                    </div>
               </div>
             </div>
           </div>
@@ -342,7 +342,7 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                     </tr>
                   ))
                 )}
-                
+
                 {/* Empty rows for formatting */}
                 {Array.from({ length: Math.max(0, 8 - items.length) }).map((_, i) => (
                   <tr key={`empty-${i}`} className="h-6">
@@ -358,7 +358,7 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                     <td className="border border-black p-1"></td>
                   </tr>
                 ))}
-                
+
                 {/* Totals Row */}
                 <tr className="bg-gray-100 font-bold">
                   <td className="border border-black p-1 text-center">Total</td>
@@ -382,7 +382,7 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
             <div className="border-2 border-black p-1">
               <p className="font-bold text-xs mb-1">CGST</p>
               <p className="text-xs">{parseFloat(cgstAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            </div>
+              </div>
             
             {/* SGST */}
             <div className="border-2 border-black p-1">
@@ -394,18 +394,18 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
             <div className="border-2 border-black p-1">
               <p className="font-bold text-xs mb-1">Total Amount</p>
               <p className="text-xs">{parseFloat(total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            </div>
-          </div>
+                </div>
+                </div>
 
           {/* Bill Details */}
           <div className="border-2 border-black mb-2 p-1">
             <p className="text-xs"><strong>On Account:</strong> {parseFloat(total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Dr</p>
-          </div>
+                </div>
 
           {/* Amount in Words */}
           <div className="border-2 border-black mb-2 p-1">
             <p className="text-xs"><strong>Amount Chargeable (in words):</strong> INR {amountInWords}</p>
-          </div>
+                </div>
 
           {/* Tax Summary Table */}
           <div className="border-2 border-black mb-2">
@@ -443,12 +443,12 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                 </tr>
               </tbody>
             </table>
-          </div>
+                    </div>
 
           {/* Tax Amount in Words */}
           <div className="border-2 border-black mb-2 p-1">
             <p className="text-xs"><strong>Tax Amount (in words):</strong> INR {taxAmountInWords}</p>
-          </div>
+                    </div>
 
           {/* Bank Details and Declaration */}
           <div className="grid grid-cols-2 gap-2 mb-2">
@@ -460,9 +460,9 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                 <p><strong>Bank Name:</strong> ICICI BANK 01783</p>
                 <p><strong>A/c No.:</strong> 657605601783</p>
                 <p><strong>Branch & IFS Code:</strong> WRIGHT TOWN JABALPUR & ICIC0006576</p>
-              </div>
             </div>
-            
+          </div>
+
             {/* Declaration */}
             <div className="border-2 border-black p-2">
               <p className="font-bold text-xs mb-1">Declaration</p>
@@ -498,3 +498,4 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
       </div>
     )
   }
+  

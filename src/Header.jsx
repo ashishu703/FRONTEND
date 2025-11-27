@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun, BarChart3, Clock, User, Factory, Wrench, HelpCircle, Activity, Server, Settings, Shield, Link, Ticket } from 'lucide-react';
+import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun, BarChart3, Clock, User, Factory, Wrench, HelpCircle, Activity, Server, Settings, Shield, Link, Ticket, ArrowRightLeft } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { useCompany } from './context/CompanyContext';
 
@@ -16,6 +16,35 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
   const [notificationsError, setNotificationsError] = useState(null);
 
   const [notificationHistory, setNotificationHistory] = useState([]);
+  const [expandedNotificationId, setExpandedNotificationId] = useState(null);
+  const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+  const notificationIdsRef = useRef(new Set());
+  const playNotificationSound = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.0001, ctx.currentTime);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      gainNode.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.4);
+
+      setTimeout(() => ctx.close(), 500);
+    } catch (error) {
+      console.warn('Notification sound failed:', error);
+    }
+  };
 
   // Fetch notifications periodically
   useEffect(() => {
@@ -35,6 +64,17 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
         const json = await res.json();
         if (!json?.success) throw new Error(json?.message || 'Failed');
         if (!isMounted) return;
+        const newIds = new Set(json.data.map(n => n.id));
+        let hasNew = false;
+        json.data.forEach(n => {
+          if (!notificationIdsRef.current.has(n.id)) {
+            hasNew = true;
+          }
+        });
+        if (hasNew && notificationIdsRef.current.size) {
+          playNotificationSound();
+        }
+        notificationIdsRef.current = newIds;
         setNotifications(json.data.slice(0, 6));
         setNotificationHistory(json.data);
       } catch (e) {
@@ -75,6 +115,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
 
   const getNotificationIcon = (type) => {
     switch (type) {
+      case 'transfer': return <ArrowRightLeft className="w-4 h-4 text-purple-500" />;
       case 'lead': return <Users className="w-4 h-4 text-blue-500" />;
       case 'reminder': return <Calendar className="w-4 h-4 text-orange-500" />;
       case 'success': return <CheckCircle className="w-4 h-4 text-green-500" />;
@@ -615,6 +656,27 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
                             )}
                           </div>
                           <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                          {notification.details && (
+                            <div className="mt-2">
+                              <button
+                                onClick={() => setExpandedNotificationId(expandedNotificationId === notification.id ? null : notification.id)}
+                                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                              >
+                                {expandedNotificationId === notification.id ? 'Hide Details' : 'View Details'}
+                              </button>
+                              {expandedNotificationId === notification.id && (
+                                <div className="mt-2 text-xs text-gray-600 space-y-1">
+                                  <div><span className="font-semibold">Customer:</span> {notification.details.customer || 'N/A'}</div>
+                                  <div><span className="font-semibold">Business:</span> {notification.details.business || 'N/A'}</div>
+                                  <div><span className="font-semibold">Product:</span> {notification.details.product || 'N/A'}</div>
+                                  <div><span className="font-semibold">Phone:</span> {notification.details.phone || 'N/A'}</div>
+                                  <div><span className="font-semibold">Email:</span> {notification.details.email || 'N/A'}</div>
+                                  <div><span className="font-semibold">Address:</span> {notification.details.address || 'N/A'}</div>
+                                  <div><span className="font-semibold">Transferred From:</span> {notification.details.transferredFrom || 'N/A'}</div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                           <p className="text-xs text-gray-500 mt-2">{notification.time}</p>
                         </div>
                       </div>
@@ -766,6 +828,29 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
                           </div>
                         </div>
                         <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                        {notification.details && (
+                          <div className="mt-2">
+                            <button
+                              onClick={() => setExpandedHistoryId(expandedHistoryId === notification.id ? null : notification.id)}
+                              className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                            >
+                              {expandedHistoryId === notification.id ? 'Hide Details' : 'View Details'}
+                            </button>
+                            {expandedHistoryId === notification.id && (
+                              <div className="mt-2 text-xs text-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                                <div><span className="font-semibold">Customer:</span> {notification.details.customer || 'N/A'}</div>
+                                <div><span className="font-semibold">Business:</span> {notification.details.business || 'N/A'}</div>
+                                <div><span className="font-semibold">Product:</span> {notification.details.product || 'N/A'}</div>
+                                <div><span className="font-semibold">Phone:</span> {notification.details.phone || 'N/A'}</div>
+                                <div><span className="font-semibold">Email:</span> {notification.details.email || 'N/A'}</div>
+                                <div><span className="font-semibold">State:</span> {notification.details.state || 'N/A'}</div>
+                                <div className="sm:col-span-2"><span className="font-semibold">Address:</span> {notification.details.address || 'N/A'}</div>
+                                <div className="sm:col-span-2"><span className="font-semibold">Transferred From:</span> {notification.details.transferredFrom || 'N/A'}</div>
+                                <div className="sm:col-span-2"><span className="font-semibold">Transferred At:</span> {notification.details.transferredAt ? new Date(notification.details.transferredAt).toLocaleString() : 'N/A'}</div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

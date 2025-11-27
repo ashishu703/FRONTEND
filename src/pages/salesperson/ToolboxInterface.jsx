@@ -589,6 +589,13 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     const val = multiplier * wire + ins * 2;
     return Number.isFinite(val) ? val : 0;
   })();
+  // PHASE GAUGE: E49*F49*F49*0.7854
+  const rgPhaseGauge = (() => {
+    const strand = Number(rgPhaseStrand) || 0; // E49
+    const wire = Number(rgPhaseWire) || 0; // F49
+    const val = strand * wire * wire * 0.7854;
+    return Number.isFinite(val) ? val : 0;
+  })();
   // Reduction Gauge - STREET LIGHT area (C50) and derived STRAND (E50)
   const [rgStreetArea, setRgStreetArea] = useState("16 SQMM");
   const rgStreetAreaNum = (() => {
@@ -639,6 +646,13 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     const val = multiplier * wire + ins * 2;
     return Number.isFinite(val) ? val : 0;
   })();
+  // STREET GAUGE: E50*F50*F50*0.7854
+  const rgStreetGauge = (() => {
+    const strand = Number(rgStreetStrand) || 0; // E50
+    const wire = Number(rgStreetWire) || 0; // F50
+    const val = strand * wire * wire * 0.7854;
+    return Number.isFinite(val) ? val : 0;
+  })();
   // Reduction Gauge - MESSENGER area (C51) and derived STRAND (E51)
   const [rgMessengerArea, setRgMessengerArea] = useState("25 SQMM");
   const rgMessengerAreaNum = (() => {
@@ -687,6 +701,13 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     if (strand === "19") multiplier = 5;
     else if (strand === "7") multiplier = 3;
     const val = multiplier * wire + ins * 2;
+    return Number.isFinite(val) ? val : 0;
+  })();
+  // MESSENGER GAUGE: E51*F51*F51*0.7854
+  const rgMessengerGauge = (() => {
+    const strand = Number(rgMessengerStrand) || 0; // E51
+    const wire = Number(rgMessengerWire) || 0; // F51
+    const val = strand * wire * wire * 0.7854;
     return Number.isFinite(val) ? val : 0;
   })();
 
@@ -1867,6 +1888,85 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const downloadTechnicalSpecPDF = async () => {
+    try {
+      // Find the technical specification content, header, and buttons container
+      const specElement = document.getElementById('technical-specification-content');
+      const headerElement = document.getElementById('technical-spec-header');
+      const buttonsContainer = document.getElementById('technical-spec-buttons-container');
+      
+      if (!specElement) {
+        alert('Technical specification content not found. Please try again.');
+        return;
+      }
+
+      // Hide the header with the download button before generating PDF
+      let headerOriginalDisplay = '';
+      if (headerElement) {
+        headerOriginalDisplay = headerElement.style.display;
+        headerElement.style.display = 'none';
+      }
+
+      // Hide the buttons container (Approvals, License, GTP, Type Test, Process Chart)
+      let buttonsOriginalDisplay = '';
+      if (buttonsContainer) {
+        buttonsOriginalDisplay = buttonsContainer.style.display;
+        buttonsContainer.style.display = 'none';
+      }
+
+      // Wait a bit to ensure all content is rendered
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const opt = {
+        margin: [0.4, 0.4, 0.4, 0.4],
+        filename: `Technical-Specification-${selectedProduct.replace(/\s+/g, '-')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 1.5,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          letterRendering: true,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: specElement.scrollWidth,
+          windowHeight: specElement.scrollHeight
+        },
+        jsPDF: {
+          unit: 'in',
+          format: 'a4',
+          orientation: 'portrait',
+          compress: true
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      await html2pdf().set(opt).from(specElement).save();
+      
+      // Restore visibility after PDF generation
+      if (headerElement) {
+        headerElement.style.display = headerOriginalDisplay;
+      }
+      if (buttonsContainer) {
+        buttonsContainer.style.display = buttonsOriginalDisplay;
+      }
+    } catch (error) {
+      console.error('Error downloading technical specification PDF:', error);
+      alert('Failed to download technical specification PDF. Please try again.');
+      
+      // Restore visibility even on error
+      const headerElement = document.getElementById('technical-spec-header');
+      const buttonsContainer = document.getElementById('technical-spec-buttons-container');
+      if (headerElement) {
+        headerElement.style.display = '';
+      }
+      if (buttonsContainer) {
+        buttonsContainer.style.display = '';
+      }
+    }
   };
   const calculateResults = () => {
     const { conductorType, conductorSize, temperature, standard } = calculatorInputs;
@@ -4264,9 +4364,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
                 <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`} />
-              </div>
-            </div>
+                      }`} />
+                    </div>
+                  </div>
           </div>
           
           {/* Helping Calculators */}
@@ -4409,19 +4509,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               {/* Technical Specifications Section - includes products with custom specs */}
               {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" || selectedProduct === "All Aluminium Alloy Conductor" || selectedProduct === "PVC Insulated Submersible Cable" || selectedProduct === "Multi Core XLPE Insulated Aluminium Unarmoured Cable" || selectedProduct === "Multistrand Single Core Copper Cable" || selectedProduct === "Multi Core Copper Cable" || selectedProduct === "PVC Insulated Single Core Aluminium Cable" || selectedProduct === "PVC Insulated Multicore Aluminium Cable" || selectedProduct === "Submersible Winding Wire" || selectedProduct === "Twin Twisted Copper Wire" || selectedProduct === "Speaker Cable" || selectedProduct === "CCTV Cable" || selectedProduct === "LAN Cable" || selectedProduct === "Automobile Cable" || selectedProduct === "PV Solar Cable" || selectedProduct === "Co Axial Cable" || selectedProduct === "Uni-tube Unarmoured Optical Fibre Cable" || selectedProduct === "Armoured Unarmoured PVC Insulated Copper Control Cable" || selectedProduct === "Telecom Switch Board Cables" || selectedProduct === "Multi Core PVC Insulated Aluminium Unarmoured Cable" || selectedProduct === "Multi Core XLPE Insulated Aluminium Armoured Cable" || selectedProduct === "Multi Core PVC Insulated Aluminium Armoured Cable" || selectedProduct === "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable" || selectedProduct === "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable" || selectedProduct === "Paper Cover Aluminium Conductor") && (
                 <div className="mb-8">
-                  <div className="flex items-center justify-between mb-4">
+                  <div id="technical-spec-header" className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                     <Wrench className="h-5 w-5 text-blue-600" />
                     Technical Specifications
                   </h3>
-                    <button
-                      disabled
-                      className="px-4 py-2 bg-gray-300 text-gray-500 rounded-lg text-sm font-medium cursor-not-allowed opacity-60"
-                    >
-                      BROCHURE
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={openBrochure}
+                        className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        BROCHURE
+                      </button>
+                      <button
+                        onClick={() => downloadTechnicalSpecPDF()}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+                      >
+                        <Download className="h-4 w-4" />
+                        Download PDF
+                      </button>
+                    </div>
                   </div>
-                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div id="technical-specification-content" className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                     <div className="p-6 flex flex-col lg:flex-row gap-8">
                       <div className="flex-1">
                         {selectedProduct === "All Aluminium Alloy Conductor" ? (
@@ -9417,7 +9526,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           )}
                       </div>
                         {/* Vertical Buttons Section */}
-                        <div className="flex flex-col gap-3 lg:min-w-[120px]">
+                        <div id="technical-spec-buttons-container" className="flex flex-col gap-3 lg:min-w-[120px]">
                           <button 
                             className="px-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
                             onClick={() => {
@@ -10206,6 +10315,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">REDUCTION %</th>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">STRAND</th>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">WIRE</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">GAUGE</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -10230,6 +10340,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           </td>
                           <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgPhaseStrand}</td>
                           <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgPhaseWire > 0 ? `${rgPhaseWire.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgPhaseGauge > 0 ? `${rgPhaseGauge.toFixed(2)} SQMM` : '-'}</td>
                         </tr>
                         {/* STREET LIGHT Row */}
                         <tr className="hover:bg-gray-50">
@@ -10245,6 +10356,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           
                           <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgStreetStrand}</td>
                           <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgStreetWire > 0 ? `${rgStreetWire.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgStreetGauge > 0 ? `${rgStreetGauge.toFixed(2)} SQMM` : '-'}</td>
                         </tr>
                         {/* MESSENGER Row */}
                         <tr className="hover:bg-gray-50">
@@ -10260,6 +10372,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           
                           <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgMessengerStrand}</td>
                           <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgMessengerWire > 0 ? `${rgMessengerWire.toFixed(2)} MM` : '-'}</td>
+                          <td className="px-3 py-2 text-sm text-blue-600 border border-gray-200 font-semibold">{rgMessengerGauge > 0 ? `${rgMessengerGauge.toFixed(2)} SQMM` : '-'}</td>
                         </tr>
                       </tbody>
                     </table>
