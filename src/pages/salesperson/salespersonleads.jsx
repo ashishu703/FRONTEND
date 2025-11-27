@@ -94,6 +94,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
   
   const user = getUserData()
   const [viewingCustomer, setViewingCustomer] = React.useState(null)
+  const [viewingCustomerForQuotation, setViewingCustomerForQuotation] = React.useState(null)
   const [modalTab, setModalTab] = React.useState('details')
   const [showAddCustomer, setShowAddCustomer] = React.useState(false)
   const [showCreateQuotation, setShowCreateQuotation] = React.useState(false)
@@ -437,12 +438,15 @@ export default function CustomerListContent({ isDarkMode = false }) {
   const isPiLocked = React.useMemo(() => Boolean(selectedCustomerForPI?.approvedQuotation), [selectedCustomerForPI])
 
   // Fetch quotations for the currently viewed customer (DB-backed) on open/refresh
+  // Only load if quotation modal is not open (to avoid conflicts)
   React.useEffect(() => {
     let ignore = false
     async function loadCustomerQuotations() {
       try {
+        // Don't load if quotation modal is open - let that modal handle its own quotations
+        if (viewingCustomerForQuotation) return
         if (!viewingCustomer || !viewingCustomer.id) return
-        console.log('Loading quotations for customer:', viewingCustomer.id);
+        console.log('Loading quotations for details modal customer:', viewingCustomer.id);
         const res = await quotationService.getQuotationsByCustomer(viewingCustomer.id)
         console.log('Quotations API response:', res);
         
@@ -456,12 +460,12 @@ export default function CustomerListContent({ isDarkMode = false }) {
             status: q.status,
             createdAt: q.created_at,
             branch: q.branch || 'ANODE',
-            billTo: {
-              business: viewingCustomer?.business,
-              address: viewingCustomer?.address,
-              phone: viewingCustomer?.phone,
-              gstNo: viewingCustomer?.gstNo,
-              state: viewingCustomer?.state,
+            billTo: q.bill_to || q.billTo || {
+              business: viewingCustomer?.business || q.customer_business,
+              address: viewingCustomer?.address || q.customer_address,
+              phone: viewingCustomer?.phone || q.customer_phone,
+              gstNo: viewingCustomer?.gstNo || q.customer_gst_no,
+              state: viewingCustomer?.state || q.customer_state,
               transport: q.transport || q.transport_company || q.transportCompany || null,
             },
             items: q.items || []
@@ -475,16 +479,69 @@ export default function CustomerListContent({ isDarkMode = false }) {
     }
     loadCustomerQuotations()
     return () => { ignore = true }
-  }, [viewingCustomer?.id, isRefreshing])
+  }, [viewingCustomer?.id, viewingCustomerForQuotation, isRefreshing])
+
+  // Fetch quotations for the quotation modal customer
+  React.useEffect(() => {
+    let ignore = false
+    async function loadCustomerQuotationsForModal() {
+      try {
+        if (!viewingCustomerForQuotation || !viewingCustomerForQuotation.id) {
+          // If quotation modal is closed, don't clear quotations if details modal is open
+          if (!viewingCustomer) {
+            setQuotations([])
+          }
+          return
+        }
+        console.log('Loading quotations for quotation modal customer:', viewingCustomerForQuotation.id);
+        const res = await quotationService.getQuotationsByCustomer(viewingCustomerForQuotation.id)
+        console.log('Quotations API response for quotation modal:', res);
+        
+        if (!ignore && res && res.success) {
+          const normalized = (res.data || []).map(q => ({
+            id: q.id,
+            quotationNumber: q.quotation_number,
+            customerId: q.customer_id,
+            quotationDate: q.quotation_date,
+            total: q.total_amount,
+            status: q.status,
+            createdAt: q.created_at,
+            branch: q.branch || 'ANODE',
+            billTo: q.bill_to || q.billTo || {
+              business: viewingCustomerForQuotation?.business || q.customer_business,
+              address: viewingCustomerForQuotation?.address || q.customer_address,
+              phone: viewingCustomerForQuotation?.phone || q.customer_phone,
+              gstNo: viewingCustomerForQuotation?.gstNo || q.customer_gst_no,
+              state: viewingCustomerForQuotation?.state || q.customer_state,
+              transport: q.transport || q.transport_company || q.transportCompany || null,
+            },
+            items: q.items || []
+          }))
+          console.log('Normalized quotations for quotation modal:', normalized);
+          console.log('Setting quotations, count:', normalized.length);
+          setQuotations(normalized)
+        } else if (!ignore && res && !res.success) {
+          console.warn('Quotations API returned unsuccessful response:', res);
+          setQuotations([])
+        }
+      } catch (e) {
+        console.error('Failed to load customer quotations for quotation modal:', e)
+        // Don't clear quotations on error, keep existing ones
+      }
+    }
+    loadCustomerQuotationsForModal()
+    return () => { ignore = true }
+  }, [viewingCustomerForQuotation?.id, isRefreshing])
 
   // Auto-refresh quotations every 10 seconds to get status updates from department head
   React.useEffect(() => {
-    if (!viewingCustomer || !viewingCustomer.id) return
+    const customerToUse = viewingCustomer || viewingCustomerForQuotation
+    if (!customerToUse || !customerToUse.id) return
     
     const interval = setInterval(async () => {
       try {
         console.log('Auto-refreshing quotations for status updates...');
-        const res = await quotationService.getQuotationsByCustomer(viewingCustomer.id)
+        const res = await quotationService.getQuotationsByCustomer(customerToUse.id)
         if (res && res.success) {
           const normalized = (res.data || []).map(q => ({
             id: q.id,
@@ -495,12 +552,12 @@ export default function CustomerListContent({ isDarkMode = false }) {
             status: q.status,
             createdAt: q.created_at,
             branch: q.branch || 'ANODE',
-            billTo: {
-              business: viewingCustomer?.business,
-              address: viewingCustomer?.address,
-              phone: viewingCustomer?.phone,
-              gstNo: viewingCustomer?.gstNo,
-              state: viewingCustomer?.state,
+            billTo: q.bill_to || q.billTo || {
+              business: customerToUse?.business || q.customer_business,
+              address: customerToUse?.address || q.customer_address,
+              phone: customerToUse?.phone || q.customer_phone,
+              gstNo: customerToUse?.gstNo || q.customer_gst_no,
+              state: customerToUse?.state || q.customer_state,
               transport: q.transport || q.transport_company || q.transportCompany || null,
             },
             items: q.items || []
@@ -539,7 +596,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
     }, 10000) // 10 seconds
     
     return () => clearInterval(interval)
-  }, [viewingCustomer?.id])
+  }, [viewingCustomer?.id, viewingCustomerForQuotation?.id])
   const [editingCustomer, setEditingCustomer] = React.useState(null)
   // Payment features removed
   
@@ -696,12 +753,10 @@ export default function CustomerListContent({ isDarkMode = false }) {
 
   const handleView = (customer) => {
     setViewingCustomer(customer)
-    setModalTab('details')
   }
 
   const handleQuotation = (customer) => {
-    setSelectedCustomerForQuotation(customer)
-    setShowCreateQuotation(true)
+    setViewingCustomerForQuotation(customer)
   }
 
   const handleCreateQuotation = () => {
@@ -714,37 +769,44 @@ export default function CustomerListContent({ isDarkMode = false }) {
   // Save quotation to database
   const handleSaveQuotation = async (quotationData) => {
     try {
-      const quotationPayload = {
-        customerId: viewingCustomer.id,
-        customerName: viewingCustomer.name,
-        customerBusiness: viewingCustomer.business,
-        customerPhone: viewingCustomer.phone,
-        customerEmail: viewingCustomer.email,
-        customerAddress: viewingCustomer.address,
-        customerGstNo: viewingCustomer.gstNo,
-        customerState: viewingCustomer.state,
-        quotationDate: quotationData.quotationDate,
-        validUntil: quotationData.validUntil,
-        branch: quotationData.selectedBranch || 'ANODE',
-        subtotal: quotationData.subtotal,
-        taxRate: quotationData.taxRate || 18.00,
-        taxAmount: quotationData.taxAmount,
-        discountRate: quotationData.discountRate || 0,
-        discountAmount: quotationData.discountAmount || 0,
-        totalAmount: quotationData.total,
-        items: quotationData.items.map(item => ({
-          productName: item.productName || item.description || 'Product',
-          description: item.description || item.productName || 'Product',
-          hsnCode: item.hsn || '85446090',
-          quantity: item.quantity,
-          unit: item.unit || 'Nos',
-          unitPrice: item.buyerRate || item.unitPrice,
-          gstRate: item.gstRate || 18.00,
-          taxableAmount: item.amount,
-          gstAmount: (item.amount * (item.gstRate || 18.00) / 100),
-          totalAmount: item.amount * (1 + (item.gstRate || 18.00) / 100)
-        }))
-      };
+        const quotationPayload = {
+          customerId: viewingCustomer.id,
+          customerName: viewingCustomer.name,
+          customerBusiness: quotationData.billTo?.business || viewingCustomer.business,
+          customerPhone: quotationData.billTo?.phone || viewingCustomer.phone,
+          customerEmail: viewingCustomer.email,
+          customerAddress: quotationData.billTo?.address || viewingCustomer.address,
+          customerGstNo: quotationData.billTo?.gstNo || viewingCustomer.gstNo,
+          customerState: quotationData.billTo?.state || viewingCustomer.state,
+          quotationDate: quotationData.quotationDate,
+          validUntil: quotationData.validUpto || quotationData.validUntil,
+          branch: quotationData.selectedBranch || 'ANODE',
+          subtotal: quotationData.subtotal,
+          taxRate: quotationData.taxRate || 18.00,
+          taxAmount: quotationData.taxAmount,
+          discountRate: quotationData.discountRate || 0,
+          discountAmount: quotationData.discountAmount || 0,
+          totalAmount: quotationData.total,
+          billTo: quotationData.billTo || {
+            business: viewingCustomer.business,
+            address: viewingCustomer.address,
+            phone: viewingCustomer.phone,
+            gstNo: viewingCustomer.gstNo,
+            state: viewingCustomer.state
+          },
+          items: quotationData.items.map(item => ({
+            productName: item.productName || item.description || 'Product',
+            description: item.description || item.productName || 'Product',
+            hsnCode: item.hsn || '85446090',
+            quantity: item.quantity,
+            unit: item.unit || 'Nos',
+            unitPrice: item.buyerRate || item.unitPrice,
+            gstRate: item.gstRate || 18.00,
+            taxableAmount: item.amount,
+            gstAmount: (item.amount * (item.gstRate || 18.00) / 100),
+            totalAmount: item.amount * (1 + (item.gstRate || 18.00) / 100)
+          }))
+        };
 
       console.log('Sending quotation payload:', quotationPayload);
       console.log('Viewing customer data:', viewingCustomer);
@@ -761,6 +823,14 @@ export default function CustomerListContent({ isDarkMode = false }) {
           total: response.data.total_amount,
           status: response.data.status,
           createdAt: response.data.created_at,
+          branch: quotationData.selectedBranch || 'ANODE',
+          billTo: quotationData.billTo || {
+            business: viewingCustomer.business,
+            address: viewingCustomer.address,
+            phone: viewingCustomer.phone,
+            gstNo: viewingCustomer.gstNo,
+            state: viewingCustomer.state
+          },
           items: response.data.items || []
         };
         
@@ -993,15 +1063,16 @@ export default function CustomerListContent({ isDarkMode = false }) {
 
   // Fetch PIs when viewing customer
   React.useEffect(() => {
-    if (viewingCustomer && quotations && quotations.length > 0) {
-      const customerQuotations = quotations.filter(q => q.customerId === viewingCustomer.id)
+    const customerToUse = viewingCustomer || viewingCustomerForQuotation
+    if (customerToUse && quotations && quotations.length > 0) {
+      const customerQuotations = quotations.filter(q => q.customerId === customerToUse.id)
       customerQuotations.forEach(quotation => {
         if (quotation.id) {
           fetchPIsForQuotation(quotation.id)
         }
       })
     }
-  }, [viewingCustomer, quotations])
+  }, [viewingCustomer, viewingCustomerForQuotation, quotations])
 
   // Auto-fill PI form with approved quotation data
   React.useEffect(() => {
@@ -1262,8 +1333,16 @@ export default function CustomerListContent({ isDarkMode = false }) {
             id: dbQuotation.id,
             quotationNumber: dbQuotation.quotation_number,
             quotationDate: dbQuotation.quotation_date,
-            validUpto: dbQuotation.valid_until,
+            validUpto: dbQuotation.valid_until || dbQuotation.valid_until,
             voucherNumber: `VOUCH-${Math.floor(1000 + Math.random() * 9000)}`,
+            selectedBranch: dbQuotation.branch || 'ANODE',
+            billTo: dbQuotation.bill_to || (typeof dbQuotation.bill_to === 'object' ? dbQuotation.bill_to : null) || {
+              business: dbQuotation.customer_business || dbQuotation.customer_name,
+              address: dbQuotation.customer_address,
+              phone: dbQuotation.customer_phone,
+              gstNo: dbQuotation.customer_gst_no,
+              state: dbQuotation.customer_state
+            },
             customer: {
               name: dbQuotation.customer_name,
               business: dbQuotation.customer_business,
@@ -1273,21 +1352,25 @@ export default function CustomerListContent({ isDarkMode = false }) {
               state: dbQuotation.customer_state
             },
             items: (dbQuotation.items || []).map(i => ({
-              productName: i.product_name,
+              productName: i.product_name || i.productName,
               description: i.description,
               quantity: i.quantity,
-              unit: i.unit,
-              buyerRate: i.unit_price,
-              unitPrice: i.unit_price,
-              amount: i.taxable_amount,
-              total: i.total_amount,
-              hsn: i.hsn_code,
-              gstRate: i.gst_rate
+              unit: i.unit || 'Nos',
+              buyerRate: i.unit_price || i.buyerRate,
+              unitPrice: i.unit_price || i.buyerRate,
+              amount: i.taxable_amount || i.amount,
+              total: i.total_amount || i.total,
+              hsn: i.hsn_code || i.hsn,
+              gstRate: i.gst_rate || i.gstRate || 18
             })),
-            subtotal: parseFloat(dbQuotation.subtotal),
-            taxAmount: parseFloat(dbQuotation.tax_amount),
-            total: parseFloat(dbQuotation.total_amount),
-            status: dbQuotation.status
+            subtotal: parseFloat(dbQuotation.subtotal || 0),
+            discountRate: parseFloat(dbQuotation.discount_rate || 0),
+            discountAmount: parseFloat(dbQuotation.discount_amount || 0),
+            taxRate: parseFloat(dbQuotation.tax_rate || 18),
+            taxAmount: parseFloat(dbQuotation.tax_amount || 0),
+            total: parseFloat(dbQuotation.total_amount || 0),
+            status: dbQuotation.status,
+            termsSections: dbQuotation.terms_sections || null
           };
           console.log('Normalized quotation data:', normalized);
           setQuotationPopupData(normalized);
@@ -1299,29 +1382,42 @@ export default function CustomerListContent({ isDarkMode = false }) {
       // Fallback to local quotation data
       const normalized = {
         ...quotation,
+        validUpto: quotation.validUpto || quotation.validUntil,
+        selectedBranch: quotation.branch || 'ANODE',
+        billTo: quotation.billTo || {
+          business: quotation.customer?.business || viewingCustomer?.business || viewingCustomer?.name,
+          address: quotation.customer?.address || viewingCustomer?.address,
+          phone: quotation.customer?.phone || viewingCustomer?.phone,
+          gstNo: quotation.customer?.gstNo || viewingCustomer?.gstNo,
+          state: quotation.customer?.state || viewingCustomer?.state
+        },
         customer: {
-          name: quotation.billTo?.business || viewingCustomer?.name,
-          business: quotation.billTo?.business,
-          address: quotation.billTo?.address,
-          phone: quotation.billTo?.phone,
-          gstNo: quotation.billTo?.gstNo,
-          state: quotation.billTo?.state
+          name: quotation.billTo?.business || quotation.customer?.name || viewingCustomer?.name,
+          business: quotation.billTo?.business || quotation.customer?.business || viewingCustomer?.business,
+          address: quotation.billTo?.address || quotation.customer?.address || viewingCustomer?.address,
+          phone: quotation.billTo?.phone || quotation.customer?.phone || viewingCustomer?.phone,
+          gstNo: quotation.billTo?.gstNo || quotation.customer?.gstNo || viewingCustomer?.gstNo,
+          state: quotation.billTo?.state || quotation.customer?.state || viewingCustomer?.state
         },
         items: (quotation.items || []).map(i => ({
           productName: i.productName || i.description,
-          description: i.productName || i.description,
+          description: i.description || i.productName,
           quantity: i.quantity,
-          unit: i.unit,
+          unit: i.unit || 'Nos',
           buyerRate: i.buyerRate ?? i.unitPrice ?? i.rate,
           unitPrice: i.buyerRate ?? i.unitPrice ?? i.rate,
-          amount: i.amount ?? i.total,
-          total: i.amount ?? i.total,
+          amount: i.amount ?? i.taxableAmount ?? i.total,
+          total: i.total ?? i.totalAmount ?? i.amount,
           hsn: i.hsnCode || i.hsn,
-          gstRate: i.gstRate
+          gstRate: i.gstRate || 18
         })),
-        subtotal: quotation.subtotal,
-        taxAmount: quotation.taxAmount ?? quotation.tax,
-        total: quotation.total
+        subtotal: quotation.subtotal || 0,
+        discountRate: quotation.discountRate || 0,
+        discountAmount: quotation.discountAmount || 0,
+        taxRate: quotation.taxRate || 18,
+        taxAmount: quotation.taxAmount ?? quotation.tax ?? 0,
+        total: quotation.total || quotation.totalAmount || 0,
+        termsSections: quotation.termsSections || null
       };
       setQuotationPopupData(normalized);
       setShowQuotationPopup(true);
@@ -3009,6 +3105,18 @@ export default function CustomerListContent({ isDarkMode = false }) {
                             View Details
                           </span>
                         </button>
+                        <button onClick={() => handleQuotation(customer)} className={`p-1.5 rounded-md relative group ${
+                          isDarkMode 
+                            ? 'hover:bg-gray-700' 
+                            : 'hover:bg-gray-100'
+                        }`} title="Create Quotation">
+                          <FileText className={`h-4 w-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+                          <span className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none ${
+                            isDarkMode ? 'bg-gray-600' : 'bg-gray-800'
+                          }`}>
+                            Quotation
+                          </span>
+                        </button>
                       </div>
                     </td>
                     )}
@@ -3188,57 +3296,69 @@ export default function CustomerListContent({ isDarkMode = false }) {
           </div>
         </div>
       )}
+      {/* Details Modal - Eye Button */}
       {viewingCustomer && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-0">
             <div className="px-6 pt-5">
               <h2 className="text-lg font-semibold text-gray-900">{viewingCustomer.name}</h2>
-              <p className="text-sm text-gray-500">Quick view and actions</p>
-            </div>
-            <div className="mt-4 px-3">
-              <div className="flex items-center gap-2 border-b border-gray-200 px-3">
-                <button className={cx("px-3 py-2 text-sm flex items-center gap-1", modalTab === 'details' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-900')} onClick={() => setModalTab('details')}>
-                  <User className="h-4 w-4" />
-                  Details
-                </button>
-                <button className={cx("px-3 py-2 text-sm flex items-center gap-1", modalTab === 'quotation_status' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-900')} onClick={() => setModalTab('quotation_status')}>
-                  <FileText className="h-4 w-4" />
-                  Quotation & Payment
-                </button>
-              </div>
+              <p className="text-sm text-gray-500">Customer Details</p>
             </div>
             <div className="px-6 py-4 max-h-[70vh] overflow-auto">
-              {modalTab === 'details' && (
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-gray-500">Customer Name</span><span className="font-medium text-gray-900">{viewingCustomer.name}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Business Name</span><span className="font-medium text-gray-900">{viewingCustomer.business}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">GST</span><span className="font-medium text-gray-900">{viewingCustomer.gstNo || '-'}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Address</span><span className="font-medium text-gray-900 text-right max-w-[60%]">{viewingCustomer.address || '-'}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Contact</span><span className="font-medium text-gray-900">{viewingCustomer.phone}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Email</span><span className="font-medium text-gray-900">{viewingCustomer.email}</span></div>
-                </div>
-              )}
-              {modalTab === 'quotation_status' && (
-                <div className="space-y-4 text-sm">
-                  {/* Quotation Details - TOP */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-semibold text-gray-900">Quotation Details</h3>
-                      <button
-                        onClick={() => {
-                          setIsRefreshing(true);
-                          setTimeout(() => setIsRefreshing(false), 1000);
-                        }}
-                        className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-1"
-                        title="Refresh quotation status"
-                      >
-                        <RefreshCw className="h-3 w-3" />
-                        Refresh
-                      </button>
-                    </div>
-                    {(() => {
-                      const customerQuotations = quotations.filter(q => q.customerId === viewingCustomer.id)
-                      if (customerQuotations.length === 0) {
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-gray-500">Customer Name</span><span className="font-medium text-gray-900">{viewingCustomer.name}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Business Name</span><span className="font-medium text-gray-900">{viewingCustomer.business}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">GST</span><span className="font-medium text-gray-900">{viewingCustomer.gstNo || '-'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Address</span><span className="font-medium text-gray-900 text-right max-w-[60%]">{viewingCustomer.address || '-'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Contact</span><span className="font-medium text-gray-900">{viewingCustomer.phone}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Email</span><span className="font-medium text-gray-900">{viewingCustomer.email}</span></div>
+              </div>
+            </div>
+            <div className="px-6 pb-4 flex justify-end gap-3">
+              <button className="px-3 py-2 rounded-md bg-white border border-gray-200 text-gray-700 hover:bg-gray-50" onClick={() => setViewingCustomer(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quotation & Payment Modal - Quotation Button */}
+      {viewingCustomerForQuotation && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-0">
+            <div className="px-6 pt-5">
+              <h2 className="text-lg font-semibold text-gray-900">{viewingCustomerForQuotation.name}</h2>
+              <p className="text-sm text-gray-500">Quotation & Payment</p>
+            </div>
+            <div className="px-6 py-4 max-h-[70vh] overflow-auto">
+              <div className="space-y-4 text-sm">
+                {/* Quotation Details - TOP */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-semibold text-gray-900">Quotation Details</h3>
+                    <button
+                      onClick={() => {
+                        setIsRefreshing(true);
+                        setTimeout(() => setIsRefreshing(false), 1000);
+                      }}
+                      className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-1"
+                      title="Refresh quotation status"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Refresh
+                    </button>
+                  </div>
+                  {(() => {
+                    console.log('All quotations:', quotations);
+                    console.log('Filtering for customer ID:', viewingCustomerForQuotation.id);
+                    const customerQuotations = quotations.filter(q => {
+                      const matches = q.customerId === viewingCustomerForQuotation.id || 
+                                     q.customerId === parseInt(viewingCustomerForQuotation.id) ||
+                                     String(q.customerId) === String(viewingCustomerForQuotation.id)
+                      console.log(`Quotation ${q.id}: customerId=${q.customerId}, matches=${matches}`);
+                      return matches
+                    })
+                    console.log('Filtered customer quotations:', customerQuotations);
+                    if (customerQuotations.length === 0) {
                         return (
                           <div className="text-center py-8 text-gray-500">
                             <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
@@ -3302,7 +3422,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
                               onClick={() => {
                                 // Set the approved quotation for PI creation
                                 setSelectedCustomerForPI({
-                                  ...viewingCustomer,
+                                  ...viewingCustomerForQuotation,
                                   approvedQuotation: quotation
                                 });
                                 setShowCreatePI(true);
@@ -3413,42 +3533,34 @@ export default function CustomerListContent({ isDarkMode = false }) {
                   </div>
 
                   {/* Payment UI removed */}
-                  
-                  
                 </div>
-              )}
             </div>
             <div className="px-6 pb-4 flex justify-end gap-3">
-              <button className="px-3 py-2 rounded-md bg-white border border-gray-200 text-gray-700 hover:bg-gray-50" onClick={() => setViewingCustomer(null)}>Close</button>
-              {modalTab === 'quotation_status' && (
-                <button 
-                  onClick={handleCreateQuotation}
-                  className="px-3 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 inline-flex items-center gap-2"
-                >
-                  <FileText className="h-4 w-4" />
-                  Create Quotation
-                </button>
-              )}
-              {modalTab === 'payment_timeline' && (
-                <button 
-                  onClick={() => setShowCreatePI(true)}
-                  className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 inline-flex items-center gap-2"
-                >
-                  <FileText className="h-4 w-4" />
-                  Create PI
-                </button>
-              )}
-              {modalTab === 'payment_timeline' && (
-                <button
-                  onClick={() => setShowPIPreview(true)}
-                  className="px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 inline-flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  Print PDF
-                </button>
-              )}
+              <button className="px-3 py-2 rounded-md bg-white border border-gray-200 text-gray-700 hover:bg-gray-50" onClick={() => setViewingCustomerForQuotation(null)}>Close</button>
+              <button 
+                onClick={() => {
+                  // Store customer and user data in sessionStorage
+                  sessionStorage.setItem('quotationCustomer', JSON.stringify(viewingCustomerForQuotation))
+                  sessionStorage.setItem('quotationUser', JSON.stringify(user))
+                  sessionStorage.setItem('openQuotationForm', 'true')
+                  
+                  // Get current URL and open in new tab
+                  const currentUrl = window.location.origin + window.location.pathname
+                  const newWindow = window.open(currentUrl + '?page=create-quotation', '_blank')
+                  
+                  // Fallback: if popup blocked, show alert
+                  if (!newWindow) {
+                    alert('Please allow pop-ups for this site to open the quotation form in a new tab')
+                    // Fallback to modal if popup is blocked
+                    setSelectedCustomerForQuotation(viewingCustomerForQuotation)
+                    setShowCreateQuotation(true)
+                  }
+                }}
+                className="px-3 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 inline-flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Create Quotation
+              </button>
             </div>
           </div>
         </div>
@@ -4420,7 +4532,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
             <div className="p-4 flex-1 overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Latest Quotation - {quotationPopupData.customer.name}</h3>
+                <h3 className="text-lg font-semibold">Quotation - {quotationPopupData.billTo?.business || quotationPopupData.customer?.business || quotationPopupData.customer?.name || 'Customer'}</h3>
                 <button 
                   onClick={() => setShowQuotationPopup(false)}
                   className="text-gray-500 hover:text-gray-700"
@@ -4437,12 +4549,12 @@ export default function CustomerListContent({ isDarkMode = false }) {
                   quotationDate: quotationPopupData.quotationDate,
                   validUpto: quotationPopupData.validUpto,
                   voucherNumber: quotationPopupData.voucherNumber,
-                  billTo: {
-                    business: quotationPopupData.customer.name || quotationPopupData.customer.business,
-                    address: quotationPopupData.customer.address,
-                    phone: quotationPopupData.customer.phone,
-                    gstNo: quotationPopupData.customer.gstNo,
-                    state: quotationPopupData.customer.state
+                  billTo: quotationPopupData.billTo || {
+                    business: quotationPopupData.customer?.business || quotationPopupData.customer?.name,
+                    address: quotationPopupData.customer?.address,
+                    phone: quotationPopupData.customer?.phone,
+                    gstNo: quotationPopupData.customer?.gstNo,
+                    state: quotationPopupData.customer?.state
                   },
                   items: quotationPopupData.items?.map(i => ({
                     productName: i.productName || i.description,
@@ -4453,13 +4565,17 @@ export default function CustomerListContent({ isDarkMode = false }) {
                     unitPrice: i.unitPrice || i.buyerRate,
                     amount: i.amount || i.taxableAmount,
                     total: i.total || i.totalAmount,
-                    hsn: i.hsn,
-                    gstRate: i.gstRate
-                  })),
-                  subtotal: quotationPopupData.subtotal,
-                  taxAmount: quotationPopupData.tax,
-                  total: quotationPopupData.total,
-                  selectedBranch: quotationPopupData.selectedBranch || selectedBranch
+                    hsn: i.hsn || i.hsnCode,
+                    gstRate: i.gstRate || 18
+                  })) || [],
+                  subtotal: quotationPopupData.subtotal || 0,
+                  discountRate: quotationPopupData.discountRate || 0,
+                  discountAmount: quotationPopupData.discountAmount || 0,
+                  taxRate: quotationPopupData.taxRate || 18,
+                  taxAmount: quotationPopupData.taxAmount || quotationPopupData.tax || 0,
+                  total: quotationPopupData.total || quotationPopupData.totalAmount || 0,
+                  selectedBranch: quotationPopupData.selectedBranch || quotationPopupData.branch || selectedBranch,
+                  termsSections: quotationPopupData.termsSections || null
                 }}
                 companyBranches={companyBranches}
                 user={user}
@@ -4477,19 +4593,28 @@ export default function CustomerListContent({ isDarkMode = false }) {
               <button
                 type="button"
                 className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 border border-transparent rounded shadow-sm hover:bg-green-700 flex items-center gap-2"
-                onClick={() => {
+                onClick={async () => {
                   const element = document.getElementById('quotation-preview-content') || document.getElementById('quotation-content')
                   if (element) {
+                    // Temporarily hide the signatory section in the original element
+                    const signatorySection = element.querySelector('.quotation-signatory-section')
+                    let wasVisible = true
+                    if (signatorySection) {
+                      wasVisible = signatorySection.style.display !== 'none'
+                      signatorySection.style.display = 'none'
+                    }
+                    
                     const opt = {
                       margin: [0.4, 0.4, 0.4, 0.4],
-                      filename: `Quotation-${quotationPopupData.quotationNumber}-${quotationPopupData.customer.name.replace(/\s+/g, '-')}.pdf`,
+                      filename: `Quotation-${quotationPopupData.quotationNumber}-${(quotationPopupData.billTo?.business || quotationPopupData.customer?.business || quotationPopupData.customer?.name || 'Customer').replace(/\s+/g, '-')}.pdf`,
                       image: { type: 'jpeg', quality: 0.8 },
                       html2canvas: { 
                         scale: 1.1,
                         useCORS: true,
                         letterRendering: true,
                         allowTaint: true,
-                        backgroundColor: '#ffffff'
+                        backgroundColor: '#ffffff',
+                        logging: false
                       },
                       jsPDF: { 
                         unit: 'in', 
@@ -4499,7 +4624,18 @@ export default function CustomerListContent({ isDarkMode = false }) {
                         putOnlyUsedFonts: true
                       }
                     }
-                    html2pdf().set(opt).from(element).save()
+                    
+                    try {
+                      await html2pdf().set(opt).from(element).save()
+                    } catch (error) {
+                      console.error('PDF generation error:', error)
+                      alert('Failed to generate PDF. Please try again.')
+                    } finally {
+                      // Restore the signatory section visibility
+                      if (signatorySection && wasVisible) {
+                        signatorySection.style.display = ''
+                      }
+                    }
                   } else {
                     alert('No quotation content to download')
                   }

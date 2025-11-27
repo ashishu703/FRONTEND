@@ -1,6 +1,7 @@
 import React from 'react'
+import { defaultQuotationTerms } from '../constants/quotationTerms'
 
-export default function QuotationPreview({ data, companyBranches, user }) {
+export default function QuotationPreview({ data, companyBranches, user, hideSignatory = false }) {
   console.log('QuotationPreview received data:', data);
   const selectedBranch = companyBranches[data?.selectedBranch] || companyBranches.ANODE
 
@@ -60,9 +61,21 @@ export default function QuotationPreview({ data, companyBranches, user }) {
             </div>
           </div>
           <div className="grid grid-cols-4 gap-2 p-2 text-xs">
-            <div>{data?.quotationDate || new Date().toLocaleDateString()}</div>
+            <div>
+              {(() => {
+                const dateValue = data?.quotationDate || new Date().toISOString();
+                const date = new Date(dateValue);
+                return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+              })()}
+            </div>
             <div>{data?.quotationNumber || `ANO/${new Date().getFullYear().toString().slice(-2)}-${(new Date().getFullYear() + 1).toString().slice(-2)}/${Math.floor(1000 + Math.random() * 9000)}`}</div>
-            <div>{data?.validUpto || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
+            <div>
+              {(() => {
+                const dateValue = data?.validUpto || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+                const date = new Date(dateValue);
+                return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+              })()}
+            </div>
             <div>{data?.voucherNumber || `VOUCH-${Math.floor(1000 + Math.random() * 9000)}`}</div>
           </div>
         </div>
@@ -109,72 +122,84 @@ export default function QuotationPreview({ data, companyBranches, user }) {
         </div>
 
         <div className="border border-black mb-4">
-          <table className="w-full text-xs">
+          <table className="w-full text-xs table-fixed">
             <thead>
               <tr className="bg-gray-100">
-                <th className="border border-gray-300 p-1 text-center w-10">Sr.</th>
+                <th className="border border-gray-300 p-1 text-center w-6">Sr.</th>
                 <th className="border border-gray-300 p-2 text-left">Name of Product / Service</th>
                 <th className="border border-gray-300 p-1 text-center w-16">HSN / SAC</th>
                 <th className="border border-gray-300 p-1 text-center w-12">Qty</th>
-                <th className="border border-gray-300 p-1 text-center w-12">Unit</th>
-                <th className="border border-gray-300 p-1 text-right w-20">Buyer Rate</th>
-                <th className="border border-gray-300 p-1 text-right w-20">Taxable Value</th>
-                <th className="border border-gray-300 p-0.5 text-center w-8 text-[10px] whitespace-nowrap">GST%</th>
-                <th className="border border-gray-300 p-1 text-right w-24">Total</th>
+                <th className="border border-gray-300 p-1 text-center w-10">Unit</th>
+                <th className="border border-gray-300 p-1 text-right min-w-[70px]">Buyer Rate</th>
+                <th className="border border-gray-300 p-0.5 text-center w-12 text-[10px] whitespace-nowrap">GST</th>
+                <th className="border border-gray-300 p-1 text-right min-w-[150px] text-[9px] leading-tight tracking-tight">
+                  Total
+                </th>
               </tr>
             </thead>
             <tbody>
               {Array.isArray(data?.items) && data.items.length > 0 ? (
                 data.items.map((item, index) => (
                   <tr key={index}>
-                    <td className="border border-gray-300 p-1 text-center">{index + 1}</td>
-                    <td className="border border-gray-300 p-2">{item.productName || item.description}</td>
-                    <td className="border border-gray-300 p-1 text-center">{item.hsn || '85446090'}</td>
+                    <td className="border border-gray-300 p-1 text-center w-6">{index + 1}</td>
+                    <td className="border border-gray-300 p-2 break-words whitespace-normal align-top">
+                      {item.productName || item.description || '-'}
+                    </td>
+                    <td className="border border-gray-300 p-1 text-center">{item.hsn || '-'}</td>
                     <td className="border border-gray-300 p-1 text-center">{item.quantity}</td>
-                    <td className="border border-gray-300 p-1 text-center">{item.unit || 'Nos'}</td>
-                    <td className="border border-gray-300 p-1 text-right">{parseFloat(item.buyerRate || item.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td className="border border-gray-300 p-1 text-right">{parseFloat(item.amount || item.taxable || item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td className="border border-gray-300 p-0 text-center text-xs">{item.gstRate ? `${item.gstRate}%` : '18%'}</td>
-                    <td className="border border-gray-300 p-1 text-right">{parseFloat((item.amount ?? item.total ?? 0) * (item.gstMultiplier ?? 1.18)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="border border-gray-300 p-1 text-center w-10">{item.unit || 'Nos'}</td>
+                    <td className="border border-gray-300 p-1 text-right min-w-[70px] whitespace-nowrap">
+                      {parseFloat(item.buyerRate || item.unitPrice || 0).toLocaleString('en-IN', {
+                        minimumFractionDigits: 2
+                      })}
+                    </td>
+                    <td className="border border-gray-300 p-0 text-center text-xs w-12">{item.gstRate ? `${item.gstRate}%` : '18%'}</td>
+                    <td className="border border-gray-300 p-1 text-right min-w-[150px] whitespace-nowrap text-[9px] leading-tight tracking-tight">
+                      {parseFloat((item.amount ?? item.total ?? 0) * (item.gstMultiplier ?? 1.18)).toLocaleString(
+                        'en-IN',
+                        { minimumFractionDigits: 2 }
+                      )}
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
+                  <td className="border border-gray-300 p-1 text-center w-6">1</td>
+                  <td className="border border-gray-300 p-2 break-words whitespace-normal align-top">
+                    cable
+                  </td>
+                  <td className="border border-gray-300 p-1 text-center">-</td>
                   <td className="border border-gray-300 p-1 text-center">1</td>
-                  <td className="border border-gray-300 p-2">cable</td>
-                  <td className="border border-gray-300 p-1 text-center">85446090</td>
-                  <td className="border border-gray-300 p-1 text-center">1</td>
-                  <td className="border border-gray-300 p-1 text-center">Nos</td>
-                  <td className="border border-gray-300 p-1 text-right">100.00</td>
-                  <td className="border border-gray-300 p-1 text-right">100.00</td>
-                  <td className="border border-gray-300 p-0 text-center text-xs">18%</td>
-                  <td className="border border-gray-300 p-1 text-right">118.00</td>
+                  <td className="border border-gray-300 p-1 text-center w-10">Nos</td>
+                  <td className="border border-gray-300 p-1 text-right whitespace-nowrap min-w-[70px]">100.00</td>
+                  <td className="border border-gray-300 p-0 text-center text-xs w-12">18%</td>
+                  <td className="border border-gray-300 p-1 text-right whitespace-nowrap min-w-[150px] text-[9px] leading-tight tracking-tight">
+                    118.00
+                  </td>
                 </tr>
               )}
 
-              {Array.from({ length: 8 }).map((_, i) => (
-                <tr key={i} className="h-8">
-                  <td className="border border-gray-300 p-2"></td>
-                  <td className="border border-gray-300 p-2"></td>
-                  <td className="border border-gray-300 p-2"></td>
-                  <td className="border border-gray-300 p-2"></td>
-                  <td className="border border-gray-300 p-2"></td>
-                  <td className="border border-gray-300 p-2"></td>
-                  <td className="border border-gray-300 p-2"></td>
-                  <td className="border border-gray-300 p-2"></td>
-                </tr>
-              ))}
-
-              <tr className="bg-gray-100 font-bold">
-                <td className="border border-gray-300 p-2 text-left">Total</td>
-                <td className="border border-gray-300 p-2"></td>
-                <td className="border border-gray-300 p-2"></td>
-                <td className="border border-gray-300 p-2"></td>
-                <td className="border border-gray-300 p-2"></td>
-                <td className="border border-gray-300 p-2"></td>
-                <td className="border border-gray-300 p-2">{data?.subtotal?.toFixed ? data.subtotal.toFixed(2) : (data?.subtotal || '').toString()}</td>
-                <td className="border border-gray-300 p-2">{data?.taxAmount?.toFixed ? data.taxAmount.toFixed(2) : (data?.taxAmount || '').toString()}</td>
-                <td className="border border-gray-300 p-2">{data?.total?.toFixed ? data.total.toFixed(2) : (data?.total || '').toString()}</td>
+              <tr className="bg-gray-100 font-bold text-[10px] leading-tight">
+                <td className="border border-gray-300 p-1 text-left" colSpan={5}>
+                  Total
+                </td>
+                <td className="border border-gray-300 p-1 text-right whitespace-nowrap text-[9px] leading-tight tracking-tight">
+                  {data?.subtotal?.toFixed
+                    ? parseFloat(data.subtotal).toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })
+                    : data?.subtotal || '0.00'}
+                </td>
+                <td className="border border-gray-300 p-1 text-right whitespace-nowrap text-[9px] leading-tight tracking-tight"></td>
+                <td className="border border-gray-300 p-1 text-right whitespace-nowrap text-[9px] leading-tight tracking-tight">
+                  {data?.total?.toFixed
+                    ? parseFloat(data.total).toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })
+                    : data?.total || '0.00'}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -198,27 +223,27 @@ export default function QuotationPreview({ data, companyBranches, user }) {
               </p>
             </div>
           </div>
-          <div className="border border-black p-3">
-            <div className="text-xs space-y-1">
+          <div className="border border-black p-2">
+            <div className="text-[10px] space-y-0.5">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span>{data?.subtotal?.toFixed ? data.subtotal.toFixed(2) : (data?.subtotal || '0.00')}</span>
+                <span className="whitespace-nowrap">{data?.subtotal?.toFixed ? parseFloat(data.subtotal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (data?.subtotal || '0.00')}</span>
               </div>
               <div className="flex justify-between">
                 <span>Less: Discount ({data?.discountRate || 0}%)</span>
-                <span>{data?.discountAmount?.toFixed ? data.discountAmount.toFixed(2) : (data?.discountAmount || '0.00')}</span>
+                <span className="whitespace-nowrap">{data?.discountAmount?.toFixed ? parseFloat(data.discountAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (data?.discountAmount || '0.00')}</span>
               </div>
               <div className="flex justify-between">
                 <span>Taxable Amount</span>
-                <span>{(typeof data?.subtotal === 'number' ? (data.subtotal - (data?.discountAmount || 0)).toFixed(2) : (data?.taxable || '')).toString()}</span>
+                <span className="whitespace-nowrap">{(typeof data?.subtotal === 'number' ? parseFloat(data.subtotal - (data?.discountAmount || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (data?.taxable || '')).toString()}</span>
               </div>
               <div className="flex justify-between">
                 <span>Add: Total GST ({data?.taxRate || 18}%)</span>
-                <span>{data?.taxAmount?.toFixed ? data.taxAmount.toFixed(2) : (data?.taxAmount || '0.00')}</span>
+                <span className="whitespace-nowrap">{data?.taxAmount?.toFixed ? parseFloat(data.taxAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (data?.taxAmount || '0.00')}</span>
               </div>
               <div className="flex justify-between font-bold border-t pt-1">
                 <span>Total Amount After Tax</span>
-                <span>₹ {data?.total?.toFixed ? data.total.toFixed(2) : (data?.total || '0.00')}</span>
+                <span className="whitespace-nowrap">₹ {data?.total?.toFixed ? parseFloat(data.total).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (data?.total || '0.00')}</span>
               </div>
               {data?.amountInWords && (
                 <div className="text-center mt-2">
@@ -234,37 +259,27 @@ export default function QuotationPreview({ data, companyBranches, user }) {
             <h3>Terms and Conditions</h3>
           </div>
           <div className="p-3 text-xs space-y-2">
-            <div>
-              <h4 className="font-bold">PRICING & VALIDITY</h4>
-              <p>• Prices are valid for 3 days only from the date of the final quotation/PI unless otherwise specified terms.</p>
-              <p>• The order will be considered confirmed only upon receipt of the advance payment.</p>
-            </div>
-            <div>
-              <h4 className="font-bold">PAYMENT TERMS</h4>
-              <p>• 30% advance payment upon order confirmation</p>
-              <p>• Remaining Balance at time of final dispatch / against LC / Bank Guarantee (if applicable).</p>
-              <p>• Liquidated Damages @ 0.5% to 1% per WEEK will be charged on delayed payments beyond the agreed terms.</p>
-            </div>
-            <div>
-              <h4 className="font-bold">DELIVERY & DISPATCH</h4>
-              <p>• Standard delivery period as per the telecommunication with customer.</p>
-              <p>• Any delays due to unforeseen circumstances (force majeure, strikes, and transportation issues) will be communicated.</p>
-            </div>
-            <div>
-              <h4 className="font-bold">QUALITY & WARRANTY</h4>
-              <p>• Cables will be supplied as per IS and other applicable BIS standards/or as per the agreed specifications mentioned/special demand by the customer.</p>
-              <p>• Any manufacturing defects should be reported immediately, within 3 working days of receipt.</p>
-              <p>• Warranty: 12 months from the date of dispatch for manufacturing defects only in ISI mark products.</p>
-            </div>
+            {(data?.termsSections?.length ? data.termsSections : defaultQuotationTerms).map((section) => (
+              <div key={section.title}>
+                <h4 className="font-bold">{section.title}</h4>
+                {section.points.map((point, idx) => (
+                  <p key={idx}>• {point}</p>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
 
         <div className="text-right text-xs">
           <p className="mb-4">For <strong>{selectedBranch.name}</strong></p>
           <p className="mb-8">This is computer generated invoice no signature required.</p>
-          <p className="font-bold">Authorized Signatory</p>
-          {user && (
-            <p className="mt-2 text-sm font-semibold text-gray-800">{user.username || user.email || 'User'}</p>
+          {!hideSignatory && (
+            <div className="quotation-signatory-section">
+              <p className="font-bold">Authorized Signatory</p>
+              {user && (
+                <p className="mt-2 text-sm font-semibold text-gray-800">{user.username || user.email || 'User'}</p>
+              )}
+            </div>
           )}
         </div>
       </div>
