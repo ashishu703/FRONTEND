@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, User, ChevronRight, Building, FileText, Tag, CreditCard, Send, DollarSign, ArrowRight, Upload, Download, X, RefreshCw } from 'lucide-react';
+import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, User, ChevronRight, Building, FileText, Tag, CreditCard, Send, DollarSign, ArrowRight, Upload, Download, X, RefreshCw, Pencil } from 'lucide-react';
 import apiClient from '../../../utils/apiClient';
 import { API_ENDPOINTS } from '../../../api/admin_api/api';
 import AddCustomerForm from '../salespersonaddcustomer.jsx';
@@ -48,6 +48,8 @@ const MobileLeads = () => {
           id: lead.id,
           name: lead.name || 'N/A',
           phone: lead.phone || 'N/A',
+          email: lead.email || '',
+          whatsapp: lead.whatsapp || '',
           business: lead.business || 'N/A',
           address: lead.address || 'N/A',
           gstNo: lead.gst_no || 'N/A',
@@ -57,6 +59,12 @@ const MobileLeads = () => {
           customerType: lead.customer_type || 'N/A',
           date: lead.date ? new Date(lead.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           salesStatus: (lead.sales_status || 'follow up').toLowerCase(),
+          salesStatusRemark: lead.sales_status_remark || '',
+          followUpStatus: lead.follow_up_status || '',
+          followUpRemark: lead.follow_up_remark || '',
+          followUpDate: lead.follow_up_date || '',
+          followUpTime: lead.follow_up_time || '',
+          callDurationSeconds: lead.call_duration_seconds || '',
           transferredTo: lead.transferred_to || 'N/A',
           quotationSend: lead.quotation_count > 0 ? 'Yes' : 'No',
           paymentStatus: lead.payment_status === 'COMPLETED' ? 'Paid' : 
@@ -87,6 +95,8 @@ const MobileLeads = () => {
         id: lead.id,
         name: lead.name || 'N/A',
         phone: lead.phone || 'N/A',
+        email: lead.email || '',
+        whatsapp: lead.whatsapp || '',
         business: lead.business || 'N/A',
         address: lead.address || 'N/A',
         gstNo: lead.gst_no || 'N/A',
@@ -96,6 +106,12 @@ const MobileLeads = () => {
         customerType: lead.customer_type || 'N/A',
         date: lead.date ? new Date(lead.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         salesStatus: (lead.sales_status || 'follow up').toLowerCase(),
+        salesStatusRemark: lead.sales_status_remark || '',
+        followUpStatus: lead.follow_up_status || '',
+        followUpRemark: lead.follow_up_remark || '',
+        followUpDate: lead.follow_up_date || '',
+        followUpTime: lead.follow_up_time || '',
+        callDurationSeconds: lead.call_duration_seconds || '',
         transferredTo: lead.transferred_to || 'N/A',
         quotationSend: lead.quotation_count > 0 ? 'Yes' : 'No',
         paymentStatus: lead.payment_status === 'COMPLETED' ? 'Paid' : 
@@ -114,30 +130,80 @@ const MobileLeads = () => {
     try {
       if (editingCustomer) {
         // Update existing customer
+        const updatedCustomer = {
+          ...editingCustomer,
+          name: newCustomerData.customerName,
+          phone: newCustomerData.mobileNumber,
+          email: newCustomerData.email || '',
+          business: newCustomerData.business || 'N/A',
+          address: newCustomerData.address || 'N/A',
+          gstNo: newCustomerData.gstNumber || '',
+          productName: newCustomerData.productName || 'N/A',
+          state: newCustomerData.state || 'N/A',
+          enquiryBy: newCustomerData.leadSource || 'N/A',
+          customerType: newCustomerData.customerType || 'N/A',
+          date: newCustomerData.date,
+          whatsapp: newCustomerData.whatsappNumber ? `+91${newCustomerData.whatsappNumber.replace(/\D/g, '').slice(-10)}` : null,
+          salesStatus: newCustomerData.salesStatus || 'pending',
+          salesStatusRemark: newCustomerData.salesStatusRemark || '',
+          followUpStatus: newCustomerData.followUpStatus || '',
+          followUpRemark: newCustomerData.followUpRemark || '',
+          followUpDate: newCustomerData.followUpDate || '',
+          followUpTime: newCustomerData.followUpTime || '',
+          callDurationSeconds: newCustomerData.callDurationSeconds || '',
+          transferredTo: newCustomerData.transferredTo || ''
+        };
+
         const formData = new FormData();
-        formData.append('name', newCustomerData.customerName);
-        formData.append('phone', newCustomerData.mobileNumber);
-        formData.append('email', newCustomerData.email || '');
-        formData.append('business', newCustomerData.business || 'N/A');
-        formData.append('address', newCustomerData.address || 'N/A');
-        formData.append('gst_no', newCustomerData.gstNumber || '');
-        formData.append('product_type', newCustomerData.productName || 'N/A');
-        formData.append('state', newCustomerData.state || 'N/A');
-        formData.append('lead_source', newCustomerData.leadSource || 'N/A');
-        formData.append('customer_type', newCustomerData.customerType || 'N/A');
-        formData.append('date', newCustomerData.date);
-        formData.append('whatsapp', newCustomerData.whatsappNumber ? newCustomerData.whatsappNumber.replace(/\D/g, '').slice(-10) : '');
-        formData.append('sales_status', newCustomerData.salesStatus || 'pending');
-        formData.append('sales_status_remark', newCustomerData.salesStatusRemark || '');
-        formData.append('transferred_to', newCustomerData.transferredTo || '');
+        formData.append('name', updatedCustomer.name);
+        formData.append('phone', updatedCustomer.phone);
+        formData.append('email', updatedCustomer.email || '');
+        formData.append('business', updatedCustomer.business || 'N/A');
+        formData.append('address', updatedCustomer.address || 'N/A');
+        formData.append('gst_no', updatedCustomer.gstNo || '');
+        formData.append('product_type', updatedCustomer.productName || 'N/A');
+        formData.append('state', updatedCustomer.state || 'N/A');
+        formData.append('lead_source', updatedCustomer.enquiryBy || 'N/A');
+        formData.append('customer_type', updatedCustomer.customerType || 'N/A');
+        formData.append('date', updatedCustomer.date);
+        formData.append('whatsapp', updatedCustomer.whatsapp ? updatedCustomer.whatsapp.replace('+91', '') : '');
+        formData.append('sales_status', updatedCustomer.salesStatus || 'pending');
+        formData.append('sales_status_remark', updatedCustomer.salesStatusRemark || '');
+        formData.append('follow_up_status', updatedCustomer.followUpStatus || '');
+        formData.append('follow_up_remark', updatedCustomer.followUpRemark || '');
+        formData.append('follow_up_date', updatedCustomer.followUpDate || '');
+        formData.append('follow_up_time', updatedCustomer.followUpTime || '');
+        formData.append('call_duration_seconds', updatedCustomer.callDurationSeconds || '');
+        formData.append('transferred_to', updatedCustomer.transferredTo || '');
 
         // Add call recording file if present
         if (newCustomerData.callRecordingFile) {
           formData.append('call_recording', newCustomerData.callRecordingFile);
         }
 
-        await apiClient.putFormData(API_ENDPOINTS.SALESPERSON_LEAD_BY_ID(editingCustomer.id), formData);
-        alert('Customer updated successfully!');
+        try {
+          await apiClient.putFormData(API_ENDPOINTS.SALESPERSON_LEAD_BY_ID(editingCustomer.id), formData);
+          
+          // If lead is being transferred, call the transfer API
+          if (updatedCustomer.transferredTo) {
+            try {
+              await apiClient.post(API_ENDPOINTS.LEAD_TRANSFER(editingCustomer.id), {
+                transferredTo: updatedCustomer.transferredTo,
+                reason: `Transferred via mobile edit form`
+              });
+              alert(`Lead successfully transferred to ${updatedCustomer.transferredTo}`);
+            } catch (transferErr) {
+              console.error('Failed to transfer lead:', transferErr);
+              alert('Customer updated but transfer failed. Please try again.');
+            }
+          } else {
+            alert('Customer updated successfully!');
+          }
+        } catch (err) {
+          console.error('Failed to update salesperson lead:', err);
+          alert('Failed to update customer. Please try again.');
+          return;
+        }
       } else {
         // Add new customer
         const formData = new FormData();
@@ -709,6 +775,44 @@ const MobileLeads = () => {
                       </span>
                     </div>
                   </div>
+                </div>
+                {/* Edit Customer Button */}
+                <div className="pt-2 border-t border-gray-100">
+                  <button
+                    onClick={() => {
+                      // Map lead data to match the format expected by the edit form
+                      const customerData = {
+                        id: lead.id,
+                        name: lead.name,
+                        phone: lead.phone,
+                        whatsapp: lead.whatsapp || lead.phone,
+                        email: lead.email || '',
+                        business: lead.business,
+                        address: lead.address,
+                        gstNo: lead.gstNo,
+                        productName: lead.productName,
+                        state: lead.state,
+                        enquiryBy: lead.leadSource,
+                        customerType: lead.customerType,
+                        date: lead.date,
+                        salesStatus: lead.salesStatus,
+                        salesStatusRemark: lead.salesStatusRemark || '',
+                        followUpStatus: lead.followUpStatus || '',
+                        followUpRemark: lead.followUpRemark || '',
+                        followUpDate: lead.followUpDate || '',
+                        followUpTime: lead.followUpTime || '',
+                        callDurationSeconds: lead.callDurationSeconds || '',
+                        transferredTo: lead.transferredTo === 'N/A' ? '' : lead.transferredTo
+                      };
+                      setEditingCustomer(customerData);
+                      setShowAddCustomer(true);
+                      setSelectedLead(null);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit Customer
+                  </button>
                 </div>
               </div>
             )}

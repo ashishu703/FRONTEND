@@ -55,6 +55,11 @@ export const API_ENDPOINTS = {
   PRODUCTION_QC_LOTS: (query = '') => `${PRODUCTION_BASE}/qc/lots${query ? `?${query}` : ''}`,
   PRODUCTION_MAINT_ORDERS: (query = '') => `${PRODUCTION_BASE}/maintenance/orders${query ? `?${query}` : ''}`,
   PRODUCTION_INVENTORY: (query = '') => `${PRODUCTION_BASE}/inventory${query ? `?${query}` : ''}`,
+
+  // Product Images
+  PRODUCT_IMAGES_UPLOAD: () => `${API_BASE_URL}/api/product-images`,
+  PRODUCT_IMAGES_GET: (productName) => `${API_BASE_URL}/api/product-images/${encodeURIComponent(productName)}`,
+  PRODUCT_IMAGES_DELETE: () => `${API_BASE_URL}/api/product-images`,
 };
 
 export default API_BASE_URL;

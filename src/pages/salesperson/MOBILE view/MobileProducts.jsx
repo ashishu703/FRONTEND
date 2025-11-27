@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, Filter, Plus, Box, Eye, Edit, Trash2, Calendar, Star, Package, Image, CreditCard, Wrench, Calculator, ChevronDown, CheckCircle, Shield, FileText, Download, MoreVertical, User, Phone, Mail, MapPin, Building, ChevronRight, DollarSign, Settings, BarChart3, X, Globe, Folder } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import apiClient from '../../../utils/apiClient';
+import { API_ENDPOINTS } from '../../../api/admin_api/api';
 
 const MobileProducts = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,13 +45,14 @@ const MobileProducts = () => {
     const nameLower = productName.toLowerCase();
     return productsWithData.some(allowed => nameLower.includes(allowed));
   };
-  // Image upload state for Price List
-  const [priceImages, setPriceImages] = useState({}); // { [rowIndex]: [dataUrl, ...] }
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [uploadIndex, setUploadIndex] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState("");
-  const [viewingImageRowIndex, setViewingImageRowIndex] = useState(null); // Track which row index is being viewed
-  const [viewingImageIndex, setViewingImageIndex] = useState(null); // Track which image index in the array
+  // Image upload state for Price List - database-backed
+  const [productImages, setProductImages] = useState({}); // { [productName]: { [rowIndex]: [fileUrl1, ...] } }
+  const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [viewingImageRowIndex, setViewingImageRowIndex] = useState(null); // Track which row index is being viewed in modal
+  const [isFileViewerOpen, setIsFileViewerOpen] = useState(false); // File viewer modal state
+  const imageUploadInputRef = useRef(null); // Ref for file input
   // Approvals: BIS doc preview (uses desktop mapping)
   const [bisDocUrl, setBisDocUrl] = useState(() => {
     // Desktop mapping for BIS PDFs
@@ -1526,46 +1529,158 @@ const MobileProducts = () => {
     return matchesSearch && matchesCategory;
   });
 
-  // Handle image upload for price list
+  // Load product images from database when selectedProduct changes
+  useEffect(() => {
+    const loadProductImages = async () => {
+      if (selectedProduct) {
+        try {
+          const response = await apiClient.get(API_ENDPOINTS.PRODUCT_IMAGES_GET(selectedProduct));
+          if (response?.success && response?.data) {
+            // Convert the response data to the format expected by the component
+            const imagesBySize = response.data;
+            setProductImages(prev => ({
+              ...prev,
+              [selectedProduct]: imagesBySize
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading product images:', error);
+          // If product has no images, that's okay - just set empty object
+          setProductImages(prev => ({
+            ...prev,
+            [selectedProduct]: {}
+          }));
+        }
+      }
+    };
+    
+    loadProductImages();
+  }, [selectedProduct]);
+
+  // Handle image upload for price list - database-backed
   const handleImageUpload = (index) => {
-    setUploadIndex(index);
-    const fileInput = document.getElementById('mobile-price-image-input');
-    if (fileInput) {
-      fileInput.click();
+    setSelectedImageIndex(index);
+    setIsImageUploadOpen(true);
+  };
+
+  const handleFileSelect = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const file = event.target.files?.[0];
+    if (!file || selectedImageIndex === null || !selectedProduct) {
+      if (imageUploadInputRef.current) {
+        imageUploadInputRef.current.value = '';
+      }
+      return;
+    }
+
+    const currentProduct = selectedProduct;
+    const currentImageIndex = selectedImageIndex;
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('product_name', currentProduct);
+      formData.append('size_index', currentImageIndex.toString());
+
+      const response = await apiClient.postFormData(API_ENDPOINTS.PRODUCT_IMAGES_UPLOAD(), formData);
+      
+      if (response?.success && response?.data?.url) {
+        const fileUrl = response.data.url;
+        const productKey = currentProduct;
+        
+        setProductImages(prev => {
+          const productMap = prev[productKey] ? { ...prev[productKey] } : {};
+          const list = productMap[currentImageIndex] ? [...productMap[currentImageIndex]] : [];
+          list.push(fileUrl);
+          productMap[currentImageIndex] = list;
+          return { ...prev, [productKey]: productMap };
+        });
+        
+        setTimeout(() => {
+          alert('File uploaded successfully!');
+        }, 100);
+      } else {
+        setTimeout(() => {
+          alert(response?.message || 'Failed to upload file. Please try again.');
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      const errorMessage = error?.response?.data?.message || error?.data?.message || error?.message || 'Failed to upload file. Please try again.';
+      setTimeout(() => {
+        alert(errorMessage);
+      }, 100);
+    } finally {
+      if (imageUploadInputRef.current) {
+        imageUploadInputRef.current.value = '';
+      }
+      setIsImageUploadOpen(false);
+      setSelectedImageIndex(null);
     }
   };
 
   // Handle image click to view/preview
   const handleImageClick = (index) => {
-    if (priceImages[index]?.length > 0) {
-      const lastIndex = priceImages[index].length - 1;
-      setPreviewUrl(priceImages[index][lastIndex]);
+    if (!selectedProduct) return;
+    const list = (productImages[selectedProduct?.name]?.[index]) || [];
+    if (list.length > 0) {
       setViewingImageRowIndex(index);
-      setViewingImageIndex(lastIndex);
+      setCurrentSlide(list.length - 1);
+      setIsFileViewerOpen(true);
     }
   };
 
-  const handleImageDeleteFromModal = () => {
-    if (viewingImageRowIndex === null || viewingImageIndex === null) return;
+  const handleImageDeleteFromModal = async () => {
+    if (viewingImageRowIndex === null || !selectedProduct) return;
     
-    const newImageList = priceImages[viewingImageRowIndex].filter((_, idx) => idx !== viewingImageIndex);
+    const productKey = selectedProduct;
+    const rowIndex = viewingImageRowIndex;
+    const imageList = productImages[productKey]?.[rowIndex] || [];
     
-    setPriceImages(prev => {
-      const newImages = { ...prev };
-      if (newImageList.length > 0) {
-        newImages[viewingImageRowIndex] = newImageList;
-        // Show the last image if available
-        setPreviewUrl(newImageList[newImageList.length - 1]);
-        setViewingImageIndex(newImageList.length - 1);
-      } else {
-        // If no images left, remove the entry and close modal
-        delete newImages[viewingImageRowIndex];
-        setPreviewUrl("");
-        setViewingImageRowIndex(null);
-        setViewingImageIndex(null);
+    if (imageList.length === 0 || currentSlide >= imageList.length) return;
+    
+    const fileToDelete = imageList[currentSlide];
+    const fileUrl = typeof fileToDelete === 'string' ? fileToDelete : (fileToDelete?.file_url || fileToDelete?.url || String(fileToDelete || ''));
+    
+    if (!fileUrl) {
+      alert('No file to delete.');
+      return;
+    }
+    
+    if (fileUrl && typeof fileUrl === 'string' && !fileUrl.startsWith('data:')) {
+      try {
+        await apiClient.delete(API_ENDPOINTS.PRODUCT_IMAGES_DELETE(), {
+          file_url: fileUrl
+        });
+        alert('File deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting file from database:', error);
+        alert('Failed to delete file from database. Please try again.');
+        return;
       }
-      return newImages;
+    }
+    
+    const newImageList = imageList.filter((_, idx) => idx !== currentSlide);
+    
+    setProductImages(prev => {
+      const productMap = prev[productKey] ? { ...prev[productKey] } : {};
+      if (newImageList.length > 0) {
+        productMap[rowIndex] = newImageList;
+      } else {
+        delete productMap[rowIndex];
+      }
+      return { ...prev, [productKey]: productMap };
     });
+    
+    if (newImageList.length > 0) {
+      setCurrentSlide(Math.min(currentSlide, newImageList.length - 1));
+    } else {
+      setIsFileViewerOpen(false);
+      setViewingImageRowIndex(null);
+      setCurrentSlide(0);
+    }
   };
 
   return (
@@ -2427,13 +2542,13 @@ const MobileProducts = () => {
                             </td>
                           <td className="px-1 py-1.5 border border-gray-200">
                             <div 
-                              className={`w-6 h-6 bg-gray-100 rounded-md flex items-center justify-center mx-auto ${priceImages[index]?.length > 0 ? 'cursor-pointer hover:bg-gray-200 transition-colors' : ''}`}
+                              className={`w-6 h-6 bg-gray-100 rounded-md flex items-center justify-center mx-auto ${(productImages[selectedProduct?.name]?.[index]?.length || 0) > 0 ? 'cursor-pointer hover:bg-gray-200 transition-colors' : ''}`}
                               onClick={() => handleImageClick(index)}
-                              title={priceImages[index]?.length > 0 ? "Click to view image" : "No image uploaded"}
+                              title={(productImages[selectedProduct?.name]?.[index]?.length || 0) > 0 ? "Click to view image" : "No image uploaded"}
                             >
-                              {(priceImages[index]?.length > 0) ? (
+                              {((productImages[selectedProduct?.name]?.[index]?.length || 0) > 0) ? (
                                 <img 
-                                  src={priceImages[index][priceImages[index].length - 1]} 
+                                  src={productImages[selectedProduct?.name]?.[index]?.[productImages[selectedProduct?.name]?.[index].length - 1]} 
                                   alt={`${item.size} image`}
                                   className="w-full h-full object-cover rounded-md"
                                 />
@@ -4278,31 +4393,137 @@ const MobileProducts = () => {
 
       {/* Hidden file input for price list images */}
       <input
+        ref={imageUploadInputRef}
         type="file"
-        id="mobile-price-image-input"
-        accept="image/*"
+        accept="image/*,video/*"
         className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file && uploadIndex !== null) {
-          const reader = new FileReader();
-            reader.onload = (event) => {
-              const dataUrl = event.target?.result;
-              if (dataUrl) {
-                setPriceImages(prev => {
-                  const newImages = { ...prev };
-                  if (!newImages[uploadIndex]) newImages[uploadIndex] = [];
-                  newImages[uploadIndex].push(dataUrl);
-                  return newImages;
-                });
-              }
-          };
-          reader.readAsDataURL(file);
-          }
-          e.target.value = '';
-          setUploadIndex(null);
-        }}
+        onChange={handleFileSelect}
       />
+
+      {/* Image Upload Modal */}
+      {isImageUploadOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-lg p-4 max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">Upload Image/Video</h3>
+            <p className="text-sm text-gray-600 mb-4">Click the button below to select a file</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (imageUploadInputRef.current) {
+                    imageUploadInputRef.current.click();
+                  }
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Select File
+              </button>
+              <button
+                onClick={() => {
+                  setIsImageUploadOpen(false);
+                  setSelectedImageIndex(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File Viewer Modal */}
+      {isFileViewerOpen && viewingImageRowIndex !== null && selectedProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-lg max-w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold">Image/Video Preview</h3>
+              <button
+                onClick={() => {
+                  setIsFileViewerOpen(false);
+                  setViewingImageRowIndex(null);
+                  setCurrentSlide(0);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 flex items-center justify-center p-4 relative">
+              {(() => {
+                const imageList = productImages[selectedProduct?.name]?.[viewingImageRowIndex] || [];
+                if (imageList.length === 0) return <p className="text-gray-500">No images available</p>;
+                
+                const currentFile = imageList[currentSlide];
+                const fileUrl = typeof currentFile === 'string' ? currentFile : (currentFile?.file_url || currentFile?.url || String(currentFile || ''));
+                const isVideo = typeof fileUrl === 'string' && (fileUrl.match(/\.(mp4|webm|ogg)$/i) || fileUrl.includes('/video/'));
+                
+                return (
+                  <>
+                    {currentSlide > 0 && (
+                      <button
+                        onClick={() => setCurrentSlide(currentSlide - 1)}
+                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75"
+                      >
+                        <ChevronRight className="h-5 w-5 rotate-180" />
+                      </button>
+                    )}
+                    
+                    <div className="max-w-full max-h-[70vh] flex items-center justify-center">
+                      {isVideo ? (
+                        <video src={fileUrl} controls className="max-w-full max-h-full" />
+                      ) : (
+                        <img src={fileUrl} alt={`Preview ${currentSlide + 1}`} className="max-w-full max-h-full object-contain" />
+                      )}
+                    </div>
+                    
+                    {currentSlide < imageList.length - 1 && (
+                      <button
+                        onClick={() => setCurrentSlide(currentSlide + 1)}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                    )}
+                    
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+                      {currentSlide + 1} / {imageList.length}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+            <div className="flex items-center justify-between p-4 border-t">
+              <button
+                onClick={handleImageDeleteFromModal}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
+              <button
+                onClick={() => {
+                  const imageList = productImages[selectedProduct?.name]?.[viewingImageRowIndex] || [];
+                  const currentFile = imageList[currentSlide];
+                  const fileUrl = typeof currentFile === 'string' ? currentFile : (currentFile?.file_url || currentFile?.url || String(currentFile || ''));
+                  if (fileUrl) {
+                    const link = document.createElement('a');
+                    link.href = fileUrl;
+                    link.download = '';
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Helping Calculators Modal - Technical Calculations */}
       {isHelpingCalcOpen && helpingCalcType === 'technical' && (
@@ -4552,6 +4773,39 @@ const MobileProducts = () => {
                   </div>
                 </div>
               </div>
+
+              {/* ACSR Cross-Section Diagram - Only for Aluminium Conductor Galvanized Steel Reinforced */}
+              {selectedProduct.name.toLowerCase().includes('aluminium conductor galvanized steel reinforced') && (
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="p-4 border-b border-gray-200">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <Image className="h-5 w-5 text-blue-600" />
+                      ACSR Conductor Cross-Section
+                    </h2>
+                  </div>
+                  <div className="p-3 bg-gray-50">
+                    <div className="w-full max-w-md mx-auto">
+                      <img 
+                        src="https://res.cloudinary.com/ddmxndtt6/image/upload/v1764248517/Screenshot_2025-11-27_at_6.31.24_PM_wn8tge.png" 
+                        alt="ACSR Conductor Cross-Section showing Steel Reinforced core and Aluminum Conductor layers with labeled arrows"
+                        className="w-full h-auto object-contain rounded-lg shadow-sm"
+                        style={{ maxHeight: '400px' }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
+                      />
+                      <div className="hidden w-full h-64 bg-gray-100 rounded-lg items-center justify-center text-gray-400">
+                        <div className="text-center p-4">
+                          <Image className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                          <p className="text-xs font-medium">ACSR Cross-Section Diagram</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

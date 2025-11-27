@@ -770,6 +770,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [viewingImageIndex, setViewingImageIndex] = useState(null); // Track which row index is being viewed in modal
+  const imageUploadInputRef = useRef(null); // Ref for file input
   const technicalCalcRef = useRef(null);
   const conversionCalcRef = useRef(null);
   const [isHelpingCalcOpen, setIsHelpingCalcOpen] = useState(false);
@@ -1337,33 +1338,132 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   const [acsrSelected, setAcsrSelected] = useState('Rabbit');
   const acsrCurrent = acsrOptions.find(o => o.name === acsrSelected) || acsrOptions[0];
 
+  // Load product images when product is selected
+  useEffect(() => {
+    const loadProductImages = async () => {
+      if (selectedProduct) {
+        try {
+          const response = await apiClient.get(API_ENDPOINTS.PRODUCT_IMAGES_GET(selectedProduct));
+          if (response?.success && response?.data) {
+            // Convert the response data to the format expected by the component
+            const imagesBySize = response.data;
+            setProductImages(prev => ({
+              ...prev,
+              [selectedProduct]: imagesBySize
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading product images:', error);
+          // If product has no images, that's okay - just set empty object
+          setProductImages(prev => ({
+            ...prev,
+            [selectedProduct]: {}
+          }));
+        }
+      }
+    };
+    
+    loadProductImages();
+  }, [selectedProduct]);
+
   // Image upload handlers
   const handleImageUpload = (index) => {
     setSelectedImageIndex(index);
     setIsImageUploadOpen(true);
   };
 
-  const handleFileSelect = (event) => {
-    const file = event.target.files[0];
-    if (file && selectedImageIndex !== null) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const productKey = selectedProduct || 'default';
+  const handleFileSelect = async (event) => {
+    // Prevent default form submission behavior
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const file = event.target.files?.[0];
+    if (!file || selectedImageIndex === null || !selectedProduct) {
+      // Reset file input if no file selected
+      if (imageUploadInputRef.current) {
+        imageUploadInputRef.current.value = '';
+      }
+      return;
+    }
+
+    // Preserve selectedProduct and other state to prevent it from being cleared
+    const currentProduct = selectedProduct;
+    const currentImageIndex = selectedImageIndex;
+    const wasProductDetailOpen = isProductDetailOpen;
+
+    // Ensure product detail stays open during upload
+    if (!wasProductDetailOpen && currentProduct) {
+      setIsProductDetailOpen(true);
+    }
+
+    try {
+      // Upload file to server
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('product_name', currentProduct);
+      formData.append('size_index', currentImageIndex.toString());
+
+      const response = await apiClient.postFormData(API_ENDPOINTS.PRODUCT_IMAGES_UPLOAD(), formData);
+      
+      if (response?.success && response?.data?.url) {
+        const fileUrl = response.data.url;
+        const productKey = currentProduct;
+        
+        // Update local state with the uploaded file URL
         setProductImages(prev => {
           const productMap = prev[productKey] ? { ...prev[productKey] } : {};
-          const list = productMap[selectedImageIndex] ? [...productMap[selectedImageIndex]] : [];
-          list.push(e.target.result);
-          productMap[selectedImageIndex] = list;
-          return { ...prev, [productKey]: productMap };
+          const list = productMap[currentImageIndex] ? [...productMap[currentImageIndex]] : [];
+          list.push(fileUrl);
+          productMap[currentImageIndex] = list;
+          const updatedState = { ...prev, [productKey]: productMap };
+          
+          // Update current slide based on the new state
+          const listLen = updatedState[productKey]?.[currentImageIndex]?.length || 0;
+          setCurrentSlide(listLen - 1); // point to the newly appended image
+          
+          return updatedState;
         });
-        setCurrentSlide((prev) => {
-          const listLen = (productImages[productKey]?.[selectedImageIndex]?.length || 0);
-          return listLen; // point to the newly appended image
-        });
-      };
-      reader.readAsDataURL(file);
+        
+        // Use setTimeout to ensure state updates are processed before showing alert
+        setTimeout(() => {
+          alert('File uploaded successfully!');
+        }, 100);
+      } else {
+        setTimeout(() => {
+          alert(response?.message || 'Failed to upload file. Please try again.');
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      const errorMessage = error?.response?.data?.message || error?.data?.message || error?.message || 'Failed to upload file. Please try again.';
+      
+      // Restore state if it was lost
+      if (currentProduct && selectedProduct !== currentProduct) {
+        setSelectedProduct(currentProduct);
+      }
+      if (!isProductDetailOpen && currentProduct) {
+        setIsProductDetailOpen(true);
+      }
+      
+      setTimeout(() => {
+        alert(errorMessage);
+      }, 100);
+    } finally {
+      // Always reset file input and close upload modal (but keep product detail open)
+      if (imageUploadInputRef.current) {
+        imageUploadInputRef.current.value = '';
+      }
       setIsImageUploadOpen(false);
       setSelectedImageIndex(null);
+      
+      // Immediately ensure product detail stays open if we have a product selected
+      // This prevents the interface from going blank
+      if (currentProduct) {
+        // Restore selectedProduct immediately if it was lost
+        setSelectedProduct(prev => prev || currentProduct);
+        // Ensure product detail modal stays open
+        setIsProductDetailOpen(true);
+      }
     }
   };
 
@@ -1377,18 +1477,46 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     }
   };
 
-  const handleImageDeleteFromModal = () => {
+  const handleImageDeleteFromModal = async () => {
     if (viewingImageIndex === null || !selectedFile || selectedFile.length === 0) return;
     
     const productKey = selectedProduct || 'default';
     const currentImageIndex = currentSlide;
+    const fileToDelete = selectedFile[currentImageIndex];
+    
+    // Extract file URL - handle both string and object formats
+    const fileUrl = typeof fileToDelete === 'string' ? fileToDelete : (fileToDelete?.file_url || fileToDelete?.url || String(fileToDelete || ''));
+    
+    if (!fileUrl) {
+      alert('No file to delete.');
+      return;
+    }
+    
+    // Delete from database if it's a URL (not a data URL)
+    if (fileUrl && typeof fileUrl === 'string' && !fileUrl.startsWith('data:')) {
+      try {
+        await apiClient.delete(API_ENDPOINTS.PRODUCT_IMAGES_DELETE(), {
+          file_url: fileUrl
+        });
+        alert('File deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting file from database:', error);
+        alert('Failed to delete file from database. Please try again.');
+        return;
+      }
+    }
+    
     const newImageList = selectedFile.filter((_, idx) => idx !== currentImageIndex);
     
-    // Update productImages state
+    // Update productImages state - need to extract URLs from objects if needed
     setProductImages(prev => {
       const productMap = prev[productKey] ? { ...prev[productKey] } : {};
       if (newImageList.length > 0) {
-        productMap[viewingImageIndex] = newImageList;
+        // Convert objects to URLs if needed
+        const urlList = newImageList.map(file => {
+          return typeof file === 'string' ? file : (file?.file_url || file?.url || String(file || ''));
+        });
+        productMap[viewingImageIndex] = urlList;
       } else {
         // If no images left, remove the entry
         delete productMap[viewingImageIndex];
@@ -1398,7 +1526,11 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     
     // Update selectedFile and currentSlide
     if (newImageList.length > 0) {
-      setSelectedFile(newImageList);
+      // Convert objects to URLs if needed for selectedFile
+      const urlList = newImageList.map(file => {
+        return typeof file === 'string' ? file : (file?.file_url || file?.url || String(file || ''));
+      });
+      setSelectedFile(urlList);
       // Adjust currentSlide if we deleted the last image
       const newSlide = currentImageIndex >= newImageList.length ? newImageList.length - 1 : currentImageIndex;
       setCurrentSlide(newSlide);
@@ -1850,7 +1982,11 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         const isProduct = productsSection?.tools.some(t => t.name === tool.name);
         
         if (isProduct) {
-          if (hasProductData(tool.name)) {
+          // Check if product has data OR has uploaded images
+          const hasData = hasProductData(tool.name);
+          const hasImages = productImages[tool.name] && Object.keys(productImages[tool.name]).length > 0;
+          
+          if (hasData || hasImages) {
             setSelectedProduct(tool.name);
             setIsProductDetailOpen(true);
           } else {
@@ -4047,11 +4183,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     </button>
                     {(() => {
                       const currentFile = selectedFile[currentSlide];
-                      const isVideo = currentFile.startsWith('data:video/') || /\.(mp4|webm|ogg|mov|avi|wmv|flv|mkv)$/i.test(currentFile);
+                      // Ensure currentFile is a string before calling string methods
+                      const fileUrl = typeof currentFile === 'string' ? currentFile : (currentFile?.file_url || currentFile?.url || String(currentFile || ''));
+                      if (!fileUrl) {
+                        return <div className="text-center text-gray-500">No file available</div>;
+                      }
+                      const isVideo = fileUrl.startsWith('data:video/') || /\.(mp4|webm|ogg|mov|avi|wmv|flv|mkv)$/i.test(fileUrl);
                       return isVideo ? (
                         <video 
                           key={`video-${currentSlide}`}
-                          src={currentFile}
+                          src={fileUrl}
                           controls
                           preload="auto"
                           playsInline
@@ -4061,7 +4202,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           style={{ maxWidth: '100%', maxHeight: '60vh' }}
                           onError={(e) => {
                             console.error('Video playback error:', e);
-                            console.error('Video src type:', currentFile.substring(0, 50));
+                            console.error('Video src type:', fileUrl.substring(0, 50));
                           }}
                           onLoadedData={() => {
                             console.log('Video loaded successfully');
@@ -4071,7 +4212,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         </video>
                       ) : (
                         <img 
-                          src={currentFile}
+                          src={fileUrl}
                       alt={`Preview ${currentSlide + 1}`}
                       className="max-w-full max-h-[60vh] object-contain mx-auto rounded-lg shadow-sm"
                     />
@@ -4483,8 +4624,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       <Image className="h-6 w-6 text-blue-600" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-gray-900">{getProductData(selectedProduct).title}</h2>
-                      <p className="text-gray-600">{getProductData(selectedProduct).description}</p>
+                        <h2 className="text-2xl font-bold text-gray-900">{(getProductData(selectedProduct) || {}).title || selectedProduct}</h2>
+                        <p className="text-gray-600">{(getProductData(selectedProduct) || {}).description || "Product details and specifications"}</p>
                     </div>
                   </div>
                   <button onClick={closeProductDetail} className="text-gray-400 hover:text-gray-600">
@@ -4494,7 +4635,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               </div>
             <div className="p-6 overflow-auto max-h-[80vh]">
               {/* Business Information Section for Business Cards */}
-              {getProductData(selectedProduct).businessInfo && (
+              {(getProductData(selectedProduct) || {})?.businessInfo && (
                 <div className="mb-8">
                   <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Building className="h-5 w-5 text-blue-600" />
@@ -4515,12 +4656,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     Technical Specifications
                   </h3>
                     <div className="flex items-center gap-3">
-                      <button
+                    <button
                         onClick={openBrochure}
                         className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
-                      >
-                        BROCHURE
-                      </button>
+                    >
+                      BROCHURE
+                    </button>
                       <button
                         onClick={() => downloadTechnicalSpecPDF()}
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
@@ -4528,7 +4669,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         <Download className="h-4 w-4" />
                         Download PDF
                       </button>
-                    </div>
+                  </div>
                   </div>
                   <div id="technical-specification-content" className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                     <div className="p-6 flex flex-col lg:flex-row gap-8">
@@ -9573,8 +9714,18 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               )}
 
 
-              {/* Price List Section - Only for Product Cards */}
-              {getProductData(selectedProduct).priceList && getProductData(selectedProduct).priceList.length > 0 && (
+              {/* Price List Section - Show for products with price list data OR with uploaded images */}
+              {(() => {
+                try {
+                  const productData = getProductData(selectedProduct) || {};
+                  const hasPriceList = productData.priceList && productData.priceList.length > 0;
+                  const hasImages = productImages[selectedProduct] && Object.keys(productImages[selectedProduct] || {}).length > 0;
+                  return hasPriceList || hasImages;
+                } catch (e) {
+                  console.error('Error checking price list:', e);
+                  return false;
+                }
+              })() && (
                 <div className="mb-8">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -9777,7 +9928,15 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {getProductData(selectedProduct).priceList.map((item, index) => (
+                      {(() => {
+                        const productData = getProductData(selectedProduct) || {};
+                        const priceList = productData.priceList || [];
+                        const hasImages = productImages[selectedProduct] && Object.keys(productImages[selectedProduct] || {}).length > 0;
+                        const imageKeys = hasImages ? Object.keys(productImages[selectedProduct] || {}) : [];
+                        
+                        // If we have price list data, show those rows
+                        if (priceList.length > 0) {
+                          return priceList.map((item, index) => (
                         <tr key={index} className="hover:bg-gray-50">
                           {(selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" || selectedProduct === "All Aluminium Alloy Conductor") && (
                             <td className="px-4 py-1.5 border border-gray-200 text-sm font-medium">{item.conductorCode || '-'}</td>
@@ -9799,16 +9958,21 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             >
                               {(productImages[selectedProduct]?.[index]?.length > 0) ? (() => {
                                 const lastFile = productImages[selectedProduct][index][productImages[selectedProduct][index].length - 1];
-                                const isVideo = lastFile.startsWith('data:video/') || /\.(mp4|webm|ogg|mov|avi|wmv|flv|mkv)$/i.test(lastFile);
+                                    // Ensure lastFile is a string before calling string methods
+                                    const fileUrl = typeof lastFile === 'string' ? lastFile : (lastFile?.file_url || lastFile?.url || String(lastFile || ''));
+                                    if (!fileUrl) {
+                                      return <Image className="h-3.5 w-3.5 text-gray-400" />;
+                                    }
+                                    const isVideo = fileUrl.startsWith('data:video/') || /\.(mp4|webm|ogg|mov|avi|wmv|flv|mkv)$/i.test(fileUrl);
                                 return isVideo ? (
                                   <video 
-                                    src={lastFile}
+                                        src={fileUrl}
                                     className="w-full h-full object-cover rounded-md"
                                     muted
                                   />
                                 ) : (
                                   <img 
-                                    src={lastFile} 
+                                        src={fileUrl} 
                                   alt={`${item.size} image`}
                                   className="w-full h-full object-cover rounded-md"
                                 />
@@ -9828,7 +9992,72 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             </button>
                           </td>
                         </tr>
-                      ))}
+                          ));
+                        }
+                        
+                        // If no price list but has images, show rows for images
+                        if (hasImages && imageKeys.length > 0) {
+                          return imageKeys.map((sizeIndex) => {
+                            const index = parseInt(sizeIndex);
+                            const imageList = productImages[selectedProduct][sizeIndex] || [];
+                            return (
+                              <tr key={sizeIndex} className="hover:bg-gray-50">
+                                {(selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" || selectedProduct === "All Aluminium Alloy Conductor") && (
+                                  <td className="px-4 py-1.5 border border-gray-200 text-sm font-medium">-</td>
+                                )}
+                                <td className="px-4 py-1.5 border border-gray-200 text-sm font-medium">Size {index + 1}</td>
+                                <td className="px-4 py-1.5 border border-gray-200 text-sm text-blue-600 font-semibold">-</td>
+                                <td className="px-4 py-1.5 border border-gray-200 text-sm">
+                                  <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800">-</span>
+                                </td>
+                                <td className="px-4 py-1.5 border border-gray-200">
+                                  <div 
+                                    className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors" 
+                                    title={imageList.length > 0 ? "Click to view images/videos" : "No image/video uploaded"}
+                                    onClick={() => handleImageClick(index)}
+                                  >
+                                    {imageList.length > 0 ? (() => {
+                                      const lastFile = imageList[imageList.length - 1];
+                                      // Ensure lastFile is a string before calling string methods
+                                      const fileUrl = typeof lastFile === 'string' ? lastFile : (lastFile?.file_url || lastFile?.url || String(lastFile || ''));
+                                      if (!fileUrl) {
+                                        return <Image className="h-3.5 w-3.5 text-gray-400" />;
+                                      }
+                                      const isVideo = fileUrl.startsWith('data:video/') || /\.(mp4|webm|ogg|mov|avi|wmv|flv|mkv)$/i.test(fileUrl);
+                                      return isVideo ? (
+                                        <video 
+                                          src={fileUrl}
+                                          className="w-full h-full object-cover rounded-md"
+                                          muted
+                                        />
+                                      ) : (
+                                        <img 
+                                          src={fileUrl} 
+                                          alt={`Size ${index} image`}
+                                          className="w-full h-full object-cover rounded-md"
+                                        />
+                                      );
+                                    })() : (
+                                      <Image className="h-3.5 w-3.5 text-gray-400" />
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-1.5 border border-gray-200">
+                                  <button 
+                                    className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center text-blue-600 hover:bg-blue-200 transition-colors" 
+                                    title="Add image/video"
+                                    onClick={() => handleImageUpload(index)}
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          });
+                        }
+                        
+                        return null;
+                      })()}
                     </tbody>
                   </table>
                 </div>
@@ -10163,6 +10392,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 onChange={handleFileSelect}
                 className="hidden"
                 id="image-upload-input"
+                ref={imageUploadInputRef}
               />
 
               {/* Image Upload Modal */}
@@ -10174,7 +10404,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     <div className="flex gap-3">
                       <button
                         onClick={() => {
-                          document.getElementById('image-upload-input').click();
+                          if (imageUploadInputRef.current) {
+                            imageUploadInputRef.current.click();
+                          }
                         }}
                         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                       >
@@ -10296,6 +10528,42 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   </div>
                 );
               })()}
+
+              {/* ACSR Cross-Section Diagram - Only for Aluminium Conductor Galvanized Steel Reinforced */}
+              {selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Image className="h-5 w-5 text-blue-600" />
+                    ACSR Conductor Cross-Section
+                  </h3>
+                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="p-4 flex justify-center items-center bg-gray-50">
+                      <div className="w-full max-w-xl">
+                        <img 
+                          src="https://res.cloudinary.com/ddmxndtt6/image/upload/v1764248517/Screenshot_2025-11-27_at_6.31.24_PM_wn8tge.png" 
+                          alt="ACSR Conductor Cross-Section showing Steel Reinforced core and Aluminum Conductor layers with labeled arrows"
+                          className="w-full h-auto object-contain rounded-lg shadow-sm"
+                          style={{ maxHeight: '500px' }}
+                          onError={(e) => {
+                            // Fallback if image doesn't exist
+                            e.currentTarget.style.display = 'none';
+                            const fallback = e.currentTarget.nextElementSibling;
+                            if (fallback) fallback.style.display = 'flex';
+                          }}
+                        />
+                        <div className="hidden w-full h-64 bg-gray-100 rounded-lg items-center justify-center text-gray-400">
+                          <div className="text-center p-8">
+                            <Image className="h-16 w-16 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm font-medium">ACSR Cross-Section Diagram</p>
+                            <p className="text-xs mt-2 text-gray-500">Please add the image to: /public/images/products/acsr-cross-section-diagram.png</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Costing Calculator has been moved to Helping Calculators */}
 
               {/* Reduction Gauge Calculator Section - For Aerial Bunch Cable, ACSR and AAAC */}
@@ -10379,20 +10647,6 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   </div>
                   <div className="px-4 py-2 bg-gray-50 text-xs text-gray-600">
                     NOTE: UP TO & INCLUDED 150 SQMM.
-                  </div>
-                </div>
-              </div>
-              )}
-              {/* Cable Selection Calculator Section - For Aerial Bunch Cable, ACSR and AAAC */}
-              {selectedProduct === "Aerial Bunch Cable" && (
-              <div className="mb-8">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Calculator className="h-5 w-5 text-blue-600" />
-                  Cable Selection Calculator
-                </h3>
-                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden p-8">
-                  <div className="text-center">
-                    <p className="text-lg font-semibold text-gray-600">Coming Soon</p>
                   </div>
                 </div>
               </div>
@@ -10535,6 +10789,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 </div>
               </div>
               )}
+
                   </div>
           </div>
         </div>
@@ -11094,7 +11349,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   <button
                     onClick={async () => {
                       if (!selectedFile || selectedFile.length === 0 || currentSlide >= selectedFile.length) return;
-                      const imageUrl = selectedFile[currentSlide];
+                      const currentFile = selectedFile[currentSlide];
+                      
+                      // Extract file URL - handle both string and object formats
+                      const imageUrl = typeof currentFile === 'string' ? currentFile : (currentFile?.file_url || currentFile?.url || String(currentFile || ''));
+                      
+                      if (!imageUrl || typeof imageUrl !== 'string') {
+                        alert('No file available to download.');
+                        return;
+                      }
+                      
                       try {
                         let blob;
                         let extension = 'jpg';
@@ -11120,6 +11384,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         } else {
                           // Handle regular URL
                           const response = await fetch(imageUrl);
+                          if (!response.ok) {
+                            throw new Error('Failed to fetch file');
+                          }
                           blob = await response.blob();
                           // Extract extension from URL or blob type
                           const urlMatch = imageUrl.match(/\.([a-z]{3,4})(?:\?|$)/i);
@@ -11141,6 +11408,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         window.URL.revokeObjectURL(url);
                       } catch (error) {
                         console.error('Error downloading image:', error);
+                        alert('Failed to download file. Please try again.');
                       }
                     }}
                     className="text-blue-500 hover:text-blue-600 transition-colors"
@@ -11177,11 +11445,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       </button>
                     {(() => {
                       const currentFile = selectedFile[currentSlide];
-                      const isVideo = currentFile.startsWith('data:video/') || /\.(mp4|webm|ogg|mov|avi|wmv|flv|mkv)$/i.test(currentFile);
+                      // Ensure currentFile is a string before calling string methods
+                      const fileUrl = typeof currentFile === 'string' ? currentFile : (currentFile?.file_url || currentFile?.url || String(currentFile || ''));
+                      if (!fileUrl) {
+                        return <div className="text-center text-gray-500">No file available</div>;
+                      }
+                      const isVideo = fileUrl.startsWith('data:video/') || /\.(mp4|webm|ogg|mov|avi|wmv|flv|mkv)$/i.test(fileUrl);
                       return isVideo ? (
                         <video 
                           key={`video-${currentSlide}`}
-                          src={currentFile}
+                          src={fileUrl}
                           controls
                           preload="auto"
                           playsInline
@@ -11191,7 +11464,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           style={{ maxWidth: '100%', maxHeight: '60vh' }}
                           onError={(e) => {
                             console.error('Video playback error:', e);
-                            console.error('Video src type:', currentFile.substring(0, 50));
+                            console.error('Video src type:', fileUrl.substring(0, 50));
                           }}
                           onLoadedData={() => {
                             console.log('Video loaded successfully');
@@ -11201,7 +11474,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         </video>
                       ) : (
                         <img 
-                          src={currentFile}
+                          src={fileUrl}
                       alt={`Preview ${currentSlide + 1}`}
                       className="max-w-full max-h-[60vh] object-contain mx-auto rounded-lg shadow-sm"
                     />
