@@ -11,7 +11,8 @@ import {
   FileSignature,
   Monitor,
   Phone,
-  Activity
+  Activity,
+  HelpCircle
 } from 'lucide-react';
 
 const OfficeSalesPersonSidebar = ({ activeView, setActiveView }) => {
@@ -108,6 +109,17 @@ const OfficeSalesPersonSidebar = ({ activeView, setActiveView }) => {
           </button>
         ))}
       </nav>
+
+      {/* Support Button */}
+      <div className="absolute bottom-20 left-4 right-4">
+        <button
+          onClick={() => window.location.href = '/support'}
+          className="w-full flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <HelpCircle className="w-5 h-5" />
+          {isExpanded && <span className="text-sm font-medium">Support</span>}
+        </button>
+      </div>
 
       {/* Logout Button */}
       <div className="absolute bottom-4 left-4 right-4">

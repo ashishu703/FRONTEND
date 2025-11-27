@@ -9,6 +9,8 @@ import paymentService from '../../api/admin_api/paymentService'
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService'
 import departmentUserService from '../../api/admin_api/departmentUserService'
 
+const MS_IN_DAY = 24 * 60 * 60 * 1000
+
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")
 }
@@ -432,21 +434,23 @@ function LineChart({ data, height = 250, isDarkMode = false }) {
   const [hoverIndex, setHoverIndex] = useState(null)
   const maxValue = Math.max(...data.map(item => item.value), 1)
   const padding = 20
+  const topPadding = 20
+  const bottomPadding = 40
   
   // Calculate points for the line
   const points = data.map((item, index) => {
-    const x = ((index / (data.length - 1 || 1)) * (100 - (padding * 2) / 10)) + (padding / 10)
-    const y = 100 - ((item.value / maxValue) * (100 - (padding * 2)))
+    const x = data.length > 1 ? ((index / (data.length - 1)) * (100 - padding * 2)) + padding : 50
+    const y = 100 - bottomPadding - ((item.value / maxValue) * (100 - topPadding - bottomPadding))
     return { xPercent: x, yPercent: y, value: item.value, originalValue: item.originalValue ?? item.value, label: item.label }
   })
 
   const pathData = points.map((point, index) => 
-    `${index === 0 ? 'M' : 'L'} ${point.xPercent}% ${point.yPercent}%`
+    `${index === 0 ? 'M' : 'L'} ${point.xPercent} ${point.yPercent}`
   ).join(' ')
 
   return (
     <div className="w-full relative overflow-hidden" style={{ height, maxWidth: '100%' }}>
-      <svg className="absolute w-full h-full" preserveAspectRatio="none" style={{ maxWidth: '100%' }}>
+      <svg className="absolute w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ maxWidth: '100%' }}>
         {/* Grid lines */}
         {[0, 1, 2, 3, 4].map(i => (
           <line
@@ -554,7 +558,7 @@ function MultiLineChart({ dataSeries = [], height = 250, isDarkMode = false }) {
       }
       const valueRatio = maxValue > 0 ? (item.value / maxValue) : 0
       const yPercent = 100 - bottomPadding - (valueRatio * (100 - topPadding - bottomPadding))
-      return { x: `${xPercent}%`, y: `${yPercent}%`, value: item.value }
+      return { x: xPercent, y: yPercent, xPercent, yPercent, value: item.value }
     })
 
     const pathData = points.map((point, index) => 
@@ -570,7 +574,7 @@ function MultiLineChart({ dataSeries = [], height = 250, isDarkMode = false }) {
 
   return (
     <div className="w-full relative overflow-hidden" style={{ height, maxWidth: '100%' }}>
-      <svg className="absolute w-full h-full" preserveAspectRatio="none" style={{ maxWidth: '100%' }}>
+      <svg className="absolute w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ maxWidth: '100%' }}>
         {/* Grid lines */}
         {[0, 1, 2, 3, 4].map(i => {
           const yPos = topPadding + ((100 - topPadding - bottomPadding) / 4) * i
@@ -769,6 +773,16 @@ export default function DashboardContent({ isDarkMode = false }) {
     totalRevenue: 0
   })
   const [loadingMetrics, setLoadingMetrics] = useState(false)
+
+  const getCalendarDaysRemaining = (targetDate) => {
+    if (!targetDate || isNaN(targetDate.getTime())) return 0
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const endDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate())
+    if (endDay < today) return 0
+    const diffTime = endDay - today
+    return Math.max(0, Math.round(diffTime / MS_IN_DAY))
+  }
 
   // Fetch real leads from API
   const fetchLeads = async () => {
@@ -1458,21 +1472,14 @@ export default function DashboardContent({ isDarkMode = false }) {
   // Calculate days left based on target period
   const daysLeftInTarget = (() => {
     if (!userTarget.targetEndDate) {
-      // If no target end date, calculate days left in current month
       const now = new Date()
       const last = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      return Math.max(0, last.getDate() - now.getDate())
+      return getCalendarDaysRemaining(last)
     }
     
-    const now = new Date()
     const endDate = new Date(userTarget.targetEndDate)
     endDate.setHours(23, 59, 59, 999)
-    
-    if (endDate < now) return 0
-    
-    const diffTime = endDate - now
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return Math.max(0, diffDays)
+    return getCalendarDaysRemaining(endDate)
   })()
   
   // Use actual user target data

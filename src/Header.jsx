@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun, BarChart3, Clock, User, Factory, Wrench } from 'lucide-react';
+import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun, BarChart3, Clock, User, Factory, Wrench, HelpCircle, Activity, Server, Settings, Shield, Link, Ticket } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { useCompany } from './context/CompanyContext';
 
@@ -414,6 +414,68 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
           subtitle: "Manage marketing department users and permissions"
         };
       
+      // IT Department pages
+      case 'it-dashboard':
+        return {
+          icon: <Activity className="w-6 h-6 text-white" />,
+          title: "IT Operations Command Center",
+          subtitle: "Monitor uptime, incidents, and change windows"
+        };
+      case 'it-systems':
+        return {
+          icon: <Server className="w-6 h-6 text-white" />,
+          title: "System Health & Monitoring",
+          subtitle: "Real-time system status and performance metrics"
+        };
+      case 'it-tickets':
+        return {
+          icon: <Bell className="w-6 h-6 text-white" />,
+          title: "Ticket Management",
+          subtitle: "Track, assign, and resolve IT issues"
+        };
+      case 'it-users':
+        return {
+          icon: <Users className="w-6 h-6 text-white" />,
+          title: "User & Access Management",
+          subtitle: "Create, manage, and control user access and permissions"
+        };
+      case 'it-maintenance':
+        return {
+          icon: <Settings className="w-6 h-6 text-white" />,
+          title: "System Maintenance Tools",
+          subtitle: "Maintain and manage CRM system operations"
+        };
+      case 'it-assets':
+        return {
+          icon: <Package className="w-6 h-6 text-white" />,
+          title: "Asset Management",
+          subtitle: "Track company hardware and software assets"
+        };
+      case 'it-security':
+        return {
+          icon: <Shield className="w-6 h-6 text-white" />,
+          title: "Security & Audit Logs",
+          subtitle: "Monitor security events and system activity"
+        };
+      case 'it-integrations':
+        return {
+          icon: <Link className="w-6 h-6 text-white" />,
+          title: "Software & Integration Status",
+          subtitle: "Monitor 3rd-party tool integrations and API health"
+        };
+      case 'it-reports':
+        return {
+          icon: <BarChart3 className="w-6 h-6 text-white" />,
+          title: "Reports & Analytics",
+          subtitle: "Technical performance insights and metrics"
+        };
+      case 'it-notifications':
+        return {
+          icon: <Bell className="w-6 h-6 text-white" />,
+          title: "Notifications & Alerts",
+          subtitle: "Real-time alerts and notifications for IT team"
+        };
+      
       default:
         return {
           icon: <TrendingUp className="w-6 h-6 text-white" />,
@@ -573,6 +635,19 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
               </div>
             )}
           </div>
+
+          {/* Support Icon */}
+          <button
+            onClick={() => window.location.href = '/support'}
+            className={`p-2 rounded-lg transition-colors ${
+              isDarkMode 
+                ? 'hover:bg-gray-700' 
+                : 'hover:bg-gray-100'
+            }`}
+            title="Support & Help"
+          >
+            <HelpCircle className={`w-5 h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
+          </button>
 
           {/* User Button (without profile panel) */}
           <div className="flex items-center space-x-3">

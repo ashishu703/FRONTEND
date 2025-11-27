@@ -5,6 +5,18 @@ import departmentHeadService from '../../api/admin_api/departmentHeadService';
 import { useAuth } from '../../context/AuthContext';
 import toastManager from '../../utils/ToastManager';
 
+const MS_IN_DAY = 24 * 60 * 60 * 1000;
+
+const calculateDaysFromToday = (targetDate) => {
+  if (!targetDate || isNaN(targetDate.getTime())) return 0;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+  if (endDay < today) return 0;
+  const diffTime = endDay - today;
+  return Math.max(0, Math.round(diffTime / MS_IN_DAY));
+};
+
 const SalesDepartmentUser = ({ setActiveView }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const { user: currentUser } = useAuth();
@@ -33,18 +45,16 @@ const SalesDepartmentUser = ({ setActiveView }) => {
     email: '',
     password: '',
     target: '',
-    targetStartDate: '',
-    targetDurationDays: '30',
-    customDays: '' // Separate field for custom days input
+    targetStartDate: ''
   });
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
-  const [headInfo, setHeadInfo] = useState(null);
   const [remainingTarget, setRemainingTarget] = useState(0);
-  const [remainingDays, setRemainingDays] = useState(30);
+  const [remainingDays, setRemainingDays] = useState(0);
   const [headTargetStartDate, setHeadTargetStartDate] = useState(null);
   const [targetExpirationDate, setTargetExpirationDate] = useState(null);
+  const [statusUpdating, setStatusUpdating] = useState({});
 
   const handleAddUser = async () => {
     setShowAddModal(true);
@@ -55,8 +65,6 @@ const SalesDepartmentUser = ({ setActiveView }) => {
         const headData = headRes?.data?.user || headRes?.user || headRes?.data || headRes;
         
         if (headData) {
-          setHeadInfo(headData);
-          
           // Get department head's target start date
           const headStartDate = headData.target_start_date || headData.targetStartDate;
           let formattedStartDate = null;
@@ -70,24 +78,13 @@ const SalesDepartmentUser = ({ setActiveView }) => {
               ...prev,
               targetStartDate: formattedStartDate
             }));
-          } else {
-            // If no start date, use today
-            const today = new Date().toISOString().split('T')[0];
-            setHeadTargetStartDate(today);
-            setNewUser(prev => ({
-              ...prev,
-              targetStartDate: today
-            }));
           }
           
           // Calculate remaining days and expiration date (month end logic)
-          let daysRemaining = 30;
+          let daysRemaining = 0;
           let expirationDate = null;
           if (headStartDate) {
             const startDate = new Date(headStartDate);
-            const now = new Date();
-            
-            // Calculate month end from start date (target expires at end of the month it started)
             const monthEnd = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
             monthEnd.setHours(23, 59, 59, 999);
             
@@ -99,12 +96,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
             setTargetExpirationDate(expirationDate);
             
             // Calculate days remaining until month end
-            if (monthEnd < now) {
-              daysRemaining = 0;
-            } else {
-              const diffTime = monthEnd - now;
-              daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            }
+            daysRemaining = calculateDaysFromToday(monthEnd);
           } else {
             setTargetExpirationDate(null);
           }
@@ -112,7 +104,9 @@ const SalesDepartmentUser = ({ setActiveView }) => {
           
           // Calculate remaining target
           const headTarget = parseFloat(headData.target || 0);
-          const existingUsers = await departmentUserService.listUsers({});
+          const existingUsers = await departmentUserService.listUsers({
+            headUserId: currentUser.id
+          });
           const users = existingUsers?.data?.users || existingUsers?.users || [];
           const totalDistributed = users.reduce((sum, u) => sum + parseFloat(u.target || 0), 0);
           const remaining = Math.max(0, headTarget - totalDistributed);
@@ -120,7 +114,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
         }
       }
     } catch (err) {
-      console.error('Error fetching head info:', err);
+      setError(err.message || 'Failed to fetch department head info');
     }
   };
   const handleEdit = async (userId) => {
@@ -142,14 +136,11 @@ const SalesDepartmentUser = ({ setActiveView }) => {
             setHeadTargetStartDate(formattedStartDate);
           }
           
-          let daysRemaining = 30;
+          let daysRemaining = 0;
           let expirationDate = null;
           
           if (headStartDate) {
             const startDate = new Date(headStartDate);
-            const now = new Date();
-            
-            // Calculate month end from start date (target expires at end of the month it started)
             const monthEnd = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
             monthEnd.setHours(23, 59, 59, 999);
             
@@ -161,12 +152,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
             setTargetExpirationDate(expirationDate);
             
             // Calculate days remaining until month end
-            if (monthEnd < now) {
-              daysRemaining = 0;
-            } else {
-              const diffTime = monthEnd - now;
-              daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            }
+            daysRemaining = calculateDaysFromToday(monthEnd);
           } else {
             setTargetExpirationDate(null);
           }
@@ -174,12 +160,8 @@ const SalesDepartmentUser = ({ setActiveView }) => {
         }
       }
     } catch (err) {
-      console.error('Error fetching head info for edit:', err);
+      setError(err.message || 'Failed to fetch department head info');
     }
-    
-    // Initialize customDays if current duration is not in standard options
-    const currentDuration = String(u.targetDurationDays || u.target_duration_days || '30');
-    const isCustom = !['15', '30', '60', '90'].includes(currentDuration);
     
     // Format date for input field (YYYY-MM-DD format) - use already formatted input date if available
     const formatDateForInput = (dateString) => {
@@ -195,14 +177,11 @@ const SalesDepartmentUser = ({ setActiveView }) => {
     
     setEditingUser({ 
       ...u, 
-      targetDurationDays: isCustom ? 'custom' : currentDuration,
-      customDays: isCustom ? currentDuration : '',
       targetStartDateInput: u.targetStartDateInput || formatDateForInput(u.targetStartDate || u.target_start_date),
       targetEndDateInput: u.targetEndDateInput || formatDateForInput(u.targetEndDate || u.target_end_date)
     });
     setShowEditModal(true);
   };
-  const handleLogout = () => {};
   const { impersonate } = useAuth();
   const handleDelete = async (userId) => {
     try {
@@ -210,6 +189,31 @@ const SalesDepartmentUser = ({ setActiveView }) => {
       setUsers(prev => prev.filter(u => u.id !== userId));
     } catch (err) {
       setError(err.message || 'Failed to delete user');
+    }
+  };
+
+  const handleStatusToggle = async (user) => {
+    if (statusUpdating[user.id]) return;
+    const nextStatus = !user.isActive;
+    setStatusUpdating(prev => ({ ...prev, [user.id]: true }));
+    try {
+      await departmentUserService.updateStatus(user.id, nextStatus);
+      setUsers(prev =>
+        prev.map(u => (u.id === user.id ? { ...u, isActive: nextStatus } : u))
+      );
+      toastManager.success(
+        `User ${nextStatus ? 'activated' : 'deactivated'} successfully`
+      );
+    } catch (err) {
+      const message = err?.data?.error || err?.message || 'Failed to update status';
+      setError(message);
+      toastManager.error(message);
+    } finally {
+      setStatusUpdating(prev => {
+        const copy = { ...prev };
+        delete copy[user.id];
+        return copy;
+      });
     }
   };
 
@@ -244,7 +248,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
       }).filter(u => u.username || u.email);
       if (parsed.length) setUsers(prev => [...parsed, ...prev]);
     } catch (err) {
-      console.warn('Import failed', err);
+      setError(err.message || 'Import failed');
     } finally {
       e.target.value = '';
     }
@@ -261,7 +265,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
       const items = (payload.users || []).map(u => {
         const target = parseFloat(u.target || 0);
         const achievedTarget = parseFloat(u.achievedTarget || u.achieved_target || 0);
-        const remainingTarget = target - achievedTarget;
+        const remainingTarget = Math.max(target - achievedTarget, 0);
         
         // Format dates properly for display (supports 'YYYY-MM-DD' and full ISO strings)
         const formatDateForDisplay = (dateString) => {
@@ -295,6 +299,27 @@ const SalesDepartmentUser = ({ setActiveView }) => {
           }
         };
         
+        // Calculate target days remaining (same logic as salesperson dashboard)
+        let targetDaysRemaining = null;
+        if (u.targetEndDate || u.target_end_date) {
+          const endDate = new Date(u.targetEndDate || u.target_end_date);
+          endDate.setHours(23, 59, 59, 999);
+          targetDaysRemaining = calculateDaysFromToday(endDate);
+        } else if (u.targetStartDate || u.target_start_date) {
+          // If no target_end_date, calculate from target_start_date (month end logic)
+          const startDate = new Date(u.targetStartDate || u.target_start_date);
+          
+          // Calculate month end from start date
+          const monthEnd = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+          monthEnd.setHours(23, 59, 59, 999);
+          targetDaysRemaining = calculateDaysFromToday(monthEnd);
+        } else {
+          // If no target dates at all, calculate days left in current month (like dashboard)
+          const now = new Date();
+          const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          targetDaysRemaining = calculateDaysFromToday(last);
+        }
+        
         return {
           id: u.id,
           username: u.username,
@@ -303,12 +328,15 @@ const SalesDepartmentUser = ({ setActiveView }) => {
           department: apiToUiDepartment(u.departmentType || u.department_type),
           target: String(target),
           achievedTarget: String(achievedTarget),
+          achievementDelta: achievedTarget - target,
           remainingTarget: String(remainingTarget),
+          isActive: u.isActive ?? u.is_active ?? true,
           targetStartDate: u.targetStartDate || u.target_start_date || null,
           targetEndDate: u.targetEndDate || u.target_end_date || null,
           targetDurationDays: u.targetDurationDays || u.target_duration_days || null,
           targetStatus: u.targetStatus || u.target_status || 'active',
           createdAt: u.createdAt || u.created_at ? new Date(u.createdAt || u.created_at).toDateString() : '',
+          targetDaysRemaining: targetDaysRemaining,
           // Add formatted dates for display
           targetStartDateDisplay: formatDateForDisplay(u.targetStartDate || u.target_start_date),
           targetEndDateDisplay: formatDateForDisplay(u.targetEndDate || u.target_end_date),
@@ -437,8 +465,8 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                 </th>
                 <th className="text-left py-3 px-4">
                   <div className="flex items-center gap-2 text-gray-600 font-medium">
-                    <Calendar className="w-4 h-4 text-teal-600" />
-                    Target Period
+                    <Calendar className="w-4 h-4 text-red-600" />
+                    Target Expiry
                   </div>
                 </th>
                 <th className="text-left py-3 px-4">
@@ -496,34 +524,61 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                     <span className="text-gray-600">{user.target}</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-green-600 font-medium bg-green-50 px-2 py-1 rounded-md">{user.achievedTarget}</span>
+                    {(() => {
+                      const delta = Number(user.achievementDelta ?? 0);
+                      const formatted =
+                        delta === 0
+                          ? '0'
+                          : delta > 0
+                            ? `+${delta.toLocaleString('en-IN')}`
+                            : delta.toLocaleString('en-IN');
+                      const deltaClass =
+                        delta > 0
+                          ? 'text-green-600 bg-green-50'
+                          : delta < 0
+                            ? 'text-red-600 bg-red-50'
+                            : 'text-gray-600 bg-gray-100';
+                      return (
+                        <span className={`${deltaClass} font-medium px-2 py-1 rounded-md`}>
+                          {formatted}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="py-4 px-4">
                     <span className="text-red-600 font-medium bg-red-50 px-2 py-1 rounded-md">{user.remainingTarget}</span>
                   </td>
-                  <td className="py-4 px-4">
-                    <div className="text-xs text-gray-600">
-                      {user.targetStartDateDisplay ? (
-                        <>
-                          <div>From: {user.targetStartDateDisplay}</div>
-                          <div>To: {user.targetEndDateDisplay || 'N/A'}</div>
-                          {user.targetDurationDays && <div className="text-gray-500">({user.targetDurationDays} days)</div>}
-                        </>
-                      ) : (
-                        <span className="text-gray-400">Not set</span>
-                      )}
-                    </div>
+                  <td className="py-4 px-4 text-xs text-gray-500 whitespace-nowrap">
+                    {user.targetDaysRemaining !== null && user.targetDaysRemaining !== undefined ? (
+                      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-50 text-orange-600 border border-orange-200">
+                        {user.targetDaysRemaining} days left
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 italic">Not set</span>
+                    )}
                   </td>
                   <td className="py-4 px-4">
-                    <span className={`inline-block px-2 py-1 rounded-md text-xs font-semibold ${
-                      user.targetStatus === 'achieved' ? 'bg-green-100 text-green-800' :
-                      user.targetStatus === 'overachieved' ? 'bg-blue-100 text-blue-800' :
-                      user.targetStatus === 'unachieved' ? 'bg-red-100 text-red-800' :
-                      user.targetStatus === 'expired' ? 'bg-gray-100 text-gray-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {user.targetStatus?.toUpperCase() || 'ACTIVE'}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        aria-pressed={user.isActive}
+                        aria-label={user.isActive ? 'Deactivate user' : 'Activate user'}
+                        disabled={statusUpdating[user.id]}
+                        onClick={() => handleStatusToggle(user)}
+                        className={`relative inline-flex h-6 w-11 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                          user.isActive ? 'bg-green-500' : 'bg-gray-300'
+                        } ${statusUpdating[user.id] ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      >
+                        <span
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                            user.isActive ? 'translate-x-5' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                      <span className={`text-xs font-semibold ${user.isActive ? 'text-green-600' : 'text-gray-500'}`}>
+                        {user.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
                   </td>
                   <td className="py-4 px-4">
                     <span className="text-gray-700">{user.createdAt}</span>
@@ -553,8 +608,17 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                             alert('Failed to login as user: ' + (err.message || 'Unknown error'));
                           }
                         }}
-                        className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                        title="Login as this user"
+                        disabled={!user.isActive || statusUpdating[user.id]}
+                        className={`p-2 rounded-lg transition-colors ${
+                          !user.isActive || statusUpdating[user.id]
+                            ? 'text-gray-400 cursor-not-allowed'
+                            : 'text-gray-600 hover:text-green-600 hover:bg-green-50'
+                        }`}
+                        title={
+                          user.isActive
+                            ? 'Login as this user'
+                            : 'User is inactive. Activate to allow login.'
+                        }
                       >
                         <LogIn className="w-4 h-4" />
                       </button>
@@ -600,10 +664,9 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                 className="p-2 text-gray-500 hover:text-gray-700"
                 onClick={() => {
                   setShowAddModal(false);
-                  setNewUser({ username: '', email: '', password: '', target: '', targetStartDate: '', targetDurationDays: '30', customDays: '' });
-                  setHeadInfo(null);
+                  setNewUser({ username: '', email: '', password: '', target: '', targetStartDate: '' });
                   setRemainingTarget(0);
-                  setRemainingDays(30);
+                  setRemainingDays(0);
                   setHeadTargetStartDate(null);
                 }}
                 aria-label="Close"
@@ -646,10 +709,9 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                   await departmentUserService.createUser(payload);
                   await fetchUsers();
                   setShowAddModal(false);
-                  setNewUser({ username: '', email: '', password: '', target: '', targetStartDate: '', targetDurationDays: '30', customDays: '' });
-                  setHeadInfo(null);
+                  setNewUser({ username: '', email: '', password: '', target: '', targetStartDate: '' });
                   setRemainingTarget(0);
-                  setRemainingDays(30);
+                  setRemainingDays(0);
                   setHeadTargetStartDate(null);
                   toastManager.success('User created successfully');
                 } catch (err) {
@@ -743,7 +805,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                   />
                   <div className="mt-1 flex items-start gap-1 text-xs text-orange-600 bg-orange-50 px-2 py-1.5 rounded">
                     <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                    <span>Target start date is automatically set to match department head's target start date. This cannot be changed.</span>
+                    <span>Target start date is automatically set to {headTargetStartDate ? new Date(headTargetStartDate + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'match department head\'s target start date'}. This cannot be changed.</span>
                   </div>
                 </div>
                 <div>
@@ -762,7 +824,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                   />
                   <div className="mt-1 flex items-start gap-1 text-xs text-orange-600 bg-orange-50 px-2 py-1.5 rounded">
                     <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                    <span>Target duration is automatically set to {remainingDays} days (expires on {targetExpirationDate || 'month end'}) to match department head's remaining target period. This cannot be changed.</span>
+                    <span>Target duration is automatically set to {remainingDays} days (expires on {targetExpirationDate ? new Date(targetExpirationDate.split('-').reverse().join('-')).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'month end'}) to match department head's remaining target period. This cannot be changed.</span>
                   </div>
                 </div>
               </div>
@@ -772,10 +834,9 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                   className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
                   onClick={() => {
                     setShowAddModal(false);
-                    setNewUser({ username: '', email: '', password: '', target: '', targetStartDate: '', targetDurationDays: '30', customDays: '' });
-                    setHeadInfo(null);
+                  setNewUser({ username: '', email: '', password: '', target: '', targetStartDate: '' });
                     setRemainingTarget(0);
-                    setRemainingDays(30);
+                  setRemainingDays(0);
                     setHeadTargetStartDate(null);
                     setTargetExpirationDate(null);
                   }}
@@ -806,7 +867,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                   setShowEditModal(false);
                   setEditingUser(null);
                   setTargetExpirationDate(null);
-                  setRemainingDays(30);
+                  setRemainingDays(0);
                   setHeadTargetStartDate(null);
                 }}
                 aria-label="Close"
@@ -931,7 +992,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                   />
                   <div className="mt-1 flex items-start gap-1 text-xs text-orange-600 bg-orange-50 px-2 py-1.5 rounded">
                     <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                    <span>Target start date is automatically set to match department head's target start date. This cannot be changed.</span>
+                    <span>Target start date is automatically set to {headTargetStartDate ? new Date(headTargetStartDate + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'match department head\'s target start date'}. This cannot be changed.</span>
                   </div>
                 </div>
               </div>
