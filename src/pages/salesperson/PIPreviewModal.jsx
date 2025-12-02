@@ -2,6 +2,8 @@ import React from 'react'
 import html2pdf from 'html2pdf.js'
 import { Check, X } from 'lucide-react'
 import { CorporateStandardInvoice } from './salespersonpi'
+import PITemplate2 from '../../components/PITemplate2'
+import PITemplate3 from '../../components/PITemplate3'
 import apiClient from '../../utils/apiClient'
 import { API_ENDPOINTS } from '../../api/admin_api/api'
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService'
@@ -186,11 +188,34 @@ export default function PIPreviewModal({
           <div className="flex justify-center p-4">
             <div className="bg-white max-w-full" style={{width: '100%', maxWidth: '8.5in'}}>
               <div id="pi-preview-content">
-                <CorporateStandardInvoice 
-                  selectedBranch={(piPreviewData && piPreviewData.selectedBranch) || selectedBranch}
-                  companyBranches={companyBranches}
-                  quotations={piPreviewData?.data ? [piPreviewData.data] : []}
-                />
+                {(() => {
+                  const template = piPreviewData?.template || piPreviewData?.data?.template || 'template1'
+                  if (template === 'template2') {
+                    return (
+                      <PITemplate2 
+                        selectedBranch={(piPreviewData && piPreviewData.selectedBranch) || selectedBranch}
+                        companyBranches={companyBranches}
+                        quotations={piPreviewData?.data ? [piPreviewData.data] : []}
+                      />
+                    )
+                  } else if (template === 'template3') {
+                    return (
+                      <PITemplate3 
+                        selectedBranch={(piPreviewData && piPreviewData.selectedBranch) || selectedBranch}
+                        companyBranches={companyBranches}
+                        quotations={piPreviewData?.data ? [piPreviewData.data] : []}
+                      />
+                    )
+                  } else {
+                    return (
+                      <CorporateStandardInvoice 
+                        selectedBranch={(piPreviewData && piPreviewData.selectedBranch) || selectedBranch}
+                        companyBranches={companyBranches}
+                        quotations={piPreviewData?.data ? [piPreviewData.data] : []}
+                      />
+                    )
+                  }
+                })()}
               </div>
             </div>
           </div>

@@ -14,7 +14,9 @@ import NotificationsPage from './Notifications.jsx'
 import MobileLayout from './MOBILE view/MobileLayout.jsx'
 import FixedHeader from '../../Header.jsx'
 import CreateQuotationForm from './salespersoncreatequotation.jsx'
+import CreatePIForm from './CreatePIForm.jsx'
 import quotationService from '../../api/admin_api/quotationService'
+import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService'
 
 import { SharedDataProvider } from './SharedDataContext';
 
@@ -22,6 +24,11 @@ export default function SalespersonLayout({ onLogout }) {
   // Check URL parameter for page
   const urlParams = new URLSearchParams(window.location.search)
   const urlPage = urlParams.get('page')
+  
+  // If this is a standalone PI form page, render it full screen without layout
+  if (urlPage === 'create-pi') {
+    return <CreatePIForm />
+  }
   
   // If this is a standalone quotation form page, render it full screen without layout
   if (urlPage === 'create-quotation') {
@@ -75,7 +82,42 @@ export default function SalespersonLayout({ onLogout }) {
           }
           const response = await quotationService.createQuotation(quotationPayload)
           if (response.success) {
-            alert('Quotation created successfully!')
+            // Check if there's a pending PI saved in sessionStorage for this quotation number
+            const quotationNumber = response.data.quotation_number || quotationData.quotationNumber
+            const pendingPIKey = `pending_pi_${quotationNumber}`
+            const pendingPIData = sessionStorage.getItem(pendingPIKey)
+            
+            if (pendingPIData) {
+              try {
+                const piData = JSON.parse(pendingPIData)
+                // Create PI in database now that quotation is saved
+                const today = new Date().toISOString().split('T')[0]
+                const validUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                
+                const piPayload = {
+                  piDate: today,
+                  validUntil: validUntil,
+                  status: 'pending',
+                  subtotal: piData.piData?.subtotal || quotationData.subtotal,
+                  taxAmount: piData.piData?.taxAmount || quotationData.taxAmount,
+                  totalAmount: piData.piData?.total || quotationData.total,
+                  template: piData.template || 'template1' // Include template from sessionStorage
+                }
+                
+                await proformaInvoiceService.createFromQuotation(response.data.id, piPayload)
+                
+                // Remove from sessionStorage after creating in database
+                sessionStorage.removeItem(pendingPIKey)
+                
+                alert('Quotation and PI created successfully!')
+              } catch (piError) {
+                console.error('Error creating PI after quotation save:', piError)
+                alert('Quotation saved, but failed to create PI. You can create it manually later.')
+              }
+            } else {
+              alert('Quotation created successfully!')
+            }
+            
             sessionStorage.removeItem('quotationCustomer')
             sessionStorage.removeItem('quotationUser')
             // Close the tab or navigate back

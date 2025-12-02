@@ -122,10 +122,10 @@ export default function QuotationPreviewTemplate2({ data, companyBranches, user,
               {data?.billTo?.state && <p className="mt-1"><strong className="text-gray-700">State:</strong> <span className="text-gray-600">{data.billTo.state}</span></p>}
             </div>
             <div className="bg-gray-50 rounded p-3">
-              <p className="text-gray-700"><strong>L.R. No:</strong> -</p>
-              <p className="text-gray-700 mt-1"><strong>Transport:</strong> STAR TRANSPORTS</p>
-              <p className="text-gray-700 mt-1"><strong>Transport ID:</strong> 562345</p>
-              <p className="text-gray-700 mt-1"><strong>Vehicle Number:</strong> GJ01HJ2520</p>
+              <p className="text-gray-700"><strong>L.R. No:</strong> {data?.transportDetails?.lrNo || '-'}</p>
+              <p className="text-gray-700 mt-1"><strong>Transport:</strong> {data?.transportDetails?.transport || '-'}</p>
+              <p className="text-gray-700 mt-1"><strong>Transport ID:</strong> {data?.transportDetails?.transportId || '-'}</p>
+              <p className="text-gray-700 mt-1"><strong>Vehicle Number:</strong> {data?.transportDetails?.vehicleNumber || '-'}</p>
             </div>
           </div>
         </div>
@@ -194,10 +194,10 @@ export default function QuotationPreviewTemplate2({ data, companyBranches, user,
           <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-purple-500">
             <h3 className="font-bold text-purple-600 mb-3">Bank Details</h3>
             <div className="text-xs space-y-1 text-gray-700">
-              <p><strong>Bank Name:</strong> ICICI Bank</p>
-              <p><strong>Branch:</strong> WRIGHT TOWN JABALPUR</p>
-              <p><strong>Account Number:</strong> 657605601783</p>
-              <p><strong>IFSC:</strong> ICIC0006576</p>
+              <p><strong>Bank Name:</strong> {data?.bankDetails?.bankName || 'ICICI Bank'}</p>
+              <p><strong>Branch:</strong> {data?.bankDetails?.branchName || 'WRIGHT TOWN JABALPUR'}</p>
+              <p><strong>Account Number:</strong> {data?.bankDetails?.accountNumber || '657605601783'}</p>
+              <p><strong>IFSC:</strong> {data?.bankDetails?.ifscCode || 'ICIC0006576'}</p>
             </div>
           </div>
           <div className="bg-gradient-to-br from-green-50 to-white rounded-lg shadow-md p-4 border-l-4 border-green-500">

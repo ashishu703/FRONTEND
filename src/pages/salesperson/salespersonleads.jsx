@@ -54,10 +54,13 @@ import html2pdf from 'html2pdf.js'
 import Quotation from './salespersonquotation.jsx'
 import AddCustomerForm from './salespersonaddcustomer.jsx'
 import CreateQuotationForm from './salespersoncreatequotation.jsx'
+import CreatePIForm from './CreatePIForm.jsx'
 import { CorporateStandardInvoice } from './salespersonpi'
 import PIPreviewModal from './PIPreviewModal'
 import { useSharedData } from './SharedDataContext'
 import QuotationPreview from "../../components/QuotationPreview"
+import QuotationPreviewTemplate2 from "../../components/QuotationPreviewTemplate2"
+import QuotationPreviewTemplate3 from "../../components/QuotationPreviewTemplate3"
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")
@@ -101,6 +104,8 @@ export default function CustomerListContent({ isDarkMode = false }) {
   const [selectedCustomerForQuotation, setSelectedCustomerForQuotation] = React.useState(null)
   const [showCreatePI, setShowCreatePI] = React.useState(false)
   const [selectedCustomerForPI, setSelectedCustomerForPI] = React.useState(null)
+  const [selectedQuotationForPI, setSelectedQuotationForPI] = React.useState(null)
+  const [showCreatePIModal, setShowCreatePIModal] = React.useState(false)
   const [showFollowUpPicker, setShowFollowUpPicker] = React.useState(null) // lead id or null
   const [piData, setPiData] = React.useState(null)
   const [showPIPreview, setShowPIPreview] = React.useState(false)
@@ -507,6 +512,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
             status: q.status,
             createdAt: q.created_at,
             branch: q.branch || 'ANODE',
+            template: q.template || 'template1', // Include template from database
             billTo: q.bill_to || q.billTo || {
               business: viewingCustomerForQuotation?.business || q.customer_business,
               address: viewingCustomerForQuotation?.address || q.customer_address,
@@ -761,8 +767,14 @@ export default function CustomerListContent({ isDarkMode = false }) {
 
   const handleCreateQuotation = () => {
     if (viewingCustomer) {
-      setSelectedCustomerForQuotation(viewingCustomer)
-      setShowCreateQuotation(true)
+      // Store customer and user data in sessionStorage
+      sessionStorage.setItem('quotationCustomer', JSON.stringify(viewingCustomer))
+      sessionStorage.setItem('quotationUser', JSON.stringify(user))
+      
+      // Open quotation form in new tab
+      const currentUrl = window.location.href.split('?')[0]
+      const newUrl = `${currentUrl}?page=create-quotation`
+      window.open(newUrl, '_blank')
     }
   }
 
@@ -787,6 +799,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
         discountRate: quotationData.discountRate || 0,
         discountAmount: quotationData.discountAmount || 0,
         totalAmount: quotationData.total,
+        template: quotationData.template || 'template1', // Include template in payload
           billTo: quotationData.billTo || {
             business: viewingCustomer.business,
             address: viewingCustomer.address,
@@ -824,6 +837,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
           status: response.data.status,
           createdAt: response.data.created_at,
           branch: quotationData.selectedBranch || 'ANODE',
+          template: quotationData.template || 'template1', // Store the selected template
           billTo: quotationData.billTo || {
             business: viewingCustomer.business,
             address: viewingCustomer.address,
@@ -836,8 +850,44 @@ export default function CustomerListContent({ isDarkMode = false }) {
         
         setQuotations(prev => [newQuotation, ...prev]);
         
-        // Show success message
-        alert('Quotation created and saved to database successfully!');
+        // Check if there's a pending PI saved in sessionStorage for this quotation number
+        const quotationNumber = response.data.quotation_number || quotationData.quotationNumber
+        const pendingPIKey = `pending_pi_${quotationNumber}`
+        const pendingPIData = sessionStorage.getItem(pendingPIKey)
+        
+        if (pendingPIData) {
+          try {
+            const piData = JSON.parse(pendingPIData)
+            // Create PI in database now that quotation is saved
+            const today = new Date().toISOString().split('T')[0]
+            const validUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            
+            const piPayload = {
+              piDate: today,
+              validUntil: validUntil,
+              status: 'pending',
+              subtotal: piData.piData?.subtotal || quotationData.subtotal,
+              taxAmount: piData.piData?.taxAmount || quotationData.taxAmount,
+              totalAmount: piData.piData?.total || quotationData.total,
+              template: piData.template || 'template1' // Include template from sessionStorage
+            }
+            
+            await proformaInvoiceService.createFromQuotation(response.data.id, piPayload)
+            
+            // Remove from sessionStorage after creating in database
+            sessionStorage.removeItem(pendingPIKey)
+            
+            // Refresh PI list for this quotation
+            await fetchPIsForQuotation(response.data.id)
+            
+            alert('Quotation and PI created and saved to database successfully!')
+          } catch (piError) {
+            console.error('Error creating PI after quotation save:', piError)
+            alert('Quotation saved, but failed to create PI. You can create it manually later.')
+          }
+        } else {
+          alert('Quotation created and saved to database successfully!')
+        }
         
         // Close the quotation modal
         setShowCreateQuotation(false);
@@ -922,33 +972,59 @@ export default function CustomerListContent({ isDarkMode = false }) {
       // Fetch PI details
       const piResponse = await proformaInvoiceService.getPI(piId)
       if (!piResponse || !piResponse.success) {
-        alert('Failed to fetch PI details')
+        console.error('PI Response error:', piResponse)
+        alert('Failed to fetch PI details. Please check the console for more information.')
         return
       }
 
-      const pi = piResponse.data
+      const pi = piResponse.data || piResponse
+      if (!pi) {
+        console.error('PI data is null or undefined')
+        alert('PI data not found')
+        return
+      }
 
       // Fetch complete quotation data
       const quotationResponse = await quotationService.getCompleteData(quotation.id)
       if (!quotationResponse || !quotationResponse.success) {
-        alert('Failed to fetch quotation details')
+        console.error('Quotation Response error:', quotationResponse)
+        alert('Failed to fetch quotation details. Please check the console for more information.')
         return
       }
 
-      const completeQuotation = quotationResponse.data?.quotation || {}
+      const completeQuotation = quotationResponse.data?.quotation || quotationResponse.data || {}
+      if (!completeQuotation) {
+        console.error('Complete quotation data is null or undefined')
+        alert('Quotation data not found')
+        return
+      }
+
       const quotationItems = completeQuotation.items || []
 
+      // Get customer data - use viewingCustomerForQuotation first, then viewingCustomer, then from customers array, then from quotation
+      let customerData = viewingCustomerForQuotation || viewingCustomer
+      if (!customerData && quotation?.customerId) {
+        // Try to find customer from customers array
+        customerData = customers.find(c => c.id === quotation.customerId) || {}
+      }
+      if (!customerData && completeQuotation?.customer_id) {
+        // Try to find customer from customers array using customer_id
+        customerData = customers.find(c => c.id === completeQuotation.customer_id) || {}
+      }
+      customerData = customerData || {}
+      
       // Map quotation items to PI format
       const mappedItems = quotationItems.map(item => ({
         id: item.id || Math.random(),
+        productName: item.product_name || item.productName || item.description || 'Product',
         description: item.product_name || item.productName || item.description || 'Product',
         subDescription: item.description || '',
         hsn: item.hsn_code || item.hsn || item.hsnCode || '85446090',
         dueOn: new Date().toISOString().split('T')[0],
         quantity: Number(item.quantity) || 1,
         unit: item.unit || 'Nos',
-        rate: Number(item.buyer_rate || item.unit_price || item.unitPrice || 0),
-        buyerRate: Number(item.unit_price || item.buyer_rate || item.unitPrice || 0),
+        rate: Number(item.buyer_rate || item.unit_price || item.unitPrice || item.buyerRate || 0),
+        buyerRate: Number(item.unit_price || item.buyer_rate || item.unitPrice || item.buyerRate || 0),
         amount: Number(item.taxable_amount ?? item.amount ?? item.taxable ?? item.total_amount ?? item.total ?? 0),
         gstRate: Number(item.gst_rate ?? item.gstRate ?? 18),
         gstMultiplier: 1 + Number(item.gst_rate ?? item.gstRate ?? 18) / 100
@@ -962,7 +1038,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
       const taxAmount = Number(completeQuotation.tax_amount ?? completeQuotation.taxAmount ?? (taxableAmount * taxRate) / 100)
       
       // Use PI total_amount if available (for remaining amount PIs), otherwise use quotation total
-      const piTotal = Number(pi.total_amount ?? 0)
+      const piTotal = Number(pi.total_amount ?? pi.totalAmount ?? 0)
       const quotationTotal = Number(completeQuotation.total_amount ?? completeQuotation.total ?? 0)
       const total = piTotal > 0 ? piTotal : (quotationTotal > 0 ? quotationTotal : (taxableAmount + taxAmount))
       
@@ -1013,17 +1089,20 @@ export default function CustomerListContent({ isDarkMode = false }) {
         }
       }
 
+      // Build billTo with proper fallbacks
       const billTo = {
-        business: viewingCustomer.business || completeQuotation.customer_business || completeQuotation.billTo?.business || '',
-        address: viewingCustomer.address || completeQuotation.customer_address || completeQuotation.billTo?.address || '',
-        phone: viewingCustomer.phone || completeQuotation.customer_phone || completeQuotation.billTo?.phone || '',
-        gstNo: viewingCustomer.gstNo || completeQuotation.customer_gst_no || completeQuotation.billTo?.gstNo || '',
-        state: viewingCustomer.state || completeQuotation.customer_state || completeQuotation.billTo?.state || ''
+        business: customerData.business || completeQuotation.customer_business || completeQuotation.billTo?.business || quotation.billTo?.business || '',
+        address: customerData.address || completeQuotation.customer_address || completeQuotation.billTo?.address || quotation.billTo?.address || '',
+        phone: customerData.phone || completeQuotation.customer_phone || completeQuotation.billTo?.phone || quotation.billTo?.phone || '',
+        gstNo: customerData.gstNo || customerData.gst_no || completeQuotation.customer_gst_no || completeQuotation.billTo?.gstNo || quotation.billTo?.gstNo || '',
+        state: customerData.state || completeQuotation.customer_state || completeQuotation.billTo?.state || quotation.billTo?.state || ''
       }
 
       // Build PI preview data with dispatch details
       const piPreviewData = {
-        quotationNumber: quotation.quotationNumber || pi.pi_number,
+        quotationNumber: quotation.quotationNumber || quotation.quotation_number || pi.pi_number || pi.piNumber || '',
+        invoiceNumber: pi.pi_number || pi.piNumber || pi.invoice_number || pi.invoiceNumber || '',
+        quotationDate: completeQuotation.quotation_date || completeQuotation.quotationDate || new Date().toISOString().split('T')[0],
         items: mappedItems,
         subtotal,
         discountRate,
@@ -1035,29 +1114,40 @@ export default function CustomerListContent({ isDarkMode = false }) {
         originalQuotationTotal: advancePayment > 0 ? originalQuotationTotal : 0,
         advancePayment: advancePayment,
         billTo,
-        dispatchMode: pi.dispatch_mode,
+        dispatchMode: pi.dispatch_mode || pi.dispatchMode || null,
         shippingDetails: {
-          transportName: pi.transport_name,
-          vehicleNumber: pi.vehicle_number,
-          transportId: pi.transport_id,
-          lrNo: pi.lr_no,
-          courierName: pi.courier_name,
-          consignmentNo: pi.consignment_no,
-          byHand: pi.by_hand,
-          postService: pi.post_service,
-          carrierName: pi.carrier_name,
-          carrierNumber: pi.carrier_number
-        }
+          transportName: pi.transport_name || pi.transportName || null,
+          vehicleNumber: pi.vehicle_number || pi.vehicleNumber || null,
+          transportId: pi.transport_id || pi.transportId || null,
+          lrNo: pi.lr_no || pi.lrNo || null,
+          courierName: pi.courier_name || pi.courierName || null,
+          consignmentNo: pi.consignment_no || pi.consignmentNo || null,
+          byHand: pi.by_hand || pi.byHand || null,
+          postService: pi.post_service || pi.postService || null,
+          carrierName: pi.carrier_name || pi.carrierName || null,
+          carrierNumber: pi.carrier_number || pi.carrierNumber || null
+        },
+        paymentTerms: completeQuotation.payment_terms || completeQuotation.paymentTerms || '',
+        deliveryTerms: completeQuotation.delivery_terms || completeQuotation.deliveryTerms || '',
+        validity: completeQuotation.validity || '',
+        warranty: completeQuotation.warranty || ''
       }
 
       setSavedPiPreview({ 
         data: piPreviewData, 
-        selectedBranch: completeQuotation.branch || selectedBranch 
+        selectedBranch: completeQuotation.branch || selectedBranch,
+        template: pi.template || 'template1' // Include template from PI
       })
       setShowPIPreview(true)
     } catch (error) {
       console.error('Error viewing PI:', error)
-      alert('Failed to load PI details')
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        piId,
+        quotationId: quotation?.id
+      })
+      alert(`Failed to load PI details: ${error.message || 'Unknown error'}. Please check the console for more details.`)
     }
   }
 
@@ -1370,7 +1460,8 @@ export default function CustomerListContent({ isDarkMode = false }) {
             taxAmount: parseFloat(dbQuotation.tax_amount || 0),
             total: parseFloat(dbQuotation.total_amount || 0),
             status: dbQuotation.status,
-            termsSections: dbQuotation.terms_sections || null
+            termsSections: dbQuotation.terms_sections || null,
+            template: dbQuotation.template || quotation.template || 'template1' // Get template from DB or quotation object
           };
           console.log('Normalized quotation data:', normalized);
           setQuotationPopupData(normalized);
@@ -1417,7 +1508,8 @@ export default function CustomerListContent({ isDarkMode = false }) {
         taxRate: quotation.taxRate || 18,
         taxAmount: quotation.taxAmount ?? quotation.tax ?? 0,
         total: quotation.total || quotation.totalAmount || 0,
-        termsSections: quotation.termsSections || null
+        termsSections: quotation.termsSections || null,
+        template: quotation.template || 'template1' // Get template from quotation, default to template1
       };
       setQuotationPopupData(normalized);
       setShowQuotationPopup(true);
@@ -3322,8 +3414,23 @@ export default function CustomerListContent({ isDarkMode = false }) {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-0">
             <div className="px-6 pt-5">
-              <h2 className="text-lg font-semibold text-gray-900">{viewingCustomerForQuotation.name}</h2>
-              <p className="text-sm text-gray-500">Quotation & Payment</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">{viewingCustomerForQuotation.name}</h2>
+                  <p className="text-sm text-gray-500">Quotation & Payment</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-700">Total Quotations:</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {quotations.filter(q => {
+                      const matches = q.customerId === viewingCustomerForQuotation.id || 
+                                     q.customerId === parseInt(viewingCustomerForQuotation.id) ||
+                                     String(q.customerId) === String(viewingCustomerForQuotation.id)
+                      return matches
+                    }).length}
+                  </p>
+                </div>
+              </div>
             </div>
             <div className="px-6 py-4 max-h-[70vh] overflow-auto">
                 <div className="space-y-4 text-sm">
@@ -3398,22 +3505,42 @@ export default function CustomerListContent({ isDarkMode = false }) {
                           >
                             <Eye className="h-3.5 w-3.5" /> View
                           </button>
-                              {piStore[quotation.quotationNumber] && (
-                          <button 
-                                  onClick={() => {
-                                    const saved = piStore[quotation.quotationNumber]
-                                    setSavedPiPreview(saved)
-                                    setShowPIPreview(true)
+                          {/* PI Buttons - Only show when quotation is approved */}
+                          {isApprovedQuotation(quotation) && (
+                            <>
+                              {/* Create PI Button - Only show for approved quotations that are not payment completed */}
+                              {!isPaymentCompleted(quotation) && (
+                                <button 
+                                  onClick={async () => {
+                                    // Fetch complete quotation data if needed
+                                    let completeQuotation = quotation
+                                    if (quotation.id) {
+                                      try {
+                                        const response = await quotationService.getCompleteData(quotation.id)
+                                        if (response && response.success) {
+                                          completeQuotation = response.data?.quotation || quotation
+                                        }
+                                      } catch (error) {
+                                        console.error('Error fetching complete quotation:', error)
+                                      }
+                                    }
+                                    
+                                    // Set quotation and customer for PI creation
+                                    setSelectedQuotationForPI(completeQuotation)
+                                    setShowCreatePIModal(true)
                                   }}
-                                  className="p-1 rounded-full bg-purple-600 text-white hover:bg-purple-700"
-                                  title="View PI"
+                                  className="text-xs px-2 py-1 rounded-full font-medium inline-flex items-center gap-1 bg-green-600 text-white hover:bg-green-700"
+                                  title="Create PI for this quotation"
                                 >
                                   <FileText className="h-3 w-3" />
-                          </button>
+                                  Create PI
+                                </button>
                               )}
+                            </>
+                          )}
                           
                           {/* Show Create PI only for approved and not deal-closed; hide send/delete when deal closed */}
-                          {isApprovedQuotation(quotation) && !isPaymentCompleted(quotation) ? (
+                          {false && isApprovedQuotation(quotation) && !isPaymentCompleted(quotation) ? (
                             <button 
                               onClick={() => {
                                 // Set the approved quotation for PI creation
@@ -3538,19 +3665,14 @@ export default function CustomerListContent({ isDarkMode = false }) {
                   // Store customer and user data in sessionStorage
                   sessionStorage.setItem('quotationCustomer', JSON.stringify(viewingCustomerForQuotation))
                   sessionStorage.setItem('quotationUser', JSON.stringify(user))
-                  sessionStorage.setItem('openQuotationForm', 'true')
                   
-                  // Get current URL and open in new tab
-                  const currentUrl = window.location.origin + window.location.pathname
-                  const newWindow = window.open(currentUrl + '?page=create-quotation', '_blank')
+                  // Open quotation form in new tab
+                  const currentUrl = window.location.href.split('?')[0]
+                  const newUrl = `${currentUrl}?page=create-quotation`
+                  window.open(newUrl, '_blank')
                   
-                  // Fallback: if popup blocked, show alert
-                  if (!newWindow) {
-                    alert('Please allow pop-ups for this site to open the quotation form in a new tab')
-                    // Fallback to modal if popup is blocked
-                    setSelectedCustomerForQuotation(viewingCustomerForQuotation)
-                    setShowCreateQuotation(true)
-                  }
+                  // Close the quotation modal
+                  setViewingCustomerForQuotation(null)
                 }}
                   className="px-3 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 inline-flex items-center gap-2"
                 >
@@ -4539,8 +4661,8 @@ export default function CustomerListContent({ isDarkMode = false }) {
               </div>
               
               {/* Quotation Content */}
-              <QuotationPreview
-                data={{
+              {(() => {
+                const quotationData = {
                   quotationNumber: quotationPopupData.quotationNumber,
                   quotationDate: quotationPopupData.quotationDate,
                   validUpto: quotationPopupData.validUpto,
@@ -4572,10 +4694,36 @@ export default function CustomerListContent({ isDarkMode = false }) {
                   total: quotationPopupData.total || quotationPopupData.totalAmount || 0,
                   selectedBranch: quotationPopupData.selectedBranch || quotationPopupData.branch || selectedBranch,
                   termsSections: quotationPopupData.termsSections || null
-                }}
-                companyBranches={companyBranches}
-                user={user}
-              />
+                };
+                
+                const selectedTemplate = quotationPopupData.template || 'template1';
+                
+                if (selectedTemplate === 'template2') {
+                  return (
+                    <QuotationPreviewTemplate2
+                      data={quotationData}
+                      companyBranches={companyBranches}
+                      user={user}
+                    />
+                  );
+                } else if (selectedTemplate === 'template3') {
+                  return (
+                    <QuotationPreviewTemplate3
+                      data={quotationData}
+                      companyBranches={companyBranches}
+                      user={user}
+                    />
+                  );
+                } else {
+                  return (
+                    <QuotationPreview
+                      data={quotationData}
+                      companyBranches={companyBranches}
+                      user={user}
+                    />
+                  );
+                }
+              })()}
             </div>
             
             <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex justify-end space-x-3">
@@ -4643,6 +4791,33 @@ export default function CustomerListContent({ isDarkMode = false }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Create PI Modal - Same size as Quotation Form */}
+      {showCreatePIModal && selectedQuotationForPI && viewingCustomerForQuotation && (
+        <CreatePIForm
+          quotation={selectedQuotationForPI}
+          customer={viewingCustomerForQuotation}
+          user={user}
+          modal={true}
+          onClose={(savedPI) => {
+            // Refresh PIs before closing - capture quotation ID before state changes
+            const quotationIdToRefresh = selectedQuotationForPI?.id
+            setShowCreatePIModal(false)
+            
+            if (quotationIdToRefresh) {
+              // Refresh PI list for this quotation
+              fetchPIsForQuotation(quotationIdToRefresh).catch(err => {
+                console.error('Error refreshing PIs:', err)
+              })
+            }
+            
+            // Clear selection after a short delay to allow refresh
+            setTimeout(() => {
+              setSelectedQuotationForPI(null)
+            }, 100)
+          }}
+        />
       )}
     </main>
   )

@@ -157,16 +157,16 @@ export default function QuotationPreview({ data, companyBranches, user, hideSign
             </div>
             <div>
               <p>
-                <strong>L.R. No:</strong> -
+                <strong>L.R. No:</strong> {data?.transportDetails?.lrNo || '-'}
               </p>
               <p>
-                <strong>Transport:</strong> STAR TRANSPORTS
+                <strong>Transport:</strong> {data?.transportDetails?.transport || '-'}
               </p>
               <p>
-                <strong>Transport ID:</strong> 562345
+                <strong>Transport ID:</strong> {data?.transportDetails?.transportId || '-'}
               </p>
               <p>
-                <strong>Vehicle Number:</strong> GJ01HJ2520
+                <strong>Vehicle Number:</strong> {data?.transportDetails?.vehicleNumber || '-'}
               </p>
             </div>
           </div>
@@ -261,16 +261,16 @@ export default function QuotationPreview({ data, companyBranches, user, hideSign
             <h3 className="font-bold text-xs mb-2">Bank Details</h3>
             <div className="text-xs space-y-1">
               <p>
-                <strong>Bank Name:</strong> ICICI Bank
+                <strong>Bank Name:</strong> {data?.bankDetails?.bankName || 'ICICI Bank'}
               </p>
               <p>
-                <strong>Branch Name:</strong> WRIGHT TOWN JABALPUR
+                <strong>Branch Name:</strong> {data?.bankDetails?.branchName || 'WRIGHT TOWN JABALPUR'}
               </p>
               <p>
-                <strong>Bank Account Number:</strong> 657605601783
+                <strong>Bank Account Number:</strong> {data?.bankDetails?.accountNumber || '657605601783'}
               </p>
               <p>
-                <strong>Bank Branch IFSC:</strong> ICIC0006576
+                <strong>Bank Branch IFSC:</strong> {data?.bankDetails?.ifscCode || 'ICIC0006576'}
               </p>
             </div>
           </div>

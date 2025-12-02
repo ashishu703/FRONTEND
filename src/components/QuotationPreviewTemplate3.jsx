@@ -120,10 +120,10 @@ export default function QuotationPreviewTemplate3({ data, companyBranches, user,
             {data?.billTo?.state && <p className="text-xs text-gray-500">{data.billTo.state}</p>}
           </div>
           <div className="text-xs text-gray-600">
-            <p className="mb-1">L.R. No: -</p>
-            <p className="mb-1">Transport: STAR TRANSPORTS</p>
-            <p className="mb-1">Transport ID: 562345</p>
-            <p>Vehicle: GJ01HJ2520</p>
+            <p className="mb-1">L.R. No: {data?.transportDetails?.lrNo || '-'}</p>
+            <p className="mb-1">Transport: {data?.transportDetails?.transport || '-'}</p>
+            <p className="mb-1">Transport ID: {data?.transportDetails?.transportId || '-'}</p>
+            <p>Vehicle: {data?.transportDetails?.vehicleNumber || '-'}</p>
           </div>
         </div>
 
@@ -190,10 +190,10 @@ export default function QuotationPreviewTemplate3({ data, companyBranches, user,
         <div className="grid grid-cols-2 gap-8 mb-6">
           <div className="text-xs text-gray-600">
             <h3 className="text-xs uppercase tracking-wider text-gray-400 mb-3">Bank Details</h3>
-            <p className="mb-1">ICICI Bank</p>
-            <p className="mb-1">WRIGHT TOWN JABALPUR</p>
-            <p className="mb-1">A/C: 657605601783</p>
-            <p>IFSC: ICIC0006576</p>
+            <p className="mb-1">{data?.bankDetails?.bankName || 'ICICI Bank'}</p>
+            <p className="mb-1">{data?.bankDetails?.branchName || 'WRIGHT TOWN JABALPUR'}</p>
+            <p className="mb-1">A/C: {data?.bankDetails?.accountNumber || '657605601783'}</p>
+            <p>IFSC: {data?.bankDetails?.ifscCode || 'ICIC0006576'}</p>
           </div>
           <div className="text-xs">
             <div className="flex justify-between py-1 border-b border-gray-200">
