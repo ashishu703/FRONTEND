@@ -1,6 +1,49 @@
 import { Printer } from "lucide-react"
+import { useEffect, useState } from "react"
+import apiClient from '../../utils/apiClient'
+import { API_ENDPOINTS } from '../../api/admin_api/api'
 
 const Quotation = ({ quotationData, customer, selectedBranch = 'ANODE' }) => {
+  const [salespersonName, setSalespersonName] = useState(null)
+
+  // Fetch user data directly - more reliable approach
+  useEffect(() => {
+    const fetchSalespersonName = async () => {
+      let name = null;
+
+      // Method 1: Try to fetch from API first
+      try {
+        const response = await apiClient.get(API_ENDPOINTS.PROFILE);
+        if (response && response.data && response.data.user) {
+          const apiUser = response.data.user;
+          name = apiUser.username || apiUser.name;
+          if (name) {
+            setSalespersonName(name);
+            return;
+          }
+        }
+      } catch (error) {
+        console.log('API fetch failed, trying localStorage...', error);
+      }
+
+      // Method 2: Fallback to localStorage
+      try {
+        const localUserData = JSON.parse(localStorage.getItem('user') || '{}');
+        name = localUserData.username || localUserData.name;
+        if (name && name !== 'User') {
+          setSalespersonName(name);
+          return;
+        }
+      } catch (e) {
+        console.error('Error reading user from localStorage:', e);
+      }
+
+      // If still no name found, set to null
+      setSalespersonName(null);
+    };
+
+    fetchSalespersonName();
+  }, []);
   // Company branch configuration
   const companyBranches = {
     ANODE: {
@@ -416,7 +459,17 @@ const Quotation = ({ quotationData, customer, selectedBranch = 'ANODE' }) => {
             For <strong>{currentCompany.name}</strong>
           </p>
           <p className="mb-8">This is computer generated invoice no signature required.</p>
-          <p className="font-bold">Authorized Signatory</p>
+          <div>
+            <p className="font-bold">Authorized Signatory</p>
+            {salespersonName ? (
+              <>
+                <p className="mt-2 text-sm font-semibold text-gray-800">{salespersonName}</p>
+                <p className="mt-1 text-xs text-gray-600">Salesperson</p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm font-semibold text-gray-800">Salesperson</p>
+            )}
+          </div>
         </div>
         </div>
         

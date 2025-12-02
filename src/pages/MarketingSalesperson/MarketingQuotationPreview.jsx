@@ -214,10 +214,17 @@ export default function MarketingQuotationPreview({ data, companyBranches, user 
         <div className="text-right text-xs">
           <p className="mb-4">For <strong>{selectedBranch.name}</strong></p>
           <p className="mb-8">This is computer generated invoice no signature required.</p>
-          <p className="font-bold">Authorized Signatory</p>
-          {user && (
-            <p className="mt-2 text-sm font-semibold text-gray-800">{user.username || user.email || 'User'}</p>
-          )}
+          <div>
+            <p className="font-bold">Authorized Signatory</p>
+            {user && (user.name || user.username) ? (
+              <>
+                <p className="mt-2 text-sm font-semibold text-gray-800">{user.name || user.username}</p>
+                <p className="mt-1 text-xs text-gray-600">Salesperson</p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm font-semibold text-gray-800">Salesperson</p>
+            )}
+          </div>
         </div>
       </div>
     </div>

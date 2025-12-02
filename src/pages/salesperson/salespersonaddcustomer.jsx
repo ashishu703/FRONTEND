@@ -1,7 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { X, User, Phone, MessageCircle, Mail, Building2, FileText, MapPin, Globe, Package } from "lucide-react"
+import departmentUserService from "../../api/admin_api/departmentUserService"
+import apiClient from "../../utils/apiClient"
+import { API_ENDPOINTS } from "../../api/admin_api/api"
 
 function Card({ className, children }) {
   return <div className={`rounded-lg border bg-white shadow-sm ${className || ''}`}>{children}</div>
@@ -45,6 +48,9 @@ function Button({ children, onClick, type = "button", variant = "default", size 
 }
 
 export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
+  const [salespersons, setSalespersons] = useState([])
+  const [loadingSalespersons, setLoadingSalespersons] = useState(false)
+  
   const [formData, setFormData] = useState({
     customerName: editingCustomer?.name || "",
     mobileNumber: editingCustomer?.phone || "",
@@ -68,6 +74,137 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     transferredTo: editingCustomer?.transferredTo || '',
     date: new Date().toISOString().split('T')[0],
   })
+
+  // Fetch salespersons when form opens
+  useEffect(() => {
+    const fetchSalespersons = async () => {
+      try {
+        setLoadingSalespersons(true)
+        
+        let headUserId = null
+        let currentUsername = ''
+        let currentEmail = ''
+
+        // First, try to fetch profile from backend (contains head_user_id)
+        try {
+          const profileRes = await apiClient.get(API_ENDPOINTS.PROFILE)
+          const profileUser = profileRes?.data?.user || profileRes?.user
+          if (profileUser) {
+            headUserId = profileUser.headUserId || profileUser.head_user_id || headUserId
+            currentUsername = (profileUser.username || profileUser.name || '').toLowerCase()
+            currentEmail = (profileUser.email || '').toLowerCase()
+          }
+        } catch (profileErr) {
+          console.error('Failed to fetch profile for salesperson:', profileErr)
+        }
+
+        // Fallback: read from localStorage
+        if (!headUserId || !currentUsername || !currentEmail) {
+          try {
+            const userData = JSON.parse(localStorage.getItem('user') || '{}')
+            headUserId = headUserId || userData.headUserId || userData.head_user_id
+            currentUsername = currentUsername || (userData.username || userData.name || '').toLowerCase()
+            currentEmail = currentEmail || (userData.email || '').toLowerCase()
+          } catch (e) {
+            console.error('Failed to parse user data from localStorage:', e)
+          }
+        }
+        
+        // If still missing headUserId, attempt to fetch the current user record
+        if (!headUserId) {
+          try {
+            const currentUserRes = await departmentUserService.listUsers({ page: 1, limit: 1 })
+            const currentUserPayload = currentUserRes?.data || currentUserRes
+            const currentUser = (currentUserPayload.users || [])[0]
+            if (currentUser) {
+              headUserId = currentUser.head_user_id || currentUser.headUserId || headUserId
+              currentUsername = currentUsername || (currentUser.username || currentUser.name || '').toLowerCase()
+              currentEmail = currentEmail || (currentUser.email || '').toLowerCase()
+            }
+          } catch (err) {
+            console.error('Failed to get current user record via listUsers:', err)
+          }
+        }
+        
+        let users = []
+        
+        // If we have headUserId, use getByHeadId to get all users under that head
+        if (headUserId) {
+          try {
+            const res = await departmentUserService.getByHeadId(headUserId)
+            
+            // Handle different response structures for getByHeadId
+            if (res?.data?.users && Array.isArray(res.data.users)) {
+              users = res.data.users
+            } else if (Array.isArray(res?.data)) {
+              users = res.data
+            } else if (Array.isArray(res)) {
+              users = res
+            } else if (res?.success && res.data?.users && Array.isArray(res.data.users)) {
+              users = res.data.users
+            } else if (res?.success && Array.isArray(res.data)) {
+              users = res.data
+            } else if (res?.users && Array.isArray(res.users)) {
+              users = res.users
+            }
+            
+            console.log('Fetched users by head ID:', headUserId, 'Count:', users.length)
+          } catch (headErr) {
+            console.error('Failed to fetch by head ID:', headErr)
+            // Fallback: try to get from listUsers (may only return current user)
+            try {
+              const res = await departmentUserService.listUsers({ page: 1, limit: 1000 })
+              const payload = res?.data || res
+              users = payload.users || []
+            } catch (listErr) {
+              console.error('Failed to fetch users:', listErr)
+            }
+          }
+        } else {
+          console.warn('No headUserId found, trying listUsers (may return limited results)')
+          // Fallback: try listUsers (may only return current user for salesperson)
+          try {
+            const res = await departmentUserService.listUsers({ page: 1, limit: 1000 })
+            const payload = res?.data || res
+            users = payload.users || []
+          } catch (listErr) {
+            console.error('Failed to fetch users:', listErr)
+          }
+        }
+        
+        // Map users to the format we need, filtering out any null/undefined values
+        const mappedUsers = users
+          .filter(u => u && (u.username || u.email)) // Filter out invalid entries
+          .map(u => ({
+            id: u.id,
+            username: u.username || u.name || u.email?.split('@')[0] || 'Unknown',
+            email: u.email || ''
+          }))
+          .filter((u, index, self) => 
+            // Remove duplicates based on username
+            index === self.findIndex((user) => user.username === u.username)
+          )
+
+        const filteredUsers = mappedUsers.filter(u => {
+          const uname = (u.username || '').toLowerCase()
+          const uemail = (u.email || '').toLowerCase()
+          return (
+            (currentUsername && uname ? uname !== currentUsername : true) &&
+            (currentEmail && uemail ? uemail !== currentEmail : true)
+          )
+        })
+        
+        console.log('Final salespersons list:', filteredUsers.length, filteredUsers)
+        setSalespersons(filteredUsers)
+      } catch (error) {
+        console.error('Failed to fetch salespersons:', error)
+        console.error('Error details:', error.response || error.message)
+      } finally {
+        setLoadingSalespersons(false)
+      }
+    }
+    fetchSalespersons()
+  }, [])
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({
@@ -395,13 +532,22 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 <User className="h-4 w-4 text-purple-600" />
                 Transfer Lead to
               </label>
-              <input
-                type="text"
+              <select
                 value={formData.transferredTo}
                 onChange={(e) => handleInputChange("transferredTo", e.target.value)}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter who the lead was transferred to"
-              />
+                disabled={loadingSalespersons}
+              >
+                <option value="">Select a salesperson...</option>
+                {salespersons.map((salesperson) => (
+                  <option key={salesperson.id} value={salesperson.username}>
+                    {salesperson.username} {salesperson.email ? `(${salesperson.email})` : ''}
+                  </option>
+                ))}
+              </select>
+              {loadingSalespersons && (
+                <p className="text-xs text-gray-500">Loading salespersons...</p>
+              )}
             </div>
 
             
