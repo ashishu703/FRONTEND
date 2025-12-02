@@ -1,10 +1,13 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, FileText, Calendar, User, Package, DollarSign, Plus, Eye, Edit, Building2, FileCheck } from "lucide-react"
+import { X, FileText, Calendar, User, Package, DollarSign, Plus, Eye, Edit, Building2, FileCheck, Layout, Download } from "lucide-react"
 import QuotationPreview from "../../components/QuotationPreview"
+import QuotationPreviewTemplate2 from "../../components/QuotationPreviewTemplate2"
+import QuotationPreviewTemplate3 from "../../components/QuotationPreviewTemplate3"
 import { CorporateStandardInvoice } from './salespersonpi'
 import { defaultQuotationTerms } from '../../constants/quotationTerms'
+import html2pdf from 'html2pdf.js'
 
 function Card({ className, children }) {
   return <div className={`rounded-lg border bg-white shadow-sm ${className || ''}`}>{children}</div>
@@ -127,6 +130,9 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
       state: ""
     }
   })
+
+  // Template selection state
+  const [selectedTemplate, setSelectedTemplate] = useState('template1') // 'template1', 'template2', 'template3'
 
   // Optional: Auto-fill bill-to from customer data if user wants (commented out to start with empty fields)
   // useEffect(() => {
@@ -306,6 +312,61 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
     setShowPreview(!showPreview);
   };
 
+  // Download PDF function that uses the selected template
+  const handleDownloadPDF = async () => {
+    try {
+      // Find the currently rendered quotation content in the preview modal
+      const quotationContent = document.getElementById('quotation-content');
+      
+      if (!quotationContent) {
+        alert('Quotation preview not found. Please try again.');
+        return;
+      }
+
+      // Temporarily hide the signatory section if needed
+      const signatorySection = quotationContent.querySelector('.quotation-signatory-section');
+      let wasVisible = true;
+      if (signatorySection) {
+        wasVisible = signatorySection.style.display !== 'none';
+        // Keep it visible for PDF - no need to hide
+      }
+
+      // PDF options
+      const opt = {
+        margin: [0.4, 0.4, 0.4, 0.4],
+        filename: `Quotation-${previewData?.quotationNumber || 'Draft'}-${(previewData?.billTo?.business || 'Customer').replace(/\s+/g, '-')}.pdf`,
+        image: { type: 'jpeg', quality: 0.8 },
+        html2canvas: { 
+          scale: 1.1,
+          useCORS: true,
+          letterRendering: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false
+        },
+        jsPDF: { 
+          unit: 'in', 
+          format: 'a4', 
+          orientation: 'portrait',
+          compress: true,
+          putOnlyUsedFonts: true
+        }
+      };
+
+      // Generate and download PDF from the currently visible template
+      await html2pdf().set(opt).from(quotationContent).save();
+
+      // Restore signatory section visibility if it was changed
+      if (signatorySection && !wasVisible) {
+        signatorySection.style.display = '';
+      }
+
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    }
+  };
+
   // Check if all required fields are filled
   const isFormValid = () => {
     const { billTo, items } = quotationData;
@@ -379,23 +440,92 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
   if (showPreview) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="w-full max-w-5xl max-h-[90vh] overflow-y-auto relative">
-          {/* Close button */}
-          <button
-            onClick={togglePreview}
-            className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
-            title="Close Preview"
-          >
-            <X className="h-5 w-5 text-gray-600" />
-          </button>
+        <div className="w-full max-w-5xl max-h-[90vh] overflow-y-auto relative bg-white rounded-lg shadow-xl">
+          {/* Header with Template Selector */}
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+            <h2 className="text-xl font-bold text-gray-900">Quotation Preview</h2>
+            <div className="flex items-center gap-3">
+              {/* Template Selector */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSelectedTemplate('template1')}
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                    selectedTemplate === 'template1'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Classic Template"
+                >
+                  Classic
+                </button>
+                <button
+                  onClick={() => setSelectedTemplate('template2')}
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                    selectedTemplate === 'template2'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Modern Template"
+                >
+                  Modern
+                </button>
+                <button
+                  onClick={() => setSelectedTemplate('template3')}
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                    selectedTemplate === 'template3'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Minimal Template"
+                >
+                  Minimal
+                </button>
+              </div>
+              {/* Close button */}
+              <button
+                onClick={togglePreview}
+                className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                title="Close Preview"
+              >
+                <X className="h-5 w-5 text-gray-600" />
+              </button>
+            </div>
+          </div>
           
-          <QuotationPreview 
-            data={previewData} 
-            onEdit={togglePreview}
-            companyBranches={companyBranches}
-            user={user}
-          />
-          <div className="mt-4 flex justify-end gap-3">
+          {/* Preview Content */}
+          <div className="p-6">
+            {selectedTemplate === 'template1' && (
+              <QuotationPreview 
+                data={previewData} 
+                onEdit={togglePreview}
+                companyBranches={companyBranches}
+                user={user}
+              />
+            )}
+            {selectedTemplate === 'template2' && (
+              <QuotationPreviewTemplate2 
+                data={previewData} 
+                companyBranches={companyBranches}
+                user={user}
+              />
+            )}
+            {selectedTemplate === 'template3' && (
+              <QuotationPreviewTemplate3 
+                data={previewData} 
+                companyBranches={companyBranches}
+                user={user}
+              />
+            )}
+          </div>
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
+            <Button 
+              type="button" 
+              onClick={handleDownloadPDF}
+              className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
             <Button 
               type="button" 
               onClick={() => onSave(previewData)}
@@ -840,11 +970,51 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
         <div className="w-2/5 border-l border-gray-200 pl-4" style={{ maxWidth: '400px' }}>
           <div className="sticky top-4">
             <div className="mb-3">
-              <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                <Eye className="h-4 w-4 text-blue-500" />
-                Live Preview
-              </h3>
-              <p className="text-xs text-gray-500">Updates as you type</p>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-blue-500" />
+                  Live Preview
+                </h3>
+                <Layout className="h-4 w-4 text-gray-400" />
+              </div>
+              <p className="text-xs text-gray-500 mb-3">Updates as you type</p>
+              
+              {/* Template Selector */}
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={() => setSelectedTemplate('template1')}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded border transition-colors ${
+                    selectedTemplate === 'template1'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Classic Template"
+                >
+                  Classic
+                </button>
+                <button
+                  onClick={() => setSelectedTemplate('template2')}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded border transition-colors ${
+                    selectedTemplate === 'template2'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Modern Template"
+                >
+                  Modern
+                </button>
+                <button
+                  onClick={() => setSelectedTemplate('template3')}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded border transition-colors ${
+                    selectedTemplate === 'template3'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Minimal Template"
+                >
+                  Minimal
+                </button>
+              </div>
             </div>
             <div
               className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-auto"
@@ -855,12 +1025,28 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                 width: '125%'
               }}
             >
-              <QuotationPreview 
-                data={previewData} 
-                onEdit={() => {}} // No edit action needed in live preview
-                companyBranches={companyBranches}
-                user={user}
-              />
+              {selectedTemplate === 'template1' && (
+                <QuotationPreview 
+                  data={previewData} 
+                  onEdit={() => {}}
+                  companyBranches={companyBranches}
+                  user={user}
+                />
+              )}
+              {selectedTemplate === 'template2' && (
+                <QuotationPreviewTemplate2 
+                  data={previewData} 
+                  companyBranches={companyBranches}
+                  user={user}
+                />
+              )}
+              {selectedTemplate === 'template3' && (
+                <QuotationPreviewTemplate3 
+                  data={previewData} 
+                  companyBranches={companyBranches}
+                  user={user}
+                />
+              )}
             </div>
           </div>
         </div>

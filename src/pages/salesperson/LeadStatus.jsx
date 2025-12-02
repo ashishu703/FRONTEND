@@ -1204,7 +1204,7 @@ export default function LeadStatusPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 max-w-[200px] align-top">
                         <div className="break-words whitespace-normal" style={{ wordBreak: 'break-word', maxWidth: '200px', lineHeight: '1.4em' }}>
-                          {lead.address || 'N/A'}
+                        {lead.address || 'N/A'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">

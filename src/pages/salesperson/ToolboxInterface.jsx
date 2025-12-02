@@ -4668,7 +4668,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       >
                         <Download className="h-4 w-4" />
                         Download PDF
-                      </button>
+                    </button>
                   </div>
                   </div>
                   <div id="technical-specification-content" className="bg-white border border-gray-200 rounded-lg overflow-hidden">

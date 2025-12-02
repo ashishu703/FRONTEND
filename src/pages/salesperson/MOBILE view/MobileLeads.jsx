@@ -182,7 +182,7 @@ const MobileLeads = () => {
         }
 
         try {
-          await apiClient.putFormData(API_ENDPOINTS.SALESPERSON_LEAD_BY_ID(editingCustomer.id), formData);
+        await apiClient.putFormData(API_ENDPOINTS.SALESPERSON_LEAD_BY_ID(editingCustomer.id), formData);
           
           // If lead is being transferred, call the transfer API
           if (updatedCustomer.transferredTo) {
@@ -197,7 +197,7 @@ const MobileLeads = () => {
               alert('Customer updated but transfer failed. Please try again.');
             }
           } else {
-            alert('Customer updated successfully!');
+        alert('Customer updated successfully!');
           }
         } catch (err) {
           console.error('Failed to update salesperson lead:', err);

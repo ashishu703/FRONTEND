@@ -1678,9 +1678,9 @@ const MobileProducts = () => {
       setCurrentSlide(Math.min(currentSlide, newImageList.length - 1));
     } else {
       setIsFileViewerOpen(false);
-      setViewingImageRowIndex(null);
+        setViewingImageRowIndex(null);
       setCurrentSlide(0);
-    }
+      }
   };
 
   return (

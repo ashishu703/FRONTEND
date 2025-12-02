@@ -1,9 +1,60 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { defaultQuotationTerms } from '../constants/quotationTerms'
+import apiClient from '../utils/apiClient'
+import { API_ENDPOINTS } from '../api/admin_api/api'
 
 export default function QuotationPreview({ data, companyBranches, user, hideSignatory = false }) {
-  console.log('QuotationPreview received data:', data);
   const selectedBranch = companyBranches[data?.selectedBranch] || companyBranches.ANODE
+  
+  // Get salesperson name - try multiple sources synchronously first, then async
+  const getSalespersonNameSync = () => {
+    // Try user prop first
+    if (user && (user.username || user.name)) {
+      return user.username || user.name;
+    }
+    
+    // Try localStorage immediately (synchronous)
+    try {
+      const localUserData = JSON.parse(localStorage.getItem('user') || '{}');
+      const name = localUserData.username || localUserData.name;
+      if (name && name !== 'User' && name !== '') {
+        return name;
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+    
+    return null;
+  };
+
+  // Set initial value from sync sources (this will show immediately)
+  const [salespersonName, setSalespersonName] = useState(() => getSalespersonNameSync());
+
+  // Also try API fetch asynchronously (in case localStorage doesn't have it or needs update)
+  useEffect(() => {
+    // If we already have a name from sync sources, keep it but also try API to update
+    const fetchFromAPI = async () => {
+      try {
+        const response = await apiClient.get(API_ENDPOINTS.PROFILE);
+        if (response && response.data && response.data.user) {
+          const apiUser = response.data.user;
+          const name = apiUser.username || apiUser.name;
+          if (name && name !== 'User' && name !== '') {
+            setSalespersonName(name);
+            return;
+          }
+        }
+      } catch (error) {
+        // If API fails and we don't have a name yet, try localStorage again
+        const currentName = getSalespersonNameSync();
+        if (currentName && currentName !== 'User' && currentName !== '') {
+          setSalespersonName(currentName);
+        }
+      }
+    };
+
+    fetchFromAPI();
+  }, [user]); // Re-fetch if user prop changes
 
   return (
     <div className="max-w-4xl mx-auto bg-white font-sans text-sm" id="quotation-content">
@@ -275,9 +326,16 @@ export default function QuotationPreview({ data, companyBranches, user, hideSign
           <p className="mb-8">This is computer generated invoice no signature required.</p>
           {!hideSignatory && (
             <div className="quotation-signatory-section">
-          <p className="font-bold">Authorized Signatory</p>
-          {user && (
-            <p className="mt-2 text-sm font-semibold text-gray-800">{user.username || user.email || 'User'}</p>
+              <p className="font-bold">Authorized Signatory</p>
+              {salespersonName ? (
+                <>
+                  <p className="mt-2 text-sm font-semibold text-gray-800">{salespersonName}</p>
+                  <p className="mt-1 text-xs text-gray-600">Salesperson</p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-2 text-sm font-semibold text-gray-800">Salesperson</p>
+                </>
               )}
             </div>
           )}

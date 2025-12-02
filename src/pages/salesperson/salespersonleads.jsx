@@ -769,24 +769,24 @@ export default function CustomerListContent({ isDarkMode = false }) {
   // Save quotation to database
   const handleSaveQuotation = async (quotationData) => {
     try {
-        const quotationPayload = {
-          customerId: viewingCustomer.id,
-          customerName: viewingCustomer.name,
+      const quotationPayload = {
+        customerId: viewingCustomer.id,
+        customerName: viewingCustomer.name,
           customerBusiness: quotationData.billTo?.business || viewingCustomer.business,
           customerPhone: quotationData.billTo?.phone || viewingCustomer.phone,
-          customerEmail: viewingCustomer.email,
+        customerEmail: viewingCustomer.email,
           customerAddress: quotationData.billTo?.address || viewingCustomer.address,
           customerGstNo: quotationData.billTo?.gstNo || viewingCustomer.gstNo,
           customerState: quotationData.billTo?.state || viewingCustomer.state,
-          quotationDate: quotationData.quotationDate,
+        quotationDate: quotationData.quotationDate,
           validUntil: quotationData.validUpto || quotationData.validUntil,
-          branch: quotationData.selectedBranch || 'ANODE',
-          subtotal: quotationData.subtotal,
-          taxRate: quotationData.taxRate || 18.00,
-          taxAmount: quotationData.taxAmount,
-          discountRate: quotationData.discountRate || 0,
-          discountAmount: quotationData.discountAmount || 0,
-          totalAmount: quotationData.total,
+        branch: quotationData.selectedBranch || 'ANODE',
+        subtotal: quotationData.subtotal,
+        taxRate: quotationData.taxRate || 18.00,
+        taxAmount: quotationData.taxAmount,
+        discountRate: quotationData.discountRate || 0,
+        discountAmount: quotationData.discountAmount || 0,
+        totalAmount: quotationData.total,
           billTo: quotationData.billTo || {
             business: viewingCustomer.business,
             address: viewingCustomer.address,
@@ -794,19 +794,19 @@ export default function CustomerListContent({ isDarkMode = false }) {
             gstNo: viewingCustomer.gstNo,
             state: viewingCustomer.state
           },
-          items: quotationData.items.map(item => ({
-            productName: item.productName || item.description || 'Product',
-            description: item.description || item.productName || 'Product',
-            hsnCode: item.hsn || '85446090',
-            quantity: item.quantity,
-            unit: item.unit || 'Nos',
-            unitPrice: item.buyerRate || item.unitPrice,
-            gstRate: item.gstRate || 18.00,
-            taxableAmount: item.amount,
-            gstAmount: (item.amount * (item.gstRate || 18.00) / 100),
-            totalAmount: item.amount * (1 + (item.gstRate || 18.00) / 100)
-          }))
-        };
+        items: quotationData.items.map(item => ({
+          productName: item.productName || item.description || 'Product',
+          description: item.description || item.productName || 'Product',
+          hsnCode: item.hsn || '85446090',
+          quantity: item.quantity,
+          unit: item.unit || 'Nos',
+          unitPrice: item.buyerRate || item.unitPrice,
+          gstRate: item.gstRate || 18.00,
+          taxableAmount: item.amount,
+          gstAmount: (item.amount * (item.gstRate || 18.00) / 100),
+          totalAmount: item.amount * (1 + (item.gstRate || 18.00) / 100)
+        }))
+      };
 
       console.log('Sending quotation payload:', quotationPayload);
       console.log('Viewing customer data:', viewingCustomer);
@@ -3301,21 +3301,21 @@ export default function CustomerListContent({ isDarkMode = false }) {
               <p className="text-sm text-gray-500">Customer Details</p>
             </div>
             <div className="px-6 py-4 max-h-[70vh] overflow-auto">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-gray-500">Customer Name</span><span className="font-medium text-gray-900">{viewingCustomer.name}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Business Name</span><span className="font-medium text-gray-900">{viewingCustomer.business}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">GST</span><span className="font-medium text-gray-900">{viewingCustomer.gstNo || '-'}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Address</span><span className="font-medium text-gray-900 text-right max-w-[60%]">{viewingCustomer.address || '-'}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Contact</span><span className="font-medium text-gray-900">{viewingCustomer.phone}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Email</span><span className="font-medium text-gray-900">{viewingCustomer.email}</span></div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-500">Customer Name</span><span className="font-medium text-gray-900">{viewingCustomer.name}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Business Name</span><span className="font-medium text-gray-900">{viewingCustomer.business}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">GST</span><span className="font-medium text-gray-900">{viewingCustomer.gstNo || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Address</span><span className="font-medium text-gray-900 text-right max-w-[60%]">{viewingCustomer.address || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Contact</span><span className="font-medium text-gray-900">{viewingCustomer.phone}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Email</span><span className="font-medium text-gray-900">{viewingCustomer.email}</span></div>
               </div>
             </div>
             <div className="px-6 pb-4 flex justify-end gap-3">
               <button className="px-3 py-2 rounded-md bg-white border border-gray-200 text-gray-700 hover:bg-gray-50" onClick={() => setViewingCustomer(null)}>Close</button>
             </div>
           </div>
-        </div>
-      )}
+                </div>
+              )}
 
       {/* Quotation & Payment Modal - Quotation Button */}
       {viewingCustomerForQuotation && (
@@ -3326,24 +3326,24 @@ export default function CustomerListContent({ isDarkMode = false }) {
               <p className="text-sm text-gray-500">Quotation & Payment</p>
             </div>
             <div className="px-6 py-4 max-h-[70vh] overflow-auto">
-              <div className="space-y-4 text-sm">
-                {/* Quotation Details - TOP */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-gray-900">Quotation Details</h3>
-                    <button
-                      onClick={() => {
-                        setIsRefreshing(true);
-                        setTimeout(() => setIsRefreshing(false), 1000);
-                      }}
-                      className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-1"
-                      title="Refresh quotation status"
-                    >
-                      <RefreshCw className="h-3 w-3" />
-                      Refresh
-                    </button>
-                  </div>
-                  {(() => {
+                <div className="space-y-4 text-sm">
+                  {/* Quotation Details - TOP */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-semibold text-gray-900">Quotation Details</h3>
+                      <button
+                        onClick={() => {
+                          setIsRefreshing(true);
+                          setTimeout(() => setIsRefreshing(false), 1000);
+                        }}
+                        className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center gap-1"
+                        title="Refresh quotation status"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        Refresh
+                      </button>
+                    </div>
+                    {(() => {
                     console.log('All quotations:', quotations);
                     console.log('Filtering for customer ID:', viewingCustomerForQuotation.id);
                     const customerQuotations = quotations.filter(q => {
@@ -3354,7 +3354,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
                       return matches
                     })
                     console.log('Filtered customer quotations:', customerQuotations);
-                    if (customerQuotations.length === 0) {
+                      if (customerQuotations.length === 0) {
                         return (
                           <div className="text-center py-8 text-gray-500">
                             <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
@@ -3533,7 +3533,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
             </div>
             <div className="px-6 pb-4 flex justify-end gap-3">
               <button className="px-3 py-2 rounded-md bg-white border border-gray-200 text-gray-700 hover:bg-gray-50" onClick={() => setViewingCustomerForQuotation(null)}>Close</button>
-              <button 
+                <button 
                 onClick={() => {
                   // Store customer and user data in sessionStorage
                   sessionStorage.setItem('quotationCustomer', JSON.stringify(viewingCustomerForQuotation))
@@ -3552,11 +3552,11 @@ export default function CustomerListContent({ isDarkMode = false }) {
                     setShowCreateQuotation(true)
                   }
                 }}
-                className="px-3 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 inline-flex items-center gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                Create Quotation
-              </button>
+                  className="px-3 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-700 inline-flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Create Quotation
+                </button>
             </div>
           </div>
         </div>

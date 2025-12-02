@@ -63,14 +63,14 @@ export default function NotificationsPage({ isDarkMode = false }) {
             {items.map(n => (
               <div key={n.id} className={`p-4 flex flex-col gap-3 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}>
                 <div className="flex items-start gap-3">
-                  <div className="mt-1">{typeIcon(n.type)}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <div className={`${isDarkMode ? 'text-white' : 'text-gray-900'} text-sm font-medium`}>{n.title}</div>
-                      <div className={`${isDarkMode ? 'text-gray-300' : 'text-gray-500'} text-xs`}>{new Date(n.time).toLocaleString()}</div>
-                    </div>
-                    <div className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-sm`}>{n.message}</div>
+                <div className="mt-1">{typeIcon(n.type)}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <div className={`${isDarkMode ? 'text-white' : 'text-gray-900'} text-sm font-medium`}>{n.title}</div>
+                    <div className={`${isDarkMode ? 'text-gray-300' : 'text-gray-500'} text-xs`}>{new Date(n.time).toLocaleString()}</div>
                   </div>
+                  <div className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} text-sm`}>{n.message}</div>
+                </div>
                 </div>
                 {n.details && (
                   <div className="pl-7">

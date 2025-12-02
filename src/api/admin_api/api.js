@@ -60,6 +60,12 @@ export const API_ENDPOINTS = {
   PRODUCT_IMAGES_UPLOAD: () => `${API_BASE_URL}/api/product-images`,
   PRODUCT_IMAGES_GET: (productName) => `${API_BASE_URL}/api/product-images/${encodeURIComponent(productName)}`,
   PRODUCT_IMAGES_DELETE: () => `${API_BASE_URL}/api/product-images`,
+
+  // Stock Management
+  STOCK_GET_ALL: () => `${API_BASE_URL}/api/stock`,
+  STOCK_GET_BY_PRODUCT: (productName) => `${API_BASE_URL}/api/stock/${encodeURIComponent(productName)}`,
+  STOCK_UPDATE: (productName) => `${API_BASE_URL}/api/stock/${encodeURIComponent(productName)}`,
+  STOCK_BATCH_UPDATE: () => `${API_BASE_URL}/api/stock/batch`,
 };
 
 export default API_BASE_URL;
