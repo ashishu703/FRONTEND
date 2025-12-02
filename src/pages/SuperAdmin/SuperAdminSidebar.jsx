@@ -12,7 +12,8 @@ import {
   X,
   LogOut,
   Calendar,
-  HelpCircle
+  HelpCircle,
+  PlusCircle
 } from 'lucide-react';
 
 const Sidebar = ({ onLogout, activeView, setActiveView }) => {
@@ -242,8 +243,23 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
         </ul>
       </nav>
 
-      {/* Support Button */}
+      {/* Create Organisation Button */}
       <div className="p-4 border-t border-gray-200 mt-auto">
+        <button 
+          onClick={() => setActiveView('create-organisation')}
+          className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+            activeView === 'create-organisation' 
+              ? 'bg-blue-50 text-blue-700' 
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <PlusCircle className="w-5 h-5" />
+          {isExpanded && <span className="text-sm font-medium">Create Organisation</span>}
+        </button>
+      </div>
+
+      {/* Support Button */}
+      <div className="p-4 border-t border-gray-200">
         <button 
           onClick={() => window.location.href = '/support'}
           className={`w-full flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors`}

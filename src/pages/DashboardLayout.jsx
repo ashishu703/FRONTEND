@@ -2,6 +2,7 @@ import React from 'react';
 import FixedHeader from '../Header';
 import { CompanyProvider } from '../context/CompanyContext';
 import SuperAdminSidebar from './SuperAdmin/SuperAdminSidebar';
+import AshvayChat from '../components/AshvayChat';
 
 const DashboardLayout = ({ children, onLogout, activeView, setActiveView }) => {
   return (
@@ -21,6 +22,7 @@ const DashboardLayout = ({ children, onLogout, activeView, setActiveView }) => {
           </main>
         </div>
       </div>
+      <AshvayChat />
     </CompanyProvider>
   );
 };

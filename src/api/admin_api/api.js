@@ -9,6 +9,7 @@ const PRODUCTION_BASE = `${API_BASE_URL}/api/production`;
 export const API_ENDPOINTS = {
   // Authentication
   LOGIN: `${API_BASE_URL}/api/auth/login`,
+  IMPERSONATE: `${API_BASE_URL}/api/auth/impersonate`,
   LOGOUT: `${API_BASE_URL}/api/auth/logout`,
   REGISTER: `${API_BASE_URL}/api/auth/register`,
   PROFILE: `${API_BASE_URL}/api/auth/profile`,
@@ -54,6 +55,24 @@ export const API_ENDPOINTS = {
   PRODUCTION_QC_LOTS: (query = '') => `${PRODUCTION_BASE}/qc/lots${query ? `?${query}` : ''}`,
   PRODUCTION_MAINT_ORDERS: (query = '') => `${PRODUCTION_BASE}/maintenance/orders${query ? `?${query}` : ''}`,
   PRODUCTION_INVENTORY: (query = '') => `${PRODUCTION_BASE}/inventory${query ? `?${query}` : ''}`,
+
+  // Tickets
+  TICKETS_BASE: `${API_BASE_URL}/api/tickets`,
+  TICKETS_CREATE: () => `${API_BASE_URL}/api/tickets`,
+  TICKETS_LIST: (query = '') => `${API_BASE_URL}/api/tickets${query ? `?${query}` : ''}`,
+  TICKET_BY_ID: (id) => `${API_BASE_URL}/api/tickets/${id}`,
+  TICKET_UPDATE: (id) => `${API_BASE_URL}/api/tickets/${id}`,
+  TICKET_SEND_BACK: (id) => `${API_BASE_URL}/api/tickets/${id}/send-back`,
+
+  // Security Logs
+  SECURITY_LOGS_BASE: `${API_BASE_URL}/api/security-logs`,
+  SECURITY_LOGS_LIST: (query = '') => `${API_BASE_URL}/api/security-logs${query ? `?${query}` : ''}`,
+  SECURITY_LOG_ASSIGN: (id) => `${API_BASE_URL}/api/security-logs/${id}/assign`,
+  SECURITY_LOG_UPDATE_STATUS: (id) => `${API_BASE_URL}/api/security-logs/${id}/status`,
+  SECURITY_LOG_SEND_BACK: (id) => `${API_BASE_URL}/api/security-logs/${id}/send-back`,
+
+  // Admin Users
+  ADMIN_USERS_LIST: (query = '') => `${ADMIN_BASE}/users${query ? `?${query}` : ''}`,
 };
 
 export default API_BASE_URL;

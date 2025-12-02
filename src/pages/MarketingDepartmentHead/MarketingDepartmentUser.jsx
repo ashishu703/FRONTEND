@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, UserPlus, Upload, Edit, LogOut, Trash2, Hash, User, Mail, Shield, Building, Target, Calendar, MoreHorizontal, TrendingUp, AlertTriangle, LogIn } from 'lucide-react';
 import departmentUsersService, { apiToUiDepartment } from '../../api/admin_api/departmentUsersService';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 
 const UserManagementTable = ({ setActiveView }) => {
   const [searchTerm, setSearchTerm] = useState('');

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ProductionDepartmentHeadSidebar from './ProductionDepartmentHeadSidebar';
 import FixedHeader from '../../Header';
+import AshvayChat from '../../components/AshvayChat';
 
 export default function ProductionDepartmentHeadLayout({ onLogout, activeView, setActiveView, children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -67,6 +68,7 @@ export default function ProductionDepartmentHeadLayout({ onLogout, activeView, s
           {children}
         </div>
       </div>
+      <AshvayChat />
     </div>
   );
 }

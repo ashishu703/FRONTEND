@@ -9,7 +9,7 @@ import paymentService from '../../api/admin_api/paymentService'
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService'
 import departmentUserService from '../../api/admin_api/departmentUserService'
 import departmentHeadService from '../../api/admin_api/departmentHeadService'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../hooks/useAuth'
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")

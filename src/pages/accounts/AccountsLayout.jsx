@@ -1,6 +1,7 @@
 import React from 'react';
 import FixedHeader from '../../Header';
 import AccountsSidebar from './accountssidebar';
+import AshvayChat from '../../components/AshvayChat';
 
 const AccountsLayout = ({ children, onLogout, activeView, setActiveView, headerUserType = 'accountsdepartmenthead' }) => {
   return (
@@ -18,6 +19,7 @@ const AccountsLayout = ({ children, onLogout, activeView, setActiveView, headerU
           {children}
         </main>
       </div>
+      <AshvayChat />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import TeleSalesSidebar from './TeleSalesSidebar';
 import TeleSalesDashboard from './TeleSalesDashboard';
 import FixedHeader from '../../Header';
+import AshvayChat from '../../components/AshvayChat';
 
 const TeleSalesLayout = () => {
   const [activeView, setActiveView] = useState('dashboard');
@@ -16,6 +17,7 @@ const TeleSalesLayout = () => {
         <FixedHeader userType="tele-sales" currentPage={activeView} />
         <TeleSalesDashboard activeView={activeView} />
       </div>
+      <AshvayChat />
     </div>
   );
 };

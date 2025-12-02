@@ -1,6 +1,7 @@
 import React from 'react';
 import FixedHeader from '../../Header';
 import MarketingDepartmentHeadSidebar from './MarketingDepartmentHeadSidebar';
+import AshvayChat from '../../components/AshvayChat';
 
 const MarketingDepartmentHeadLayout = ({ children, onLogout, activeView, setActiveView }) => {
   return (
@@ -18,6 +19,7 @@ const MarketingDepartmentHeadLayout = ({ children, onLogout, activeView, setActi
           {children}
         </main>
       </div>
+      <AshvayChat />
     </div>
   );
 };
