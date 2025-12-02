@@ -6,7 +6,8 @@ import MobileStock from './MobileStock';
 import MobileProducts from './MobileProducts';
 import MobileToolbox from './MobileToolbox';
 import MobileFollowUps from './MobileFollowUps';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../../hooks/useAuth';
+import AshvayChat from '../../../components/AshvayChat';
 
 const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => {
   const { user } = useAuth();
@@ -205,6 +206,7 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
           </button>
         </div>
       </div>
+      <AshvayChat />
     </div>
   );
 };

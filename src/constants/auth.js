@@ -7,44 +7,59 @@ export const ROLES = {
 };
 
 export const getUserTypeForRole = (role, departmentType = null) => {
+  if (!role) return 'superadmin';
+  
+  const dept = departmentType ? String(departmentType).toLowerCase().trim() : '';
+  
   switch (role) {
     case ROLES.DEPARTMENT_HEAD:
-      // Check department type to determine which dashboard to show
-      if (departmentType === 'marketing_sales' || departmentType === 'Marketing Department') {
+      if (dept === 'marketing_sales' || dept === 'marketing department') {
         return 'marketingdepartmenthead';
       }
-      if (departmentType === 'hr' || departmentType === 'Human Resources') {
+      if (dept === 'hr' || dept === 'human resources') {
         return 'hrdepartmenthead';
       }
-      if (departmentType === 'production' || departmentType === 'Production Department') {
+      if (dept === 'production' || dept === 'production department') {
         return 'productiondepartmenthead';
       }
-      if (departmentType === 'accounts' || departmentType === 'Accounts Department') {
+      if (dept === 'accounts' || dept === 'accounts department') {
         return 'accountsdepartmenthead';
       }
-      if (departmentType === 'it' || departmentType === 'IT Department') {
+      if (dept === 'it' || dept === 'it department') {
         return 'itdepartmenthead';
       }
+      if (dept === 'office_sales' || dept === 'office sales') {
+        return 'salesdepartmenthead';
+      }
       return 'salesdepartmenthead';
+      
     case ROLES.MARKETING_DEPARTMENT_HEAD:
       return 'marketingdepartmenthead';
+      
     case ROLES.HR_DEPARTMENT_HEAD:
       return 'hrdepartmenthead';
+      
     case ROLES.DEPARTMENT_USER:
-      if (departmentType === 'production' || departmentType === 'Production Department') {
+      if (dept === 'production' || dept === 'production department') {
         return 'production-staff';
       }
-      if (departmentType === 'marketing_sales' || departmentType === 'Marketing Department') {
+      if (dept === 'marketing_sales' || dept === 'marketing department') {
         return 'marketing-salesperson';
       }
-      if (departmentType === 'accounts' || departmentType === 'Accounts Department') {
+      if (dept === 'accounts' || dept === 'accounts department') {
         return 'accounts-user';
       }
-      if (departmentType === 'it' || departmentType === 'IT Department') {
+      if (dept === 'it' || dept === 'it department') {
         return 'it-user';
       }
+      if (dept === 'office_sales' || dept === 'office sales') {
+        return 'salesperson';
+      }
       return 'salesperson';
+      
     case ROLES.SUPERADMIN:
+      return 'superadmin';
+      
     default:
       return 'superadmin';
   }

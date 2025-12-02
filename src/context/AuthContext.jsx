@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useReducer, useEffect } from 'react';
 import apiClient from '../utils/apiClient';
 import { API_ENDPOINTS } from '../api/admin_api/api';
 
@@ -78,7 +78,7 @@ const authReducer = (state, action) => {
 };
 
 // Create context
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
@@ -89,14 +89,20 @@ export const AuthProvider = ({ children }) => {
         const url = new URL(window.location.href);
         const impersonateToken = url.searchParams.get('impersonateToken');
         if (impersonateToken) {
-          try { sessionStorage.setItem('authToken', impersonateToken); } catch {}
-          try { sessionStorage.setItem('impersonating', 'true'); } catch {}
-          try {
-            const profile = await apiClient.get(API_ENDPOINTS.PROFILE);
-            if (profile?.success && profile?.data?.user) {
-              try { sessionStorage.setItem('user', JSON.stringify(profile.data.user)); } catch {}
+          sessionStorage.setItem('authToken', impersonateToken); 
+          sessionStorage.setItem('impersonating', 'true'); 
+          
+          apiClient.setAuthToken(impersonateToken);
+          const profile = await apiClient.get(API_ENDPOINTS.PROFILE);
+          if (profile?.success && profile?.data?.user) {
+            const userData = profile.data.user;
+            if (!userData.uiUserType && userData.role && userData.departmentType) {
+              const { getUserTypeForRole } = await import('../constants/auth');
+              userData.uiUserType = getUserTypeForRole(userData.role, userData.departmentType);
             }
-          } catch {}
+            sessionStorage.setItem('user', JSON.stringify(userData));
+          }
+          
           url.searchParams.delete('impersonateToken');
           window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
         }
@@ -108,6 +114,12 @@ export const AuthProvider = ({ children }) => {
           : JSON.parse(localStorage.getItem('user') || 'null');
         
         if (token && user) {
+          // Ensure uiUserType is set if missing
+          if (!user.uiUserType && user.role && user.departmentType) {
+            const { getUserTypeForRole } = await import('../constants/auth');
+            user.uiUserType = getUserTypeForRole(user.role, user.departmentType);
+          }
+          
           dispatch({
             type: AUTH_ACTIONS.INITIALIZE,
             payload: {
@@ -142,23 +154,27 @@ export const AuthProvider = ({ children }) => {
       });
       
       if (response.success && response.data) {
-        // Store token and user data
-        try {
-          sessionStorage.removeItem('authToken');
-          sessionStorage.removeItem('impersonating');
-          sessionStorage.removeItem('user');
-        } catch {}
+        sessionStorage.removeItem('authToken');
+        sessionStorage.removeItem('impersonating');
+        sessionStorage.removeItem('user');
+        
+        const userData = response.data.user;
+        // Ensure uiUserType is set if missing
+        if (!userData.uiUserType && userData.role && userData.departmentType) {
+          const { getUserTypeForRole } = await import('../constants/auth');
+          userData.uiUserType = getUserTypeForRole(userData.role, userData.departmentType);
+        }
+        
         apiClient.setAuthToken(response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        localStorage.setItem('user', JSON.stringify(userData));
         
         dispatch({
           type: AUTH_ACTIONS.LOGIN_SUCCESS,
           payload: {
-            user: response.data.user,
+            user: userData,
           },
         });
-        // also return token (needed for impersonation open-in-new-tab)
-        return { success: true, user: response.data.user, token: response.data.token };
+        return { success: true, user: userData, token: response.data.token };
       } else {
         throw new Error(response.error || 'Login failed');
       }
@@ -176,9 +192,8 @@ export const AuthProvider = ({ children }) => {
   // Impersonate (SuperAdmin only) - DO NOT mutate current tab state/storage
   const impersonate = async (email) => {
     try {
-      const response = await apiClient.post(API_ENDPOINTS.LOGIN, {
+      const response = await apiClient.post(API_ENDPOINTS.IMPERSONATE, {
         email,
-        password: 'superadmin_bypass',
       });
       if (response.success && response.data) {
         return { success: true, user: response.data.user, token: response.data.token };
@@ -217,26 +232,15 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
     
     try {
-      // Call logout endpoint if available
-      try {
-        await apiClient.post(API_ENDPOINTS.LOGOUT);
-      } catch (error) {
-        // Continue with local logout even if API call fails
-        console.warn('Logout API call failed:', error);
-      }
-      
-      // Clear local data
-      apiClient.removeAuthToken();
-      localStorage.removeItem('user');
-      
-      dispatch({ type: AUTH_ACTIONS.LOGOUT });
-      return { success: true };
+      await apiClient.post(API_ENDPOINTS.LOGOUT);
     } catch (error) {
-      console.error('Logout error:', error);
-      // Still logout locally even if API call fails
-      dispatch({ type: AUTH_ACTIONS.LOGOUT });
-      return { success: false, error: error.message };
+      console.warn('Logout API call failed:', error);
     }
+    
+    apiClient.removeAuthToken();
+    localStorage.removeItem('user');
+    dispatch({ type: AUTH_ACTIONS.LOGOUT });
+    return { success: true };
   };
 
 
@@ -271,17 +275,6 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
-
-// Custom hook to use auth context
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  
-  return context;
 };
 
 export default AuthProvider;

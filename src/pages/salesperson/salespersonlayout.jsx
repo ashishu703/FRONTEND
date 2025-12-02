@@ -13,6 +13,7 @@ import ToolboxInterface from './ToolboxInterface.jsx'
 import NotificationsPage from './Notifications.jsx'
 import MobileLayout from './MOBILE view/MobileLayout.jsx'
 import FixedHeader from '../../Header.jsx'
+import AshvayChat from '../../components/AshvayChat'
 import CreateQuotationForm from './salespersoncreatequotation.jsx'
 import CreatePIForm from './CreatePIForm.jsx'
 import quotationService from '../../api/admin_api/quotationService'
@@ -240,6 +241,7 @@ export default function SalespersonLayout({ onLogout }) {
           </div>
         </div>
       </div>
+      <AshvayChat />
     </SharedDataProvider>
   )
 }

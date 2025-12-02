@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Users, BarChart3, Award, Zap, Settings, Grid3x3 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { validateForm, LOGIN_VALIDATION_RULES } from '../../utils/validation';
 
 // Left Login Component (Light Theme)

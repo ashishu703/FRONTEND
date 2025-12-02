@@ -209,6 +209,30 @@ class ApiClient {
     }
   }
 
+  async postFormData(url, formData) {
+    try {
+      // Validate URL parameter
+      if (!url || typeof url !== 'string') {
+        throw new Error('Invalid URL provided to postFormData request');
+      }
+
+      const token = sessionStorage.getItem('authToken') || this.getAuthToken();
+      const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
+      const response = await fetch(fullUrl, {
+        method: 'POST',
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+          // Do NOT set Content-Type for FormData; browser sets boundary
+        },
+        body: formData,
+      });
+      return await this.handleResponse(response);
+    } catch (error) {
+      console.error('API Request Error (postFormData):', error);
+      throw error;
+    }
+  }
+
   async putFormData(url, formData) {
     try {
       // Validate URL parameter

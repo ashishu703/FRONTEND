@@ -12,7 +12,8 @@ import LastCallPage from '../LastCall.jsx';
 import ProductsPage from '../salespersonproducts.jsx';
 import DuePaymentPage from '../DuePayment.jsx';
 import AdvancePaymentPage from '../AdvancePayment.jsx';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../../hooks/useAuth';
+import AshvayChat from '../../../components/AshvayChat';
 
 const MobileLayout = ({ onLogout, onToggleDesktopView }) => {
   const { user } = useAuth();
@@ -587,6 +588,7 @@ const MobileLayout = ({ onLogout, onToggleDesktopView }) => {
           </button>
         </div>
       </div>
+      <AshvayChat />
     </div>
   );
 };

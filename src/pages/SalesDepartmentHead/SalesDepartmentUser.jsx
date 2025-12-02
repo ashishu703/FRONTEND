@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, UserPlus, Upload, Edit, LogOut, Trash2, Hash, User, Mail, Shield, Building, Target, Calendar, MoreHorizontal, TrendingUp, AlertTriangle, LogIn, Info } from 'lucide-react';
 import departmentUserService, { apiToUiDepartment } from '../../api/admin_api/departmentUserService';
 import departmentHeadService from '../../api/admin_api/departmentHeadService';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import toastManager from '../../utils/ToastManager';
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
