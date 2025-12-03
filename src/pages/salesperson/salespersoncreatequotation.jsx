@@ -1,11 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, FileText, Calendar, User, Package, DollarSign, Plus, Eye, Edit, Building2, FileCheck, Layout, Download } from "lucide-react"
+import { X, FileText, Calendar, User, Package, DollarSign, Plus, Eye, Edit, Building2, Layout, Download, Truck, CreditCard } from "lucide-react"
 import QuotationPreview from "../../components/QuotationPreview"
 import QuotationPreviewTemplate2 from "../../components/QuotationPreviewTemplate2"
 import QuotationPreviewTemplate3 from "../../components/QuotationPreviewTemplate3"
-import { CorporateStandardInvoice } from './salespersonpi'
 import { defaultQuotationTerms } from '../../constants/quotationTerms'
 import html2pdf from 'html2pdf.js'
 
@@ -128,27 +127,41 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
       phone: "",
       gstNo: "",
       state: ""
+    },
+    // Transport Details
+    transportDetails: {
+      lrNo: "",
+      transport: "",
+      transportId: "",
+      vehicleNumber: ""
+    },
+    // Bank Details
+    bankDetails: {
+      bankName: "ICICI Bank",
+      branchName: "WRIGHT TOWN JABALPUR",
+      accountNumber: "657605601783",
+      ifscCode: "ICIC0006576"
     }
   })
 
   // Template selection state
   const [selectedTemplate, setSelectedTemplate] = useState('template1') // 'template1', 'template2', 'template3'
 
-  // Optional: Auto-fill bill-to from customer data if user wants (commented out to start with empty fields)
-  // useEffect(() => {
-  //   if (customer) {
-  //     setQuotationData(prev => ({
-  //       ...prev,
-  //       billTo: {
-  //         business: (customer?.business && customer.business !== 'N/A') ? customer.business : (customer?.name || ""),
-  //         address: (customer?.address && customer.address !== 'N/A') ? customer.address : "",
-  //         phone: customer?.phone || "",
-  //         gstNo: (customer?.gstNo && customer.gstNo !== 'N/A') ? customer.gstNo : "",
-  //         state: customer?.state || ""
-  //       }
-  //     }))
-  //   }
-  // }, [customer])
+  // Auto-fill bill-to from customer data
+  useEffect(() => {
+    if (customer) {
+    setQuotationData(prev => ({
+      ...prev,
+      billTo: {
+          business: (customer?.business && customer.business !== 'N/A') ? customer.business : (customer?.name || ""),
+          address: (customer?.address && customer.address !== 'N/A') ? customer.address : "",
+          phone: customer?.phone || "",
+          gstNo: (customer?.gstNo && customer.gstNo !== 'N/A' && customer.gstNo.trim() !== '') ? customer.gstNo : "URC",
+          state: customer?.state || ""
+        }
+      }))
+    }
+  }, [customer])
 
   const handleInputChange = (field, value) => {
     const newData = {
@@ -244,6 +257,26 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
     }))
   }
 
+  const handleTransportDetailsChange = (field, value) => {
+    setQuotationData(prev => ({
+      ...prev,
+      transportDetails: {
+        ...prev.transportDetails,
+        [field]: value
+      }
+    }))
+  }
+
+  const handleBankDetailsChange = (field, value) => {
+    setQuotationData(prev => ({
+      ...prev,
+      bankDetails: {
+        ...prev.bankDetails,
+        [field]: value
+      }
+    }))
+  }
+
   const addItem = () => {
     setQuotationData(prev => ({
       ...prev,
@@ -286,7 +319,8 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
       await onSave({
       ...quotationData,
       customer: customer,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      template: selectedTemplate // Include the selected template
     })
       // Let parent decide whether to close (onSave may handle it)
       if (!standalone && typeof onClose === 'function') {
@@ -300,13 +334,12 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
 
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState({});
-  const [showPIPreview, setShowPIPreview] = useState(false);
-  const [piPreviewData, setPiPreviewData] = useState({});
 
   // Update preview data when form data changes
   useEffect(() => {
     setPreviewData(quotationData);
   }, [quotationData]);
+
 
   const togglePreview = () => {
     setShowPreview(!showPreview);
@@ -386,56 +419,6 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
     );
   };
 
-  const handlePIClick = () => {
-    if (isFormValid()) {
-      // Convert quotation data to PI format
-      const piData = {
-        invoiceNumber: `PI-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-        invoiceDate: quotationData.quotationDate,
-        dueDate: quotationData.validUpto,
-        poNumber: `PO-${Math.floor(1000 + Math.random() * 9000)}`,
-        billTo: {
-          business: quotationData.billTo.business,
-          address: quotationData.billTo.address,
-          phone: quotationData.billTo.phone,
-          gstNo: quotationData.billTo.gstNo || '',
-          state: quotationData.billTo.state
-        },
-        shipTo: {
-          business: quotationData.billTo.business,
-          address: quotationData.billTo.address,
-          phone: quotationData.billTo.phone,
-          gstNo: quotationData.billTo.gstNo || ''
-        },
-        items: quotationData.items.map(item => ({
-          productName: item.productName,
-          description: item.productName,
-          quantity: item.quantity,
-          unit: item.unit,
-          rate: item.buyerRate,
-          amount: item.amount,
-          hsn: '85446090' // Default HSN code
-        })),
-        subtotal: quotationData.subtotal,
-        discountRate: quotationData.discountRate,
-        discountAmount: quotationData.discountAmount,
-        taxableAmount: quotationData.subtotal - quotationData.discountAmount,
-        taxRate: 18,
-        taxAmount: quotationData.taxAmount,
-        total: quotationData.total,
-        deliveryTerms: 'FOR upto Destination',
-        paymentTerms: 'ADVANCE',
-        otherReferences: 'DIRECT SALE',
-        dispatchedThrough: 'BY TRANSPORT',
-        destination: 'Destination Transport'
-      };
-      
-      setPiPreviewData(piData);
-      setShowPIPreview(true);
-    } else {
-      alert('Please fill all required fields before generating PI');
-    }
-  };
 
   if (showPreview) {
     return (
@@ -481,26 +464,26 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                   Minimal
                 </button>
               </div>
-              {/* Close button */}
-              <button
-                onClick={togglePreview}
+          {/* Close button */}
+          <button
+            onClick={togglePreview}
                 className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
-                title="Close Preview"
-              >
-                <X className="h-5 w-5 text-gray-600" />
-              </button>
+            title="Close Preview"
+          >
+            <X className="h-5 w-5 text-gray-600" />
+          </button>
             </div>
           </div>
           
           {/* Preview Content */}
           <div className="p-6">
             {selectedTemplate === 'template1' && (
-              <QuotationPreview 
-                data={previewData} 
-                onEdit={togglePreview}
-                companyBranches={companyBranches}
-                user={user}
-              />
+          <QuotationPreview 
+            data={previewData} 
+            onEdit={togglePreview}
+            companyBranches={companyBranches}
+            user={user}
+          />
             )}
             {selectedTemplate === 'template2' && (
               <QuotationPreviewTemplate2 
@@ -528,7 +511,10 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
             </Button>
             <Button 
               type="button" 
-              onClick={() => onSave(previewData)}
+              onClick={() => onSave({
+                ...previewData,
+                template: selectedTemplate // Include the selected template
+              })}
               className="bg-green-600 hover:bg-green-700"
             >
               Save Quotation
@@ -539,72 +525,6 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
     );
   }
 
-  if (showPIPreview) {
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="w-full max-w-6xl max-h-[90vh] overflow-y-auto relative">
-          {/* Close button */}
-          <button
-            onClick={() => setShowPIPreview(false)}
-            className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
-            title="Close PI Preview"
-          >
-            <X className="h-5 w-5 text-gray-600" />
-          </button>
-          
-          <div className="bg-white rounded-lg shadow-xl">
-            <div className="p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Proforma Invoice Preview</h2>
-              <CorporateStandardInvoice 
-                selectedBranch={quotationData.selectedBranch}
-                companyBranches={companyBranches}
-                quotations={[piPreviewData]}
-              />
-            </div>
-            <div className="flex justify-end gap-3 p-6 border-t">
-              <Button 
-                type="button" 
-                onClick={() => setShowPIPreview(false)}
-                className="bg-gray-600 hover:bg-gray-700"
-              >
-                Close
-              </Button>
-              <Button 
-                type="button" 
-                onClick={() => {
-                  try {
-                    const event = new CustomEvent('pi-saved', {
-                      detail: {
-                        customerId: customer?.id,
-                        quotationNumber: previewData?.quotationNumber,
-                        selectedBranch: quotationData.selectedBranch,
-                        piData: piPreviewData
-                      }
-                    })
-                    window.dispatchEvent(event)
-                    setShowPIPreview(false)
-                    alert('PI saved successfully!')
-                  } catch (e) {
-                    console.error('Failed to save PI', e)
-                  }
-                }}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                Save PI
-              </Button>
-              <Button 
-                type="button" 
-                onClick={() => window.print()}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Print PI
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const formContent = (
     <>
@@ -840,10 +760,10 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                           </select>
                         </td>
                         <td className="px-2 py-3">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
                             placeholder="Rate"
                             value={item.buyerRate || ''}
                             onChange={(e) => handleItemChange(index, 'buyerRate', e.target.value === '' ? '' : parseFloat(e.target.value) || '')}
@@ -889,6 +809,106 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     <span>Total:</span>
                     <span>₹{quotationData.total.toFixed(2)}</span>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Transport Details */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                <Truck className="h-5 w-5 text-orange-500" />
+                Transport Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">L.R. No</label>
+                  <input
+                    type="text"
+                    value={quotationData.transportDetails.lrNo}
+                    onChange={(e) => handleTransportDetailsChange('lrNo', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter L.R. Number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Transport Name</label>
+                  <input
+                    type="text"
+                    value={quotationData.transportDetails.transport}
+                    onChange={(e) => handleTransportDetailsChange('transport', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter Transport Name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Transport ID</label>
+                  <input
+                    type="text"
+                    value={quotationData.transportDetails.transportId}
+                    onChange={(e) => handleTransportDetailsChange('transportId', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter Transport ID"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Vehicle Number</label>
+                  <input
+                    type="text"
+                    value={quotationData.transportDetails.vehicleNumber}
+                    onChange={(e) => handleTransportDetailsChange('vehicleNumber', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter Vehicle Number"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Bank Details */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-green-500" />
+                Bank Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Bank Name</label>
+                  <input
+                    type="text"
+                    value={quotationData.bankDetails.bankName}
+                    onChange={(e) => handleBankDetailsChange('bankName', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter Bank Name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Branch Name</label>
+                  <input
+                    type="text"
+                    value={quotationData.bankDetails.branchName}
+                    onChange={(e) => handleBankDetailsChange('branchName', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter Branch Name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Account Number</label>
+                  <input
+                    type="text"
+                    value={quotationData.bankDetails.accountNumber}
+                    onChange={(e) => handleBankDetailsChange('accountNumber', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter Account Number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">IFSC Code</label>
+                  <input
+                    type="text"
+                    value={quotationData.bankDetails.ifscCode}
+                    onChange={(e) => handleBankDetailsChange('ifscCode', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter IFSC Code"
+                  />
                 </div>
               </div>
             </div>
@@ -940,19 +960,6 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                   onClick={onClose}
                 >
                   Cancel
-                </Button>
-                <Button 
-                  type="button" 
-                  className={`flex items-center gap-2 ${
-                    isFormValid() 
-                      ? 'bg-orange-600 hover:bg-orange-700 text-white' 
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                  onClick={handlePIClick}
-                  disabled={!isFormValid()}
-                >
-                  <FileCheck className="w-4 h-4" />
-                  PI
                 </Button>
                 <Button 
                   type="submit"

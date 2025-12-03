@@ -182,7 +182,11 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
     }
     
     return (
-      <div className="max-w-4xl mx-auto bg-white font-sans text-xs" id="pi-content">
+      <div className="max-w-4xl mx-auto bg-white font-sans text-xs" id="pi-content" style={{ 
+        fontFamily: 'Arial, sans-serif',
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale'
+      }}>
         <div className="p-4">
           {/* Header Section */}
           <div className="border-2 border-black mb-2">
@@ -217,23 +221,14 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
               <h2>PROFORMA INVOICE</h2>
             </div>
             <div className="grid grid-cols-2 gap-2 p-2">
-              {/* Left: Consignee & Buyer Info */}
+              {/* Left: Buyer Info */}
               <div className="space-y-2">
-                {/* Consignee */}
-                <div className="border border-black p-1">
-                  <p className="font-bold text-xs mb-1">Consignee (Ship to):</p>
-                  <p className="text-xs font-semibold">{billTo.business || 'Customer'}</p>
-                  <p className="text-xs">{billTo.address || ''}</p>
-                  <p className="text-xs">State Name: {stateName}, Code: {stateCode}</p>
-                  {billTo.phone && <p className="text-xs">Contact: {billTo.phone}</p>}
-                </div>
-                
                 {/* Buyer */}
                 <div className="border border-black p-1">
-                  <p className="font-bold text-xs mb-1">Buyer (Bill to):</p>
+                  <p className="font-bold text-xs mb-1">Buyer:</p>
                   <p className="text-xs font-semibold">{billTo.business || 'Customer'}</p>
                   <p className="text-xs">{billTo.address || ''}</p>
-                  <p className="text-xs">State Name: {stateName}, Code: {stateCode}</p>
+                  <p className="text-xs">State: {stateName}, Code: {stateCode}</p>
                   <p className="text-xs">Place of Supply: {stateName}</p>
                   {billTo.phone && <p className="text-xs">Contact: {billTo.phone}</p>}
                 </div>
@@ -242,65 +237,13 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
               {/* Right: Invoice Details */}
               <div className="border border-black p-1 space-y-1 text-xs">
                 <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Invoice No.:</span>
-                  <span>{invoiceNumber}</span>
+                  <span className="font-semibold">Proforma Invoice No.:</span>
+                  <span>{selectedQuotation?.invoiceNumber || invoiceNumber}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Dated:</span>
+                  <span className="font-semibold">Date:</span>
                   <span>{new Date(invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}</span>
                 </div>
-                <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Delivery Note:</span>
-                  <span></span>
-                </div>
-                <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Mode/Terms of Payment:</span>
-                  <span></span>
-            </div>
-                <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Reference No. & Date:</span>
-                  <span>{referenceNo} dt. {new Date(invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}</span>
-          </div>
-                <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Other References:</span>
-                  <span>DIRECT SALE</span>
-            </div>
-                <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Buyer's Order No.:</span>
-                  <span></span>
-              </div>
-                <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Dated:</span>
-                  <span></span>
-              </div>
-                <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Dispatch Doc No.:</span>
-                  <span>{dispatchDocNo}</span>
-              </div>
-                <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Delivery Note Date:</span>
-                  <span></span>
-              </div>
-                <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Dispatched through:</span>
-                  <span>SELF VEHICLE</span>
-            </div>
-                <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Destination:</span>
-                  <span>{stateName.toUpperCase()}</span>
-            </div>
-                <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Bill of Lading/LR-RR No. dt. {new Date(invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}:</span>
-                  <span></span>
-          </div>
-                <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Motor Vehicle No.:</span>
-                  <span></span>
-              </div>
-                <div className="grid grid-cols-2 gap-1">
-                  <span className="font-semibold">Terms of Delivery:</span>
-                  <span></span>
-                    </div>
               </div>
             </div>
           </div>
@@ -310,67 +253,50 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="border border-black p-1 text-center w-8">Sl No</th>
-                  <th className="border border-black p-1 text-left">Description of Goods</th>
-                  <th className="border border-black p-1 text-center w-16">HSN/SAC</th>
-                  <th className="border border-black p-1 text-center w-12">Part No.</th>
-                  <th className="border border-black p-1 text-center w-16">Quantity (Shipped)</th>
-                  <th className="border border-black p-1 text-center w-16">Quantity (Billed)</th>
+                  <th className="border border-black p-1 text-center w-8">Sr No</th>
+                  <th className="border border-black p-1 text-left">Item Description</th>
+                  <th className="border border-black p-1 text-center w-16">HSN Code</th>
+                  <th className="border border-black p-1 text-center w-16">Quantity</th>
                   <th className="border border-black p-1 text-right w-16">Rate</th>
-                  <th className="border border-black p-1 text-center w-12">per</th>
-                  <th className="border border-black p-1 text-center w-12">Disc. %</th>
                   <th className="border border-black p-1 text-right w-20">Amount</th>
+                  <th className="border border-black p-1 text-center w-12">Tax %</th>
+                  <th className="border border-black p-1 text-right w-20">Total Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {Array.isArray(items) && items.length > 0 && (
-                  items.map((item, index) => (
-                    <tr key={index}>
-                      <td className="border border-black p-1 text-center">{index + 1}</td>
-                      <td className="border border-black p-1">
-                        <div>{item.productName || item.description}</div>
-                        <div className="text-[10px] text-gray-600">Location: UNIT 1</div>
-                      </td>
-                      <td className="border border-black p-1 text-center">{item.hsn || item.hsnCode || '85441110'}</td>
-                      <td className="border border-black p-1 text-center"></td>
-                      <td className="border border-black p-1 text-center">{parseFloat(item.quantity || 0).toFixed(4)} {item.unit || 'MTR'}</td>
-                      <td className="border border-black p-1 text-center">{parseFloat(item.quantity || 0).toFixed(4)} {item.unit || 'MTR'}</td>
-                      <td className="border border-black p-1 text-right">{parseFloat(item.buyerRate || item.unitPrice || item.rate || 0).toFixed(2)}</td>
-                      <td className="border border-black p-1 text-center">{item.unit || 'MTR'}</td>
-                      <td className="border border-black p-1 text-center"></td>
-                      <td className="border border-black p-1 text-right">{parseFloat(item.amount || item.taxableAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    </tr>
-                  ))
+                  items.map((item, index) => {
+                    const itemTaxRate = item.gstRate || taxRate || 18
+                    const itemAmount = parseFloat(item.amount || item.taxableAmount || 0)
+                    const itemTaxAmount = (itemAmount * itemTaxRate) / 100
+                    const itemTotal = itemAmount + itemTaxAmount
+                    return (
+                      <tr key={index}>
+                        <td className="border border-black p-1 text-center">{index + 1}</td>
+                        <td className="border border-black p-1">
+                          <div>{item.productName || item.description}</div>
+                        </td>
+                        <td className="border border-black p-1 text-center">{item.hsn || item.hsnCode || '85441110'}</td>
+                        <td className="border border-black p-1 text-center">{parseFloat(item.quantity || 0).toFixed(2)} {item.unit || 'Nos'}</td>
+                        <td className="border border-black p-1 text-right">{parseFloat(item.buyerRate || item.unitPrice || item.rate || 0).toFixed(2)}</td>
+                        <td className="border border-black p-1 text-right">{itemAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="border border-black p-1 text-center">{itemTaxRate}%</td>
+                        <td className="border border-black p-1 text-right">{itemTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      </tr>
+                    )
+                  })
                 )}
-
-                {/* Empty rows for formatting */}
-                {Array.from({ length: Math.max(0, 8 - items.length) }).map((_, i) => (
-                  <tr key={`empty-${i}`} className="h-6">
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                    <td className="border border-black p-1"></td>
-                  </tr>
-                ))}
 
                 {/* Totals Row */}
                 <tr className="bg-gray-100 font-bold">
                   <td className="border border-black p-1 text-center">Total</td>
                   <td className="border border-black p-1"></td>
                   <td className="border border-black p-1"></td>
-                  <td className="border border-black p-1"></td>
-                  <td className="border border-black p-1 text-center">{items.reduce((sum, i) => sum + parseFloat(i.quantity || 0), 0).toFixed(4)} {items[0]?.unit || 'MTR'}</td>
-                  <td className="border border-black p-1 text-center">{items.reduce((sum, i) => sum + parseFloat(i.quantity || 0), 0).toFixed(4)} {items[0]?.unit || 'MTR'}</td>
-                  <td className="border border-black p-1"></td>
-                  <td className="border border-black p-1"></td>
+                  <td className="border border-black p-1 text-center">{items.reduce((sum, i) => sum + parseFloat(i.quantity || 0), 0).toFixed(2)} {items[0]?.unit || 'Nos'}</td>
                   <td className="border border-black p-1"></td>
                   <td className="border border-black p-1 text-right">{parseFloat(subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td className="border border-black p-1"></td>
+                  <td className="border border-black p-1 text-right">{parseFloat(total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
               </tbody>
             </table>
@@ -397,9 +323,9 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                 </div>
                 </div>
 
-          {/* Bill Details */}
+          {/* Amount Payable */}
           <div className="border-2 border-black mb-2 p-1">
-            <p className="text-xs"><strong>On Account:</strong> {parseFloat(total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Dr</p>
+            <p className="text-xs"><strong>Amount Payable:</strong> ₹{parseFloat(total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
 
           {/* Amount in Words */}
@@ -469,6 +395,32 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
               <p className="text-xs">We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</p>
             </div>
           </div>
+
+          {/* Terms & Conditions */}
+          <div className="border-2 border-black mb-2 p-2">
+            <p className="font-bold text-xs mb-2">Terms & Conditions:</p>
+            <div className="text-xs space-y-1">
+              {selectedQuotation?.paymentTerms && (
+                <p><strong>Payment Terms:</strong> {selectedQuotation.paymentTerms}</p>
+              )}
+              {selectedQuotation?.deliveryTerms && (
+                <p><strong>Delivery Terms:</strong> {selectedQuotation.deliveryTerms}</p>
+              )}
+              {selectedQuotation?.validity && (
+                <p><strong>Validity of Proforma Invoice:</strong> {selectedQuotation.validity}</p>
+              )}
+              {selectedQuotation?.warranty && (
+                <p><strong>Warranty:</strong> {selectedQuotation.warranty}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Terms of Delivery */}
+          {selectedQuotation?.deliveryTerms && (
+            <div className="border-2 border-black mb-2 p-1">
+              <p className="text-xs"><strong>Terms of Delivery:</strong> {selectedQuotation.deliveryTerms}</p>
+            </div>
+          )}
 
           {/* Signatures */}
           <div className="border-2 border-black mb-2">
