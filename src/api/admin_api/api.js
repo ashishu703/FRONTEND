@@ -57,6 +57,13 @@ export const API_ENDPOINTS = {
   PRODUCTION_MAINT_ORDERS: (query = '') => `${PRODUCTION_BASE}/maintenance/orders${query ? `?${query}` : ''}`,
   PRODUCTION_INVENTORY: (query = '') => `${PRODUCTION_BASE}/inventory${query ? `?${query}` : ''}`,
 
+  // Stock
+  STOCK_BASE: `${API_BASE_URL}/api/stock`,
+  STOCK_GET_ALL: () => `${API_BASE_URL}/api/stock`,
+  STOCK_GET_BY_PRODUCT: (productName) => `${API_BASE_URL}/api/stock/${encodeURIComponent(productName)}`,
+  STOCK_UPDATE: (productName) => `${API_BASE_URL}/api/stock/${encodeURIComponent(productName)}`,
+  STOCK_BATCH_UPDATE: () => `${API_BASE_URL}/api/stock/batch`,
+
   // Tickets
   TICKETS_BASE: `${API_BASE_URL}/api/tickets`,
   TICKETS_CREATE: () => `${API_BASE_URL}/api/tickets`,
