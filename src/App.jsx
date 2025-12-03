@@ -19,6 +19,8 @@ import OfficeSalesPersonLayout from './pages/OfficeSalesPerson/OfficeSalesPerson
 import ProductionDepartmentHeadLayout from './pages/ProductionDepartmentHead/ProductionDepartmentHeadLayout.jsx'
 import ProductionDepartmentHeadDashboard from './pages/ProductionDepartmentHead/ProductionDepartmentHeadDashboard.jsx'
 import ProductionStaffLayout from './pages/production/productionlayout.jsx'
+import PPCLayout from './pages/ProductionDepartmentHead/PPC/PPCLayout.jsx'
+import PPCDashboard from './pages/ProductionDepartmentHead/PPC/PPCDashboard.jsx'
 import AccountsLayout from './pages/accounts/AccountsLayout.jsx'
 import AccountsDashboard from './pages/accounts/accountsdashboard.jsx'
 import ItLayout from './pages/it/ItLayout.jsx'
@@ -126,7 +128,9 @@ function AppContent() {
           </RoleGuard>
         ) : userType === 'production-staff' ? (
           <RoleGuard allow={['department_user']} allowDepartmentTypes={['production','Production Department']} fallback={<LoginPage />}>
-            <ProductionStaffLayout onLogout={handleLogout} />
+            <PPCLayout onLogout={handleLogout} activeView={activeView} setActiveView={setActiveView}>
+              <PPCDashboard activeView={activeView} setActiveView={setActiveView} />
+            </PPCLayout>
           </RoleGuard>
         ) : userType === 'tele-sales' ? (
           <TeleSalesLayout />

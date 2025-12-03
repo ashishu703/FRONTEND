@@ -370,6 +370,54 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
           title: "Production Dashboard",
           subtitle: ""
         };
+      case 'ppc':
+        return {
+          icon: <Calendar className="w-6 h-6 text-white" />,
+          title: "PPC",
+          subtitle: "Production Planning & Control"
+        };
+      case 'qc':
+        return {
+          icon: <CheckCircle className="w-6 h-6 text-white" />,
+          title: "QC",
+          subtitle: "Quality Control"
+        };
+      case 'inventory-management':
+        return {
+          icon: <Package className="w-6 h-6 text-white" />,
+          title: "Inventory",
+          subtitle: "Inventory Management"
+        };
+      case 'maintenance-management':
+        return {
+          icon: <Wrench className="w-6 h-6 text-white" />,
+          title: "Maintenance",
+          subtitle: "Maintenance Management"
+        };
+      case 'reports-management':
+        return {
+          icon: <BarChart3 className="w-6 h-6 text-white" />,
+          title: "Reports",
+          subtitle: "Reports & Analytics"
+        };
+      case 'dispatch':
+        return {
+          icon: <Package className="w-6 h-6 text-white" />,
+          title: "Dispatch",
+          subtitle: "Stock Management"
+        };
+      case 'supervisor':
+        return {
+          icon: <Users className="w-6 h-6 text-white" />,
+          title: "Supervisor",
+          subtitle: "Task Assignment"
+        };
+      case 'store':
+        return {
+          icon: <Package className="w-6 h-6 text-white" />,
+          title: "Store",
+          subtitle: "Store Management"
+        };
       case 'production-planning':
       case 'production-schedule':
       case 'design-cost':
