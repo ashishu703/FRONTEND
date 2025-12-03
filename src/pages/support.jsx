@@ -1,6 +1,9 @@
 import { useState } from "react"
-import { Clock, CheckCircle, Circle } from "lucide-react"
+import { Clock, CheckCircle, Circle, Search, X, AlertCircle } from "lucide-react"
 import AshvayChat from "../components/AshvayChat"
+import apiClient from "../utils/apiClient"
+import { API_ENDPOINTS } from "../api/admin_api/api"
+import toastManager from "../utils/ToastManager"
 
 const ANOCAB_LOGO = "https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
 const DEPARTMENTS = ["IT Department", "Accounts Department", "Sales", "Marketing Sales", "Production", "Gate Entry", "Transportation Department"]
@@ -8,16 +11,18 @@ const PRIORITIES = ["low", "medium", "high", "critical"]
 const INITIAL_FORM_DATA = { name: "", email: "", phone: "", department: "", priority: "", subject: "", description: "", screenshot: null }
 
 const STATUS_CONFIG = {
-  pending: { color: "bg-orange-100 text-orange-800", icon: Circle, iconColor: "text-orange-600" },
-  inprogress: { color: "bg-blue-100 text-blue-800", icon: Clock, iconColor: "text-blue-600" },
-  resolved: { color: "bg-green-100 text-green-800", icon: CheckCircle, iconColor: "text-green-600" }
+  pending: { bgColor: "bg-orange-500", icon: Clock },
+  open: { bgColor: "bg-blue-500", icon: AlertCircle },
+  "in progress": { bgColor: "bg-amber-500", icon: Clock },
+  inprogress: { bgColor: "bg-amber-500", icon: Clock },
+  resolved: { bgColor: "bg-green-500", icon: CheckCircle },
+  closed: { bgColor: "bg-gray-500", icon: CheckCircle }
 }
 
 export default function SupportPage() {
-  const [activeTab, setActiveTab] = useState("report")
-  const [tickets, setTickets] = useState([])
   const [trackTicketId, setTrackTicketId] = useState("")
   const [trackedTicket, setTrackedTicket] = useState(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [formData, setFormData] = useState(INITIAL_FORM_DATA)
   const [ticketNumber, setTicketNumber] = useState("")
 
@@ -33,43 +38,156 @@ export default function SupportPage() {
     if (e.target.files?.[0]) updateFormData("screenshot", e.target.files[0])
   }
 
-  const generateTicketId = () => `TKT-${String(Math.floor(Math.random() * 1000000)).padStart(6, "0")}`
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    const newTicketId = generateTicketId()
-    setTicketNumber(newTicketId)
+    
+    try {
+      // Create FormData for file upload
+      const submitFormData = new FormData()
+      submitFormData.append('name', formData.name)
+      submitFormData.append('email', formData.email)
+      submitFormData.append('phone', formData.phone || '')
+      submitFormData.append('department', 'IT Department') // Always send to IT Department
+      submitFormData.append('priority', formData.priority)
+      submitFormData.append('subject', formData.subject)
+      submitFormData.append('description', formData.description)
+      
+      if (formData.screenshot) {
+        submitFormData.append('screenshot', formData.screenshot)
+      }
 
-    const newTicket = {
-      id: newTicketId,
-      status: "pending",
-      ...formData,
-      date: new Date().toISOString().split("T")[0],
-      statusHistory: [{
-        status: "pending",
-        timestamp: new Date().toISOString(),
-        message: "Ticket created and submitted"
-      }]
+      const response = await apiClient.postFormData(API_ENDPOINTS.TICKETS_CREATE(), submitFormData)
+      
+      if (response.success) {
+        const ticketId = response.data.ticketId || response.data.id
+        setTicketNumber(ticketId)
+        toastManager.success(`Ticket ${ticketId} created successfully! You will receive updates via email.`)
+        setFormData(INITIAL_FORM_DATA)
+        setTimeout(() => setTicketNumber(""), 5000)
+      }
+    } catch (error) {
+      const errorMessage = error.message || error.data?.message || 'Unable to submit ticket. Please check your connection and try again.'
+      toastManager.error(errorMessage)
     }
-
-    setTickets(prev => [newTicket, ...prev])
-    setFormData(INITIAL_FORM_DATA)
-    setTimeout(() => setTicketNumber(""), 5000)
   }
 
-  const handleTrackTicket = () => {
-    if (!trackTicketId.trim()) return
-    const ticket = tickets.find(t => t.id.toUpperCase() === trackTicketId.toUpperCase().trim())
-    setTrackedTicket(ticket || null)
+  const handleTrackTicket = async () => {
+    if (!trackTicketId.trim()) {
+      toastManager.warning('Please enter a ticket ID to track')
+      return
+    }
+    
+    try {
+      const ticketId = trackTicketId.trim().toUpperCase()
+      const response = await apiClient.get(API_ENDPOINTS.TICKET_BY_ID(ticketId))
+      
+      if (response.success && response.data) {
+        const apiStatus = response.data.status?.toLowerCase() || 'open'
+        let statusHistory = []
+        
+        // Parse status history - handle both array and JSON string
+        if (response.data.statusHistory) {
+          if (Array.isArray(response.data.statusHistory)) {
+            statusHistory = response.data.statusHistory
+          } else if (typeof response.data.statusHistory === 'string') {
+            try {
+              statusHistory = JSON.parse(response.data.statusHistory)
+            } catch {
+              statusHistory = []
+            }
+          }
+        }
+        
+        // Map status history with proper message handling (resolution notes)
+        const mappedHistory = statusHistory.length > 0
+          ? statusHistory.map(h => ({
+              status: (h.status || '').toLowerCase(),
+              timestamp: h.timestamp || response.data.createdAt,
+              message: h.message || h.resolution || 'Status updated',
+              imageUrl: h.imageUrl || null,
+              imageName: h.imageName || null
+            }))
+          : [{
+              status: apiStatus,
+              timestamp: response.data.createdAt || new Date().toISOString(),
+              message: 'Ticket created and submitted',
+              imageUrl: response.data.fileUrl || response.data.filePath || null,
+              imageName: response.data.fileName || null
+            }]
+        
+        setTrackedTicket({
+          id: response.data.id,
+          subject: response.data.title,
+          description: response.data.description,
+          department: response.data.department || 'IT Department',
+          priority: response.data.priority,
+          status: apiStatus,
+          date: response.data.createdAt,
+          fileUrl: response.data.fileUrl || response.data.filePath,
+          fileName: response.data.fileName,
+          statusHistory: mappedHistory
+        })
+        setSidebarOpen(true)
+        toastManager.success(`Ticket ${ticketId} found`)
+      } else {
+        setTrackedTicket(null)
+        setSidebarOpen(false)
+        toastManager.error(`Ticket ${ticketId} not found. Please check your Ticket ID.`)
+      }
+    } catch (error) {
+      setTrackedTicket(null)
+      setSidebarOpen(false)
+      toastManager.error(error.message || error.data?.message || 'Unable to fetch ticket. Please check your connection and try again.')
+    }
   }
 
-  const getStatusConfig = (status) => STATUS_CONFIG[status] || { color: "bg-gray-100 text-gray-800", icon: Circle, iconColor: "text-gray-600" }
-  
-  const getStatusColor = (status) => getStatusConfig(status).color
-  
-  const getStatusIcon = (status) => {
-    const { icon: Icon, iconColor } = getStatusConfig(status)
-    return <Icon className={`w-5 h-5 ${iconColor}`} />
+  const getStatusConfig = (status) => {
+    const normalized = (status || '').toLowerCase().replace(/\s+/g, ' ')
+    return STATUS_CONFIG[normalized] || STATUS_CONFIG[normalized.replace(' ', '')] || { bgColor: "bg-gray-500", icon: Circle }
+  }
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return ''
+    const date = new Date(timestamp)
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    })
+  }
+
+  const renderImage = (imageUrl, imageName) => {
+    if (!imageUrl) return null
+    
+    const isImage = imageUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+    
+    return (
+      <div className="mt-3">
+        <p className="text-xs text-gray-500 mb-2">
+          {imageName ? `Attachment: ${imageName}` : 'Attachment'}
+        </p>
+        {isImage ? (
+          <img
+            src={imageUrl}
+            alt={imageName || 'Ticket attachment'}
+            className="max-w-full h-auto rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => window.open(imageUrl, '_blank')}
+          />
+        ) : (
+          <a
+            href={imageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 underline text-sm"
+          >
+            View Attachment
+          </a>
+        )}
+      </div>
+    )
   }
 
 
@@ -109,35 +227,38 @@ export default function SupportPage() {
       <AshvayChat />
 
       {/* Main Content */}
-      <section className="px-8 py-12">
+      <section className="px-8 py-12 relative">
         <div className="max-w-6xl mx-auto">
-          {/* Tabs */}
-          <div className="flex gap-4 mb-8 border-b-2 border-purple-200">
+          {/* Tabs and Search */}
+          <div className="flex items-center justify-between gap-4 mb-8 border-b-2 border-purple-200 pb-4">
             <button
-              onClick={() => setActiveTab("report")}
-              className={`px-6 py-3 font-semibold border-b-2 transition-all ${
-                activeTab === "report"
-                  ? "text-purple-600 border-purple-600"
-                  : "text-gray-600 border-transparent hover:text-purple-500"
-              }`}
+              className="px-6 py-3 font-semibold border-b-2 text-purple-600 border-purple-600 transition-all"
             >
               Report Issue
             </button>
-            <button
-              onClick={() => setActiveTab("status")}
-              className={`px-6 py-3 font-semibold border-b-2 transition-all ${
-                activeTab === "status"
-                  ? "text-purple-600 border-purple-600"
-                  : "text-gray-600 border-transparent hover:text-purple-500"
-              }`}
-            >
-              Track Tickets
-            </button>
+            <div className="flex-1 max-w-md ml-auto">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Search Ticket ID (e.g., TIK-122501)"
+                  value={trackTicketId}
+                  onChange={(e) => setTrackTicketId(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleTrackTicket()}
+                  className="flex-1 px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <button
+                  onClick={handleTrackTicket}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-6 py-2 rounded-lg transition-all flex items-center gap-2"
+                >
+                  <Search className="w-4 h-4" />
+                  Track
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Report Issue Tab */}
-          {activeTab === "report" && (
-            <div className="grid grid-cols-3 gap-8">
+          {/* Report Issue Form */}
+          <div className="grid grid-cols-3 gap-8">
               {/* Form */}
               <div className="col-span-2">
                 <div className="p-8 shadow-xl bg-gradient-to-br from-white to-blue-50 rounded-2xl border-2 border-blue-200">
@@ -336,117 +457,150 @@ export default function SupportPage() {
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Track Tickets Tab */}
-          {activeTab === "status" && (
-            <div className="space-y-6">
-              {/* Ticket Search */}
-              <div className="p-6 bg-white rounded-2xl shadow-lg border border-purple-200">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Track Your Ticket</h2>
-                <div className="flex gap-4">
-                  <input
-                    type="text"
-                    placeholder="Enter Ticket ID (e.g., TKT-123456)"
-                    value={trackTicketId}
-                    onChange={(e) => setTrackTicketId(e.target.value)}
-                    className="flex-1 px-4 py-3 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <button
-                    onClick={handleTrackTicket}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold px-8 py-3 rounded-lg transition-all"
-                  >
-                    Track
-                  </button>
-                </div>
+        {/* Right Sidebar for Ticket Tracking */}
+        {sidebarOpen && (
+          <>
+            {/* Overlay */}
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-50 z-40"
+              onClick={() => setSidebarOpen(false)}
+            ></div>
+            
+            {/* Sidebar */}
+            <div className="fixed right-0 top-0 h-full w-full max-w-[538px] bg-white shadow-2xl z-50 overflow-y-auto">
+              <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                <h2 className="text-2xl font-bold text-gray-900">Ticket Details</h2>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-6 h-6 text-gray-600" />
+                </button>
               </div>
 
-              {/* Timeline View */}
               {trackedTicket ? (
-                <div className="p-8 bg-white rounded-2xl shadow-lg border border-blue-200">
-                  <div className="mb-6">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Ticket Details</h3>
+                <div className="p-6">
+                  {/* Ticket Info */}
+                  <div className="mb-6 p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg border border-purple-200">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="font-semibold text-gray-700">Ticket ID:</span>
-                        <span className="ml-2 text-purple-600 font-bold">{trackedTicket.id}</span>
-                      </div>
-                      <div>
-                        <span className="font-semibold text-gray-700">Subject:</span>
-                        <span className="ml-2">{trackedTicket.subject}</span>
+                        <span className="ml-2 text-purple-600 font-bold text-lg">{trackedTicket.id}</span>
                       </div>
                       <div>
                         <span className="font-semibold text-gray-700">Department:</span>
                         <span className="ml-2">{trackedTicket.department}</span>
                       </div>
+                      <div className="col-span-2">
+                        <span className="font-semibold text-gray-700">Subject:</span>
+                        <span className="ml-2">{trackedTicket.subject}</span>
+                      </div>
                       <div>
                         <span className="font-semibold text-gray-700">Priority:</span>
-                        <span className="ml-2">{trackedTicket.priority}</span>
+                        <span className={`ml-2 px-2 py-1 rounded text-xs font-semibold ${
+                          trackedTicket.priority === 'critical' ? 'bg-red-100 text-red-800' :
+                          trackedTicket.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                          trackedTicket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {trackedTicket.priority?.toUpperCase()}
+                        </span>
                       </div>
+                      <div>
+                        <span className="font-semibold text-gray-700">Status:</span>
+                        <span className={`ml-2 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800`}>
+                          {trackedTicket.status.charAt(0).toUpperCase() + trackedTicket.status.slice(1)}
+                        </span>
+                      </div>
+                      {trackedTicket.description && (
+                        <div className="col-span-2 mt-2">
+                          <span className="font-semibold text-gray-700">Description:</span>
+                          <p className="mt-1 text-gray-600">{trackedTicket.description}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <div className="border-t-2 border-purple-200 pt-6">
-                    <h4 className="text-xl font-bold text-gray-900 mb-6">Status Timeline</h4>
+                  {/* Status Timeline */}
+                  <div className="mb-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-1">Status Timeline</h3>
+                    <p className="text-sm text-gray-500 mb-6">Ticket progress and updates</p>
                     <div className="relative">
-                      {/* Timeline Line */}
-                      <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-orange-400 via-blue-400 to-green-400"></div>
-                      
-                      {/* Timeline Items */}
-                      <div className="space-y-8">
-                        {trackedTicket.statusHistory && trackedTicket.statusHistory.length > 0 ? (
-                          trackedTicket.statusHistory.map((historyItem, index) => (
-                            <div key={index} className="relative flex items-start gap-4">
-                              <div className="relative z-10 flex-shrink-0">
-                                {getStatusIcon(historyItem.status)}
-                              </div>
-                              <div className="flex-1 bg-white rounded-lg p-4 shadow-md border-2 border-purple-100">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(historyItem.status)}`}>
-                                    {historyItem.status.charAt(0).toUpperCase() + historyItem.status.slice(1)}
-                                  </span>
-                                  <span className="text-xs text-gray-500">
-                                    {new Date(historyItem.timestamp).toLocaleString()}
-                                  </span>
+                      {(() => {
+                        const statusHistory = trackedTicket.statusHistory || []
+                        const hasHistory = statusHistory.length > 0
+                        const lastResolvedIndex = hasHistory 
+                          ? statusHistory.findLastIndex(item => 
+                              item.status === 'resolved' || item.status === 'closed'
+                            )
+                          : -1
+                        const shouldStopLine = lastResolvedIndex !== -1
+                        
+                        return (
+                          <>
+                            {/* Timeline Line */}
+                            {shouldStopLine ? (
+                              <div 
+                                className="absolute left-5 top-0 w-0.5 bg-gray-200"
+                                style={{ height: `${(lastResolvedIndex * 96) + 40}px` }}
+                              />
+                            ) : !hasHistory && (trackedTicket.status === 'resolved' || trackedTicket.status === 'closed') ? null : (
+                              <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gray-200" />
+                            )}
+                            
+                            {/* Timeline Items */}
+                            <div className="space-y-6">
+                              {hasHistory ? (
+                                statusHistory.map((item, index) => {
+                                  const config = getStatusConfig(item.status)
+                                  const Icon = config.icon
+                                  
+                                  return (
+                                    <div key={index} className="relative flex items-start gap-4">
+                                      <div className={`relative z-10 flex-shrink-0 w-10 h-10 rounded-full ${config.bgColor} flex items-center justify-center`}>
+                                        <Icon className="w-5 h-5 text-white" />
+                                      </div>
+                                      <div className="flex-1 pt-1">
+                                        <p className="text-sm text-gray-600 mb-1">{formatDate(item.timestamp)}</p>
+                                        <p className="text-gray-900 whitespace-pre-wrap">{item.message || 'Status updated'}</p>
+                                        {renderImage(item.imageUrl, item.imageName)}
+                                      </div>
+                                    </div>
+                                  )
+                                })
+                              ) : (
+                                <div className="relative flex items-start gap-4">
+                                  <div className={`relative z-10 flex-shrink-0 w-10 h-10 rounded-full ${getStatusConfig(trackedTicket.status).bgColor} flex items-center justify-center`}>
+                                    {(() => {
+                                      const config = getStatusConfig(trackedTicket.status)
+                                      const Icon = config.icon
+                                      return <Icon className="w-5 h-5 text-white" />
+                                    })()}
+                                  </div>
+                                  <div className="flex-1 pt-1">
+                                    <p className="text-sm text-gray-600 mb-1">{formatDate(trackedTicket.date)}</p>
+                                    <p className="text-gray-900">Ticket created and submitted</p>
+                                    {renderImage(trackedTicket.fileUrl, trackedTicket.fileName)}
+                                  </div>
                                 </div>
-                                <p className="text-gray-700">{historyItem.message}</p>
-                              </div>
+                              )}
                             </div>
-                          ))
-                        ) : (
-                          <div className="relative flex items-start gap-4">
-                            <div className="relative z-10 flex-shrink-0">
-                              {getStatusIcon(trackedTicket.status)}
-                            </div>
-                            <div className="flex-1 bg-white rounded-lg p-4 shadow-md border-2 border-purple-100">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(trackedTicket.status)}`}>
-                                  {trackedTicket.status.charAt(0).toUpperCase() + trackedTicket.status.slice(1)}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {trackedTicket.date}
-                                </span>
-                              </div>
-                              <p className="text-gray-700">Ticket created and submitted</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                          </>
+                        )
+                      })()}
                     </div>
                   </div>
                 </div>
-              ) : trackTicketId ? (
-                <div className="p-8 bg-white rounded-2xl shadow-lg border border-red-200 text-center">
-                  <p className="text-red-600 font-semibold text-lg">Ticket not found. Please check your Ticket ID.</p>
-                </div>
               ) : (
-                <div className="p-8 bg-white rounded-2xl shadow-lg border border-blue-200 text-center">
-                  <p className="text-gray-600 font-semibold text-lg">Enter a Ticket ID to track its status</p>
+                <div className="p-6 text-center">
+                  <p className="text-gray-600 font-semibold text-lg">No ticket data available</p>
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </section>
     </div>
   )

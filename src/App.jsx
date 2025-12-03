@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { AuthProvider } from './context/AuthContext'
+import { useAuth } from './hooks/useAuth'
 import LoginPage from './pages/Auth/LoginPage.jsx'
 import AnocabLanding from './pages/landingpage.jsx'
 import SupportPage from './pages/support.jsx'
@@ -13,11 +14,13 @@ import HRDepartmentLayout from './pages/HRDepartment/HRDepartmentLayout.jsx'
 import HRDepartmentDashboard from './pages/HRDepartment/HRDepartmentDashboard.jsx'
 import SalespersonLayout from './pages/salesperson/salespersonlayout.jsx'
 import MarketingSalespersonLayout from './pages/MarketingSalesperson/MarketingSalespersonLayout.jsx'
-import TeleSalesLayout from './pages/TeleSales/TeleSalesLayout.jsx'
+// import TeleSalesLayout from './pages/TeleSales/TeleSalesLayout.jsx'
 import OfficeSalesPersonLayout from './pages/OfficeSalesPerson/OfficeSalesPersonLayout.jsx'
 import ProductionDepartmentHeadLayout from './pages/ProductionDepartmentHead/ProductionDepartmentHeadLayout.jsx'
 import ProductionDepartmentHeadDashboard from './pages/ProductionDepartmentHead/ProductionDepartmentHeadDashboard.jsx'
 import ProductionStaffLayout from './pages/production/productionlayout.jsx'
+import PPCLayout from './pages/ProductionDepartmentHead/PPC/PPCLayout.jsx'
+import PPCDashboard from './pages/ProductionDepartmentHead/PPC/PPCDashboard.jsx'
 import AccountsLayout from './pages/accounts/AccountsLayout.jsx'
 import AccountsDashboard from './pages/accounts/accountsdashboard.jsx'
 import ItLayout from './pages/it/ItLayout.jsx'
@@ -30,19 +33,13 @@ function AppContent() {
   const [activeView, setActiveView] = useState('dashboard')
   const [currentPath, setCurrentPath] = useState(window.location.pathname)
   
-  // Listen for pathname changes
   useEffect(() => {
     const handleLocationChange = () => {
       setCurrentPath(window.location.pathname)
     }
     
-    // Check pathname on mount and when it changes
     handleLocationChange()
-    
-    // Listen for popstate (back/forward buttons)
     window.addEventListener('popstate', handleLocationChange)
-    
-    // Check pathname periodically (for programmatic navigation)
     const interval = setInterval(handleLocationChange, 100)
     
     return () => {
@@ -51,19 +48,18 @@ function AppContent() {
     }
   }, [])
   
-  // Get userType from URL parameters or user role
   const getCurrentUserType = () => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const urlUserType = urlParams.get('userType')
-    const isLogin = urlParams.get('login')
+    if (!user) return 'superadmin';
     
-    if (isLogin === 'true' && urlUserType) {
-      return urlUserType
+    if (user.uiUserType) {
+      return user.uiUserType;
     }
     
-    if (!user) return 'superadmin'
-    if (user.uiUserType) return user.uiUserType
-    return getUserTypeForRole(user.role, user.departmentType)
+    if (user.role && user.departmentType) {
+      return getUserTypeForRole(user.role, user.departmentType);
+    }
+    
+    return 'superadmin';
   }
   
   const userType = getCurrentUserType()
@@ -73,12 +69,9 @@ function AppContent() {
     setActiveView('dashboard')
   }
 
-  // Check if we should show dashboard based on URL parameters even if not authenticated
-  const shouldShowDashboard = isAuthenticated || (new URLSearchParams(window.location.search).get('login') === 'true')
+  const shouldShowDashboard = isAuthenticated
   
-  // If not authenticated, check the path to decide what to show
   if (!shouldShowDashboard) {
-    // If path is /login, show login page
     if (currentPath === '/login' || currentPath.startsWith('/login')) {
       return (
         <div className="App">
@@ -86,7 +79,6 @@ function AppContent() {
         </div>
       )
     }
-    // Support page is now protected - redirect to login if not authenticated
     if (currentPath === '/support' || currentPath.startsWith('/support')) {
       return (
         <div className="App">
@@ -94,7 +86,6 @@ function AppContent() {
         </div>
       )
     }
-    // Otherwise show landing page (for / or any other path)
     return (
       <div className="App">
         <AnocabLanding />
@@ -102,7 +93,6 @@ function AppContent() {
     )
   }
   
-  // Handle support route for authenticated users
   if (shouldShowDashboard && (currentPath === '/support' || currentPath.startsWith('/support'))) {
     return (
       <div className="App">
@@ -118,7 +108,7 @@ function AppContent() {
           <SalesDepartmentHeadLayout onLogout={handleLogout} activeView={activeView} setActiveView={setActiveView}>
             <SalesDepartmentHeadDashboard activeView={activeView} setActiveView={setActiveView} />
           </SalesDepartmentHeadLayout>
-        ) :         userType === 'marketingdepartmenthead' ? (
+        ) : userType === 'marketingdepartmenthead' ? (
           <MarketingDepartmentHeadLayout onLogout={handleLogout} activeView={activeView} setActiveView={setActiveView}>
             <MarketingDepartmentHeadDashboard activeView={activeView} setActiveView={setActiveView} />
           </MarketingDepartmentHeadLayout>
@@ -138,10 +128,15 @@ function AppContent() {
           </RoleGuard>
         ) : userType === 'production-staff' ? (
           <RoleGuard allow={['department_user']} allowDepartmentTypes={['production','Production Department']} fallback={<LoginPage />}>
-            <ProductionStaffLayout onLogout={handleLogout} />
+            <PPCLayout onLogout={handleLogout} activeView={activeView} setActiveView={setActiveView}>
+              <PPCDashboard activeView={activeView} setActiveView={setActiveView} />
+            </PPCLayout>
           </RoleGuard>
         ) : userType === 'tele-sales' ? (
-          <TeleSalesLayout />
+          <div className="p-8 text-center">
+            <h1 className="text-2xl font-bold text-gray-800">TeleSales Layout</h1>
+            <p className="text-gray-600 mt-2">This feature is under development.</p>
+          </div>
         ) : userType === 'office-sales-person' ? (
           <OfficeSalesPersonLayout />
         ) : userType === 'accountsdepartmenthead' || userType === 'accounts-user' ? (

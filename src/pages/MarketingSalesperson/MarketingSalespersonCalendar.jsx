@@ -15,7 +15,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useMarketingSharedData } from './MarketingSharedDataContext';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 
 const MarketingSalespersonCalendar = () => {
   const { customers: leads, loading, updateCustomer } = useMarketingSharedData();

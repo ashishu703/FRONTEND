@@ -1,284 +1,11 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Eye, Edit, Calendar, Clock, Phone, Mail, MessageCircle, Search, Filter, Download, ChevronDown, X, Save, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, FileText, Receipt, CreditCard, RefreshCw } from 'lucide-react';
+import { Eye, Edit, Calendar, Clock, Phone, Mail, MessageCircle, Search, Filter, Download, ChevronDown, X, Save, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, RefreshCw } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
-import quotationService from '../../api/admin_api/quotationService';
-import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
-
-// Lead Status Preview Modal Component
-const LeadStatusPreview = ({ lead, onClose }) => {
-  if (!lead) return null;
-
-  const [latestQuotation, setLatestQuotation] = useState(null);
-  const [latestPI, setLatestPI] = useState(null);
-  const [payments, setPayments] = useState([]);
-  const [paymentSummary, setPaymentSummary] = useState(null);
-  const [history, setHistory] = useState([]);
-
-  const formatIndianDateTime = (dateStr, timeStr, createdAt) => {
-    try {
-      if (dateStr || timeStr) {
-        const date = dateStr ? new Date(dateStr) : new Date(createdAt || Date.now());
-        if (timeStr) {
-          const [hh, mm] = String(timeStr).split(':');
-          date.setHours(Number(hh || 0), Number(mm || 0), 0, 0);
-        }
-        return date.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-      }
-      if (createdAt) return new Date(createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    } catch (_) {}
-    return '';
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadDocs() {
-      try {
-        if (!lead?.id) return;
-        // Load lead history for full timeline
-        try {
-          const hRes = await apiClient.get(API_ENDPOINTS.SALESPERSON_LEAD_HISTORY(lead.id));
-          if (!cancelled) setHistory(hRes?.data?.data || hRes?.data || []);
-        } catch (_) {}
-        // Fetch quotations for this customer/lead
-        const qRes = await quotationService.getQuotationsByCustomer(lead.id);
-        const qList = (qRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        const q = qList[0] || null;
-        if (!cancelled) setLatestQuotation(q);
-        if (q?.id) {
-          const piRes = await proformaInvoiceService.getPIsByQuotation(q.id);
-          const piList = (piRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-          if (!cancelled) setLatestPI(piList[0] || null);
-          // Fetch payments by quotation
-          const payRes = await apiClient.get(`/api/payments/quotation/${q.id}`);
-          if (!cancelled) setPayments(payRes?.data || []);
-          // Fetch quotation summary
-          const sumRes = await apiClient.get(`/api/quotations/${q.id}/summary`);
-          if (!cancelled) setPaymentSummary(sumRes?.data || null);
-        } else if (!cancelled) {
-          setLatestPI(null);
-          setPayments([]);
-          setPaymentSummary(null);
-        }
-      } catch (e) {
-        // Silent fail; keep UI functional
-        console.warn('Failed to load quotation/PI for lead preview', e);
-      }
-    }
-    loadDocs();
-    return () => { cancelled = true; };
-  }, [lead?.id]);
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-end z-50">
-      <div className="bg-white w-full max-w-md h-full overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Customer Timeline</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="p-6">
-          {/* Customer Details */}
-          <div className="mb-6">
-            <h4 className="text-md font-bold text-gray-900 mb-3">Customer Details</h4>
-            <div className="space-y-2 text-sm">
-              <div>
-                <span className="font-medium text-gray-600">Customer Name:</span>
-                <span className="ml-2 text-gray-900">{lead.name}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Business Name:</span>
-                <span className="ml-2 text-gray-900">{lead.business || 'N/A'}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Contact No:</span>
-                <span className="ml-2 text-gray-900">{lead.phone || 'N/A'}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Email Address:</span>
-                <span className="ml-2 text-gray-900">{lead.email || 'N/A'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline */}
-          <div className="relative">
-            <h4 className="text-md font-bold text-gray-900 mb-4">Timeline</h4>
-            
-            {/* Timeline Line */}
-            <div className="absolute left-4 top-8 bottom-0 w-0.5 bg-gray-300"></div>
-            
-            <div className="space-y-6">
-              {/* Customer Created */}
-              <div className="relative flex items-start">
-                <div className="flex-shrink-0 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center z-10">
-                  <CheckCircle className="h-4 w-4 text-white" />
-                </div>
-                <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-gray-900">Customer Created</h5>
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
-                        COMPLETED
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      <div>{new Date(lead.created_at).toLocaleDateString('en-GB')}</div>
-                      <div>Lead ID: LD-{lead.id}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Historical follow ups */}
-              {[...history].sort((a,b)=> new Date(a.created_at || a.follow_up_date || 0) - new Date(b.created_at || b.follow_up_date || 0)).map((h, idx) => (
-                <div key={`${h.id || idx}`} className="relative flex items-start">
-                  <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center z-10 ${h.follow_up_status ? 'bg-blue-500' : 'bg-gray-400'}`}>
-                    <span className="text-[10px] text-white font-semibold">{idx + 1}</span>
-                  </div>
-                  <div className="ml-4 flex-1">
-                    <div className="bg-white border border-gray-200 rounded-md p-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <h5 className="font-medium text-gray-900 text-sm">Follow Up</h5>
-                        {h.sales_status && (
-                          <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-[10px] font-medium rounded">{String(h.sales_status).toUpperCase()}</span>
-                        )}
-                      </div>
-                      <div className="text-[13px] text-gray-700">
-                        <div className="mb-0.5"><span className="font-medium">Status:</span> {h.follow_up_status || '—'}</div>
-                        {h.follow_up_remark && <div className="mb-0.5"><span className="font-medium">Remark:</span> {h.follow_up_remark}</div>}
-                        {(h.follow_up_date || h.follow_up_time || h.created_at) && (
-                          <div className="text-[11px] text-gray-500">{formatIndianDateTime(h.follow_up_date, h.follow_up_time, h.created_at)}</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {/* Follow Up Status (current) - removed to avoid duplication */}
-              {/* Lead Status - removed to avoid duplication */}
-
-              {/* Quotation Status */}
-              <div className="relative flex items-start">
-                <div className="flex-shrink-0 w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center z-10">
-                  <FileText className="h-3.5 w-3.5 text-white" />
-                </div>
-                <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-md p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <h5 className="font-medium text-gray-900 text-sm">Quotation Status</h5>
-                      <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${
-                        (latestQuotation?.status || '').toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
-                        (latestQuotation?.status || '').toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
-                        (latestQuotation?.status ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800')
-                      }`}>
-                        {(latestQuotation?.status || 'PENDING').toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="text-[13px] text-gray-700">
-                      <div>Date: {latestQuotation?.quotation_date ? new Date(latestQuotation.quotation_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A'}</div>
-                      <div>No.: {latestQuotation?.quotation_number || 'N/A'}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* PI Status */}
-              <div className="relative flex items-start">
-                <div className="flex-shrink-0 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center z-10">
-                  <Receipt className="h-3.5 w-3.5 text-white" />
-                </div>
-                <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-md p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <h5 className="font-medium text-gray-900 text-sm">PI Status</h5>
-                      <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${
-                        (latestPI?.status || '').toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
-                        (latestPI?.status || '').toLowerCase() === 'pending_approval' ? 'bg-yellow-100 text-yellow-800' :
-                        (latestPI?.status ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800')
-                      }`}>
-                        {(latestPI?.status || 'PENDING').toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="text-[13px] text-gray-700">
-                      <div>Date: {latestPI?.created_at ? new Date(latestPI.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A'}</div>
-                      <div>No.: {latestPI?.pi_number || 'N/A'}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Status */}
-              <div className="relative flex items-start">
-                <div className="flex-shrink-0 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center z-10">
-                  <CreditCard className="h-3.5 w-3.5 text-white" />
-                </div>
-                <div className="ml-4 flex-1">
-                  <div className="bg-white border border-gray-200 rounded-md p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <h5 className="font-medium text-gray-900 text-sm">Payment Status</h5>
-                      <span className={`px-2 py-0.5 text-[10px] font-medium rounded ${
-                        paymentSummary && paymentSummary.remaining <= 0 ? 'bg-green-100 text-green-800' :
-                        paymentSummary && paymentSummary.paid > 0 ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {paymentSummary && paymentSummary.remaining <= 0 ? 'COMPLETED' :
-                         paymentSummary && paymentSummary.paid > 0 ? 'PARTIAL' : 'PENDING'}
-                      </span>
-                    </div>
-                    <div className="text-[13px] text-gray-700 space-y-1">
-                      {paymentSummary && (
-                        <>
-                          <div className="font-medium text-gray-900">Total: ₹{Number(paymentSummary.total || 0).toLocaleString('en-IN')}</div>
-                          <div className="text-green-700">Paid: ₹{Number(paymentSummary.paid || 0).toLocaleString('en-IN')}</div>
-                          <div className="text-red-700">Due: ₹{Number(paymentSummary.remaining || 0).toLocaleString('en-IN')}</div>
-                          {payments.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
-                              <div className="font-medium text-gray-700 mb-2 text-xs">Payment History:</div>
-                              {payments.map((payment, idx) => (
-                                <div key={payment.id} className="text-xs mb-1.5 p-2 bg-gray-50 rounded">
-                                  <div className="flex justify-between">
-                                    <span className="font-medium">Advance Payment #{idx + 1}</span>
-                                    <span className="text-green-700 font-medium">₹{Number(payment.installment_amount || 0).toLocaleString('en-IN')}</span>
-                                  </div>
-                                  <div className="text-gray-500 mt-0.5">
-                                    Method: {payment.payment_method || 'N/A'}
-                                  </div>
-                                  <div className="text-gray-500">
-                                    Date: {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-GB') : 'N/A'}
-                                  </div>
-                                  {payment.quotation_number && (
-                                    <div className="text-gray-500">Quotation: {payment.quotation_number}</div>
-                                  )}
-                                  {payment.pi_number && (
-                                    <div className="text-gray-500">PI: {payment.pi_number}</div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      )}
-                      {!paymentSummary && <div>No payment data available</div>}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
+import toastManager from '../../utils/ToastManager';
 
 // Edit Lead Status Modal Component
 const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
@@ -485,7 +212,8 @@ export default function ScheduledCall() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
-  const [showPreview, setShowPreview] = useState(false);
+  const [timelineLead, setTimelineLead] = useState(null);
+  const [showCustomerTimeline, setShowCustomerTimeline] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   
   // Pagination state
@@ -692,8 +420,8 @@ export default function ScheduledCall() {
 
   // Handle preview
   const handlePreview = (lead) => {
-    setSelectedLead(lead);
-    setShowPreview(true);
+    setTimelineLead(lead);
+    setShowCustomerTimeline(true);
   };
 
   // Handle edit
@@ -818,7 +546,7 @@ export default function ScheduledCall() {
   const sortedDates = Object.keys(groupedLeads).sort((a, b) => new Date(a) - new Date(b));
 
   return (
-    <div className="p-6">
+    <div className={`p-6 transition-all duration-300 ${showCustomerTimeline ? 'pr-[360px]' : ''}`}>
 
       {/* Search and Filter Bar */}
       <div className="mb-6">
@@ -1149,13 +877,13 @@ export default function ScheduledCall() {
         </div>
       )}
 
-      {/* Preview Modal */}
-      {showPreview && (
-        <LeadStatusPreview
-          lead={selectedLead}
+      {/* Global Customer Timeline Sidebar (salesperson view) */}
+      {showCustomerTimeline && timelineLead && (
+        <SalespersonCustomerTimeline
+          lead={timelineLead}
           onClose={() => {
-            setShowPreview(false);
-            setSelectedLead(null);
+            setShowCustomerTimeline(false);
+            setTimelineLead(null);
           }}
         />
       )}

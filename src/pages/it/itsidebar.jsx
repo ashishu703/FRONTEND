@@ -1,24 +1,22 @@
 import React, { useState } from 'react';
-import { Activity, LogOut, Server, HelpCircle, Ticket, Users, Shield, BarChart3, ChevronRight, X } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { Activity, LogOut, HelpCircle, Ticket, Users, Shield, Server, ChevronRight, X, CheckSquare } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 const ANOCAB_LOGO = "https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png";
 
 // IT Head Menu - Merged and simplified
 const itHeadMenu = [
   { id: 'it-dashboard', label: 'Dashboard', icon: Activity },
-  { id: 'it-systems', label: 'System Health', icon: Server },
   { id: 'it-tickets', label: 'Tickets', icon: Ticket },
   { id: 'it-users', label: 'Users & Access', icon: Users },
-  { id: 'it-security', label: 'Security & Logs', icon: Shield },
-  { id: 'it-reports', label: 'Reports', icon: BarChart3 }
+  { id: 'it-security', label: 'Security & Logs', icon: Shield }
 ];
 
 // IT User Menu (Simplified)
 const itUserMenu = [
   { id: 'it-dashboard', label: 'Dashboard', icon: Activity },
-  { id: 'it-tickets', label: 'My Tickets', icon: Ticket },
-  { id: 'it-systems', label: 'System Status', icon: Server }
+  { id: 'it-assigned-tickets', label: 'Assigned Tickets', icon: Ticket },
+  { id: 'it-assigned-tasks', label: 'Assigned Tasks', icon: CheckSquare }
 ];
 
 const ItSidebar = ({ activeView, setActiveView, onLogout }) => {

@@ -1,9 +1,12 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, FileText, Calendar, User, Package, DollarSign, Plus, Minus, Eye, Edit, Building2, FileCheck } from "lucide-react"
+import { X, FileText, Calendar, User, Package, DollarSign, Plus, Eye, Edit, Building2, Layout, Download, Truck, CreditCard } from "lucide-react"
 import QuotationPreview from "../../components/QuotationPreview"
-import { CorporateStandardInvoice } from './salespersonpi'
+import QuotationPreviewTemplate2 from "../../components/QuotationPreviewTemplate2"
+import QuotationPreviewTemplate3 from "../../components/QuotationPreviewTemplate3"
+import { defaultQuotationTerms } from '../../constants/quotationTerms'
+import html2pdf from 'html2pdf.js'
 
 function Card({ className, children }) {
   return <div className={`rounded-lg border bg-white shadow-sm ${className || ''}`}>{children}</div>
@@ -49,7 +52,7 @@ function Button({ children, onClick, type = "button", variant = "default", size 
 
 // removed local QuotationPreview; using shared component
 
-export default function CreateQuotationForm({ customer, user, onClose, onSave }) {
+export default function CreateQuotationForm({ customer, user, onClose, onSave, standalone = false }) {
   // Debug: Log user data
   console.log('CreateQuotationForm received user:', user);
   
@@ -102,11 +105,12 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
       {
         id: 1,
         productName: "",
-        quantity: 1,
-        unit: "Nos",
+        quantity: "",
+        unit: "",
         companyRate: 0,
-        buyerRate: 0,
-        amount: 0
+        buyerRate: "",
+        amount: 0,
+        hsn: ""
       }
     ],
     subtotal: 0,
@@ -115,29 +119,48 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
     taxRate: 18,
     taxAmount: 0,
     total: 0,
-    terms: "1. Payment terms: 30 days from invoice date\n2. Delivery: 15-20 working days\n3. Prices are subject to change without notice\n4. All disputes subject to Jabalpur jurisdiction",
-    // Editable bill-to information (auto-filled from lead)
+    termsSections: defaultQuotationTerms.map(section => ({ ...section, points: [...section.points] })),
+    // Editable bill-to information
     billTo: {
-      business: (customer?.business && customer.business !== 'N/A') ? customer.business : (customer?.name || ""),
-      address: (customer?.address && customer.address !== 'N/A') ? customer.address : "",
-      phone: customer?.phone || "",
-      gstNo: (customer?.gstNo && customer.gstNo !== 'N/A') ? customer.gstNo : "",
-      state: customer?.state || ""
+      business: "",
+      address: "",
+      phone: "",
+      gstNo: "",
+      state: ""
+    },
+    // Transport Details
+    transportDetails: {
+      lrNo: "",
+      transport: "",
+      transportId: "",
+      vehicleNumber: ""
+    },
+    // Bank Details
+    bankDetails: {
+      bankName: "ICICI Bank",
+      branchName: "WRIGHT TOWN JABALPUR",
+      accountNumber: "657605601783",
+      ifscCode: "ICIC0006576"
     }
   })
 
-  // If the customer prop changes while modal is open, keep bill-to in sync
+  // Template selection state
+  const [selectedTemplate, setSelectedTemplate] = useState('template1') // 'template1', 'template2', 'template3'
+
+  // Auto-fill bill-to from customer data
   useEffect(() => {
+    if (customer) {
     setQuotationData(prev => ({
       ...prev,
       billTo: {
-        business: (customer?.business && customer.business !== 'N/A') ? customer.business : (customer?.name || prev.billTo.business),
-        address: (customer?.address && customer.address !== 'N/A') ? customer.address : prev.billTo.address,
-        phone: customer?.phone || prev.billTo.phone,
-        gstNo: (customer?.gstNo && customer.gstNo !== 'N/A') ? customer.gstNo : prev.billTo.gstNo,
-        state: customer?.state || prev.billTo.state
-      }
-    }))
+          business: (customer?.business && customer.business !== 'N/A') ? customer.business : (customer?.name || ""),
+          address: (customer?.address && customer.address !== 'N/A') ? customer.address : "",
+          phone: customer?.phone || "",
+          gstNo: (customer?.gstNo && customer.gstNo !== 'N/A' && customer.gstNo.trim() !== '') ? customer.gstNo : "URC",
+          state: customer?.state || ""
+        }
+      }))
+    }
   }, [customer])
 
   const handleInputChange = (field, value) => {
@@ -179,7 +202,9 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
     // Calculate amount for this item
     if (['quantity', 'companyRate', 'buyerRate'].includes(field)) {
       // Use buyerRate for amount calculation
-      updatedItems[index].amount = updatedItems[index].quantity * updatedItems[index].buyerRate;
+      const qty = parseFloat(updatedItems[index].quantity) || 0
+      const rate = parseFloat(updatedItems[index].buyerRate) || 0
+      updatedItems[index].amount = qty * rate;
     }
     
     // Calculate totals with discount before tax
@@ -199,17 +224,71 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
     }))
   }
 
+  const handleTermTitleChange = (index, value) => {
+    setQuotationData(prev => {
+      const termsSections = (prev.termsSections || []).map((section, idx) =>
+        idx === index ? { ...section, title: value } : section
+      )
+      return { ...prev, termsSections }
+    })
+  }
+
+  const handleTermPointsChange = (index, value) => {
+    const points = value
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+
+    setQuotationData(prev => {
+      const termsSections = (prev.termsSections || []).map((section, idx) =>
+        idx === index ? { ...section, points } : section
+      )
+      return { ...prev, termsSections }
+    })
+  }
+
+  const resetTermsToDefault = () => {
+    setQuotationData(prev => ({
+      ...prev,
+      termsSections: defaultQuotationTerms.map(section => ({
+        title: section.title,
+        points: [...section.points]
+      }))
+    }))
+  }
+
+  const handleTransportDetailsChange = (field, value) => {
+    setQuotationData(prev => ({
+      ...prev,
+      transportDetails: {
+        ...prev.transportDetails,
+        [field]: value
+      }
+    }))
+  }
+
+  const handleBankDetailsChange = (field, value) => {
+    setQuotationData(prev => ({
+      ...prev,
+      bankDetails: {
+        ...prev.bankDetails,
+        [field]: value
+      }
+    }))
+  }
+
   const addItem = () => {
     setQuotationData(prev => ({
       ...prev,
       items: [...prev.items, {
         id: prev.items.length + 1,
         productName: "",
-        quantity: 1,
-        unit: "Nos",
+        quantity: "",
+        unit: "",
         companyRate: 0,
-        buyerRate: 0,
-        amount: 0
+        buyerRate: "",
+        amount: 0,
+        hsn: ""
       }]
     }))
   }
@@ -234,28 +313,91 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
     }
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    onSave({
+    try {
+      await onSave({
       ...quotationData,
       customer: customer,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      template: selectedTemplate // Include the selected template
     })
+      // Let parent decide whether to close (onSave may handle it)
+      if (!standalone && typeof onClose === 'function') {
     onClose()
+      }
+    } catch (error) {
+      console.error('Failed to save quotation:', error)
+      alert('Failed to save quotation. Please try again.')
+    }
   }
 
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState({});
-  const [showPIPreview, setShowPIPreview] = useState(false);
-  const [piPreviewData, setPiPreviewData] = useState({});
 
   // Update preview data when form data changes
   useEffect(() => {
     setPreviewData(quotationData);
   }, [quotationData]);
 
+
   const togglePreview = () => {
     setShowPreview(!showPreview);
+  };
+
+  // Download PDF function that uses the selected template
+  const handleDownloadPDF = async () => {
+    try {
+      // Find the currently rendered quotation content in the preview modal
+      const quotationContent = document.getElementById('quotation-content');
+      
+      if (!quotationContent) {
+        alert('Quotation preview not found. Please try again.');
+        return;
+      }
+
+      // Temporarily hide the signatory section if needed
+      const signatorySection = quotationContent.querySelector('.quotation-signatory-section');
+      let wasVisible = true;
+      if (signatorySection) {
+        wasVisible = signatorySection.style.display !== 'none';
+        // Keep it visible for PDF - no need to hide
+      }
+
+      // PDF options
+      const opt = {
+        margin: [0.4, 0.4, 0.4, 0.4],
+        filename: `Quotation-${previewData?.quotationNumber || 'Draft'}-${(previewData?.billTo?.business || 'Customer').replace(/\s+/g, '-')}.pdf`,
+        image: { type: 'jpeg', quality: 0.8 },
+        html2canvas: { 
+          scale: 1.1,
+          useCORS: true,
+          letterRendering: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false
+        },
+        jsPDF: { 
+          unit: 'in', 
+          format: 'a4', 
+          orientation: 'portrait',
+          compress: true,
+          putOnlyUsedFonts: true
+        }
+      };
+
+      // Generate and download PDF from the currently visible template
+      await html2pdf().set(opt).from(quotationContent).save();
+
+      // Restore signatory section visibility if it was changed
+      if (signatorySection && !wasVisible) {
+        signatorySection.style.display = '';
+      }
+
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    }
   };
 
   // Check if all required fields are filled
@@ -277,80 +419,102 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
     );
   };
 
-  const handlePIClick = () => {
-    if (isFormValid()) {
-      // Convert quotation data to PI format
-      const piData = {
-        invoiceNumber: `PI-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`,
-        invoiceDate: quotationData.quotationDate,
-        dueDate: quotationData.validUpto,
-        poNumber: `PO-${Math.floor(1000 + Math.random() * 9000)}`,
-        billTo: {
-          business: quotationData.billTo.business,
-          address: quotationData.billTo.address,
-          phone: quotationData.billTo.phone,
-          gstNo: quotationData.billTo.gstNo || '',
-          state: quotationData.billTo.state
-        },
-        shipTo: {
-          business: quotationData.billTo.business,
-          address: quotationData.billTo.address,
-          phone: quotationData.billTo.phone,
-          gstNo: quotationData.billTo.gstNo || ''
-        },
-        items: quotationData.items.map(item => ({
-          productName: item.productName,
-          description: item.productName,
-          quantity: item.quantity,
-          unit: item.unit,
-          rate: item.buyerRate,
-          amount: item.amount,
-          hsn: '85446090' // Default HSN code
-        })),
-        subtotal: quotationData.subtotal,
-        discountRate: quotationData.discountRate,
-        discountAmount: quotationData.discountAmount,
-        taxableAmount: quotationData.subtotal - quotationData.discountAmount,
-        taxRate: 18,
-        taxAmount: quotationData.taxAmount,
-        total: quotationData.total,
-        deliveryTerms: 'FOR upto Destination',
-        paymentTerms: 'ADVANCE',
-        otherReferences: 'DIRECT SALE',
-        dispatchedThrough: 'BY TRANSPORT',
-        destination: 'Destination Transport'
-      };
-      
-      setPiPreviewData(piData);
-      setShowPIPreview(true);
-    } else {
-      alert('Please fill all required fields before generating PI');
-    }
-  };
 
   if (showPreview) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="w-full max-w-5xl max-h-[90vh] overflow-y-auto relative">
+        <div className="w-full max-w-5xl max-h-[90vh] overflow-y-auto relative bg-white rounded-lg shadow-xl">
+          {/* Header with Template Selector */}
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+            <h2 className="text-xl font-bold text-gray-900">Quotation Preview</h2>
+            <div className="flex items-center gap-3">
+              {/* Template Selector */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSelectedTemplate('template1')}
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                    selectedTemplate === 'template1'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Classic Template"
+                >
+                  Classic
+                </button>
+                <button
+                  onClick={() => setSelectedTemplate('template2')}
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                    selectedTemplate === 'template2'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Modern Template"
+                >
+                  Modern
+                </button>
+                <button
+                  onClick={() => setSelectedTemplate('template3')}
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                    selectedTemplate === 'template3'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Minimal Template"
+                >
+                  Minimal
+                </button>
+              </div>
           {/* Close button */}
           <button
             onClick={togglePreview}
-            className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+                className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
             title="Close Preview"
           >
             <X className="h-5 w-5 text-gray-600" />
           </button>
+            </div>
+          </div>
           
+          {/* Preview Content */}
+          <div className="p-6">
+            {selectedTemplate === 'template1' && (
           <QuotationPreview 
             data={previewData} 
             onEdit={togglePreview}
             companyBranches={companyBranches}
             user={user}
           />
-          <div className="mt-4 flex justify-end gap-3">
+            )}
+            {selectedTemplate === 'template2' && (
+              <QuotationPreviewTemplate2 
+                data={previewData} 
+                companyBranches={companyBranches}
+                user={user}
+              />
+            )}
+            {selectedTemplate === 'template3' && (
+              <QuotationPreviewTemplate3 
+                data={previewData} 
+                companyBranches={companyBranches}
+                user={user}
+              />
+            )}
+          </div>
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
             <Button 
               type="button" 
-              onClick={() => onSave(previewData)}
+              onClick={handleDownloadPDF}
+              className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => onSave({
+                ...previewData,
+                template: selectedTemplate // Include the selected template
+              })}
               className="bg-green-600 hover:bg-green-700"
             >
               Save Quotation
@@ -361,77 +525,10 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
     );
   }
 
-  if (showPIPreview) {
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="w-full max-w-6xl max-h-[90vh] overflow-y-auto relative">
-          {/* Close button */}
-          <button
-            onClick={() => setShowPIPreview(false)}
-            className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
-            title="Close PI Preview"
-          >
-            <X className="h-5 w-5 text-gray-600" />
-          </button>
-          
-          <div className="bg-white rounded-lg shadow-xl">
-            <div className="p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Proforma Invoice Preview</h2>
-              <CorporateStandardInvoice 
-                selectedBranch={quotationData.selectedBranch}
-                companyBranches={companyBranches}
-                quotations={[piPreviewData]}
-              />
-            </div>
-            <div className="flex justify-end gap-3 p-6 border-t">
-              <Button 
-                type="button" 
-                onClick={() => setShowPIPreview(false)}
-                className="bg-gray-600 hover:bg-gray-700"
-              >
-                Close
-              </Button>
-              <Button 
-                type="button" 
-                onClick={() => {
-                  try {
-                    const event = new CustomEvent('pi-saved', {
-                      detail: {
-                        customerId: customer?.id,
-                        quotationNumber: previewData?.quotationNumber,
-                        selectedBranch: quotationData.selectedBranch,
-                        piData: piPreviewData
-                      }
-                    })
-                    window.dispatchEvent(event)
-                    setShowPIPreview(false)
-                    alert('PI saved successfully!')
-                  } catch (e) {
-                    console.error('Failed to save PI', e)
-                  }
-                }}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                Save PI
-              </Button>
-              <Button 
-                type="button" 
-                onClick={() => window.print()}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Print PI
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-5xl max-h-[90vh] overflow-y-auto">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
+  const formContent = (
+    <>
+      <CardHeader className={`flex flex-row items-center justify-between space-y-0 pb-4 border-b ${standalone ? 'pt-6' : ''}`}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
               <FileText className="h-5 w-5 text-white" />
@@ -446,7 +543,10 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
           </Button>
         </CardHeader>
 
-        <CardContent className="p-6">
+      <div className="flex flex-row gap-4 p-6" style={{ minHeight: 'calc(100vh - 200px)' }}>
+        {/* Left Side - Form */}
+        <div className="flex-1 overflow-y-auto pr-4" style={{ maxHeight: 'calc(100vh - 200px)', minWidth: '60%' }}>
+          <CardContent className="p-0">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Quotation Header */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -602,23 +702,22 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
                 </Button>
               </div>
 
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <table className="w-full">
+              <div className="border border-gray-200 rounded-lg overflow-x-auto">
+                <table className="w-full min-w-full table-fixed">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product Name</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company Rate</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Buyer Rate</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '30%' }}>Product Name</th>
+                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '12%' }}>HSN/SAC</th>
+                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '8%' }}>Qty</th>
+                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '10%' }}>Unit</th>
+                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '15%' }}>Buyer Rate</th>
+                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '15%' }}>Amount</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {quotationData.items.map((item, index) => (
                       <tr key={item.id}>
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-3">
                           <input
                             type="text"
                             placeholder="Product name"
@@ -628,70 +727,51 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
                             required
                           />
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-3">
                           <input
-                            type="number"
-                            min="1"
-                            value={item.quantity}
-                            onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 0)}
-                            className="w-20 px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            type="text"
+                            placeholder="HSN/SAC"
+                            value={item.hsn || ''}
+                            onChange={(e) => handleItemChange(index, 'hsn', e.target.value)}
+                            className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono text-xs"
                           />
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-3">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Qty"
+                            value={item.quantity || ''}
+                            onChange={(e) => handleItemChange(index, 'quantity', e.target.value === '' ? '' : parseFloat(e.target.value) || '')}
+                            className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          />
+                        </td>
+                        <td className="px-2 py-3">
                           <select
-                            value={item.unit}
+                            value={item.unit || ''}
                             onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
-                            className="w-20 px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
                           >
+                            <option value="">Select</option>
                             <option value="Nos">Nos</option>
                             <option value="Mtr">Mtr</option>
                             <option value="Kg">Kg</option>
                             <option value="Set">Set</option>
                           </select>
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="relative">
+                        <td className="px-2 py-3">
                             <input
                               type="number"
                               min="0"
                               step="0.01"
-                              value={item.companyRate}
-                              readOnly
-                              className="w-24 px-2 py-1 border border-gray-200 rounded text-sm bg-gray-50 text-gray-600 cursor-not-allowed"
-                              title="Company rate is fixed and cannot be edited"
-                            />
-                            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                              <svg className="h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 002 0v-3a1 1 0 10-2 0z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.buyerRate}
-                            onChange={(e) => handleItemChange(index, 'buyerRate', parseFloat(e.target.value) || 0)}
-                            className="w-24 px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            placeholder="Rate"
+                            value={item.buyerRate || ''}
+                            onChange={(e) => handleItemChange(index, 'buyerRate', e.target.value === '' ? '' : parseFloat(e.target.value) || '')}
+                            className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
                           />
                         </td>
-                        <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">
-                          ₹{item.amount.toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3">
-                          {quotationData.items.length > 1 && (
-                            <Button
-                              type="button"
-                              onClick={() => removeItem(index)}
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                          )}
+                        <td className="px-2 py-3 text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                          ₹{parseFloat(item.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
                     ))}
@@ -733,18 +813,142 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
               </div>
             </div>
 
-            {/* Terms & Conditions */}
+            {/* Transport Details */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                <Truck className="h-5 w-5 text-orange-500" />
+                Transport Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                Terms & Conditions
-              </label>
+                  <label className="text-sm font-medium text-gray-700">L.R. No</label>
+                  <input
+                    type="text"
+                    value={quotationData.transportDetails.lrNo}
+                    onChange={(e) => handleTransportDetailsChange('lrNo', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter L.R. Number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Transport Name</label>
+                  <input
+                    type="text"
+                    value={quotationData.transportDetails.transport}
+                    onChange={(e) => handleTransportDetailsChange('transport', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter Transport Name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Transport ID</label>
+                  <input
+                    type="text"
+                    value={quotationData.transportDetails.transportId}
+                    onChange={(e) => handleTransportDetailsChange('transportId', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter Transport ID"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Vehicle Number</label>
+                  <input
+                    type="text"
+                    value={quotationData.transportDetails.vehicleNumber}
+                    onChange={(e) => handleTransportDetailsChange('vehicleNumber', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter Vehicle Number"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Bank Details */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-green-500" />
+                Bank Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Bank Name</label>
+                  <input
+                    type="text"
+                    value={quotationData.bankDetails.bankName}
+                    onChange={(e) => handleBankDetailsChange('bankName', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter Bank Name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Branch Name</label>
+                  <input
+                    type="text"
+                    value={quotationData.bankDetails.branchName}
+                    onChange={(e) => handleBankDetailsChange('branchName', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter Branch Name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Account Number</label>
+                  <input
+                    type="text"
+                    value={quotationData.bankDetails.accountNumber}
+                    onChange={(e) => handleBankDetailsChange('accountNumber', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter Account Number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">IFSC Code</label>
+                  <input
+                    type="text"
+                    value={quotationData.bankDetails.ifscCode}
+                    onChange={(e) => handleBankDetailsChange('ifscCode', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter IFSC Code"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Terms & Conditions */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-purple-600" />
+                  <span className="text-sm font-medium text-gray-700">Terms & Conditions</span>
+                </div>
+                <Button type="button" size="sm" variant="outline" onClick={resetTermsToDefault}>
+                  Reset to Default
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500">Edit headings and bullet points below. Each new line becomes a bullet in the quotation preview.</p>
+              <div className="space-y-4">
+                {(quotationData.termsSections || []).map((section, sectionIndex) => (
+                  <div key={sectionIndex} className="border border-gray-200 rounded-lg bg-white">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <input
+                        type="text"
+                        value={section.title}
+                        onChange={(e) => handleTermTitleChange(sectionIndex, e.target.value)}
+                        className="w-full text-sm font-semibold text-gray-800 border-none focus:outline-none focus:ring-0"
+                        placeholder="Section title"
+                      />
+                    </div>
+                    <div className="p-4">
               <textarea
-                value={quotationData.terms}
-                onChange={(e) => handleInputChange("terms", e.target.value)}
-                rows={4}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-                placeholder="Enter terms and conditions"
+                        value={section.points.join('\n')}
+                        onChange={(e) => handleTermPointsChange(sectionIndex, e.target.value)}
+                        rows={Math.max(3, section.points.length)}
+                        className="w-full text-xs text-gray-700 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="Enter each bullet point on a new line"
               />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Form Actions */}
@@ -758,29 +962,119 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave })
                   Cancel
                 </Button>
                 <Button 
-                  type="button" 
-                  className={`flex items-center gap-2 ${
-                    isFormValid() 
-                      ? 'bg-orange-600 hover:bg-orange-700 text-white' 
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                  onClick={handlePIClick}
-                  disabled={!isFormValid()}
-                >
-                  <FileCheck className="w-4 h-4" />
-                  PI
-                </Button>
-                <Button 
-                  type="button" 
+                  type="submit"
                   className="bg-purple-600 hover:bg-purple-700 text-white"
-                  onClick={togglePreview}
                 >
-                  Preview & Save
+                  Save Quotation
                 </Button>
               </div>
             </div>
           </form>
         </CardContent>
+        </div>
+
+        {/* Right Side - Live Preview */}
+        <div className="w-2/5 border-l border-gray-200 pl-4" style={{ maxWidth: '400px' }}>
+          <div className="sticky top-4">
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-blue-500" />
+                  Live Preview
+                </h3>
+                <Layout className="h-4 w-4 text-gray-400" />
+              </div>
+              <p className="text-xs text-gray-500 mb-3">Updates as you type</p>
+              
+              {/* Template Selector */}
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={() => setSelectedTemplate('template1')}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded border transition-colors ${
+                    selectedTemplate === 'template1'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Classic Template"
+                >
+                  Classic
+                </button>
+                <button
+                  onClick={() => setSelectedTemplate('template2')}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded border transition-colors ${
+                    selectedTemplate === 'template2'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Modern Template"
+                >
+                  Modern
+                </button>
+                <button
+                  onClick={() => setSelectedTemplate('template3')}
+                  className={`flex-1 px-2 py-1.5 text-xs rounded border transition-colors ${
+                    selectedTemplate === 'template3'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Minimal Template"
+                >
+                  Minimal
+                </button>
+              </div>
+            </div>
+            <div
+              className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-auto"
+              style={{
+                maxHeight: 'calc(100vh - 150px)',
+                transform: 'scale(0.8)',
+                transformOrigin: 'top left',
+                width: '125%'
+              }}
+            >
+              {selectedTemplate === 'template1' && (
+                <QuotationPreview 
+                  data={previewData} 
+                  onEdit={() => {}}
+                  companyBranches={companyBranches}
+                  user={user}
+                />
+              )}
+              {selectedTemplate === 'template2' && (
+                <QuotationPreviewTemplate2 
+                  data={previewData} 
+                  companyBranches={companyBranches}
+                  user={user}
+                />
+              )}
+              {selectedTemplate === 'template3' && (
+                <QuotationPreviewTemplate3 
+                  data={previewData} 
+                  companyBranches={companyBranches}
+                  user={user}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      </>
+  )
+
+  // If standalone mode, render without modal wrapper
+  if (standalone) {
+    return (
+      <Card className="w-full max-h-screen overflow-y-auto shadow-lg">
+        {formContent}
+      </Card>
+    )
+  }
+
+  // Otherwise render as modal
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+        {formContent}
       </Card>
     </div>
   )

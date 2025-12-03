@@ -3,6 +3,7 @@ import { ProductionModuleApp } from '../../../Production department/frontend/src
 import PermissionGuard from '../../components/PermissionGuard'
 import { Permissions } from '../../constants/permissions'
 import ProductionStaffSidebar from './ProductionStaffSidebar'
+import AshvayChat from '../../components/AshvayChat'
 
 export default function ProductionStaffLayout({ onLogout }) {
   const [currentPage, setCurrentPage] = useState('console')
@@ -28,6 +29,7 @@ export default function ProductionStaffLayout({ onLogout }) {
           </div>
         </main>
       </div>
+      <AshvayChat />
     </PermissionGuard>
   )
 }

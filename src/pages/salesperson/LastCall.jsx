@@ -6,6 +6,8 @@ import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import quotationService from '../../api/admin_api/quotationService';
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
+import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
+import toastManager from '../../utils/ToastManager';
 
 // Lead Status Preview Modal Component
 const LeadStatusPreview = ({ lead, onClose }) => {
@@ -481,7 +483,8 @@ export default function LastCall() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
-  const [showPreview, setShowPreview] = useState(false);
+  const [timelineLead, setTimelineLead] = useState(null);
+  const [showCustomerTimeline, setShowCustomerTimeline] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   
   // Pagination state
@@ -682,8 +685,8 @@ export default function LastCall() {
 
   // Handle preview
   const handlePreview = (lead) => {
-    setSelectedLead(lead);
-    setShowPreview(true);
+    setTimelineLead(lead);
+    setShowCustomerTimeline(true);
   };
 
   // Handle edit
@@ -776,7 +779,7 @@ export default function LastCall() {
   };
 
   return (
-    <div className="p-6">
+    <div className={`p-6 transition-all duration-300 ${showCustomerTimeline ? 'pr-[360px]' : ''}`}>
 
       {/* Search and Filter Bar */}
       <div className="mb-6">
@@ -1147,13 +1150,13 @@ export default function LastCall() {
         </div>
       )}
 
-      {/* Preview Modal */}
-      {showPreview && (
-        <LeadStatusPreview
-          lead={selectedLead}
+      {/* Global Customer Timeline Sidebar (salesperson view) */}
+      {showCustomerTimeline && timelineLead && (
+        <SalespersonCustomerTimeline
+          lead={timelineLead}
           onClose={() => {
-            setShowPreview(false);
-            setSelectedLead(null);
+            setShowCustomerTimeline(false);
+            setTimelineLead(null);
           }}
         />
       )}

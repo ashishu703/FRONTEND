@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Plus, RefreshCw, Edit, Trash2, LogOut, Calendar, Users, Building, User, Mail, Filter, Eye, EyeOff, X } from 'lucide-react';
 import departmentHeadService, { uiToApiDepartment, apiToUiDepartment } from '../../api/admin_api/departmentHeadService';
 import departmentUserService from '../../api/admin_api/departmentUserService';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 
 const DepartmentManagement = () => {
   const { login, impersonate, user } = useAuth();
@@ -488,10 +488,9 @@ const DepartmentManagement = () => {
                           <button 
                             className="p-1 text-green-600 hover:text-green-800 hover:bg-green-50 rounded"
                             onClick={async () => {
-                              // Check if current user is superadmin
-                              const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
-                              if (currentUser && currentUser.role === 'superadmin') {
-                                // Superadmin can directly switch without password
+                              // Use current authenticated user from context instead of localStorage
+                              if (user && user.role === 'superadmin') {
+                                // Superadmin can directly switch without password (opens in new tab)
                                 try {
                                   const result = await impersonate(dept.email);
                                   if (result.success) {
@@ -499,12 +498,13 @@ const DepartmentManagement = () => {
                                     const url = `${window.location.origin}/?impersonateToken=${encodeURIComponent(token)}`;
                                     window.open(url, '_blank');
                                   } else {
-                                    alert('Failed to switch user');
+                                    alert(result.error || 'Failed to switch user');
                                   }
                                 } catch (err) {
-                                  alert('Failed to switch user');
+                                  alert(err.message || 'Failed to switch user');
                                 }
                               } else {
+                                // Non‑superadmin must log in with password (no impersonation token)
                                 setLoginData({
                                   email: dept.email,
                                   password: ''

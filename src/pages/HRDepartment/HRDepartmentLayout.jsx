@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import HRDepartmentSidebar from './HRDepartmentSidebar';
 import HRDepartmentDashboard from './HRDepartmentDashboard';
 import FixedHeader from '../../Header';
+import AshvayChat from '../../components/AshvayChat';
 
 const HRDepartmentLayout = ({ onLogout, activeView, setActiveView }) => {
   console.log('HRDepartmentLayout - activeView:', activeView);
@@ -18,6 +19,7 @@ const HRDepartmentLayout = ({ onLogout, activeView, setActiveView }) => {
           <HRDepartmentDashboard activeView={activeView} setActiveView={setActiveView} />
         </div>
       </div>
+      <AshvayChat />
     </div>
   );
 };

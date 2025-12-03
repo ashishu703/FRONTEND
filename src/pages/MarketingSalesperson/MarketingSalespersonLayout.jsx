@@ -4,6 +4,7 @@ import MarketingSalespersonDashboard from './MarketingSalespersonDashboard';
 import FixedHeader from '../../Header';
 import { MarketingSharedDataProvider } from './MarketingSharedDataContext';
 import { MarketingFollowUpDataProvider } from './FollowUp/MarketingFollowUpDataContext';
+import AshvayChat from '../../components/AshvayChat';
 
 const MarketingSalespersonLayout = () => {
   const [activeView, setActiveView] = useState('dashboard');
@@ -29,6 +30,7 @@ const MarketingSalespersonLayout = () => {
             </div>
           </div>
         </div>
+      <AshvayChat />
       </MarketingFollowUpDataProvider>
     </MarketingSharedDataProvider>
   );

@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Download, User, DollarSign, Clock, Calendar, Link, Copy, Eye, MoreHorizontal, CreditCard, AlertCircle, CheckCircle, XCircle, ChevronDown, Edit, Plus, Package } from 'lucide-react';
+import { Search, Filter, Download, User, DollarSign, Clock, Calendar, Link, Copy, Eye, MoreHorizontal, CreditCard, AlertCircle, CheckCircle, XCircle, ChevronDown, Edit, Package, FileText, RotateCw } from 'lucide-react';
 import paymentService from '../../api/admin_api/paymentService';
-import quotationService from '../../api/admin_api/quotationService';
-import departmentHeadService from '../../api/admin_api/departmentHeadService';
-import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
-import apiClient from '../../utils/apiClient';
-import { API_ENDPOINTS } from '../../api/admin_api/api';
+import WorkOrderFormat from './WorkOrderFormat';
 
 const PaymentsDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,18 +13,8 @@ const PaymentsDashboard = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingPayment, setViewingPayment] = useState(null);
   const [isModalAnimating, setIsModalAnimating] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [addFormData, setAddFormData] = useState({
-    customerId: '',
-    customerName: '',
-    customerEmail: '',
-    customerPhone: '',
-    amount: '',
-    totalAmount: '',
-    dueAmount: '',
-    status: 'Pending',
-    paymentLink: ''
-  });
+  const [showWorkOrder, setShowWorkOrder] = useState(false);
+  const [selectedPaymentForWorkOrder, setSelectedPaymentForWorkOrder] = useState(null);
   
   // Date range filter
   const [dateRange, setDateRange] = useState({
@@ -47,354 +33,83 @@ const PaymentsDashboard = () => {
     pages: 0
   });
 
-  // Fetch all payments for all leads under department head using BATCH APIs
+  // Fetch all payments directly from payment API
   const fetchAllPayments = async () => {
     try {
       setLoading(true);
-      console.log('=== PAYMENT INFO: Starting Batch Data Fetch ===');
+      console.log('=== PAYMENT INFO: Fetching all payments ===');
       
-      // STEP 1: Fetch all leads under department head
-      console.log('Step 1: Fetching all leads...');
-      const leadsResponse = await departmentHeadService.getAllLeads();
-      console.log('Leads response:', leadsResponse);
-      
-      const allLeads = leadsResponse?.data || [];
-      const leadIds = allLeads.map(lead => lead.id).filter(id => id != null);
-      console.log(`✅ Fetched ${allLeads.length} leads, Lead IDs:`, leadIds);
-      
-      // Create a map of lead ID to lead data
-      const leadsMap = {};
-      allLeads.forEach(lead => {
-        leadsMap[lead.id] = lead;
+      const response = await paymentService.getAllPayments({
+        page: pagination.page,
+        limit: pagination.limit
       });
       
-      if (leadIds.length === 0) {
-        console.warn('⚠️ No leads found');
-        setAllPaymentsData([]);
-        setPayments([]);
-        setLoading(false);
-        return;
-      }
+      const paymentsData = response?.data || [];
+      const paginationData = response?.pagination || { page: 1, limit: 50, total: 0, pages: 0 };
       
-      // STEP 2: Fetch ALL quotations in ONE batch API call
-      console.log('Step 2: Fetching all quotations in bulk...');
-      let allQuotations = [];
-      try {
-        const bulkQuotationsRes = await quotationService.getBulkQuotationsByCustomers(leadIds);
-        console.log('Bulk quotations response:', bulkQuotationsRes);
-        allQuotations = bulkQuotationsRes?.data || [];
-      } catch (err) {
-        console.error('❌ Error fetching bulk quotations, falling back to individual calls:', err);
-        // Fallback: fetch individually
-        for (const leadId of leadIds) {
-          try {
-            const qRes = await quotationService.getQuotationsByCustomer(leadId);
-            const quotations = Array.isArray(qRes?.data) ? qRes.data : [];
-            allQuotations.push(...quotations);
-          } catch (e) {
-            console.warn(`Failed to fetch quotations for lead ${leadId}:`, e);
-          }
-        }
-      }
+      console.log(`✅ Fetched ${paymentsData.length} payments`);
       
-      console.log(`✅ Fetched ${allQuotations.length} quotations`);
-      
-      // Remove duplicates based on quotation ID
-      const uniqueQuotations = new Map();
-      allQuotations.forEach(q => {
-        if (q.id && !uniqueQuotations.has(q.id)) {
-          uniqueQuotations.set(q.id, q);
-        }
-      });
-      allQuotations = Array.from(uniqueQuotations.values());
-      console.log(`✅ Unique quotations: ${allQuotations.length}`);
-      
-      const quotationIds = allQuotations.map(q => q.id).filter(id => id != null);
-      
-      if (quotationIds.length === 0) {
-        console.warn('⚠️ No quotations found');
-        setAllPaymentsData([]);
-        setPayments([]);
-        setLoading(false);
-        return;
-      }
-      
-      // STEP 3: Fetch ALL PIs in ONE batch API call
-      console.log('Step 3: Fetching all PIs in bulk...');
-      let allPIs = [];
-      try {
-        const bulkPIsRes = await proformaInvoiceService.getBulkPIsByQuotations(quotationIds);
-        console.log('Bulk PIs response:', bulkPIsRes);
-        allPIs = bulkPIsRes?.data || [];
-      } catch (err) {
-        console.error('❌ Error fetching bulk PIs, falling back to individual calls:', err);
-        // Fallback: fetch individually
-        for (const quotationId of quotationIds) {
-          try {
-            const piRes = await proformaInvoiceService.getPIsByQuotation(quotationId);
-            const pis = piRes?.data || [];
-            allPIs.push(...pis);
-          } catch (e) {
-            console.warn(`Failed to fetch PIs for quotation ${quotationId}:`, e);
-          }
-        }
-      }
-      
-      console.log(`✅ Fetched ${allPIs.length} PIs`);
-      
-      // Create a Set of quotation IDs that have at least one PI
-      const quotationsWithPI = new Set(
-        allPIs
-          .map(pi => pi.quotation_id)
-          .filter(id => id != null)
-      );
-      console.log(`✅ Quotations with PI: ${quotationsWithPI.size}, IDs:`, Array.from(quotationsWithPI).slice(0, 10));
-      
-      // STEP 4: Fetch ALL payments in TWO batch API calls
-      console.log('Step 4: Fetching all payments in bulk...');
-      let allPayments = [];
-      try {
-        const [bulkQuotationPaymentsRes, bulkCustomerPaymentsRes] = await Promise.all([
-          paymentService.getBulkPaymentsByQuotations(quotationIds).catch(e => ({ data: [] })),
-          paymentService.getBulkPaymentsByCustomers(leadIds).catch(e => ({ data: [] }))
-        ]);
+      // Transform payment data to match UI format
+      const transformedPayments = paymentsData.map(payment => {
+        const paymentAmount = Number(payment.installment_amount || payment.paid_amount || 0);
+        const totalAmount = Number(payment.total_quotation_amount || 0);
+        const paidAmount = Number(payment.paid_amount || 0);
+        const remainingAmount = Number(payment.remaining_amount || 0);
         
-        console.log('Bulk quotation payments response:', bulkQuotationPaymentsRes);
-        console.log('Bulk customer payments response:', bulkCustomerPaymentsRes);
-        
-        const quotationPayments = bulkQuotationPaymentsRes?.data || [];
-        const customerPayments = bulkCustomerPaymentsRes?.data || [];
-        
-        // Merge and deduplicate payments
-        const paymentMap = new Map();
-        [...quotationPayments, ...customerPayments].forEach(p => {
-          const key = p.id || p.payment_reference || `${p.quotation_id}_${p.lead_id}_${p.payment_date}_${p.installment_amount}`;
-          if (!paymentMap.has(key)) {
-            paymentMap.set(key, p);
-          }
-        });
-        
-        allPayments = Array.from(paymentMap.values());
-      } catch (err) {
-        console.error('❌ Error fetching bulk payments, falling back to individual calls:', err);
-        // Fallback: fetch individually
-        for (const leadId of leadIds) {
-          try {
-            const pRes = await paymentService.getPaymentsByCustomer(leadId);
-            const payments = Array.isArray(pRes?.data) ? pRes.data : [];
-            allPayments.push(...payments);
-          } catch (e) {
-            console.warn(`Failed to fetch payments for lead ${leadId}:`, e);
-          }
-        }
-      }
-      
-      console.log(`✅ Total payments fetched: ${allPayments.length}`);
-      console.log('Sample payment:', allPayments[0]);
-      console.log('=== BATCH FETCH COMPLETE ===\n')
-      
-      // Build individual payment records (only for quotations with PI)
-      console.log('Processing payments...');
-      const paymentTrackingData = [];
-      
-      // Create a map to store quotation totals and paid amounts for status calculation
-      const quotationTotalsMap = new Map();
-      const quotationPaidMap = new Map();
-      
-      // First, calculate totals and paid amounts for each quotation
-      allQuotations.forEach(quotation => {
-        const quotationId = quotation.id;
-        const quotationTotal = Number(quotation.total_amount || quotation.total || 0);
-        
-        // Get all approved completed payments for this quotation
-        const quotationPayments = allPayments.filter(p => {
-          if (p.quotation_id !== quotation.id) return false;
-          if (p.is_refund) return false;
-          
-          const status = (p.payment_status || p.status || '').toLowerCase();
-          const isCompleted = status === 'completed' || status === 'paid' || status === 'success' || status === 'advance';
-          
-          // Check approval status
-          const approvalStatus = (p.approval_status || p.accounts_approval_status || p.accountsApprovalStatus || '').toLowerCase();
-          const isApproved = approvalStatus === 'approved';
-          
-          return isCompleted && isApproved;
-        });
-        
-        const totalPaid = quotationPayments.reduce((sum, p) => {
-          return sum + Number(p.installment_amount || p.paid_amount || p.amount || 0);
-        }, 0);
-        
-        quotationTotalsMap.set(quotationId, quotationTotal);
-        quotationPaidMap.set(quotationId, totalPaid);
-      });
-      
-      // Now create individual payment records - ONLY for quotations with PI
-      console.log('Creating payment records...');
-      console.log(`Total payments to process: ${allPayments.length}`);
-      
-      let skippedRefund = 0;
-      let skippedStatus = 0;
-      let skippedApproval = 0;
-      let skippedNoQuotation = 0;
-      let skippedNoPI = 0;
-      let processedCount = 0;
-      
-      allPayments.forEach((payment, idx) => {
-        // Debug first few payments
-        if (idx < 3) {
-          console.log(`Payment ${idx + 1}:`, {
-            id: payment.id,
-            quotation_id: payment.quotation_id,
-            lead_id: payment.lead_id,
-            payment_status: payment.payment_status,
-            status: payment.status,
-            approval_status: payment.approval_status,
-            accounts_approval_status: payment.accounts_approval_status,
-            is_refund: payment.is_refund,
-            amount: payment.installment_amount || payment.paid_amount || payment.amount
-          });
-        }
-        
-        // Filter out refunds
-        if (payment.is_refund) {
-          skippedRefund++;
-          return;
-        }
-        
-        const status = (payment.payment_status || payment.status || '').toLowerCase();
-        const isValidPayment = status === 'completed' || status === 'paid' || status === 'success' || status === 'advance';
-        
-        if (!isValidPayment) {
-          skippedStatus++;
-          if (idx < 3) console.log(`  ❌ Skipped: Invalid status '${status}'`);
-          return;
-        }
-        
-        // Check if payment is approved by accounts
-        const approvalStatus = (payment.approval_status || payment.accounts_approval_status || payment.accountsApprovalStatus || '').toLowerCase();
-        const isApproved = approvalStatus === 'approved';
-        
-        if (!isApproved) {
-          skippedApproval++;
-          if (idx < 3) console.log(`  ❌ Skipped: Not approved '${approvalStatus}'`);
-          return; // Only show approved payments
-        }
-        
-        // Find the quotation for this payment
-        const quotation = allQuotations.find(q => q.id === payment.quotation_id) || null;
-        
-        if (!quotation) {
-          skippedNoQuotation++;
-          if (idx < 3) console.log(`  ❌ Skipped: No quotation found for quotation_id ${payment.quotation_id}`);
-          return;
-        }
-        
-        // CRITICAL: ONLY include payments for quotations that have a PI created
-        if (!quotationsWithPI.has(quotation.id)) {
-          skippedNoPI++;
-          if (idx < 3) console.log(`  ❌ Skipped: Quotation ${quotation.id} has no PI`);
-          return; // Skip if quotation doesn't have PI
-        }
-        
-        if (idx < 3) console.log(`  ✅ Processing payment...`);
-        
-        // Find the lead
-        const lead = leadsMap[payment.lead_id] || leadsMap[quotation.customer_id] || {};
-        const quotationId = quotation.id;
-        
-        const quotationTotal = quotationTotalsMap.get(quotationId) || 0;
-        const totalPaidForQuotation = quotationPaidMap.get(quotationId) || 0;
-        const remainingAmount = Math.max(0, quotationTotal - totalPaidForQuotation);
-        
-        // Determine payment status for this individual payment
+        // Determine payment status
         let displayStatus = 'Due';
-        
-        if (quotationTotal > 0) {
-          if (totalPaidForQuotation >= quotationTotal) {
+        if (totalAmount > 0) {
+          if (paidAmount >= totalAmount) {
             displayStatus = 'Paid';
-          } else if (totalPaidForQuotation > 0) {
+          } else if (paidAmount > 0) {
             displayStatus = 'Advance';
           }
-        } else if (totalPaidForQuotation > 0) {
+        } else if (paidAmount > 0) {
           displayStatus = 'Advance';
         }
         
-        const leadIdNum = quotation.customer_id || lead.id || payment.lead_id;
-        const paymentAmount = Number(payment.installment_amount || payment.paid_amount || payment.amount || 0);
-        
-        paymentTrackingData.push({
-          id: payment.id || `payment_${payment.lead_id}_${payment.quotation_id}_${Date.now()}`,
-          leadId: leadIdNum,
-          leadIdDisplay: `LD-${leadIdNum}`,
+        return {
+          id: payment.id,
+          leadId: payment.lead_id,
+          leadIdDisplay: `LD-${payment.lead_id}`,
           customer: {
-            name: quotation.customer_name || lead.customer || lead.name || payment.customer_name || 'N/A',
-            email: lead.email || payment.lead_email || 'N/A',
-            phone: lead.phone || payment.lead_phone || 'N/A'
+            name: payment.customer_name || payment.lead_customer_name || 'N/A',
+            email: payment.lead_email || 'N/A',
+            phone: payment.lead_phone || 'N/A'
           },
-          productName: lead.product_type || quotation?.items?.[0]?.description || payment.product_name || 'N/A',
-          amount: paymentAmount, // Individual payment amount
-          totalAmount: quotationTotal, // Total quotation amount
-          dueAmount: remainingAmount, // Remaining amount for the quotation
+          productName: payment.product_name || 'N/A',
+          address: payment.address || 'N/A',
+          amount: paymentAmount,
+          totalAmount: totalAmount,
+          paidAmount: paidAmount,
+          dueAmount: remainingAmount,
           status: displayStatus,
-          paymentStatus: displayStatus,
+          paymentStatus: payment.payment_status || 'pending',
+          approvalStatus: payment.approval_status || 'pending',
           created: payment.payment_date ? new Date(payment.payment_date).toLocaleString() : (payment.created_at ? new Date(payment.created_at).toLocaleString() : ''),
-          paymentDate: payment.payment_date || payment.created_at, // For date filtering
+          paymentDate: payment.payment_date || payment.created_at,
           paymentLink: payment.payment_receipt_url || '',
-          quotationId: quotation.quotation_number || `QT-${quotation.id}`,
-          // Store for reference
-          leadData: lead,
-          quotationData: quotation,
+          quotationId: payment.quotation_number || `QT-${String(payment.quotation_id || '').slice(-4)}`,
+          piId: payment.pi_number || `PI-${String(payment.pi_id || '').slice(-4)}`,
+          purchaseOrderId: payment.purchase_order_id || 'N/A',
+          deliveryDate: payment.delivery_date ? new Date(payment.delivery_date).toLocaleDateString('en-GB') : 'N/A',
+          deliveryStatus: payment.delivery_status || 'pending',
           paymentData: payment
-        });
-        processedCount++;
+        };
       });
       
-      console.log('\n=== PAYMENT PROCESSING SUMMARY ===');
-      console.log(`✅ Total payments processed: ${processedCount}`);
-      console.log(`❌ Skipped (refund): ${skippedRefund}`);
-      console.log(`❌ Skipped (invalid status): ${skippedStatus}`);
-      console.log(`❌ Skipped (not approved): ${skippedApproval}`);
-      console.log(`❌ Skipped (no quotation): ${skippedNoQuotation}`);
-      console.log(`❌ Skipped (no PI): ${skippedNoPI}`);
-      console.log(`📊 Total payment records created: ${paymentTrackingData.length}`);
-      console.log('=================================\n');
+      setAllPaymentsData(transformedPayments);
+      setPayments(transformedPayments);
+      setPagination(paginationData);
       
-      // Sort by Lead ID (numeric) first, then by payment date (most recent first)
-      paymentTrackingData.sort((a, b) => {
-        const aLeadId = Number(a.leadId) || 0;
-        const bLeadId = Number(b.leadId) || 0;
-        
-        if (aLeadId !== bLeadId) {
-          return aLeadId - bLeadId; // Sort by Lead ID ascending
-        }
-        
-        // If same Lead ID, sort by payment date (most recent first)
-        const aDate = a.paymentDate ? new Date(a.paymentDate) : new Date(0);
-        const bDate = b.paymentDate ? new Date(b.paymentDate) : new Date(0);
-        
-        return bDate - aDate; // Most recent first within same Lead ID
-      });
-      
-      console.log('Setting payment data to state...');
-      setAllPaymentsData(paymentTrackingData);
-      setPayments(paymentTrackingData);
-      
-      console.log('\n✅ PAYMENT INFO PAGE READY ✅');
-      console.log(`Total payment records available: ${paymentTrackingData.length}`);
-      if (paymentTrackingData.length > 0) {
-        console.log('Sample payment record:', paymentTrackingData[0]);
-      }
-      
+      console.log('✅ Payment data loaded successfully');
     } catch (e) {
       console.error('❌ Failed to load payments:', e);
-      console.error('Error stack:', e.stack);
       setAllPaymentsData([]);
       setPayments([]);
       setPagination({ page: 1, limit: 50, total: 0, pages: 0 });
     } finally {
       setLoading(false);
-      console.log('Loading state set to false');
     }
   };
 
@@ -518,61 +233,19 @@ const PaymentsDashboard = () => {
     }, 300);
   };
 
-  const handleAddPayment = () => {
-    setShowAddModal(true);
+  const handleGenerateWorkOrder = (payment) => {
+    setSelectedPaymentForWorkOrder(payment);
+    setShowWorkOrder(true);
   };
 
-  const closeAddModal = () => {
-    setShowAddModal(false);
-    setAddFormData({
-      customerId: '',
-      customerName: '',
-      customerEmail: '',
-      customerPhone: '',
-      amount: '',
-      totalAmount: '',
-      dueAmount: '',
-      status: 'Pending',
-      paymentLink: ''
-    });
+  const handleWorkOrderClose = () => {
+    setShowWorkOrder(false);
+    setSelectedPaymentForWorkOrder(null);
   };
 
-  const handleAddFormChange = (field, value) => {
-    setAddFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleSaveAdd = () => {
-    // Generate new payment ID
-    const newId = Math.max(...payments.map(p => p.id)) + 1;
-    
-    // Create new payment object
-    const newPayment = {
-      id: newId,
-      customerId: addFormData.customerId,
-      customer: {
-        name: addFormData.customerName,
-        email: addFormData.customerEmail,
-        phone: addFormData.customerPhone
-      },
-      amount: parseFloat(addFormData.amount) || 0,
-      totalAmount: parseFloat(addFormData.totalAmount) || 0,
-      dueAmount: parseFloat(addFormData.dueAmount) || 0,
-      status: addFormData.status,
-      created: new Date().toLocaleDateString(),
-      paymentLink: addFormData.paymentLink
-    };
-
-    // Add to payments array
-    setPayments(prev => [...prev, newPayment]);
-    
-    // Close modal and reset form
-    closeAddModal();
-    
-    // Show success message
-    alert('Payment added successfully!');
+  const handleWorkOrderSave = (workOrderData) => {
+    console.log('Work order saved:', workOrderData);
+    // You can add additional logic here, like updating payment status
   };
 
   const handleEditPayment = (payment) => {
@@ -973,11 +646,12 @@ const PaymentsDashboard = () => {
             </select>
             
             <button 
-              onClick={handleAddPayment}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+              onClick={fetchAllPayments}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+              title="Refresh payments"
             >
-              <Plus className="w-4 h-4" />
-              Add Payment
+              <RotateCw className="w-4 h-4" />
+              Refresh
             </button>
           </div>
         </div>
@@ -989,68 +663,38 @@ const PaymentsDashboard = () => {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-4 text-left">
-                    <div className="flex items-center space-x-2">
-                      <User className="w-4 h-4 text-blue-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Lead ID</span>
-                    </div>
+                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Lead ID</span>
                   </th>
                   <th className="px-6 py-4 text-left">
-                    <div className="flex items-center space-x-2">
-                      <User className="w-4 h-4 text-blue-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Customer</span>
-                    </div>
+                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Customer Name</span>
                   </th>
                   <th className="px-6 py-4 text-left">
-                    <div className="flex items-center space-x-2">
-                      <Package className="w-4 h-4 text-gray-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Product</span>
-                    </div>
+                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Product Name</span>
                   </th>
                   <th className="px-6 py-4 text-left">
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="w-4 h-4 text-green-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Amount</span>
-                    </div>
+                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Address</span>
+                  </th>
+                  <th className="px-6 py-4 text-left">
+                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Quotation ID</span>
+                  </th>
+                  <th className="px-6 py-4 text-left">
+                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Payment Status</span>
+                  </th>
+                  <th className="px-6 py-4 text-left">
+                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Purchase Order</span>
+                  </th>
+                  <th className="px-6 py-4 text-left">
+                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Delivery Date</span>
                   </th>
                   <th className="px-6 py-4 text-center">
-                    <div className="flex items-center justify-center space-x-2">
-                      <DollarSign className="w-4 h-4 text-green-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Paid / Total</span>
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-center">
-                    <div className="flex items-center justify-center space-x-2">
-                      <DollarSign className="w-4 h-4 text-red-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Due / Total</span>
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left">
-                    <div className="flex items-center space-x-2">
-                      <AlertCircle className="w-4 h-4 text-orange-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Status</span>
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left">
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="w-4 h-4 text-purple-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Created</span>
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-center">
-                    <div className="flex items-center justify-center space-x-2">
-                      <Download className="w-4 h-4 text-cyan-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Invoice</span>
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-center">
-                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Actions</span>
+                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Action</span>
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan="10" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="9" className="px-6 py-8 text-center text-gray-500">
                       <div className="flex items-center justify-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
                         Loading payments...
@@ -1059,7 +703,7 @@ const PaymentsDashboard = () => {
                   </tr>
                 ) : filteredPayments.length === 0 ? (
                   <tr>
-                    <td colSpan="10" className="px-6 py-8 text-center">
+                    <td colSpan="9" className="px-6 py-8 text-center">
                       <div className="flex flex-col items-center justify-center text-gray-500">
                         <AlertCircle className="w-12 h-12 mb-3 text-gray-400" />
                         <p className="text-lg font-medium mb-1">No Payments Found</p>
@@ -1075,40 +719,26 @@ const PaymentsDashboard = () => {
                 ) : filteredPayments.map((payment, index) => (
                   <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
-                      <span className="text-xs text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">
+                      <span className="text-sm text-gray-900 font-medium">
                         {payment.leadIdDisplay || `LD-${payment.leadId}`}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div>
-                        <div className="font-medium text-gray-900 mb-1 text-xs">{payment.customer?.name || 'N/A'}</div>
-                        <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
-                          <span>✉</span>
-                          <span className="truncate max-w-[200px]">{payment.customer?.email || 'N/A'}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-gray-600">
-                          <span>📞</span>
-                          <span>{payment.customer?.phone || 'N/A'}</span>
-                        </div>
+                        <div className="font-medium text-gray-900 text-sm">{payment.customer?.name || 'N/A'}</div>
+                        {payment.customer?.phone && (
+                          <div className="text-xs text-gray-600 mt-1">{payment.customer.phone}</div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-xs text-gray-900">{payment.productName || 'N/A'}</span>
+                      <span className="text-sm text-gray-900">{payment.productName || 'N/A'}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-green-600 font-semibold text-sm bg-green-50 px-2 py-1 rounded">
-                        {formatCurrency(payment.amount || 0)}
-                      </span>
+                      <span className="text-sm text-gray-700">{payment.address || 'N/A'}</span>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="text-green-600 font-semibold text-sm bg-green-50 px-2 py-1 rounded">
-                        {formatCurrency(payment.amount || 0)} / {formatCurrency(payment.totalAmount || 0)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="text-red-600 font-semibold text-sm bg-red-50 px-2 py-1 rounded">
-                        {formatCurrency(payment.dueAmount || 0)} / {formatCurrency(payment.totalAmount || 0)}
-                      </span>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-900 font-mono">{payment.quotationId || 'N/A'}</span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
@@ -1116,38 +746,37 @@ const PaymentsDashboard = () => {
                           {getStatusIcon(payment.status)}
                           {payment.status}
                         </span>
+                        {payment.amount > 0 && (
+                          <span className="text-sm text-gray-600">₹{payment.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-gray-700">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs">{payment.created}</span>
-                      </div>
+                      <span className="text-sm text-gray-900">{payment.purchaseOrderId || 'N/A'}</span>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => handleDownloadInvoice(payment)}
-                        className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
-                      >
-                        <Download className="w-4 h-4" />
-                        Download
-                      </button>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-900">{payment.deliveryDate || 'N/A'}</span>
+                        <span className={`text-xs mt-1 ${payment.deliveryStatus === 'delivered' ? 'text-green-600' : payment.deliveryStatus === 'pending' ? 'text-yellow-600' : 'text-gray-600'}`}>
+                          {payment.deliveryStatus || 'pending'}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center space-x-2">
                         <button
-                          onClick={() => handleEditPayment(payment)}
-                          className="w-8 h-8 flex items-center justify-center text-green-600 border border-green-200 rounded-lg hover:bg-green-50 transition-colors"
-                          title="Edit payment"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
                           onClick={() => handleViewPayment(payment)}
                           className="w-8 h-8 flex items-center justify-center text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
-                          title="View payment overview"
+                          title="View payment details"
                         >
                           <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleGenerateWorkOrder(payment)}
+                          className="w-8 h-8 flex items-center justify-center text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
+                          title="Generate Work Order"
+                        >
+                          <FileText className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -1468,164 +1097,13 @@ const PaymentsDashboard = () => {
         </div>
       )}
 
-      {/* Add Payment Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Add New Payment</h2>
-                <button
-                  onClick={closeAddModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <XCircle className="w-6 h-6" />
-                </button>
-              </div>
-              
-              <div className="space-y-6">
-                {/* Customer Information */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <User className="w-5 h-5 text-blue-600" />
-                    Customer Information
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Customer ID</label>
-                      <input
-                        type="text"
-                        value={addFormData.customerId}
-                        onChange={(e) => handleAddFormChange('customerId', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="e.g., CUST-0001"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
-                      <input
-                        type="text"
-                        value={addFormData.customerName}
-                        onChange={(e) => handleAddFormChange('customerName', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Enter customer name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                      <input
-                        type="email"
-                        value={addFormData.customerEmail}
-                        onChange={(e) => handleAddFormChange('customerEmail', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Enter email address"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                      <input
-                        type="tel"
-                        value={addFormData.customerPhone}
-                        onChange={(e) => handleAddFormChange('customerPhone', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Enter phone number"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Payment Information */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-green-600" />
-                    Payment Information
-                  </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Amount Paid</label>
-                      <input
-                        type="number"
-                        value={addFormData.amount}
-                        onChange={(e) => handleAddFormChange('amount', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="0.00"
-                        step="0.01"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
-                      <input
-                        type="number"
-                        value={addFormData.totalAmount}
-                        onChange={(e) => handleAddFormChange('totalAmount', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="0.00"
-                        step="0.01"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Due Amount</label>
-                      <input
-                        type="number"
-                        value={addFormData.dueAmount}
-                        onChange={(e) => handleAddFormChange('dueAmount', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="0.00"
-                        step="0.01"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
-                      <select
-                        value={addFormData.status}
-                        onChange={(e) => handleAddFormChange('status', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="Created">Created</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Paid">Paid</option>
-                        <option value="Expired">Expired</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Payment Link */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <Link className="w-5 h-5 text-cyan-600" />
-                    Payment Link
-                  </h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Payment Link</label>
-                    <input
-                      type="url"
-                      value={addFormData.paymentLink}
-                      onChange={(e) => handleAddFormChange('paymentLink', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="https://payment.link/example"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  onClick={closeAddModal}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveAdd}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Add Payment
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Work Order Modal */}
+      {showWorkOrder && selectedPaymentForWorkOrder && (
+        <WorkOrderFormat
+          paymentData={selectedPaymentForWorkOrder}
+          onClose={handleWorkOrderClose}
+          onSave={handleWorkOrderSave}
+        />
       )}
     </div>
   );
