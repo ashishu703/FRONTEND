@@ -14,11 +14,13 @@ import HRDepartmentLayout from './pages/HRDepartment/HRDepartmentLayout.jsx'
 import HRDepartmentDashboard from './pages/HRDepartment/HRDepartmentDashboard.jsx'
 import SalespersonLayout from './pages/salesperson/salespersonlayout.jsx'
 import MarketingSalespersonLayout from './pages/MarketingSalesperson/MarketingSalespersonLayout.jsx'
-import TeleSalesLayout from './pages/TeleSales/TeleSalesLayout.jsx'
+// import TeleSalesLayout from './pages/TeleSales/TeleSalesLayout.jsx'
 import OfficeSalesPersonLayout from './pages/OfficeSalesPerson/OfficeSalesPersonLayout.jsx'
 import ProductionDepartmentHeadLayout from './pages/ProductionDepartmentHead/ProductionDepartmentHeadLayout.jsx'
 import ProductionDepartmentHeadDashboard from './pages/ProductionDepartmentHead/ProductionDepartmentHeadDashboard.jsx'
 import ProductionStaffLayout from './pages/production/productionlayout.jsx'
+import PPCLayout from './pages/ProductionDepartmentHead/PPC/PPCLayout.jsx'
+import PPCDashboard from './pages/ProductionDepartmentHead/PPC/PPCDashboard.jsx'
 import AccountsLayout from './pages/accounts/AccountsLayout.jsx'
 import AccountsDashboard from './pages/accounts/accountsdashboard.jsx'
 import ItLayout from './pages/it/ItLayout.jsx'
@@ -126,10 +128,15 @@ function AppContent() {
           </RoleGuard>
         ) : userType === 'production-staff' ? (
           <RoleGuard allow={['department_user']} allowDepartmentTypes={['production','Production Department']} fallback={<LoginPage />}>
-            <ProductionStaffLayout onLogout={handleLogout} />
+            <PPCLayout onLogout={handleLogout} activeView={activeView} setActiveView={setActiveView}>
+              <PPCDashboard activeView={activeView} setActiveView={setActiveView} />
+            </PPCLayout>
           </RoleGuard>
         ) : userType === 'tele-sales' ? (
-          <TeleSalesLayout />
+          <div className="p-8 text-center">
+            <h1 className="text-2xl font-bold text-gray-800">TeleSales Layout</h1>
+            <p className="text-gray-600 mt-2">This feature is under development.</p>
+          </div>
         ) : userType === 'office-sales-person' ? (
           <OfficeSalesPersonLayout />
         ) : userType === 'accountsdepartmenthead' || userType === 'accounts-user' ? (

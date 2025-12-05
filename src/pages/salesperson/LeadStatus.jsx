@@ -1,385 +1,13 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Eye, Edit, Mail, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, FileText, Receipt, CreditCard, RefreshCcw } from 'lucide-react';
+import { Eye, Edit, Mail, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, RefreshCcw } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import quotationService from '../../api/admin_api/quotationService';
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
-
-// Helper: normalize and summarise payments by accounts approval status
-const buildPaymentSummary = (payments, rawSummary = {}) => {
-  const safeNumber = (v) => {
-    const n = Number(v || 0)
-    return isNaN(n) ? 0 : n
-  }
-
-  const total =
-    safeNumber(rawSummary.total) ||
-    safeNumber(rawSummary.total_amount) ||
-    safeNumber(rawSummary.totalAmount)
-
-  let approvedAmount = 0
-  let pendingAmount = 0
-  let hasRejected = false
-
-  payments.forEach((p) => {
-    const status = (p.approval_status || p.accounts_approval_status || p.accountsApprovalStatus || '').toLowerCase()
-    const amount = safeNumber(
-      p.installment_amount ||
-      p.paid_amount ||
-      p.amount ||
-      p.payment_amount
-    )
-
-    if (status === 'approved') {
-      approvedAmount += amount
-    } else if (status === 'rejected') {
-      hasRejected = true
-    } else if (amount > 0) {
-      pendingAmount += amount
-    }
-  })
-
-  const remaining = Math.max(0, total - approvedAmount)
-
-  let approvalStatus = 'PENDING'
-  if (total > 0 && approvedAmount >= total) {
-    approvalStatus = 'COMPLETED'
-  } else if (approvedAmount > 0) {
-    approvalStatus = 'PARTIAL'
-  } else if (pendingAmount > 0) {
-    approvalStatus = 'PENDING APPROVAL'
-  } else if (hasRejected) {
-    approvalStatus = 'REJECTED'
-  }
-
-  return {
-    ...rawSummary,
-    total,
-    paid: approvedAmount,
-    remaining,
-    approvalStatus
-  }
-}
-
-const LeadStatusPreview = ({ lead, onClose }) => {
-  if (!lead) return null;
-
-  const [latestQuotation, setLatestQuotation] = useState(null);
-  const [latestPI, setLatestPI] = useState(null);
-  const [payments, setPayments] = useState([]);
-  const [paymentSummary, setPaymentSummary] = useState(null);
-  const [history, setHistory] = useState([]);
-
-  // Compact Indian date-time like "03 Nov 2025, 04:05 AM"
-  const formatIndianDateTime = (dateStr, timeStr, createdAt) => {
-    try {
-      if (dateStr || timeStr) {
-        const date = dateStr ? new Date(dateStr) : new Date(createdAt || Date.now());
-        if (timeStr) {
-          const [hh, mm] = String(timeStr).split(':');
-          date.setHours(Number(hh || 0), Number(mm || 0), 0, 0);
-        }
-        return date.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-      }
-      if (createdAt) return new Date(createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    } catch (_) {}
-    return '';
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadDocs() {
-      try {
-        if (!lead?.id) return;
-        // Load lead history
-        try {
-          const hRes = await apiClient.get(API_ENDPOINTS.SALESPERSON_LEAD_HISTORY(lead.id));
-          if (!cancelled) setHistory(hRes?.data?.data || hRes?.data || []);
-        } catch (_) {}
-        const qRes = await quotationService.getQuotationsByCustomer(lead.id);
-        const qList = (qRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        const q = qList[0] || null;
-        if (!cancelled) setLatestQuotation(q);
-        if (q?.id) {
-          const piRes = await proformaInvoiceService.getPIsByQuotation(q.id);
-          const piList = (piRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-          if (!cancelled) setLatestPI(piList[0] || null);
-          const payRes = await apiClient.get(`/api/payments/quotation/${q.id}`);
-          const allPayments = payRes?.data || [];
-          if (!cancelled) setPayments(allPayments);
-          const sumRes = await apiClient.get(`/api/quotations/${q.id}/summary`);
-          const summaryData = buildPaymentSummary(allPayments, sumRes?.data || sumRes || {});
-          if (!cancelled) setPaymentSummary(summaryData);
-        } else if (!cancelled) {
-          setLatestPI(null);
-          setPayments([]);
-          setPaymentSummary(null);
-        }
-      } catch (e) {
-        console.warn('Failed to load quotation/PI for lead preview', e);
-      }
-    }
-    loadDocs();
-    return () => { cancelled = true; };
-  }, [lead?.id]);
-
-  const groupedHistory = React.useMemo(() => {
-    const items = [...history]
-      .sort((a, b) => new Date(a.created_at || a.follow_up_date || 0) - new Date(b.created_at || b.follow_up_date || 0));
-    const groups = {};
-    items.forEach((h) => {
-      const d = new Date(h.follow_up_date || h.created_at || Date.now());
-      const key = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(h);
-    });
-    // Ensure the Customer Created day appears at top if different from first history item
-    if (lead?.created_at) {
-      const createdKey = new Date(lead.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-      if (!groups[createdKey]) groups[createdKey] = [];
-    }
-    return groups;
-  }, [history, lead?.created_at]);
-
-  return (
-    <div className="fixed top-0 right-0 h-screen z-50 flex">
-      <div className="bg-white w-[360px] h-screen flex flex-col shadow-xl border-l border-gray-200">
-        {/* Sticky Header */}
-        <div className="flex justify-between items-center p-2 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h3 className="text-sm font-semibold text-gray-900">Customer Timeline</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Scrollable Body */}
-        <div className="flex-1 p-2 overflow-y-auto">
-          {/* Customer Details */}
-          <div className="mb-3">
-            <h4 className="text-xs font-bold text-gray-900 mb-1.5">Customer Details</h4>
-            <div className="space-y-1 text-[11px]">
-              <div>
-                <span className="font-medium text-gray-600">Customer Name:</span>
-                <span className="ml-1.5 text-gray-900">{lead.name}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Business Name:</span>
-                <span className="ml-1.5 text-gray-900">{lead.business || 'N/A'}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Contact No:</span>
-                <span className="ml-1.5 text-gray-900">{lead.phone || 'N/A'}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Email Address:</span>
-                <span className="ml-1.5 text-gray-900">{lead.email || 'N/A'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline */}
-          <div>
-            <h4 className="text-xs font-bold text-gray-900 mb-2">Timeline</h4>
-
-            {/* Customer Created as first chat bubble */}
-            <div className="flex justify-center">
-              <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
-                {new Date(lead.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}
-              </span>
-            </div>
-            <div className="mt-1.5 flex justify-start">
-              <div className="max-w-[85%] rounded-lg rounded-tl-none bg-green-50 border border-green-200 p-2">
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <CheckCircle className="h-3 w-3 text-green-600" />
-                  <span className="text-[11px] font-medium text-gray-900">Customer Created</span>
-                  <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-green-100 text-green-800">COMPLETED</span>
-                </div>
-                <div className="text-[10px] text-gray-600">Lead ID: LD-{lead.id}</div>
-              </div>
-            </div>
-
-            {/* Follow ups grouped by date, chat style bubbles */}
-            {Object.keys(groupedHistory).sort((a,b) => new Date(a) - new Date(b)).map((dateKey) => (
-              <div key={dateKey} className="mt-3">
-                <div className="flex justify-center">
-                  <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">{dateKey}</span>
-                </div>
-                <div className="mt-1.5 space-y-1.5">
-                  {groupedHistory[dateKey].map((h, idx) => {
-                    const right = Boolean(h.sales_status && (h.sales_status.toLowerCase() === 'win' || h.sales_status.toLowerCase() === 'converted'));
-                    return (
-                      <div key={`${h.id || idx}`} className={right ? 'flex justify-end' : 'flex justify-start'}>
-                        <div className={right ? 'max-w-[85%] rounded-lg rounded-tr-none bg-blue-50 border border-blue-200 p-2' : 'max-w-[85%] rounded-lg rounded-tl-none bg-white border border-gray-200 p-2'}>
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className="text-[10px] font-medium text-gray-700">Follow Up</span>
-                            {h.sales_status && (
-                              <span className="ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded bg-yellow-100 text-yellow-800">{String(h.sales_status).toUpperCase()}</span>
-                            )}
-                          </div>
-                          <div className="text-[11px] text-gray-800">
-                            <div className="mb-0.5"><span className="font-medium">Status:</span> {h.follow_up_status || '—'}</div>
-                            {h.follow_up_remark && (
-                              <div className="mb-0.5"><span className="font-medium">Remark:</span> {h.follow_up_remark}</div>
-                            )}
-                            {(h.follow_up_date || h.follow_up_time || h.created_at) && (
-                              <div className="text-[9px] text-gray-500">{formatIndianDateTime(h.follow_up_date, h.follow_up_time, h.created_at)}</div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-
-            {/* Quotation Status - Chat Style */}
-            {latestQuotation && (
-              <>
-                <div className="mt-3 flex justify-center">
-                  <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
-                    {latestQuotation?.quotation_date ? new Date(latestQuotation.quotation_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A'}
-                  </span>
-                </div>
-                <div className="mt-1.5 flex justify-start">
-                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-yellow-50 border border-yellow-200 p-2">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <FileText className="h-3 w-3 text-yellow-600" />
-                      <span className="text-[11px] font-medium text-gray-900">Quotation Status</span>
-                      <span className={`ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded ${
-                        (latestQuotation?.status || '').toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
-                        (latestQuotation?.status || '').toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
-                        (latestQuotation?.status ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800')
-                      }`}>
-                        {(latestQuotation?.status || 'PENDING').toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-gray-700">
-                      <div>No.: {latestQuotation?.quotation_number || 'N/A'}</div>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* PI Status - Chat Style */}
-            {latestPI && (
-              <>
-                <div className="mt-3 flex justify-center">
-                  <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
-                    {latestPI?.created_at ? new Date(latestPI.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A'}
-                  </span>
-                </div>
-                <div className="mt-1.5 flex justify-start">
-                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-orange-50 border border-orange-200 p-2">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <Receipt className="h-3 w-3 text-orange-600" />
-                      <span className="text-[11px] font-medium text-gray-900">PI Status</span>
-                      <span className={`ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded ${
-                        (latestPI?.status || '').toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
-                        (latestPI?.status || '').toLowerCase() === 'pending_approval' ? 'bg-yellow-100 text-yellow-800' :
-                        (latestPI?.status ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800')
-                      }`}>
-                        {(latestPI?.status || 'PENDING').toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-gray-700">
-                      <div>No.: {latestPI?.pi_number || 'N/A'}</div>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Payment Status - Chat Style */}
-            {paymentSummary && (
-              <>
-                <div className="mt-3 flex justify-center">
-                  <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
-                    {payments.length > 0 && payments[0]?.payment_date ? new Date(payments[0].payment_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : 'Today'}
-                  </span>
-                </div>
-                <div className="mt-1.5 flex justify-start">
-                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-purple-50 border border-purple-200 p-2">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <CreditCard className="h-3 w-3 text-purple-600" />
-                      <span className="text-[11px] font-medium text-gray-900">Payment Status</span>
-                      <span
-                        className={`ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded ${
-                          (() => {
-                            const status = (paymentSummary?.approvalStatus || '').toLowerCase()
-                            if (status === 'completed' || status === 'approved') return 'bg-green-100 text-green-800'
-                            if (status === 'partial') return 'bg-yellow-100 text-yellow-800'
-                            if (status === 'pending approval') return 'bg-yellow-100 text-yellow-800'
-                            if (status === 'rejected') return 'bg-red-100 text-red-800'
-                            return 'bg-gray-100 text-gray-800'
-                          })()
-                        }`}
-                      >
-                        {(paymentSummary?.approvalStatus || 'PENDING').toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-gray-700 space-y-0.5">
-                      <div className="font-medium text-gray-900">Total: ₹{Number(paymentSummary.total || 0).toLocaleString('en-IN')}</div>
-                      <div className="text-green-700">Paid: ₹{Number(paymentSummary.paid || 0).toLocaleString('en-IN')}</div>
-                      <div className="text-red-700">Due: ₹{Number(paymentSummary.remaining || 0).toLocaleString('en-IN')}</div>
-                      {payments.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-gray-200">
-                          <div className="font-medium text-gray-700 mb-1 text-[9px]">Payment History:</div>
-                          {payments.map((payment, idx) => (
-                            <div key={payment.id} className="text-[9px] mb-1 p-1.5 bg-gray-50 rounded">
-                              <div className="flex justify-between">
-                                <span className="font-medium">Advance Payment #{idx + 1}</span>
-                                <span className="text-green-700 font-medium">₹{Number(payment.installment_amount || 0).toLocaleString('en-IN')}</span>
-                              </div>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <span className="text-gray-500">Status:</span>
-                                {(() => {
-                                  const accountsStatus = (payment.approval_status || payment.accounts_approval_status || payment.accountsApprovalStatus || '').toLowerCase()
-                                  if (accountsStatus === 'approved') {
-                                    return <span className="px-1 py-0.5 text-[8px] font-medium rounded bg-green-100 text-green-800">APPROVED</span>
-                                  }
-                                  if (accountsStatus === 'pending' || accountsStatus === 'pending_approval') {
-                                    return <span className="px-1 py-0.5 text-[8px] font-medium rounded bg-yellow-100 text-yellow-800">PENDING APPROVAL</span>
-                                  }
-                                  if (accountsStatus === 'rejected') {
-                                    return <span className="px-1 py-0.5 text-[8px] font-medium rounded bg-red-100 text-red-800">REJECTED</span>
-                                  }
-                                  return <span className="px-1 py-0.5 text-[8px] font-medium rounded bg-gray-100 text-gray-800">PENDING</span>
-                                })()}
-                              </div>
-                              <div className="text-gray-500 mt-0.5">
-                                Method: {payment.payment_method || 'N/A'}
-                              </div>
-                              <div className="text-gray-500">
-                                Date: {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-GB') : 'N/A'}
-                              </div>
-                              {payment.quotation_number && (
-                                <div className="text-gray-500">Quotation: {payment.quotation_number}</div>
-                              )}
-                              {payment.pi_number && (
-                                <div className="text-gray-500">PI: {payment.pi_number}</div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
+import toastManager from '../../utils/ToastManager';
 
 // Edit Lead Status Modal Component
 const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
@@ -586,7 +214,8 @@ export default function LeadStatusPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
-  const [showPreview, setShowPreview] = useState(false);
+  const [timelineLead, setTimelineLead] = useState(null);
+  const [showCustomerTimeline, setShowCustomerTimeline] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [hydratingDocs, setHydratingDocs] = useState(false);
   
@@ -827,7 +456,6 @@ export default function LeadStatusPage() {
   const handleQuotationFilter = async (status) => {
     const next = quotationFilter === status ? '' : status;
     setQuotationFilter(next);
-    await hydrateDocStatuses();
     applyFilters(statusFilter, followUpFilter, next, piFilter);
     setCurrentPage(1);
   };
@@ -835,7 +463,6 @@ export default function LeadStatusPage() {
   const handlePiFilter = async (status) => {
     const next = piFilter === status ? '' : status;
     setPiFilter(next);
-    await hydrateDocStatuses();
     applyFilters(statusFilter, followUpFilter, quotationFilter, next);
     setCurrentPage(1);
   };
@@ -932,8 +559,8 @@ export default function LeadStatusPage() {
 
   // Handle preview
   const handlePreview = (lead) => {
-    setSelectedLead(lead);
-    setShowPreview(true);
+    setTimelineLead(lead);
+    setShowCustomerTimeline(true);
   };
 
   // Handle edit
@@ -1023,7 +650,7 @@ export default function LeadStatusPage() {
   };
 
   return (
-    <div className={`pt-6 pb-6 pl-6 pr-0 transition-all duration-300 ${showPreview ? 'pr-[360px]' : ''}`}>
+    <div className={`pt-6 pb-6 pl-6 pr-0 transition-all duration-300 ${showCustomerTimeline ? 'pr-[360px]' : ''}`}>
       {/* Search and Filters */}
       <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 mb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1371,13 +998,13 @@ export default function LeadStatusPage() {
         </div>
       )}
 
-      {/* Preview Modal */}
-      {showPreview && (
-        <LeadStatusPreview
-          lead={selectedLead}
+      {/* Global Customer Timeline Sidebar (salesperson view) */}
+      {showCustomerTimeline && timelineLead && (
+        <SalespersonCustomerTimeline
+          lead={timelineLead}
           onClose={() => {
-            setShowPreview(false);
-            setSelectedLead(null);
+            setShowCustomerTimeline(false);
+            setTimelineLead(null);
           }}
         />
       )}
