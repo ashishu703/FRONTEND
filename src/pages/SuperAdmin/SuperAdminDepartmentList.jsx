@@ -590,20 +590,28 @@ const DepartmentManagement = () => {
                       return;
                     }
 
+                    // Validate company name is selected
+                    if (!newDept.companyName || newDept.companyName.trim() === '') {
+                      alert('Please select a Company Name');
+                      setSaving(false);
+                      return;
+                    }
+
                     const payload = {
-                      username: newDept.username,
-                      email: newDept.email,
+                      username: newDept.username.trim(),
+                      email: newDept.email.trim(),
                       password: newDept.password,
                       departmentType: newDept.departmentType,
-                      companyName: newDept.companyName,
+                      companyName: newDept.companyName.trim(),
                       role: newDept.role,
                     };
-                    // Only include monthlyTarget for sales, marketing, and telesales departments
                     if (newDept.departmentType === 'office_sales' || 
                         newDept.departmentType === 'marketing_sales' || 
                         newDept.departmentType === 'telesales') {
                       payload.monthlyTarget = newDept.monthlyTarget || 0;
                     }
+                    
+                    console.log('📤 Submitting department head payload:', payload);
                     await departmentHeadService.createHead(payload);
                     await fetchUsers();
                     setShowAddModal(false);
@@ -684,14 +692,19 @@ const DepartmentManagement = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">Company Name</label>
+                    <label className="block text-xs text-gray-600 mb-1">Company Name *</label>
                     <select
                       value={newDept.companyName}
-                      onChange={(e) => setNewDept({ ...newDept, companyName: e.target.value })}
+                      onChange={(e) => {
+                        console.log('🏢 Company selected:', e.target.value);
+                        setNewDept({ ...newDept, companyName: e.target.value });
+                      }}
+                      required
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                     >
+                      <option value="">Select Company Name</option>
                       {companies.length === 0 ? (
-                        <option value="">No organizations available</option>
+                        <option value="" disabled>No organizations available</option>
                       ) : (
                         companies.map((org) => (
                           <option key={org.id} value={org.name}>
@@ -700,6 +713,9 @@ const DepartmentManagement = () => {
                         ))
                       )}
                     </select>
+                    {!newDept.companyName && (
+                      <p className="text-red-500 text-xs mt-1">Please select a company name</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs text-gray-600 mb-1">Role</label>
