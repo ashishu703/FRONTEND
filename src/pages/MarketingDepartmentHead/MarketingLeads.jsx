@@ -1,6 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Search, Filter, Upload, RefreshCw, User, Mail, Building, Shield, Tag, Clock, Calendar, Phone, CheckCircle, XCircle, Hash, MapPin, Info, Plus, TrendingUp, Target, Users, BarChart3, ChevronDown, Download, UserPlus, X, Package, CreditCard, PhoneCall, FileText, Calendar as CalendarIcon, Edit, Eye, Navigation, Printer, DollarSign, Map, Globe, Settings } from 'lucide-react';
 import departmentUsersService, { apiToUiDepartment } from '../../api/admin_api/departmentUsersService';
+import { API_ENDPOINTS } from '../../api/admin_api/api';
+import apiClient from '../../utils/apiClient';
 import AddCustomerForm from '../salesperson/salespersonaddcustomer.jsx';
 import MarketingQuotation from '../MarketingSalesperson/MarketingQuotation';
 import { MarketingCorporateStandardInvoice } from '../MarketingSalesperson/MarketingProformaInvoice';
@@ -154,201 +156,287 @@ const MarketingLeads = () => {
   const visitingStatuses = ['NOT_SCHEDULED', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
   const telecallerStatuses = ['ACTIVE', 'INACTIVE', 'BUSY', 'NOT_AVAILABLE'];
 
-  // Sample data for marketing leads
+  // Sample data for marketing leads - 10 new unassigned demo leads
   const leads = [
     {
       id: 1,
       customerId: 'MKT-0001',
-      customer: 'John Smith',
-      email: 'john.smith@example.com',
+      customer: 'Rajesh Kumar',
+      email: 'rajesh.kumar@industries.com',
       phone: '+91 98765 43210',
-      business: 'Tech Solutions Inc',
-      address: '123 MG Road, Indore, MP',
+      business: 'Kumar Industries',
+      address: '123 Industrial Area, Indore, MP',
       area: 'Indore',
       division: 'Dewas',
       leadSource: 'Website Inquiry',
-      productName: 'Digital Marketing Package',
-      productType: 'Digital Marketing Package',
+      productName: 'XLPE Cable 1.5mm',
+      productType: 'XLPE Cable 1.5mm',
       category: 'Hot Lead',
       salesStatus: 'PENDING',
       createdAt: '2024-01-15',
-      assigned: 'Sarah Johnson',
-      telecaller: 'Mike Wilson',
-      telecallerStatus: 'ACTIVE',
+      assigned: null,
+      assignedTo: null,
+      telecaller: null,
+      telecallerStatus: 'INACTIVE',
       paymentStatus: 'PENDING',
-      visitingStatus: 'SCHEDULED',
-      gstNo: '29ABCDE1234F1Z5',
+      visitingStatus: 'NOT_SCHEDULED',
+      gstNo: '23ABCDE1234F1Z5',
       state: 'Madhya Pradesh',
-      customerType: 'Individual',
-      // Demo payment data
-      totalAmount: 25000,
-      paidAmount: 10000,
-      paymentMethod: 'Bank Transfer',
-      paymentDueDate: '2025-11-29',
-      paymentHistory: [
-        { title: 'Initial Payment', status: 'completed', amount: 10000, method: 'Bank Transfer', date: '2025-10-15' },
-        { title: 'Second Payment', status: 'pending', amount: 15000, method: '—', note: 'Due on 2025-11-29' }
-      ],
-      // Demo quotation & PI
-      quotation: {
-        quotationNumber: 'ANQ-000458',
-        total: 40639200,
-        validUpto: '2025-11-29',
-        preparedBy: 'Sarah Johnson',
-        status: 'Active',
-        title: 'Digital Marketing Package - Premium Plan'
-      },
-      proforma: {
-        invoiceNumber: 'PI-2024-001',
-        total: 40639200,
-        invoiceDate: '2025-10-30',
-        generatedBy: 'David Lee',
-        status: 'Generated',
-        title: 'Electrical Cables & Wires Supply'
-      }
+      customerType: 'Business',
+      pincode: '452001',
+      city: 'Indore'
     },
     {
       id: 2,
       customerId: 'MKT-0002',
-      customer: 'Emily Davis',
-      email: 'emily.davis@company.com',
+      customer: 'Priya Sharma',
+      email: 'priya.sharma@electricals.com',
       phone: '+91 87654 32109',
-      business: 'Marketing Agency',
-      address: '456 Business Park, Bhopal, MP',
+      business: 'Sharma Electricals',
+      address: '456 Commercial Street, Bhopal, MP',
       area: 'Bhopal',
       division: 'Raisen',
       leadSource: 'Social Media',
-      productName: 'SEO Services',
-      productType: 'SEO Services',
+      productName: 'Copper Wire 2.5mm',
+      productType: 'Copper Wire 2.5mm',
       category: 'Warm Lead',
-      salesStatus: 'FOLLOW_UP',
+      salesStatus: 'PENDING',
       createdAt: '2024-01-16',
-      assigned: 'David Lee',
-      telecaller: 'Lisa Chen',
-      telecallerStatus: 'ACTIVE',
-      paymentStatus: 'IN_PROGRESS',
-      visitingStatus: 'COMPLETED',
-      gstNo: '27FGHIJ5678K2L6',
+      assigned: null,
+      assignedTo: null,
+      telecaller: null,
+      telecallerStatus: 'INACTIVE',
+      paymentStatus: 'PENDING',
+      visitingStatus: 'NOT_SCHEDULED',
+      gstNo: '23FGHIJ5678K2L6',
       state: 'Madhya Pradesh',
       customerType: 'Business',
-      totalAmount: 18000,
-      paidAmount: 18000,
-      paymentMethod: 'UPI',
-      paymentDueDate: '2025-10-30',
-      paymentHistory: [
-        { title: 'Single Payment', status: 'completed', amount: 18000, method: 'UPI', date: '2025-10-15' }
-      ],
-      quotation: {
-        quotationNumber: 'ANQ-000459',
-        total: 18000,
-        validUpto: '2025-12-15',
-        preparedBy: 'David Lee',
-        status: 'Active',
-        title: 'SEO Services - Monthly'
-      },
-      proforma: {
-        invoiceNumber: 'PI-2024-002',
-        total: 18000,
-        invoiceDate: '2025-10-16',
-        generatedBy: 'Ops Team',
-        status: 'Generated',
-        title: 'SEO Services Billing'
-      }
+      pincode: '462001',
+      city: 'Bhopal'
     },
     {
       id: 3,
       customerId: 'MKT-0003',
-      customer: 'Robert Brown',
-      email: 'robert.brown@business.com',
+      customer: 'Amit Patel',
+      email: 'amit.patel@enterprises.com',
       phone: '+91 76543 21098',
-      business: 'Manufacturing Co',
-      address: '789 Industrial Area, Jabalpur, MP',
+      business: 'Patel Enterprises',
+      address: '789 Business Park, Jabalpur, MP',
       area: 'Jabalpur',
       division: 'Narsinghpur',
       leadSource: 'Referral',
-      productName: 'Content Marketing',
-      productType: 'Content Marketing',
+      productName: 'AAAC Conductor',
+      productType: 'AAAC Conductor',
       category: 'Cold Lead',
       salesStatus: 'PENDING',
       createdAt: '2024-01-17',
-      assigned: 'Anna Garcia',
-      telecaller: 'Tom Davis',
+      assigned: null,
+      assignedTo: null,
+      telecaller: null,
       telecallerStatus: 'INACTIVE',
       paymentStatus: 'PENDING',
-      visitingStatus: 'PENDING',
-      gstNo: '24MNOPQ9012R3S7',
+      visitingStatus: 'NOT_SCHEDULED',
+      gstNo: '23MNOPQ9012R3S7',
       state: 'Madhya Pradesh',
-      customerType: 'Enterprise',
-      totalAmount: 52000,
-      paidAmount: 0,
-      paymentMethod: '—',
-      paymentDueDate: '2025-12-10',
-      paymentHistory: []
+      customerType: 'Corporate',
+      pincode: '482001',
+      city: 'Jabalpur'
     },
     {
       id: 4,
       customerId: 'MKT-0004',
-      customer: 'Maria Rodriguez',
-      email: 'maria.rodriguez@enterprise.com',
+      customer: 'Sunita Singh',
+      email: 'sunita.singh@electrical.com',
       phone: '+91 65432 10987',
-      business: 'Enterprise Solutions',
-      address: '321 Tech Hub, Gwalior, MP',
+      business: 'Singh Electrical Works',
+      address: '321 Industrial Zone, Gwalior, MP',
       area: 'Gwalior',
       division: 'Morena',
       leadSource: 'Email Campaign',
-      productName: 'PPC Advertising',
-      productType: 'PPC Advertising',
+      productName: 'PVC Cable 4mm',
+      productType: 'PVC Cable 4mm',
       category: 'Hot Lead',
-      salesStatus: 'MEETING_SCHEDULED',
+      salesStatus: 'PENDING',
       createdAt: '2024-01-18',
-      assigned: 'Chris Miller',
-      telecaller: 'Emma Taylor',
-      telecallerStatus: 'ACTIVE',
-      paymentStatus: 'COMPLETED',
-      visitingStatus: 'IN_PROGRESS',
-      gstNo: '31TUVWX3456Y8Z9',
+      assigned: null,
+      assignedTo: null,
+      telecaller: null,
+      telecallerStatus: 'INACTIVE',
+      paymentStatus: 'PENDING',
+      visitingStatus: 'NOT_SCHEDULED',
+      gstNo: '23TUVWX3456Y8Z9',
       state: 'Madhya Pradesh',
-      customerType: 'Enterprise',
-      totalAmount: 75000,
-      paidAmount: 50000,
-      paymentMethod: 'NEFT',
-      paymentDueDate: '2025-11-20',
-      paymentHistory: [
-        { title: 'Advance', status: 'completed', amount: 50000, method: 'NEFT', date: '2025-10-10' }
-      ]
+      customerType: 'Business',
+      pincode: '474001',
+      city: 'Gwalior'
     },
     {
       id: 5,
       customerId: 'MKT-0005',
-      customer: 'James Wilson',
-      email: 'james.wilson@startup.com',
+      customer: 'Vikram Jain',
+      email: 'vikram.jain@power.com',
       phone: '+91 54321 09876',
-      business: 'Startup Ventures',
-      address: '654 Innovation Center, Ujjain, MP',
+      business: 'Jain Power Solutions',
+      address: '654 Power Sector, Ujjain, MP',
       area: 'Ujjain',
       division: 'Shajapur',
       leadSource: 'Trade Show',
-      productName: 'Social Media Marketing',
-      productType: 'Social Media Marketing',
+      productName: 'Aluminium Wire 6mm',
+      productType: 'Aluminium Wire 6mm',
       category: 'Warm Lead',
       salesStatus: 'PENDING',
       createdAt: '2024-01-19',
-      assigned: 'Alex Johnson',
-      telecaller: 'Sarah Smith',
-      telecallerStatus: 'ACTIVE',
+      assigned: null,
+      assignedTo: null,
+      telecaller: null,
+      telecallerStatus: 'INACTIVE',
       paymentStatus: 'PENDING',
-      visitingStatus: 'SCHEDULED',
-      gstNo: '07ABCD1234E1F2',
+      visitingStatus: 'NOT_SCHEDULED',
+      gstNo: '23ABCD1234E1F2',
       state: 'Madhya Pradesh',
-      customerType: 'Startup',
-      totalAmount: 32000,
-      paidAmount: 8000,
-      paymentMethod: 'Cash',
-      paymentDueDate: '2025-11-05',
-      paymentHistory: [
-        { title: 'Booking', status: 'completed', amount: 8000, method: 'Cash', date: '2025-10-12' },
-        { title: 'Balance', status: 'pending', amount: 24000, method: '—', note: 'Due on 2025-11-05' }
-      ]
+      customerType: 'Corporate',
+      pincode: '456001',
+      city: 'Ujjain'
+    },
+    {
+      id: 6,
+      customerId: 'MKT-0006',
+      customer: 'Meera Gupta',
+      email: 'meera.gupta@electricals.com',
+      phone: '+91 43210 98765',
+      business: 'Gupta Electricals',
+      address: '987 Electronics Hub, Sagar, MP',
+      area: 'Sagar',
+      division: 'Damoh',
+      leadSource: 'Website',
+      productName: 'XLPE Cable 2.5mm',
+      productType: 'XLPE Cable 2.5mm',
+      category: 'Warm Lead',
+      salesStatus: 'PENDING',
+      createdAt: '2024-01-20',
+      assigned: null,
+      assignedTo: null,
+      telecaller: null,
+      telecallerStatus: 'INACTIVE',
+      paymentStatus: 'PENDING',
+      visitingStatus: 'NOT_SCHEDULED',
+      gstNo: '23EFGH5678I9J0',
+      state: 'Madhya Pradesh',
+      customerType: 'Business',
+      pincode: '470001',
+      city: 'Sagar'
+    },
+    {
+      id: 7,
+      customerId: 'MKT-0007',
+      customer: 'Ravi Kumar',
+      email: 'ravi.kumar@power.com',
+      phone: '+91 32109 87654',
+      business: 'Kumar Power Systems',
+      address: '147 Energy Park, Rewa, MP',
+      area: 'Rewa',
+      division: 'Sidhi',
+      leadSource: 'Referral',
+      productName: 'AAAC Conductor 150mm',
+      productType: 'AAAC Conductor 150mm',
+      category: 'Hot Lead',
+      salesStatus: 'PENDING',
+      createdAt: '2024-01-21',
+      assigned: null,
+      assignedTo: null,
+      telecaller: null,
+      telecallerStatus: 'INACTIVE',
+      paymentStatus: 'PENDING',
+      visitingStatus: 'NOT_SCHEDULED',
+      gstNo: '23KLMN9012O4P5',
+      state: 'Madhya Pradesh',
+      customerType: 'Corporate',
+      pincode: '486001',
+      city: 'Rewa'
+    },
+    {
+      id: 8,
+      customerId: 'MKT-0008',
+      customer: 'Anita Desai',
+      email: 'anita.desai@industries.com',
+      phone: '+91 21098 76543',
+      business: 'Desai Industries',
+      address: '258 Manufacturing Unit, Satna, MP',
+      area: 'Satna',
+      division: 'Panna',
+      leadSource: 'Social Media',
+      productName: 'Copper Wire 4mm',
+      productType: 'Copper Wire 4mm',
+      category: 'Warm Lead',
+      salesStatus: 'PENDING',
+      createdAt: '2024-01-22',
+      assigned: null,
+      assignedTo: null,
+      telecaller: null,
+      telecallerStatus: 'INACTIVE',
+      paymentStatus: 'PENDING',
+      visitingStatus: 'NOT_SCHEDULED',
+      gstNo: '23QRST3456U7V8',
+      state: 'Madhya Pradesh',
+      customerType: 'Business',
+      pincode: '485001',
+      city: 'Satna'
+    },
+    {
+      id: 9,
+      customerId: 'MKT-0009',
+      customer: 'Suresh Reddy',
+      email: 'suresh.reddy@electricals.com',
+      phone: '+91 10987 65432',
+      business: 'Reddy Electricals',
+      address: '369 Industrial Area, Dhar, MP',
+      area: 'Dhar',
+      division: 'Dhar',
+      leadSource: 'Trade Show',
+      productName: 'PVC Cable 6mm',
+      productType: 'PVC Cable 6mm',
+      category: 'Cold Lead',
+      salesStatus: 'PENDING',
+      createdAt: '2024-01-23',
+      assigned: null,
+      assignedTo: null,
+      telecaller: null,
+      telecallerStatus: 'INACTIVE',
+      paymentStatus: 'PENDING',
+      visitingStatus: 'NOT_SCHEDULED',
+      gstNo: '23WXYZ7890A1B2',
+      state: 'Madhya Pradesh',
+      customerType: 'Business',
+      pincode: '454001',
+      city: 'Dhar'
+    },
+    {
+      id: 10,
+      customerId: 'MKT-0010',
+      customer: 'Kavita Joshi',
+      email: 'kavita.joshi@power.com',
+      phone: '+91 09876 54321',
+      business: 'Joshi Power Works',
+      address: '741 Power Zone, Ratlam, MP',
+      area: 'Ratlam',
+      division: 'Ratlam',
+      leadSource: 'Website',
+      productName: 'Aluminium Wire 8mm',
+      productType: 'Aluminium Wire 8mm',
+      category: 'Hot Lead',
+      salesStatus: 'PENDING',
+      createdAt: '2024-01-24',
+      assigned: null,
+      assignedTo: null,
+      telecaller: null,
+      telecallerStatus: 'INACTIVE',
+      paymentStatus: 'PENDING',
+      visitingStatus: 'NOT_SCHEDULED',
+      gstNo: '23CDEF1234G5H6',
+      state: 'Madhya Pradesh',
+      customerType: 'Corporate',
+      pincode: '457001',
+      city: 'Ratlam'
     }
   ];
 
@@ -380,26 +468,87 @@ const MarketingLeads = () => {
     setShowAssignmentModal(true);
   };
 
-  const handleAssignLead = () => {
+  const handleAssignLead = async () => {
     if (selectedSalesperson && selectedLeadForAssignment) {
+      const salespersonMeta = salespersons.find(u => u.name === selectedSalesperson || u.email === selectedSalesperson) || {};
+      const salespersonEmail = salespersonMeta.email || selectedSalesperson;
+      
       // Update the lead's assigned salesperson
+      const updatedLead = {
+        ...selectedLeadForAssignment,
+        assigned: selectedSalesperson,
+        assignedTo: salespersonEmail,
+        assignmentDate: assignmentDate || new Date().toISOString().split('T')[0]
+      };
+      
       const updatedLeads = (leadsData || leads).map(lead => 
         lead.id === selectedLeadForAssignment.id 
-          ? { 
-              ...lead, 
-              assigned: selectedSalesperson,
-              assignmentDate: assignmentDate || new Date().toISOString().split('T')[0]
-            }
+          ? updatedLead
           : lead
       );
+      
+      setLeadsData(updatedLeads);
+      
+      // Also update the local leads array if leadsData is not set
+      if (!leadsData) {
+        // This will trigger a re-render with the updated lead
+      }
       
       // In a real app, you would update the database here
       console.log(`Assigned lead ${selectedLeadForAssignment.customerId} to ${selectedSalesperson} on ${assignmentDate}`);
 
+      // Store assigned lead for Marketing Salesperson to access
+      try {
+        const assignedLeadsKey = `marketingAssignedLeads_${salespersonEmail}`;
+        const existingAssigned = JSON.parse(localStorage.getItem(assignedLeadsKey) || '[]');
+        
+        // Convert lead to format expected by Marketing Salesperson
+        const assignedLeadForSalesperson = {
+          id: selectedLeadForAssignment.id,
+          leadId: selectedLeadForAssignment.customerId,
+          customerId: selectedLeadForAssignment.customerId,
+          name: selectedLeadForAssignment.customer,
+          customer: selectedLeadForAssignment.customer,
+          business: selectedLeadForAssignment.business || '',
+          phone: selectedLeadForAssignment.phone || '',
+          email: selectedLeadForAssignment.email || '',
+          address: selectedLeadForAssignment.address || '',
+          area: selectedLeadForAssignment.area || '',
+          division: selectedLeadForAssignment.division || '',
+          city: selectedLeadForAssignment.city || '',
+          pincode: selectedLeadForAssignment.pincode || '',
+          gstNo: selectedLeadForAssignment.gstNo || '',
+          productType: selectedLeadForAssignment.productType || selectedLeadForAssignment.productName || '',
+          state: selectedLeadForAssignment.state || '',
+          leadSource: selectedLeadForAssignment.leadSource || '',
+          customerType: selectedLeadForAssignment.customerType || '',
+          date: selectedLeadForAssignment.createdAt || new Date().toISOString().split('T')[0],
+          visitingStatus: 'Not Visited',
+          visitingStatusUpdated: new Date().toISOString(),
+          transferredLeads: 0,
+          transferredTo: null,
+          paymentStatus: 'Not Started',
+          meetings: [],
+          assignedTo: salespersonEmail,
+          assignedDate: assignmentDate || new Date().toISOString().split('T')[0]
+        };
+        
+        // Check if lead already exists (avoid duplicates)
+        const existingIndex = existingAssigned.findIndex(l => l.id === selectedLeadForAssignment.id);
+        if (existingIndex >= 0) {
+          existingAssigned[existingIndex] = assignedLeadForSalesperson;
+        } else {
+          existingAssigned.push(assignedLeadForSalesperson);
+        }
+        
+        localStorage.setItem(assignedLeadsKey, JSON.stringify(existingAssigned));
+      } catch (error) {
+        console.error('Error storing assigned lead:', error);
+      }
+
       // Persist assignment event for calendar consumption (localStorage)
       try {
         const existing = JSON.parse(localStorage.getItem('marketingAssignments') || '[]');
-        const salespersonMeta = salespersons.find(u => u.name === selectedSalesperson) || {};
         const event = {
           id: `${selectedLeadForAssignment.id}-${Date.now()}`,
           leadId: selectedLeadForAssignment.id,
@@ -410,7 +559,7 @@ const MarketingLeads = () => {
           productType: selectedLeadForAssignment.productType || selectedLeadForAssignment.productName || '',
           assignedDate: assignmentDate || new Date().toISOString().split('T')[0],
           assignedToName: selectedSalesperson,
-          assignedToEmail: salespersonMeta.email || '',
+          assignedToEmail: salespersonEmail,
           visitingStatus: 'Scheduled',
           finalStatus: 'Pending'
         };
@@ -418,17 +567,45 @@ const MarketingLeads = () => {
         localStorage.setItem('marketingAssignments', JSON.stringify(next));
       } catch {}
 
-      // Help calendar identify current demo salesperson context (non-auth flows)
+      // Create a meeting for this assignment
       try {
-        if (salespersonMeta?.email) {
-          localStorage.setItem('currentMarketingSalesperson', salespersonMeta.email);
-        } else if (selectedSalesperson) {
-          localStorage.setItem('currentMarketingSalesperson', selectedSalesperson);
+        const meetingDate = assignmentDate || new Date().toISOString().split('T')[0];
+        const meetingData = {
+          customer_name: selectedLeadForAssignment.customer || selectedLeadForAssignment.name || 'N/A',
+          customer_phone: selectedLeadForAssignment.phone || '',
+          customer_email: selectedLeadForAssignment.email || '',
+          address: selectedLeadForAssignment.address || '',
+          city: selectedLeadForAssignment.city || '',
+          state: selectedLeadForAssignment.state || '',
+          pincode: selectedLeadForAssignment.pincode || '',
+          assigned_to: salespersonEmail,
+          meeting_date: meetingDate,
+          meeting_time: '', // No specific time set from Leads assignment
+          scheduled_date: meetingDate,
+          status: 'Scheduled',
+          notes: `Assigned from lead: ${selectedLeadForAssignment.customerId || selectedLeadForAssignment.id}`,
+          customer_id: selectedLeadForAssignment.id,
+          lead_id: selectedLeadForAssignment.id
+        };
+
+        const meetingResponse = await apiClient.post(API_ENDPOINTS.MARKETING_MEETINGS_CREATE(), meetingData);
+        
+        if (meetingResponse.data.success) {
+          console.log('Meeting created successfully for assigned lead:', meetingResponse.data.data);
+          
+          // Notify Meeting Assignment component to refresh
+          try { window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); } catch {}
+        } else {
+          console.warn('Meeting creation failed but lead was assigned:', meetingResponse.data.message);
         }
-      } catch {}
+      } catch (meetingError) {
+        console.error('Error creating meeting for assigned lead:', meetingError);
+        // Don't block the assignment if meeting creation fails
+      }
 
       // Notify other tabs/components
       try { window.dispatchEvent(new CustomEvent('marketingAssignmentsUpdated')); } catch {}
+      try { window.dispatchEvent(new CustomEvent('marketingLeadsAssigned')); } catch {}
       
       // Close modal and reset state
       setShowAssignmentModal(false);
@@ -437,7 +614,7 @@ const MarketingLeads = () => {
       setAssignmentDate('');
       
       // Show success message
-      alert(`Lead ${selectedLeadForAssignment.customerId} has been assigned to ${selectedSalesperson}${assignmentDate ? ` on ${assignmentDate}` : ''}`);
+      alert(`Lead ${selectedLeadForAssignment.customerId} has been assigned to ${selectedSalesperson}${assignmentDate ? ` on ${assignmentDate}` : ''}. Meeting has been created.`);
     }
   };
 
@@ -570,19 +747,25 @@ const MarketingLeads = () => {
     setShowBulkAssignmentModal(true);
   };
 
-  const handleBulkAssignLeads = () => {
+  const handleBulkAssignLeads = async () => {
     if (!bulkAssignmentUser) {
       alert('Please select a user to assign leads to.');
       return;
     }
 
+    const salespersonMeta = salespersons.find(u => u.name === bulkAssignmentUser || u.email === bulkAssignmentUser) || {};
+    const salespersonEmail = salespersonMeta.email || bulkAssignmentUser;
+    const baseLeads = leadsData || leads;
+    const leadsToAssign = baseLeads.filter(l => selectedLeadsForBulk.includes(l.id));
+
     // Update the leads with bulk assignment
-    const updatedLeads = (leadsData || leads).map(lead => {
+    const updatedLeads = baseLeads.map(lead => {
       if (selectedLeadsForBulk.includes(lead.id)) {
         return {
           ...lead,
           assigned: bulkAssignmentUser,
-          assignmentDate: lead.assignmentDate || bulkAssignmentDate || undefined,
+          assignedTo: salespersonEmail,
+          assignmentDate: lead.assignmentDate || bulkAssignmentDate || new Date().toISOString().split('T')[0],
           assignmentNotes: bulkAssignmentNotes,
           salesStatus: 'ASSIGNED'
         };
@@ -592,42 +775,130 @@ const MarketingLeads = () => {
 
     setLeadsData(updatedLeads);
 
+    // Store assigned leads for Marketing Salesperson to access
+    try {
+      const assignedLeadsKey = `marketingAssignedLeads_${salespersonEmail}`;
+      const existingAssigned = JSON.parse(localStorage.getItem(assignedLeadsKey) || '[]');
+      
+      leadsToAssign.forEach(lead => {
+        const assignedLeadForSalesperson = {
+          id: lead.id,
+          leadId: lead.customerId,
+          customerId: lead.customerId,
+          name: lead.customer,
+          customer: lead.customer,
+          business: lead.business || '',
+          phone: lead.phone || '',
+          email: lead.email || '',
+          address: lead.address || '',
+          area: lead.area || '',
+          division: lead.division || '',
+          city: lead.city || '',
+          pincode: lead.pincode || '',
+          gstNo: lead.gstNo || '',
+          productType: lead.productType || lead.productName || '',
+          state: lead.state || '',
+          leadSource: lead.leadSource || '',
+          customerType: lead.customerType || '',
+          date: lead.createdAt || new Date().toISOString().split('T')[0],
+          visitingStatus: 'Not Visited',
+          visitingStatusUpdated: new Date().toISOString(),
+          transferredLeads: 0,
+          transferredTo: null,
+          paymentStatus: 'Not Started',
+          meetings: [],
+          assignedTo: salespersonEmail,
+          assignedDate: lead.assignmentDate || bulkAssignmentDate || new Date().toISOString().split('T')[0]
+        };
+        
+        // Check if lead already exists (avoid duplicates)
+        const existingIndex = existingAssigned.findIndex(l => l.id === lead.id);
+        if (existingIndex >= 0) {
+          existingAssigned[existingIndex] = assignedLeadForSalesperson;
+        } else {
+          existingAssigned.push(assignedLeadForSalesperson);
+        }
+      });
+      
+      localStorage.setItem(assignedLeadsKey, JSON.stringify(existingAssigned));
+    } catch (error) {
+      console.error('Error storing bulk assigned leads:', error);
+    }
+
     // Persist assignment events for calendar (localStorage)
     try {
       const existing = JSON.parse(localStorage.getItem('marketingAssignments') || '[]');
-      const salespersonMeta = salespersons.find(u => u.name === bulkAssignmentUser) || {};
-      const baseLeads = leadsData || leads;
-      const eventsToAdd = baseLeads
-        .filter(l => selectedLeadsForBulk.includes(l.id))
-        .map(l => ({
-          id: `${l.id}-${Date.now()}`,
-          leadId: l.id,
-          customerId: l.customerId,
-          name: l.customer,
-          phone: l.phone || '',
-          address: l.address || '',
-          productType: l.productType || l.productName || '',
-          assignedDate: l.assignmentDate || bulkAssignmentDate || new Date().toISOString().split('T')[0],
-          assignedToName: bulkAssignmentUser,
-          assignedToEmail: salespersonMeta.email || '',
-          visitingStatus: 'Scheduled',
-          finalStatus: 'Pending'
-        }));
+      const eventsToAdd = leadsToAssign.map(l => ({
+        id: `${l.id}-${Date.now()}`,
+        leadId: l.id,
+        customerId: l.customerId,
+        name: l.customer,
+        phone: l.phone || '',
+        address: l.address || '',
+        productType: l.productType || l.productName || '',
+        assignedDate: l.assignmentDate || bulkAssignmentDate || new Date().toISOString().split('T')[0],
+        assignedToName: bulkAssignmentUser,
+        assignedToEmail: salespersonEmail,
+        visitingStatus: 'Scheduled',
+        finalStatus: 'Pending'
+      }));
       const next = Array.isArray(existing) ? [...existing, ...eventsToAdd] : eventsToAdd;
       localStorage.setItem('marketingAssignments', JSON.stringify(next));
     } catch {}
 
-    // Help calendar identify current demo salesperson context (non-auth flows)
+    // Create meetings for all assigned leads
     try {
-      if (salespersonMeta?.email) {
-        localStorage.setItem('currentMarketingSalesperson', salespersonMeta.email);
-      } else if (bulkAssignmentUser) {
-        localStorage.setItem('currentMarketingSalesperson', bulkAssignmentUser);
+      const meetingDate = bulkAssignmentDate || new Date().toISOString().split('T')[0];
+      let meetingsCreated = 0;
+      let meetingsFailed = 0;
+
+      for (const lead of leadsToAssign) {
+        try {
+          const meetingData = {
+            customer_name: lead.customer || lead.name || 'N/A',
+            customer_phone: lead.phone || '',
+            customer_email: lead.email || '',
+            address: lead.address || '',
+            city: lead.city || '',
+            state: lead.state || '',
+            pincode: lead.pincode || '',
+            assigned_to: salespersonEmail,
+            meeting_date: lead.assignmentDate || meetingDate,
+            meeting_time: '',
+            scheduled_date: lead.assignmentDate || meetingDate,
+            status: 'Scheduled',
+            notes: `Bulk assigned from lead: ${lead.customerId || lead.id}`,
+            customer_id: lead.id,
+            lead_id: lead.id
+          };
+
+          const meetingResponse = await apiClient.post(API_ENDPOINTS.MARKETING_MEETINGS_CREATE(), meetingData);
+          
+          if (meetingResponse.data.success) {
+            meetingsCreated++;
+          } else {
+            meetingsFailed++;
+          }
+        } catch (err) {
+          console.error(`Error creating meeting for lead ${lead.id}:`, err);
+          meetingsFailed++;
+        }
       }
-    } catch {}
+
+      console.log(`Bulk assignment: ${meetingsCreated} meetings created, ${meetingsFailed} failed`);
+      
+      // Notify Meeting Assignment component to refresh
+      if (meetingsCreated > 0) {
+        try { window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); } catch {}
+      }
+    } catch (bulkMeetingError) {
+      console.error('Error creating bulk meetings:', bulkMeetingError);
+      // Don't block the assignment if meeting creation fails
+    }
 
     // Notify other tabs/components
     try { window.dispatchEvent(new CustomEvent('marketingAssignmentsUpdated')); } catch {}
+    try { window.dispatchEvent(new CustomEvent('marketingLeadsAssigned')); } catch {}
 
     // Log the bulk assignment
     console.log(`Bulk assigned ${selectedLeadsForBulk.length} leads to ${bulkAssignmentUser} for ${bulkAssignmentDate}`);
@@ -641,7 +912,7 @@ const MarketingLeads = () => {
     setShowCheckboxes(false);
 
     // Show success message
-    alert(`Successfully assigned ${selectedLeadsForBulk.length} leads to ${bulkAssignmentUser}`);
+    alert(`Successfully assigned ${selectedLeadsForBulk.length} leads to ${bulkAssignmentUser}. Meetings have been created.`);
   };
 
   const closeBulkAssignmentModal = () => {

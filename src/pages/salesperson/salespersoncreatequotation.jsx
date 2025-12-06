@@ -158,8 +158,8 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
           phone: customer?.phone || "",
           gstNo: (customer?.gstNo && customer.gstNo !== 'N/A' && customer.gstNo.trim() !== '') ? customer.gstNo : "URC",
           state: customer?.state || ""
-        }
-      }))
+      }
+    }))
     }
   }, [customer])
 
@@ -499,26 +499,26 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                 user={user}
               />
             )}
-          </div>
+            </div>
           <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
-            <Button 
-              type="button" 
+              <Button 
+                type="button" 
               onClick={handleDownloadPDF}
               className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
-            >
+              >
               <Download className="h-4 w-4" />
               Download PDF
-            </Button>
-            <Button 
-              type="button" 
+              </Button>
+              <Button 
+                type="button" 
               onClick={() => onSave({
                 ...previewData,
                 template: selectedTemplate // Include the selected template
               })}
-              className="bg-green-600 hover:bg-green-700"
-            >
+                className="bg-green-600 hover:bg-green-700"
+              >
               Save Quotation
-            </Button>
+              </Button>
           </div>
         </div>
       </div>

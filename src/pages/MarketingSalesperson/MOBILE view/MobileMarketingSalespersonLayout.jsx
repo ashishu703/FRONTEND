@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Menu, X, LayoutDashboard, Users, Package, Box, Wrench, LogOut, Monitor, Bell, User, ChevronDown, ChevronRight, Clock } from 'lucide-react';
+import { Menu, X, LayoutDashboard, Users, Package, Box, Wrench, LogOut, Monitor, Bell, User, ChevronDown, ChevronRight, Clock, Calendar, Camera } from 'lucide-react';
 import MobileDashboard from './MobileDashboard';
 import MobileLeads from './MobileLeads';
 import MobileStock from './MobileStock';
 import MobileProducts from './MobileProducts';
 import MobileToolbox from './MobileToolbox';
 import MobileFollowUps from './MobileFollowUps';
+import MobileAssignedMeetings from './MobileAssignedMeetings';
+import MobileCheckInHistory from './MobileCheckInHistory';
 import { useAuth } from '../../../hooks/useAuth';
 import AshvayChat from '../../../components/AshvayChat';
 
@@ -18,6 +20,8 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-blue-600' },
     { id: 'customers', label: 'Leads', icon: Users, color: 'text-green-600' },
+    { id: 'meetings', label: 'Assigned Meetings', icon: Calendar, color: 'text-indigo-600' },
+    { id: 'checkin-history', label: 'Check-In History', icon: Camera, color: 'text-pink-600' },
     { id: 'stock', label: 'Available Stock', icon: Package, color: 'text-purple-600' },
     { id: 'products', label: 'Toolbar', icon: Box, color: 'text-orange-600' },
     { id: 'toolbox', label: 'Toolbox Interface', icon: Wrench, color: 'text-red-600' },
@@ -42,6 +46,10 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
         return <MobileDashboard />;
       case 'customers':
         return <MobileLeads />;
+      case 'meetings':
+        return <MobileAssignedMeetings />;
+      case 'checkin-history':
+        return <MobileCheckInHistory />;
       case 'stock':
         return <MobileStock />;
       case 'products':
@@ -179,14 +187,20 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
-        <div className="flex">
-          {navigationItems.slice(0, 4).map((item) => {
+        <div className="flex overflow-x-auto">
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+            { id: 'customers', label: 'Leads', icon: Users },
+            { id: 'meetings', label: 'Meetings', icon: Calendar },
+            { id: 'checkin-history', label: 'Check-Ins', icon: Camera },
+            { id: 'stock', label: 'Stock', icon: Package },
+          ].map((item) => {
             const Icon = item.icon;
             return (
               <button
                 key={item.id}
                 onClick={() => handleNavigation(item.id)}
-                className={`flex-1 flex flex-col items-center py-2 ${
+                className={`flex-1 min-w-[80px] flex flex-col items-center py-2 ${
                   currentPage === item.id ? 'text-blue-600' : 'text-gray-500'
                 }`}
               >
@@ -195,15 +209,6 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
               </button>
             );
           })}
-          <button
-            onClick={() => handleNavigation('followup-connected')}
-            className={`flex-1 flex flex-col items-center py-2 ${
-              currentPage.startsWith('followup-') ? 'text-blue-600' : 'text-gray-500'
-            }`}
-          >
-            <Clock className="h-5 w-5 mb-1" />
-            <span className="text-xs font-medium">Follow Up</span>
-          </button>
         </div>
       </div>
       <AshvayChat />

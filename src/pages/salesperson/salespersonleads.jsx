@@ -1012,7 +1012,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
         customerData = customers.find(c => c.id === completeQuotation.customer_id) || {}
       }
       customerData = customerData || {}
-      
+
       // Map quotation items to PI format
       const mappedItems = quotationItems.map(item => ({
         id: item.id || Math.random(),
@@ -3510,7 +3510,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
                             <>
                               {/* Create PI Button - Only show for approved quotations that are not payment completed */}
                               {!isPaymentCompleted(quotation) && (
-                                <button 
+                          <button 
                                   onClick={async () => {
                                     // Fetch complete quotation data if needed
                                     let completeQuotation = quotation
@@ -3534,10 +3534,10 @@ export default function CustomerListContent({ isDarkMode = false }) {
                                 >
                                   <FileText className="h-3 w-3" />
                                   Create PI
-                                </button>
+                          </button>
                               )}
                             </>
-                          )}
+                              )}
                           
                           {/* Show Create PI only for approved and not deal-closed; hide send/delete when deal closed */}
                           {false && isApprovedQuotation(quotation) && !isPaymentCompleted(quotation) ? (
@@ -4702,9 +4702,9 @@ export default function CustomerListContent({ isDarkMode = false }) {
                   return (
                     <QuotationPreviewTemplate2
                       data={quotationData}
-                      companyBranches={companyBranches}
-                      user={user}
-                    />
+                companyBranches={companyBranches}
+                user={user}
+              />
                   );
                 } else if (selectedTemplate === 'template3') {
                   return (

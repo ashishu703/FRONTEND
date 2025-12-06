@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 
 // Create the context
 const MarketingSharedDataContext = createContext();
@@ -7,8 +8,131 @@ const MarketingSharedDataContext = createContext();
 export const MarketingSharedDataProvider = ({ children }) => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState(null);
 
-  // Dummy data for marketing salesperson
+  // Get user email from auth or localStorage
+  useEffect(() => {
+    const getUserEmail = () => {
+      try {
+        // Try to get from localStorage (demo/development mode)
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        if (userData?.email) {
+          setUserEmail(userData.email);
+          return userData.email;
+        }
+        
+        // Try to get from auth hook (production mode)
+        // For now, we'll use a fallback approach
+        const storedEmail = localStorage.getItem('currentMarketingSalesperson');
+        if (storedEmail) {
+          setUserEmail(storedEmail);
+          return storedEmail;
+        }
+        
+        return null;
+      } catch (error) {
+        console.error('Error getting user email:', error);
+        return null;
+      }
+    };
+    
+    getUserEmail();
+    
+    // Listen for assignment updates
+    const handleAssignmentUpdate = () => {
+      const email = getUserEmail();
+      if (email) {
+        loadAssignedLeads(email);
+      }
+    };
+    
+    window.addEventListener('marketingLeadsAssigned', handleAssignmentUpdate);
+    return () => window.removeEventListener('marketingLeadsAssigned', handleAssignmentUpdate);
+  }, []);
+
+  // Load assigned leads from localStorage
+  const loadAssignedLeads = (email) => {
+    try {
+      const assignedLeadsKey = `marketingAssignedLeads_${email}`;
+      const assignedLeads = JSON.parse(localStorage.getItem(assignedLeadsKey) || '[]');
+      
+      if (assignedLeads.length > 0) {
+        // Convert assigned leads to the format expected by the context
+        const formattedLeads = assignedLeads.map(lead => ({
+          id: lead.id,
+          customerId: lead.customerId || lead.leadId || `MKT-${String(lead.id).padStart(4, '0')}`,
+          name: lead.name || lead.customer,
+          customer: lead.customer || lead.name,
+          business: lead.business || '',
+          phone: lead.phone || '',
+          email: lead.email || '',
+          address: lead.address || '',
+          state: lead.state || '',
+          productType: lead.productType || '',
+          customerType: lead.customerType || '',
+          leadSource: lead.leadSource || 'Marketing',
+          enquiryBy: 'Marketing',
+          connectedStatus: 'pending',
+          connectedStatusRemark: '',
+          connectedStatusDate: lead.assignedDate || new Date().toISOString().split('T')[0],
+          finalStatus: 'pending',
+          finalStatusRemark: '',
+          finalStatusDate: lead.assignedDate || new Date().toISOString().split('T')[0],
+          productName: lead.productType || '',
+          quantity: 0,
+          expectedValue: 0,
+          followUpDate: '',
+          notes: `Assigned on ${lead.assignedDate || 'N/A'}`,
+          assignedTo: lead.assignedTo || email,
+          assignedDate: lead.assignedDate,
+          visitingStatus: lead.visitingStatus || 'Not Visited',
+          paymentStatus: lead.paymentStatus || 'Not Started',
+          gstNo: lead.gstNo || '',
+          area: lead.area || '',
+          division: lead.division || '',
+          city: lead.city || '',
+          pincode: lead.pincode || '',
+          date: lead.date || lead.assignedDate || new Date().toISOString().split('T')[0]
+        }));
+        
+        setCustomers(formattedLeads);
+        setLoading(false);
+        return;
+      }
+    } catch (error) {
+      console.error('Error loading assigned leads:', error);
+    }
+    
+    // If no assigned leads, set empty array
+    setCustomers([]);
+    setLoading(false);
+  };
+
+  // Initialize with assigned leads from localStorage
+  useEffect(() => {
+    setLoading(true);
+    
+    if (userEmail) {
+      loadAssignedLeads(userEmail);
+    } else {
+      // Wait a bit and try again (in case user data is loading)
+      const timer = setTimeout(() => {
+        const email = localStorage.getItem('currentMarketingSalesperson') || 
+                     JSON.parse(localStorage.getItem('user') || '{}')?.email;
+        if (email) {
+          setUserEmail(email);
+          loadAssignedLeads(email);
+        } else {
+          setCustomers([]);
+          setLoading(false);
+        }
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [userEmail]);
+
+  // Dummy data for marketing salesperson (fallback - will be replaced by assigned leads)
   const dummyCustomers = [
     {
       id: 1,
@@ -252,15 +376,8 @@ export const MarketingSharedDataProvider = ({ children }) => {
     }
   ];
 
-  // Initialize with dummy data
-  useEffect(() => {
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setCustomers(dummyCustomers);
-      setLoading(false);
-    }, 1000);
-  }, []);
+  // Note: Dummy data is kept as fallback but will be replaced by assigned leads
+  // The assigned leads are loaded in the useEffect above
 
   // Get customers by status
   const getCustomersByStatus = (status) => {

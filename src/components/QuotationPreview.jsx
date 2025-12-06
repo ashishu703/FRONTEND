@@ -326,7 +326,7 @@ export default function QuotationPreview({ data, companyBranches, user, hideSign
           <p className="mb-8">This is computer generated invoice no signature required.</p>
           {!hideSignatory && (
             <div className="quotation-signatory-section">
-              <p className="font-bold">Authorized Signatory</p>
+          <p className="font-bold">Authorized Signatory</p>
               {salespersonName ? (
                 <>
                   <p className="mt-2 text-sm font-semibold text-gray-800">{salespersonName}</p>

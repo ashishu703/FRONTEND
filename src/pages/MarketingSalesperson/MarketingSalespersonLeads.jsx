@@ -932,7 +932,7 @@ const LeadImportModal = ({ onImport, onClose }) => {
 };
 
 const MarketingSalespersonLeads = () => {
-  const { customers, updateCustomer } = useMarketingSharedData();
+  const { customers, updateCustomer, loading: customersLoading } = useMarketingSharedData();
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -1106,131 +1106,69 @@ const MarketingSalespersonLeads = () => {
     state: '',
     date: ''
   });
-  const [leads, setLeads] = useState([
-    {
-      id: 1,
-      leadId: 'LD-2025-001',
-      name: 'Rajesh Kumar',
-      phone: '+91 98765 43210',
-      email: 'rajesh.kumar@email.com',
-      address: '123 MG Road, Indore, MP',
-      area: 'Indore',
-      division: 'Dewas',
-      gstNo: '23ABCDE1234F1Z5',
-      productType: 'Industrial Equipment',
-      state: 'Madhya Pradesh',
-      leadSource: 'market',
-      customerType: 'Electrical Shop',
-      date: '2025-01-17',
-      visitingStatus: 'Scheduled',
-      visitingStatusUpdated: '2025-01-17T10:30:00',
+  // Convert customers from shared context to leads format
+  const convertCustomerToLead = (customer) => {
+    return {
+      id: customer.id,
+      leadId: customer.leadId || `MKT-${String(customer.id).padStart(4, '0')}`,
+      name: customer.name,
+      phone: customer.phone || '',
+      email: customer.email || '',
+      address: customer.address || '',
+      area: customer.area || '',
+      division: customer.division || '',
+      gstNo: customer.gstNo || '',
+      productType: customer.productType || customer.productName || '',
+      state: customer.state || '',
+      leadSource: customer.leadSource || 'Marketing',
+      customerType: customer.customerType || '',
+      date: customer.date || customer.assignedDate || new Date().toISOString().split('T')[0],
+      visitingStatus: customer.visitingStatus || 'Not Visited',
+      visitingStatusUpdated: customer.visitingStatusUpdated || new Date().toISOString(),
       transferredLeads: 0,
       transferredTo: null,
-      paymentStatus: 'Pending',
-      meetings: [
-        { date: '2025-01-20', time: '10:00 AM', type: 'Initial Meeting', status: 'Scheduled' },
-        { date: '2025-01-25', time: '2:00 PM', type: 'Follow-up', status: 'Planned' }
-      ]
-    },
-    {
-      id: 2,
-      leadId: 'LD-2025-002',
-      name: 'Priya Sharma',
-      phone: '+91 87654 32109',
-      email: 'priya.sharma@business.com',
-      address: '456 Business Park, Bhopal, MP',
-      area: 'Bhopal',
-      division: 'Raisen',
-      gstNo: '23FGHIJ5678K2L6',
-      productType: 'Commercial Lighting',
-      state: 'Madhya Pradesh',
-      leadSource: 'indiamart',
-      customerType: 'Camera Installer',
-      date: '2025-01-16',
-      visitingStatus: 'Visited',
-      visitingStatusUpdated: '2025-01-16T14:45:00',
-      transferredLeads: 1,
-      transferredTo: 'John Smith',
-      paymentStatus: 'Partial',
-      meetings: [
-        { date: '2025-01-18', time: '11:00 AM', type: 'Product Demo', status: 'Completed' },
-        { date: '2025-01-22', time: '3:00 PM', type: 'Proposal Discussion', status: 'Scheduled' }
-      ]
-    },
-    {
-      id: 3,
-      leadId: 'LD-2025-003',
-      name: 'Amit Patel',
-      phone: '+91 76543 21098',
-      email: 'amit.patel@industrial.com',
-      address: '789 Industrial Area, Jabalpur, MP',
-      area: 'Jabalpur',
-      division: 'Narsinghpur',
-      gstNo: '23KLMNO9012P3M7',
-      productType: 'Power Solutions',
-      state: 'Madhya Pradesh',
-      leadSource: 'facebook',
-      customerType: 'Internet Provider',
-      date: '2025-01-15',
-      visitingStatus: 'Not Visited',
-      visitingStatusUpdated: '2025-01-15T09:15:00',
-      transferredLeads: 0,
-      transferredTo: null,
-      paymentStatus: 'Not Started',
-      meetings: [
-        { date: '2025-01-21', time: '9:00 AM', type: 'Initial Contact', status: 'Planned' }
-      ]
-    },
-    {
-      id: 4,
-      leadId: 'LD-2025-004',
-      name: 'Sneha Gupta',
-      phone: '+91 65432 10987',
-      email: 'sneha.gupta@techhub.com',
-      address: '321 Tech Hub, Gwalior, MP',
-      area: 'Gwalior',
-      division: 'Morena',
-      gstNo: '23PQRST3456U4V8',
-      productType: 'Industrial Equipment',
-      state: 'Madhya Pradesh',
-      leadSource: 'whatsapp',
-      customerType: 'Contractor',
-      date: '2025-01-14',
-      visitingStatus: 'Scheduled',
-      visitingStatusUpdated: '2025-01-14T16:20:00',
-      transferredLeads: 0,
-      transferredTo: null,
-      paymentStatus: 'Paid',
-      meetings: [
-        { date: '2025-01-19', time: '2:30 PM', type: 'Site Visit', status: 'Completed' },
-        { date: '2025-01-23', time: '10:30 AM', type: 'Final Discussion', status: 'Scheduled' }
-      ]
-    },
-    {
-      id: 5,
-      leadId: 'LD-2025-005',
-      name: 'Vikram Singh',
-      phone: '+91 54321 09876',
-      email: 'vikram.singh@corporate.com',
-      address: '654 Corporate Plaza, Ujjain, MP',
-      area: 'Ujjain',
-      division: 'Ratlam',
-      gstNo: '23WXYZ7890A5B9',
-      productType: 'Commercial Lighting',
-      state: 'Madhya Pradesh',
-      leadSource: 'market',
-      customerType: 'Automobile Shops',
-      date: '2025-01-13',
-      visitingStatus: 'Visited',
-      visitingStatusUpdated: '2025-01-13T11:30:00',
-      transferredLeads: 0,
-      transferredTo: null,
-      paymentStatus: 'Cancelled',
-      meetings: [
-        { date: '2025-01-17', time: '1:00 PM', type: 'Initial Meeting', status: 'Completed' }
-      ]
+      paymentStatus: customer.paymentStatus || 'Not Started',
+      meetings: customer.meetings || [],
+      finalStatus: customer.finalStatus || 'pending',
+      business: customer.business || ''
+    };
+  };
+
+  // Use assigned leads from shared context (customers)
+  const [leads, setLeads] = useState([]);
+
+  // Sync leads with customers from shared context (assigned leads only)
+  useEffect(() => {
+    if (!customersLoading && customers) {
+      // Convert customers (assigned leads) to leads format
+      const convertedLeads = customers.map(convertCustomerToLead);
+      setLeads(convertedLeads);
     }
-  ]);
+  }, [customers, customersLoading]);
+
+  // Listen for new assignment updates
+  useEffect(() => {
+    const handleAssignmentUpdate = () => {
+      // Reload assigned leads from localStorage if context hasn't updated yet
+      const email = localStorage.getItem('currentMarketingSalesperson') || 
+                   JSON.parse(localStorage.getItem('user') || '{}')?.email;
+      if (email) {
+        try {
+          const assignedLeadsKey = `marketingAssignedLeads_${email}`;
+          const assignedLeads = JSON.parse(localStorage.getItem(assignedLeadsKey) || '[]');
+          if (assignedLeads.length > 0) {
+            const convertedLeads = assignedLeads.map(convertCustomerToLead);
+            setLeads(convertedLeads);
+          }
+        } catch (error) {
+          console.error('Error reloading assigned leads:', error);
+        }
+      }
+    };
+    
+    window.addEventListener('marketingLeadsAssigned', handleAssignmentUpdate);
+    return () => window.removeEventListener('marketingLeadsAssigned', handleAssignmentUpdate);
+  }, []);
 
   const filteredLeads = leads.filter(lead => {
     // Search filter
@@ -2171,12 +2109,22 @@ const MarketingSalespersonLeads = () => {
                     </td>
                   </tr>
                 ))
+              ) : customersLoading ? (
+                <tr>
+                  <td colSpan="8" className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center">
+                      <RefreshCw className="w-12 h-12 text-gray-300 mb-4 animate-spin" />
+                      <p className="text-gray-500 text-lg">Loading assigned leads...</p>
+                    </div>
+                  </td>
+                </tr>
               ) : (
                 <tr>
-                  <td colSpan="14" className="px-6 py-12 text-center">
+                  <td colSpan="8" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center">
                       <Search className="w-12 h-12 text-gray-300 mb-4" />
-                      <p className="text-gray-500 text-lg">No customers available</p>
+                      <p className="text-gray-500 text-lg">No assigned leads available</p>
+                      <p className="text-gray-400 text-sm mt-2">Leads will appear here once they are assigned to you by the Marketing Head</p>
                     </div>
                   </td>
                 </tr>

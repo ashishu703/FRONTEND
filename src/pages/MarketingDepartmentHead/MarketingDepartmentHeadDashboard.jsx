@@ -6,6 +6,8 @@ import PaymentInfo from './PaymentInfo';
 import MarketingDepartmentUser from './MarketingDepartmentUser';
 import TodayVisit from './TodayVisit';
 import StockUpdate from './StockUpdate';
+import MeetingAssignment from './MeetingAssignment';
+import CheckInDashboard from './CheckInDashboard';
 import MarketingSalespersonDashboard from '../SuperAdmin/MarketingSalespersonDashboard';
 import TeleSalesDashboard from '../SuperAdmin/TeleSalesDashboard';
 import OfficeSalesPersonDashboard from '../SuperAdmin/OfficeSalesPersonDashboard';
@@ -36,6 +38,10 @@ const MarketingDepartmentHeadDashboard = ({ activeView, setActiveView }) => {
         return <MarketingDepartmentUser />;
       case 'stock-update':
         return <StockUpdate />;
+      case 'meeting-assignment':
+        return <MeetingAssignment />;
+      case 'checkin-dashboard':
+        return <CheckInDashboard />;
       case 'marketing-salesperson':
         return <MarketingSalespersonDashboard />;
       case 'tele-sales-dashboard':

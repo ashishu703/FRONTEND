@@ -119,7 +119,7 @@ function AppContent() {
         ) : userType === 'salesperson' ? (
           <SalespersonLayout onLogout={handleLogout} />
         ) : userType === 'marketing-salesperson' ? (
-          <MarketingSalespersonLayout />
+          <MarketingSalespersonLayout onLogout={handleLogout} />
         ) : userType === 'productiondepartmenthead' ? (
           <RoleGuard allow={['department_head']} allowDepartmentTypes={['production','Production Department']} fallback={<LoginPage />}>
             <ProductionDepartmentHeadLayout onLogout={handleLogout} activeView={activeView} setActiveView={setActiveView}>

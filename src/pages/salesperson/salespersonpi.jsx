@@ -212,8 +212,8 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                   className="h-16 w-auto bg-white p-1 rounded"
                 />
               </div>
-              </div>
             </div>
+          </div>
 
           {/* Invoice Details Section */}
           <div className="border-2 border-black mb-2">
@@ -231,19 +231,19 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                   <p className="text-xs">State: {stateName}, Code: {stateCode}</p>
                   <p className="text-xs">Place of Supply: {stateName}</p>
                   {billTo.phone && <p className="text-xs">Contact: {billTo.phone}</p>}
-                </div>
-              </div>
-              
+            </div>
+          </div>
+
               {/* Right: Invoice Details */}
               <div className="border border-black p-1 space-y-1 text-xs">
                 <div className="grid grid-cols-2 gap-1">
                   <span className="font-semibold">Proforma Invoice No.:</span>
                   <span>{selectedQuotation?.invoiceNumber || invoiceNumber}</span>
-                </div>
+              </div>
                 <div className="grid grid-cols-2 gap-1">
                   <span className="font-semibold">Date:</span>
                   <span>{new Date(invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}</span>
-                </div>
+                    </div>
               </div>
             </div>
           </div>
@@ -271,7 +271,7 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                     const itemTaxAmount = (itemAmount * itemTaxRate) / 100
                     const itemTotal = itemAmount + itemTaxAmount
                     return (
-                      <tr key={index}>
+                    <tr key={index}>
                         <td className="border border-black p-1 text-center">{index + 1}</td>
                         <td className="border border-black p-1">
                           <div>{item.productName || item.description}</div>
@@ -282,7 +282,7 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
                         <td className="border border-black p-1 text-right">{itemAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td className="border border-black p-1 text-center">{itemTaxRate}%</td>
                         <td className="border border-black p-1 text-right">{itemTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      </tr>
+                    </tr>
                     )
                   })
                 )}
@@ -393,8 +393,8 @@ export function CorporateStandardInvoice({ selectedBranch = 'ANODE', companyBran
             <div className="border-2 border-black p-2">
               <p className="font-bold text-xs mb-1">Declaration</p>
               <p className="text-xs">We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</p>
-            </div>
-          </div>
+                </div>
+              </div>
 
           {/* Terms & Conditions */}
           <div className="border-2 border-black mb-2 p-2">
