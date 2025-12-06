@@ -3,6 +3,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4500
 const ADMIN_BASE = `${API_BASE_URL}/api/admin`;
 const DEPT_HEADS_BASE = `${ADMIN_BASE}/department-heads`;
 const DEPT_USERS_BASE = `${ADMIN_BASE}/department-users`;
+const ORG_BASE = `${API_BASE_URL}/api/organizations`;
 const LEADS_BASE = `${API_BASE_URL}/api/leads`;
 const PRODUCTION_BASE = `${API_BASE_URL}/api/production`;
 
@@ -64,6 +65,11 @@ export const API_ENDPOINTS = {
   STOCK_UPDATE: (productName) => `${API_BASE_URL}/api/stock/${encodeURIComponent(productName)}`,
   STOCK_BATCH_UPDATE: () => `${API_BASE_URL}/api/stock/batch`,
 
+  // Product images (toolbox interface)
+  // GET returns images for a given product; UPLOAD posts a new image.
+  PRODUCT_IMAGES_GET: (productName) => `${API_BASE_URL}/api/product-images/${encodeURIComponent(productName)}`,
+  PRODUCT_IMAGES_UPLOAD: () => `${API_BASE_URL}/api/product-images`,
+
   // Tickets
   TICKETS_BASE: `${API_BASE_URL}/api/tickets`,
   TICKETS_CREATE: () => `${API_BASE_URL}/api/tickets`,
@@ -81,6 +87,15 @@ export const API_ENDPOINTS = {
 
   // Admin Users
   ADMIN_USERS_LIST: (query = '') => `${ADMIN_BASE}/users${query ? `?${query}` : ''}`,
+
+  // Organizations
+  ORGANIZATIONS_BASE: ORG_BASE,
+  ORGANIZATIONS_CREATE: () => ORG_BASE,
+  ORGANIZATIONS_LIST: (query = '') => `${ORG_BASE}${query ? `?${query}` : ''}`,
+  ORGANIZATIONS_ACTIVE: () => `${ORG_BASE}/active`,
+
+  // expose base URL for rare direct uses
+  API_BASE_URL,
 };
 
 export default API_BASE_URL;

@@ -3,6 +3,7 @@ import { Search, Plus, RefreshCw, Edit, Trash2, LogOut, Calendar, Users, Buildin
 import departmentHeadService, { uiToApiDepartment, apiToUiDepartment } from '../../api/admin_api/departmentHeadService';
 import departmentUserService from '../../api/admin_api/departmentUserService';
 import { useAuth } from '../../hooks/useAuth';
+import organizationService from '../../api/admin_api/organizationService';
 
 const DepartmentManagement = () => {
   const { login, impersonate, user } = useAuth();
@@ -21,8 +22,8 @@ const DepartmentManagement = () => {
     username: '',
     email: '',
     password: '',
-    departmentType: 'office_sales',
-    companyName: 'Anode Electric Pvt. Ltd.',
+    departmentType: '',
+    companyName: '',
     role: 'department_head',
     monthlyTarget: ''
   });
@@ -42,6 +43,7 @@ const DepartmentManagement = () => {
   const [pages, setPages] = useState(0);
   const [stats, setStats] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [companies, setCompanies] = useState([]);
   const isSuperAdmin = (user?.role === 'superadmin');
 
   const getDepartmentTypeColor = (type) => {
@@ -94,13 +96,11 @@ const DepartmentManagement = () => {
       if (selectedFilter !== 'All Departments') params.departmentType = uiToApiDepartment(selectedFilter);
       if (searchTerm.trim()) params.search = searchTerm.trim();
       
-      // Fetch only department heads (UI supports heads only)
       const headsRes = await departmentHeadService.listHeads(params);
       const heads = (headsRes.users || headsRes.data?.users || []).map(mapUserFromApi);
       const sorted = heads.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setDepartments(sorted);
       
-      // Use pagination from heads response (they should be the same)
       const pagination = headsRes.pagination || headsRes.data?.pagination || {};
       if (pagination) {
         setTotal(pagination.total || 0);
@@ -118,7 +118,16 @@ const DepartmentManagement = () => {
       const res = await departmentUserService.getStats();
       setStats(res);
     } catch (err) {
-      // Silently fail stats loading
+    }
+  };
+
+  const fetchCompanies = async () => {
+    try {
+      const res = await organizationService.listActive();
+      const items = res.organizations || res.data?.organizations || [];
+      setCompanies(items);
+    } catch (err) {
+      console.error('Failed to load organizations for company list', err);
     }
   };
 
@@ -130,6 +139,7 @@ const DepartmentManagement = () => {
 
   useEffect(() => {
     fetchUsers();
+    fetchCompanies();
   }, [page, limit, selectedFilter, searchTerm]);
 
   useEffect(() => {
@@ -169,7 +179,6 @@ const DepartmentManagement = () => {
         companyName: selectedDept.companyName,
         role: 'department_head',
       };
-      // Only include monthlyTarget for sales, marketing, and telesales departments
       const apiDeptType = uiToApiDepartment(selectedDept.departmentType);
       if (apiDeptType === 'office_sales' || 
           apiDeptType === 'marketing_sales' || 
@@ -450,7 +459,7 @@ const DepartmentManagement = () => {
                       </td>
                       <td className="py-3 px-6">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-600 border border-indigo-200">
-                          {dept.companyName || 'Anode Electric Pvt. Ltd.'}
+                          {dept.companyName || 'N/A'}
                         </span>
                       </td>
                       <td className="py-3 px-6">
@@ -574,6 +583,13 @@ const DepartmentManagement = () => {
                   e.preventDefault();
                   setSaving(true);
                   try {
+                    // Prevent accidental defaulting to Sales – department type must be chosen
+                    if (!newDept.departmentType) {
+                      alert('Please select a Department Type');
+                      setSaving(false);
+                      return;
+                    }
+
                     const payload = {
                       username: newDept.username,
                       email: newDept.email,
@@ -591,7 +607,15 @@ const DepartmentManagement = () => {
                     await departmentHeadService.createHead(payload);
                     await fetchUsers();
                     setShowAddModal(false);
-                    setNewDept({ username: '', email: '', password: '', departmentType: 'office_sales', companyName: 'Anode Electric Pvt. Ltd.', role: 'department_head', monthlyTarget: '' });
+                    setNewDept({
+                      username: '',
+                      email: '',
+                      password: '',
+                      departmentType: '',
+                      companyName: 'Anode Electric Pvt. Ltd.',
+                      role: 'department_head',
+                      monthlyTarget: ''
+                    });
                   } catch (err) {
                     alert(err.message || 'Failed to create user');
                   } finally {
@@ -649,6 +673,7 @@ const DepartmentManagement = () => {
                       onChange={(e) => setNewDept({ ...newDept, departmentType: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                     >
+                      <option value="">Select Department Type</option>
                       <option value="office_sales">Sales Department</option>
                       <option value="marketing_sales">Marketing Department</option>
                       <option value="hr">HR Department</option>
@@ -665,9 +690,15 @@ const DepartmentManagement = () => {
                       onChange={(e) => setNewDept({ ...newDept, companyName: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                     >
-                      <option>Anode Electric Pvt. Ltd.</option>
-                      <option>Anode Metals</option>
-                      <option>Samrridhi Industries</option>
+                      {companies.length === 0 ? (
+                        <option value="">No organizations available</option>
+                      ) : (
+                        companies.map((org) => (
+                          <option key={org.id} value={org.name}>
+                            {org.name}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
                   <div>
@@ -798,11 +829,19 @@ const DepartmentManagement = () => {
                     <select
                       value={selectedDept.companyName}
                       onChange={(e) => setSelectedDept({ ...selectedDept, companyName: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus-border-blue-500 outline-none bg-white"
                     >
-                      <option>Anode Electric Pvt. Ltd.</option>
-                      <option>Anode Metals</option>
-                      <option>Samrridhi Industries</option>
+                      {companies.length === 0 ? (
+                        <option value={selectedDept.companyName || ''}>
+                          {selectedDept.companyName || 'No organizations available'}
+                        </option>
+                      ) : (
+                        companies.map((org) => (
+                          <option key={org.id} value={org.name}>
+                            {org.name}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
                   <div>

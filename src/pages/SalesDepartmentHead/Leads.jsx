@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import AddCustomerModal from './AddCustomerModal';
-import QuotationPreviewModal from '../../components/QuotationPreviewModal';
-import PIPreviewModal from '../salesperson/PIPreviewModal';
+import QuotationPreview from '../../components/QuotationPreview';
+import PIPreview from '../../components/PIPreview';
 import CustomerTimeline from '../../components/CustomerTimeline';
 import FilterBadges from '../../components/FilterBadges';
 import SearchBar from '../../components/SearchBar';
@@ -109,7 +109,6 @@ const LeadsSimplified = () => {
   const allLeadsDataRef = useRef([]);
   const [showPIPreview, setShowPIPreview] = useState(false);
   const [piPreviewData, setPiPreviewData] = useState(null);
-  const [selectedPIBranch, setSelectedPIBranch] = useState(DEFAULT_BRANCH);
 
   const importFileInputRef = useRef(null);
 
@@ -137,6 +136,73 @@ const LeadsSimplified = () => {
     }
   };
 
+  const buildPreviewQuotation = (dbQuotation) => {
+    if (!dbQuotation) return null;
+
+    // Normalized shape compatible with QuotationPreview / QuotationDataMapper
+    return {
+      // Core identifiers
+      id: dbQuotation.id,
+      quotationNumber: dbQuotation.quotation_number,
+      quotationDate: dbQuotation.quotation_date,
+      validUpto: dbQuotation.valid_until,
+      selectedBranch: dbQuotation.branch || DEFAULT_BRANCH,
+      template: dbQuotation.template || '',
+
+      // Customer / bill-to
+      customerId: dbQuotation.customer_id,
+      billTo: typeof dbQuotation.bill_to === 'string'
+        ? JSON.parse(dbQuotation.bill_to)
+        : (dbQuotation.bill_to || {
+            business: dbQuotation.customer_business,
+            buyerName: dbQuotation.customer_business,
+            address: dbQuotation.customer_address,
+            phone: dbQuotation.customer_phone,
+            gstNo: dbQuotation.customer_gst_no,
+            state: dbQuotation.customer_state
+          }),
+
+      // Line items
+      items: (dbQuotation.items || []).map(i => ({
+        productName: i.product_name || i.productName,
+        description: i.description,
+        quantity: i.quantity,
+        unit: i.unit || 'Nos',
+        buyerRate: i.unit_price || i.buyerRate,
+        unitPrice: i.unit_price || i.buyerRate,
+        amount: i.taxable_amount || i.amount,
+        total: i.total_amount || i.total,
+        hsn: i.hsn_code || i.hsn,
+        hsnCode: i.hsn_code || i.hsn,
+        gstRate: i.gst_rate || i.gstRate || 18
+      })),
+
+      // Financial summary
+      subtotal: parseFloat(dbQuotation.subtotal || 0),
+      discountRate: parseFloat(dbQuotation.discount_rate || 0),
+      discountAmount: parseFloat(dbQuotation.discount_amount || 0),
+      taxRate: parseFloat(dbQuotation.tax_rate || 0),
+      taxAmount: parseFloat(dbQuotation.tax_amount || 0),
+      total: parseFloat(dbQuotation.total_amount || 0),
+
+      // Extra fields used by templates
+      paymentMode: dbQuotation.payment_mode || '',
+      transportTc: dbQuotation.transport_tc || '',
+      dispatchThrough: dbQuotation.dispatch_through || '',
+      deliveryTerms: dbQuotation.delivery_terms || '',
+      materialType: dbQuotation.material_type || '',
+      bankDetails: typeof dbQuotation.bank_details === 'string'
+        ? JSON.parse(dbQuotation.bank_details)
+        : dbQuotation.bank_details,
+      termsSections: typeof dbQuotation.terms_sections === 'string'
+        ? JSON.parse(dbQuotation.terms_sections)
+        : dbQuotation.terms_sections,
+
+      // Status
+      status: dbQuotation.status
+    };
+  };
+
   const handleRejectQuotation = async (quotationId) => {
     const previewLeadId = previewLead?.id || null;
     const updatedQuotations = await quotationServiceInstance.rejectQuotation(quotationId, previewLeadId);
@@ -146,10 +212,21 @@ const LeadsSimplified = () => {
   };
 
   const handleViewQuotation = async (quotationId) => {
-    const quotation = await quotationServiceInstance.getQuotation(quotationId);
-    if (quotation) {
-      setSelectedQuotation(quotation);
+    try {
+      const dbQuotation = await quotationServiceInstance.getQuotation(quotationId);
+      if (!dbQuotation) {
+        toastManager.error('Failed to load quotation details');
+        return;
+      }
+      const normalized = buildPreviewQuotation(dbQuotation);
+      if (!normalized) {
+        toastManager.error('Unable to prepare quotation for preview');
+        return;
+      }
+      setSelectedQuotation(normalized);
       setShowQuotationModal(true);
+    } catch (error) {
+      apiErrorHandler.handleError(error, 'view quotation');
     }
   };
 
@@ -599,23 +676,106 @@ const LeadsSimplified = () => {
         advancePayment, 
         originalQuotationTotal
       );
-      const billTo = piService.buildBillTo(completeQuotation, pi);
-      const previewData = piService.buildPIPreviewData(
-        pi, 
-        completeQuotation, 
-        mappedItems, 
-        totals, 
-        finalTotal, 
-        advancePayment, 
-        originalQuotationTotal, 
-        billTo
-      );
+      
+      // Get customer data for billTo
+      const customerData = allLeadsDataRef.current?.find(lead => lead.id === Number(pi.customer_id)) || null;
+      const billTo = piService.buildBillTo(completeQuotation, pi, customerData);
+      
+      // Build PI data in the same shape used by salesperson PI preview / templates
+      const quotationNumber = completeQuotation.quotation_number || pi.pi_number || pi.id;
+      const rawPiDate = pi.pi_date || pi.piDate || pi.created_at;
+      const piDate = rawPiDate ? new Date(rawPiDate).toISOString().split('T')[0] : '';
+      const validUntil = pi.valid_until || pi.validUntil || completeQuotation.valid_until || '';
 
-      setPiPreviewData({
-        data: previewData,
-        selectedBranch: completeQuotation.branch || DEFAULT_BRANCH
-      });
-      setSelectedPIBranch(completeQuotation.branch || DEFAULT_BRANCH);
+      // Bank details & terms from quotation (same as CreatePIForm)
+      const rawBankDetails = completeQuotation.bank_details || completeQuotation.bankDetails;
+      let bankDetails = null;
+      try {
+        if (rawBankDetails) {
+          bankDetails = typeof rawBankDetails === 'string' ? JSON.parse(rawBankDetails) : rawBankDetails;
+        }
+      } catch (e) {
+        // Bank details parsing failed, will use null
+      }
+
+      const rawTerms = completeQuotation.terms_sections || completeQuotation.termsSections;
+      let terms = [];
+      try {
+        const baseTerms = typeof rawTerms === 'string' ? JSON.parse(rawTerms) : rawTerms;
+        if (Array.isArray(baseTerms)) {
+          terms = baseTerms.map((sec) => ({
+            title: sec.title || '',
+            points: Array.isArray(sec.points) ? sec.points : []
+          }));
+        }
+      } catch (e) {
+        // Terms parsing failed, will use empty array
+      }
+
+      // For PI preview we must use the PI's own template key (type "pi")
+      // Do NOT fall back to the quotation's template key, since that is a different template type.
+      const templateKey = pi.template || null;
+      if (!templateKey) {
+        toastManager.error('This PI has no template configured. Please recreate the PI with a PI template.');
+        return;
+      }
+      const selectedBranch = completeQuotation.branch || DEFAULT_BRANCH;
+
+      const formattedPiData = {
+        // Header & identity
+        quotationNumber,
+        quotationDate: piDate,
+        invoiceNumber: pi.pi_number || pi.piNumber || quotationNumber,
+        invoiceDate: piDate,
+        piNumber: pi.pi_number || pi.piNumber || quotationNumber,
+        piDate,
+        piId: pi.pi_number || pi.id,
+        validUpto: validUntil,
+        piValidUpto: validUntil,
+
+        // Parties & template context
+        billTo,
+        items: mappedItems.map((item) => ({
+          productName: item.description,
+          description: item.subDescription || item.description,
+          quantity: item.quantity,
+          unit: item.unit,
+          rate: item.rate,
+          buyerRate: item.buyerRate,
+          amount: item.amount,
+          hsn: item.hsn || '85446090',
+          hsnCode: item.hsn || '85446090'
+        })),
+        subtotal: totals.subtotal,
+        discountRate: totals.discountRate,
+        discountAmount: totals.discountAmount,
+        taxableAmount: totals.taxableAmount,
+        taxRate: totals.taxRate,
+        taxAmount: totals.taxAmount,
+        total: finalTotal,
+
+        // Additional details from quotation
+        paymentMode: completeQuotation.payment_mode || completeQuotation.paymentMode || '',
+        transportTc: completeQuotation.transport_tc || completeQuotation.transportTc || '',
+        dispatchThrough: completeQuotation.dispatch_through || completeQuotation.dispatchThrough || '',
+        deliveryTerms: completeQuotation.delivery_terms || completeQuotation.deliveryTerms || '',
+        materialType: completeQuotation.material_type || completeQuotation.materialType || '',
+
+        // Textual terms
+        paymentTerms: completeQuotation.payment_terms || completeQuotation.paymentTerms || '',
+        validity: validUntil,
+        warranty: completeQuotation.warranty || '',
+
+        // Bank details & terms & conditions
+        bankDetails,
+        terms,
+
+        // Meta
+        template: templateKey,
+        selectedBranch
+      };
+
+      setPiPreviewData(formattedPiData);
       setShowPIPreview(true);
     } catch (error) {
       console.error('Error viewing PI:', error);
@@ -955,56 +1115,26 @@ const LeadsSimplified = () => {
         usersError={usersError}
       />
 
-      <QuotationPreviewModal
-        isOpen={showQuotationModal}
-        onClose={() => setShowQuotationModal(false)}
-        quotationData={selectedQuotation ? {
-          quotationNumber: selectedQuotation.quotation_number,
-          quotationDate: selectedQuotation.quotation_date,
-          validUpto: selectedQuotation.valid_until,
-          voucherNumber: `VOUCH-${Math.floor(1000 + Math.random() * 9000)}`,
-          billTo: {
-            business: selectedQuotation.customer_name,
-            address: selectedQuotation.customer_address,
-            phone: selectedQuotation.customer_phone,
-            gstNo: selectedQuotation.customer_gst_no,
-            state: selectedQuotation.customer_state
-          },
-          items: selectedQuotation.items?.map(item => ({
-            productName: item.product_name,
-            description: item.description,
-            quantity: item.quantity,
-            unit: item.unit || 'Nos',
-            buyerRate: item.unit_price,
-            unitPrice: item.unit_price,
-            amount: item.taxable_amount,
-            total: item.total_amount,
-            hsn: item.hsn_code,
-            gstRate: item.gst_rate
-          })),
-          subtotal: parseFloat(selectedQuotation.subtotal),
-          taxAmount: parseFloat(selectedQuotation.tax_amount),
-          total: parseFloat(selectedQuotation.total_amount),
-          selectedBranch: DEFAULT_BRANCH
-        } : null}
-        companyBranches={COMPANY_BRANCHES}
-        user={DEFAULT_USER}
-        onDownloadPDF={selectedQuotation ? () => handleDownloadPDF(selectedQuotation.id) : null}
-      />
+      {showQuotationModal && selectedQuotation && (
+        <QuotationPreview
+          quotationData={selectedQuotation}
+          companyBranches={COMPANY_BRANCHES}
+          user={DEFAULT_USER}
+          onClose={() => setShowQuotationModal(false)}
+        />
+      )}
 
-      <PIPreviewModal
-        open={showPIPreview}
-        onClose={() => {
-          setShowPIPreview(false);
-          setPiPreviewData(null);
-        }}
-        piPreviewData={piPreviewData}
-        selectedBranch={selectedPIBranch}
-        companyBranches={COMPANY_BRANCHES}
-        approvedQuotationId={null}
-        viewingCustomerId={null}
-        onPICreated={null}
-      />
+      {showPIPreview && piPreviewData && (
+        <PIPreview
+          piData={piPreviewData}
+          companyBranches={COMPANY_BRANCHES}
+          user={DEFAULT_USER}
+          onClose={() => {
+            setShowPIPreview(false);
+            setPiPreviewData(null);
+          }}
+        />
+      )}
 
       {showCustomerTimeline && timelineLead && (
         <div style={{ position: 'fixed', top: 0, right: 0, width: 'fit-content', maxWidth: '349px', minWidth: '244px', height: '100vh', zIndex: 50, marginLeft: 0, marginRight: 0, paddingLeft: 0, paddingRight: 0, borderLeft: '1px solid #e5e7eb' }}>
@@ -1018,20 +1148,37 @@ const LeadsSimplified = () => {
               openAssignModal(lead);
             }}
             onQuotationView={(quotation) => {
-              if (quotation) {
-                setSelectedQuotation(quotation);
-                setShowQuotationModal(true);
+              if (quotation?.id) {
+                handleViewQuotation(quotation.id);
               } else {
                 toastManager.error('Quotation data is missing');
               }
             }}
-            onPIView={(pi) => {
-              setPiPreviewData(pi);
-              setShowPIPreview(true);
+            onApproveQuotation={(quotation) => {
+              if (quotation?.id) {
+                handleApproveQuotation(quotation.id);
+              }
             }}
-            setSelectedQuotation={setSelectedQuotation}
-            setShowQuotationModal={setShowQuotationModal}
-            toastManager={toastManager}
+            onRejectQuotation={(quotation) => {
+              if (quotation?.id) {
+                handleRejectQuotation(quotation.id);
+              }
+            }}
+            onPIView={(pi) => {
+              if (pi?.id) {
+                handleViewPI(pi.id);
+              }
+            }}
+            onApprovePI={(pi) => {
+              if (pi?.id) {
+                handleApprovePI(pi.id);
+              }
+            }}
+            onRejectPI={(pi) => {
+              if (pi?.id) {
+                handleRejectPI(pi.id);
+              }
+            }}
           />
         </div>
       )}

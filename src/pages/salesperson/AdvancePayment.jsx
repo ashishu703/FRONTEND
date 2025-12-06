@@ -162,8 +162,24 @@ class PaymentTrackingService {
     for (const [, { quotation, lead, payments }] of paymentMap.entries()) {
       if (!quotation) continue;
 
-      const hasPI = await this.checkPIExists(quotation.id);
-      if (!hasPI) continue;
+      // Fetch PI data for this quotation to get product names from PI
+      let pis = [];
+      try {
+        console.log('🔍 [AdvancePayment] Fetching PI for quotation:', quotation.id);
+        const response = await this.proformaInvoiceService.getPIsByQuotation(quotation.id);
+        pis = DataExtractor.extractArray(response);
+        console.log('✅ [AdvancePayment] PI data fetched:', pis);
+      } catch (error) {
+        console.warn(`❌ [AdvancePayment] Failed to fetch PI for quotation ${quotation.id}:`, error);
+      }
+
+      // Only include if PI exists
+      if (pis.length === 0) {
+        console.log('⚠️ [AdvancePayment] No PI found for quotation:', quotation.id, '- Skipping');
+        continue;
+      }
+      
+      console.log('✅ [AdvancePayment] PI exists for quotation:', quotation.id, '- Processing payment tracking');
 
       const validPayments = payments.filter(PaymentValidator.isValid);
       const approvedPayments = validPayments.filter(PaymentValidator.isApproved);
@@ -185,11 +201,49 @@ class PaymentTrackingService {
         : null;
       const firstPayment = validPayments.length > 0 ? validPayments[0] : null;
 
+      // Fetch product names from PI (via quotation items that PI references)
+      let productNames = 'N/A';
+      console.log('🔍 [AdvancePayment] Building payment tracking - Quotation ID:', quotation.id);
+      console.log('📦 [AdvancePayment] Quotation data:', quotation);
+      console.log('📋 [AdvancePayment] PI data:', pis);
+      
+      // Fetch quotation items if not already included
+      let quotationItems = quotation?.items;
+      if (!quotationItems || !Array.isArray(quotationItems) || quotationItems.length === 0) {
+        try {
+          console.log('📥 [AdvancePayment] Fetching quotation items for:', quotation.id);
+          const quotationWithItems = await this.quotationService.getQuotation(quotation.id);
+          quotationItems = quotationWithItems?.data?.items || quotationWithItems?.items || [];
+          console.log('✅ [AdvancePayment] Quotation items fetched:', quotationItems);
+        } catch (error) {
+          console.warn('⚠️ [AdvancePayment] Failed to fetch quotation items:', error);
+          quotationItems = [];
+        }
+      }
+      
+      // PI references quotation, so get product names from quotation items
+      // Since PI is created from quotation, items are the same
+      if (quotationItems && Array.isArray(quotationItems) && quotationItems.length > 0) {
+        productNames = quotationItems
+          .map(item => item.product_name || item.productName || item.description)
+          .filter(Boolean)
+          .join(', ');
+        console.log('✅ [AdvancePayment] Product names from quotation items:', productNames);
+      } else if (lead.product_type) {
+        productNames = lead.product_type;
+        console.log('⚠️ [AdvancePayment] Using lead product_type as fallback:', productNames);
+      } else if (firstPayment?.product_name) {
+        productNames = firstPayment.product_name;
+        console.log('⚠️ [AdvancePayment] Using payment product_name as fallback:', productNames);
+      }
+      
+      console.log('📝 [AdvancePayment] Final product name for payment tracking:', productNames);
+
       paymentTrackingData.push({
         id: `${quotation.customer_id || lead.id}-${quotation.id}`,
         leadId: `LD-${quotation.customer_id || lead.id}`,
         customerName: quotation?.customer_name || lead.name || firstPayment?.customer_name || 'N/A',
-        productName: lead.product_type || quotation?.items?.[0]?.description || firstPayment?.product_name || 'N/A',
+        productName: productNames,
         address: quotation?.customer_address || lead.address || firstPayment?.address || 'N/A',
         quotationId: quotation?.quotation_number || `QT-${quotation.id}`,
         paymentStatus,
@@ -1096,11 +1150,22 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         receiptUrl = await uploadService.uploadFile(receiptFile, 'payments');
       }
 
+      // Validate installment amount
+      const installmentAmount = parseFloat(paymentData.installment_amount);
+      console.log('💰 [AdvancePayment] Payment submission - installment_amount:', installmentAmount);
+      console.log('💰 [AdvancePayment] Payment data:', paymentData);
+      
+      if (!installmentAmount || isNaN(installmentAmount) || installmentAmount <= 0) {
+        setError('Please enter a valid payment amount greater than 0');
+        setLoading(false);
+        return;
+      }
+
       const paymentPayload = {
         lead_id: item.leadData?.id,
         quotation_id: selectedQuotationId,
         pi_id: selectedPIId,
-        installment_amount: parseFloat(paymentData.installment_amount),
+        installment_amount: installmentAmount,
         payment_method: paymentData.payment_method,
         payment_reference: paymentData.payment_reference,
         payment_status: paymentData.payment_status,
@@ -1113,7 +1178,9 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         delivery_status: paymentData.delivery_status
       };
 
+      console.log('📤 [AdvancePayment] Sending payment payload:', paymentPayload);
       const response = await paymentService.createPayment(paymentPayload);
+      console.log('✅ [AdvancePayment] Payment response:', response);
       if (response.success) {
         const { summary: responseSummary } = response.data;
         onClose();

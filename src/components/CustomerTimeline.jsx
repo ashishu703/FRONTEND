@@ -4,15 +4,25 @@ import customerTimelineService from '../services/CustomerTimelineService';
 import DateFormatter from '../utils/DateFormatter';
 
 
-const CustomerTimeline = ({ lead, onClose, onReassign }) => {
+const CustomerTimeline = ({
+  lead,
+  onClose,
+  onReassign,
+  onQuotationView,
+  onApproveQuotation,
+  onRejectQuotation,
+  onPIView,
+  onApprovePI,
+  onRejectPI
+}) => {
   if (!lead) return null;
 
   const [history, setHistory] = useState([]);
   const [quotations, setQuotations] = useState([]);
   const [pisByQuotationId, setPisByQuotationId] = useState({});
   const [payments, setPayments] = useState([]);
-  const [paymentSummary, setPaymentSummary] = useState(null);
   const [transferInfo, setTransferInfo] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -27,7 +37,6 @@ const CustomerTimeline = ({ lead, onClose, onReassign }) => {
         setQuotations(data.quotations || []);
         setPisByQuotationId(data.pisByQuotationId || {});
         setPayments(data.payments || []);
-        setPaymentSummary(data.paymentSummary || null);
         setTransferInfo(data.transferInfo || null);
       } catch (e) {
         console.warn('Failed to load customer timeline', e);
@@ -38,7 +47,7 @@ const CustomerTimeline = ({ lead, onClose, onReassign }) => {
     return () => {
       cancelled = true;
     };
-  }, [lead?.id]);
+  }, [lead?.id, refreshKey]);
 
   const groupedHistory = useMemo(() => {
     const items = [...history].sort(
@@ -56,10 +65,15 @@ const CustomerTimeline = ({ lead, onClose, onReassign }) => {
     return groups;
   }, [history]);
 
+  const allQuotations = Array.isArray(quotations)
+    ? [...quotations].sort(
+        (a, b) =>
+          new Date(a.quotation_date || a.created_at || 0) -
+          new Date(b.quotation_date || b.created_at || 0)
+      )
+    : [];
+
   const createdDateLabel = DateFormatter.formatDate(lead.created_at || lead.createdAt);
-  const firstPaymentDateLabel = payments.length > 0 && payments[0]?.payment_date
-    ? DateFormatter.formatDate(payments[0].payment_date)
-    : 'N/A';
 
   const getPaymentBadgeClasses = (summary) => {
     const status = (summary?.approvalStatus || '').toLowerCase();
@@ -314,15 +328,8 @@ const CustomerTimeline = ({ lead, onClose, onReassign }) => {
               </div>
             ))}
 
-            {/* Quotations & PIs - Only show quotations with at least one PI */}
-            {(() => {
-              // Filter quotations to only show those with at least one PI
-              const quotationsWithPI = quotations.filter(q => {
-                const pis = pisByQuotationId[q.id] || [];
-                return pis.length > 0;
-              });
-
-              return quotationsWithPI.length > 0 ? (
+            {/* Quotations & PIs - show all quotations (PIs optional) */}
+            {allQuotations.length > 0 && (
                 <div style={{ marginTop: 4 }}>
                   <div className="flex justify-center">
                   <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
@@ -341,7 +348,7 @@ const CustomerTimeline = ({ lead, onClose, onReassign }) => {
                         </span>
                     </div>
                     <div className="space-y-1 text-[10px] text-gray-800">
-                        {quotationsWithPI.map((q) => {
+                        {allQuotations.map((q) => {
                         const pis = pisByQuotationId[q.id] || [];
                         const status = String(q.status || 'PENDING').toLowerCase();
                         const statusClass =
@@ -373,6 +380,49 @@ const CustomerTimeline = ({ lead, onClose, onReassign }) => {
                               </span>
                             </div>
 
+                            {/* Quotation actions */}
+                            <div className="mt-0.5 flex flex-wrap gap-1">
+                              {onQuotationView && (
+                                <button
+                                  type="button"
+                                  onClick={() => onQuotationView(q)}
+                                  className="px-1.5 py-0.5 text-[9px] rounded border border-blue-200 text-blue-700 hover:bg-blue-50"
+                                >
+                                  View
+                                </button>
+                              )}
+                              {onApproveQuotation &&
+                                (status === 'pending' ||
+                                  status === 'pending_verification' ||
+                                  status === 'pending_approval') && (
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      await onApproveQuotation(q);
+                                      setRefreshKey((k) => k + 1);
+                                    }}
+                                    className="px-1.5 py-0.5 text-[9px] rounded border border-green-200 text-green-700 hover:bg-green-50"
+                                  >
+                                    Approve
+                                  </button>
+                                )}
+                              {onRejectQuotation &&
+                                (status === 'pending' ||
+                                  status === 'pending_verification' ||
+                                  status === 'pending_approval') && (
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      await onRejectQuotation(q);
+                                      setRefreshKey((k) => k + 1);
+                                    }}
+                                    className="px-1.5 py-0.5 text-[9px] rounded border border-red-200 text-red-700 hover:bg-red-50"
+                                  >
+                                    Reject
+                                  </button>
+                                )}
+                            </div>
+
                             {pis.length > 0 && (
                               <div className="mt-0.5 text-[9px] text-gray-700 flex flex-wrap gap-1">
                                 {pis.map((pi) => {
@@ -388,21 +438,64 @@ const CustomerTimeline = ({ lead, onClose, onReassign }) => {
                                       ? 'bg-blue-100 text-blue-800'
                                       : 'bg-gray-100 text-gray-800';
                                   return (
-                                  <span
-                                    key={pi.id}
-                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-orange-50 border border-orange-200"
-                                  >
-                                    <Receipt className="h-3 w-3 text-orange-600" />
+                                    <span
+                                      key={pi.id}
+                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-orange-50 border border-orange-200"
+                                    >
+                                      <Receipt className="h-3 w-3 text-orange-600" />
                                       <span>
                                         {pi.pi_number ||
                                           `PI-${String(pi.id).slice(-4)}`}
                                       </span>
-                                    <span
+                                      <span
                                         className={`px-1 py-0.5 rounded text-[8px] ${piClass}`}
-                                    >
-                                      {(pi.status || 'PENDING').toUpperCase()}
+                                      >
+                                        {(pi.status || 'PENDING').toUpperCase()}
+                                      </span>
+
+                                      {/* PI actions */}
+                                      <span className="inline-flex gap-1 ml-1">
+                                        {onPIView && (
+                                          <button
+                                            type="button"
+                                            onClick={() => onPIView(pi)}
+                                            className="px-1 py-0.5 text-[8px] rounded border border-blue-200 text-blue-700 hover:bg-blue-50 bg-white"
+                                          >
+                                            View
+                                          </button>
+                                        )}
+                                        {onApprovePI &&
+                                          (piStatus === 'pending' ||
+                                            piStatus === 'pending_approval' ||
+                                            piStatus === 'sent_for_approval') && (
+                                            <button
+                                              type="button"
+                                              onClick={async () => {
+                                                await onApprovePI(pi);
+                                                setRefreshKey((k) => k + 1);
+                                              }}
+                                              className="px-1 py-0.5 text-[8px] rounded border border-green-200 text-green-700 hover:bg-green-50 bg-white"
+                                            >
+                                              Approve
+                                            </button>
+                                          )}
+                                        {onRejectPI &&
+                                          (piStatus === 'pending' ||
+                                            piStatus === 'pending_approval' ||
+                                            piStatus === 'sent_for_approval') && (
+                                            <button
+                                              type="button"
+                                              onClick={async () => {
+                                                await onRejectPI(pi);
+                                                setRefreshKey((k) => k + 1);
+                                              }}
+                                              className="px-1 py-0.5 text-[8px] rounded border border-red-200 text-red-700 hover:bg-red-50 bg-white"
+                                            >
+                                              Reject
+                                            </button>
+                                          )}
+                                      </span>
                                     </span>
-                                  </span>
                                   );
                                 })}
                               </div>
@@ -411,11 +504,10 @@ const CustomerTimeline = ({ lead, onClose, onReassign }) => {
                         );
                       })}
                     </div>
-                      </div>
                   </div>
                 </div>
-              ) : null;
-            })()}
+              </div>
+            )}
 
             {/* Payment History by PI */}
             {payments.length > 0 && (
@@ -519,65 +611,6 @@ const CustomerTimeline = ({ lead, onClose, onReassign }) => {
                   </div>
                 </div>
               </div>
-            )}
-
-            {/* Payment summary */}
-            {paymentSummary && (
-              <div style={{ marginTop: 4 }}>
-                <div className="flex justify-center">
-                  <span className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
-                    {firstPaymentDateLabel}
-                  </span>
-                </div>
-                <div className="flex justify-start" style={{ marginTop: 2 }}>
-                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-purple-50 border border-purple-200 p-1.5">
-                    <div
-                      className="flex items-center gap-1.5"
-                      style={{ marginBottom: 1 }}
-                    >
-                      <CreditCard className="h-3 w-3 text-purple-600" />
-                      <span className="text-[11px] font-medium text-gray-900">
-                        Payment Status
-                      </span>
-                      <span
-                        className={`ml-auto px-1.5 py-0.5 text-[9px] font-medium rounded ${getPaymentBadgeClasses(
-                          paymentSummary
-                        )}`}
-                      >
-                        {(paymentSummary.approvalStatus || 'PENDING').toUpperCase()}
-                      </span>
-                    </div>
-                    <div
-                      className="text-[10px] text-gray-700"
-                      style={{ gap: 1 }}
-                    >
-                      <div
-                        className="font-medium text-gray-900"
-                        style={{ marginBottom: 1 }}
-                      >
-                        Total: ₹
-                        {Number(paymentSummary.total || 0).toLocaleString('en-IN')}
-                      </div>
-                      <div
-                        className="text-green-700"
-                        style={{ marginBottom: 1 }}
-                      >
-                        Paid: ₹
-                        {Number(paymentSummary.paid || 0).toLocaleString('en-IN')}
-                      </div>
-                      <div
-                        className="text-red-700"
-                        style={{ marginBottom: 1 }}
-                      >
-                        Due: ₹
-                        {Number(paymentSummary.remaining || 0).toLocaleString(
-                          'en-IN'
-                        )}
-                      </div>
-                    </div>
-                    </div>
-                  </div>
-                </div>
             )}
           </div>
         </div>
