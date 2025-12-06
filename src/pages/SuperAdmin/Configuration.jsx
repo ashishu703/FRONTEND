@@ -5,28 +5,27 @@ import {
   MessageSquare, 
   Save, 
   TestTube, 
-  Upload, 
   Eye, 
-  Code, 
-  X, 
-  Plus,
   Settings,
-  User,
   Lock,
-  AtSign,
   Users,
   FileText,
   CheckCircle,
   AlertCircle,
   Cloud,
   Key,
-  Loader
+  Loader,
+  Plus,
+  X
 } from 'lucide-react';
 import configurationService from '../../api/admin_api/configurationService';
+import TemplateFormSidebar from '../../components/TemplateFormSidebar';
+import EmailTemplateFormSidebar from '../../components/EmailTemplateFormSidebar';
 
 const Configuration = () => {
   const [activeTab, setActiveTab] = useState('smtp');
-  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showEmailTemplateSidebar, setShowEmailTemplateSidebar] = useState(false);
+  const [showDocumentTemplateSidebar, setShowDocumentTemplateSidebar] = useState(false);
   const [templateForm, setTemplateForm] = useState({
     name: '',
     subject: '',
@@ -87,9 +86,20 @@ const Configuration = () => {
 
   // Templates State
   const [templates, setTemplates] = useState([]);
+  const [documentTemplates, setDocumentTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [editingDocumentTemplateId, setEditingDocumentTemplateId] = useState(null);
+  const [documentTemplateForm, setDocumentTemplateForm] = useState({
+    templateType: 'quotation',
+    name: '',
+    templateKey: '',
+    description: '',
+    htmlContent: '',
+    isDefault: false,
+    isActive: true
+  });
 
   // Load configurations on mount
   useEffect(() => {
@@ -101,7 +111,15 @@ const Configuration = () => {
     try {
       const response = await configurationService.getAll();
       if (response.success) {
-        const { email, whatsapp, cloudinary, indiamart, tradeindia, templates: emailTemplates } = response.data;
+        const {
+          email,
+          whatsapp,
+          cloudinary,
+          indiamart,
+          tradeindia,
+          templates: emailTemplates,
+          documentTemplates: loadedDocumentTemplates
+        } = response.data;
         
         if (email) {
           setSmtpSettings({
@@ -161,6 +179,10 @@ const Configuration = () => {
         if (emailTemplates) {
           setTemplates(emailTemplates);
         }
+
+        if (loadedDocumentTemplates) {
+          setDocumentTemplates(loadedDocumentTemplates);
+        }
       }
     } catch (error) {
       console.error('Error loading configurations:', error);
@@ -217,22 +239,44 @@ const Configuration = () => {
     }));
   };
 
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setTemplateForm(prev => ({
-          ...prev,
-          content: file,
-          htmlContent: e.target.result
-        }));
-      };
-      reader.readAsText(file);
-    }
+  const handleDocumentTemplateChange = (field, value) => {
+    setDocumentTemplateForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  const handleSaveTemplate = async () => {
+
+  const resetDocumentTemplateForm = () => {
+    setEditingDocumentTemplateId(null);
+    setDocumentTemplateForm({
+      templateType: 'quotation',
+      name: '',
+      templateKey: '',
+      description: '',
+      htmlContent: '',
+      isDefault: false,
+      isActive: true
+    });
+    setShowDocumentTemplateSidebar(false);
+  };
+
+  const handleOpenDocumentTemplateSidebar = () => {
+    resetDocumentTemplateForm();
+    setShowDocumentTemplateSidebar(true);
+  };
+
+  const handleOpenEmailTemplateSidebar = () => {
+    setTemplateForm({ name: '', subject: '', description: '', content: null, htmlContent: '' });
+    setShowEmailTemplateSidebar(true);
+  };
+
+  const handleCancelEmailTemplate = () => {
+    setTemplateForm({ name: '', subject: '', description: '', content: null, htmlContent: '' });
+    setShowEmailTemplateSidebar(false);
+  };
+
+  const handleSaveEmailTemplate = async () => {
     if (!templateForm.name || !templateForm.subject || !templateForm.htmlContent) {
       showMessage('error', 'Please fill all required fields');
       return;
@@ -250,7 +294,7 @@ const Configuration = () => {
       if (response.success) {
         showMessage('success', 'Template created successfully');
         setTemplateForm({ name: '', subject: '', description: '', content: null, htmlContent: '' });
-        setShowTemplateModal(false);
+        setShowEmailTemplateSidebar(false);
         loadConfigurations();
       }
     } catch (error) {
@@ -260,9 +304,92 @@ const Configuration = () => {
     }
   };
 
-  const handleTestSmtp = () => {
+  const handleSaveDocumentTemplate = async () => {
+    const { templateType, name, templateKey } = documentTemplateForm;
+
+    if (!templateType || !name || !templateKey) {
+      showMessage('error', 'Template type, name and key are required');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (editingDocumentTemplateId) {
+        const response = await configurationService.updateDocumentTemplate(
+          editingDocumentTemplateId,
+          documentTemplateForm
+        );
+        if (response.success && response.data) {
+          const updated = documentTemplates.map(template =>
+            template.id === response.data.id ? response.data : template
+          );
+          setDocumentTemplates(updated);
+          showMessage('success', 'Document template updated successfully');
+        }
+      } else {
+        const response = await configurationService.createDocumentTemplate(documentTemplateForm);
+        if (response.success && response.data) {
+          setDocumentTemplates([response.data, ...documentTemplates]);
+          showMessage('success', 'Document template created successfully');
+        }
+      }
+
+      resetDocumentTemplateForm();
+    } catch (error) {
+      const text = error?.message || 'Failed to save document template';
+      showMessage('error', text);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
+  const handleEditDocumentTemplate = (template) => {
+    setEditingDocumentTemplateId(template.id);
+    setDocumentTemplateForm({
+      templateType: template.template_type,
+      name: template.name,
+      templateKey: template.template_key,
+      description: template.description || '',
+      htmlContent: template.html_content || '',
+      isDefault: Boolean(template.is_default),
+      isActive: Boolean(template.is_active)
+    });
+    setShowDocumentTemplateSidebar(true);
+  };
+
+  const handleDeleteDocumentTemplate = async (id) => {
+    setSaving(true);
+    try {
+      const response = await configurationService.deleteDocumentTemplate(id);
+      if (response.success) {
+        const remaining = documentTemplates.filter(template => template.id !== id);
+        setDocumentTemplates(remaining);
+        if (editingDocumentTemplateId === id) {
+          resetDocumentTemplateForm();
+        }
+        showMessage('success', 'Document template deleted successfully');
+      }
+    } catch (error) {
+      const text = error?.message || 'Failed to delete document template';
+      showMessage('error', text);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
+  const handleTestSmtp = async () => {
     // Test SMTP configuration
-    console.log('Testing SMTP configuration...', smtpSettings);
+    setSaving(true);
+    try {
+      // TODO: Implement SMTP test functionality
+      showMessage('success', 'SMTP test functionality will be implemented soon');
+    } catch (error) {
+      showMessage('error', error.message || 'Failed to test SMTP configuration');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSaveSmtp = async () => {
@@ -539,7 +666,7 @@ const Configuration = () => {
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-900">Email Templates</h3>
         <button
-          onClick={() => setShowTemplateModal(true)}
+          onClick={handleOpenEmailTemplateSidebar}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
         >
           <Plus className="w-4 h-4" />
@@ -570,32 +697,140 @@ const Configuration = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {templates.map((template) => (
-                <tr key={template.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-4 text-sm font-medium text-gray-900">
-                    {template.name}
-                  </td>
-                  <td className="px-4 py-4 text-sm text-gray-900">
-                    {template.subject}
-                  </td>
-                  <td className="px-4 py-4 text-sm text-gray-900">
-                    {template.description}
-                  </td>
-                  <td className="px-4 py-4 text-sm text-gray-900">
-                    {template.createdAt}
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center space-x-2">
-                      <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
-                        <Settings className="w-4 h-4" />
-                      </button>
-                    </div>
+              {templates.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
+                    No email templates found. Create your first template to get started.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                templates.map((template) => (
+                  <tr key={template.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-4 text-sm font-medium text-gray-900">
+                      {template.name}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-900">
+                      {template.subject}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-900">
+                      {template.description}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-900">
+                      {template.createdAt}
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center space-x-2">
+                        <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
+                          <Settings className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderDocumentTemplates = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+          <FileText className="w-5 h-5 mr-2 text-blue-600" />
+          Document Templates
+        </h3>
+        <button
+          onClick={handleOpenDocumentTemplateSidebar}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Create Template</span>
+        </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Name
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Key
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Default
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Active
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Created
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {documentTemplates.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
+                    No document templates found. Create your first template to get started.
+                  </td>
+                </tr>
+              ) : (
+                documentTemplates.map((template) => (
+                  <tr key={template.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-4 text-sm text-gray-900 capitalize">
+                      {template.template_type}
+                    </td>
+                    <td className="px-4 py-4 text-sm font-medium text-gray-900">
+                      {template.name}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-900">
+                      {template.template_key}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-900">
+                      {template.is_default ? 'Yes' : 'No'}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-900">
+                      {template.is_active ? 'Yes' : 'No'}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-900">
+                      {template.created_at}
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEditDocumentTemplate(template)}
+                          className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                          title="Edit Template"
+                        >
+                          <Settings className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDocumentTemplate(template.id)}
+                          className="p-1 text-red-400 hover:text-red-600 transition-colors"
+                          title="Delete Template"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -1010,6 +1245,7 @@ const Configuration = () => {
             {[
               { id: 'smtp', label: 'SMTP Settings', icon: Server },
               { id: 'templates', label: 'Email Templates', icon: Mail },
+              { id: 'documentTemplates', label: 'Document Templates', icon: FileText },
               { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
               { id: 'cloudinary', label: 'File Upload', icon: Cloud },
               { id: 'indiamart', label: 'Indiamart', icon: Key },
@@ -1034,6 +1270,7 @@ const Configuration = () => {
         <div className="p-6">
           {activeTab === 'smtp' && renderSmtpSettings()}
           {activeTab === 'templates' && renderEmailTemplates()}
+          {activeTab === 'documentTemplates' && renderDocumentTemplates()}
           {activeTab === 'whatsapp' && renderWhatsappSettings()}
           {activeTab === 'cloudinary' && renderCloudinarySettings()}
           {activeTab === 'indiamart' && renderIndiamartSettings()}
@@ -1041,120 +1278,30 @@ const Configuration = () => {
         </div>
       </div>
 
-      {/* Create Template Modal */}
-      {showTemplateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Create New Template</h2>
-              <button
-                onClick={() => setShowTemplateModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+      {/* Document Template Sidebar */}
+      <TemplateFormSidebar
+        isOpen={showDocumentTemplateSidebar}
+        onClose={() => {
+          resetDocumentTemplateForm();
+        }}
+        formData={documentTemplateForm}
+        onFormChange={handleDocumentTemplateChange}
+        onSave={handleSaveDocumentTemplate}
+        onClear={resetDocumentTemplateForm}
+        saving={saving}
+        isEditing={!!editingDocumentTemplateId}
+      />
 
-            <div className="p-6 space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Template Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={templateForm.name}
-                  onChange={(e) => handleTemplateChange('name', e.target.value)}
-                  placeholder="Enter template name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Subject <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={templateForm.subject}
-                  onChange={(e) => handleTemplateChange('subject', e.target.value)}
-                  placeholder="Enter email subject"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Template For <span className="text-red-500">*</span>
-                  <span className="ml-2 w-4 h-4 bg-gray-300 rounded-full inline-flex items-center justify-center text-xs text-gray-600 cursor-help">
-                    ?
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  value={templateForm.description}
-                  onChange={(e) => handleTemplateChange('description', e.target.value)}
-                  placeholder="Short description of the template"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Template Content
-                  </label>
-                  <div className="flex space-x-2">
-                    <button className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm flex items-center space-x-1">
-                      <Code className="w-4 h-4" />
-                      <span>HTML</span>
-                    </button>
-                    <button className="px-3 py-1 bg-white text-gray-700 border border-gray-300 rounded text-sm flex items-center space-x-1">
-                      <Eye className="w-4 h-4" />
-                      <span>Preview</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-500 mb-2">No HTML file uploaded yet</p>
-                  <button
-                    onClick={() => document.getElementById('file-upload').click()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 mx-auto"
-                  >
-                    <Upload className="w-4 h-4" />
-                    <span>Select HTML File</span>
-                  </button>
-                  <input
-                    id="file-upload"
-                    type="file"
-                    accept=".html"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
-              <button
-                onClick={() => setShowTemplateModal(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveTemplate}
-                disabled={saving}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                <span>{saving ? 'Saving...' : 'Save Template'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Email Template Sidebar */}
+      <EmailTemplateFormSidebar
+        isOpen={showEmailTemplateSidebar}
+        onClose={handleCancelEmailTemplate}
+        formData={templateForm}
+        onFormChange={handleTemplateChange}
+        onSave={handleSaveEmailTemplate}
+        onCancel={handleCancelEmailTemplate}
+        saving={saving}
+      />
     </div>
   );
 };

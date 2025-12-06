@@ -102,7 +102,9 @@ export default function SalespersonLayout({ onLogout }) {
                   subtotal: piData.piData?.subtotal || quotationData.subtotal,
                   taxAmount: piData.piData?.taxAmount || quotationData.taxAmount,
                   totalAmount: piData.piData?.total || quotationData.total,
-                  template: piData.template || 'template1' // Include template from sessionStorage
+                  // Always use the template key that was actually selected
+                  // when the PI was prepared. Do NOT hardcode a fallback key.
+                  template: piData.template
                 }
                 
                 await proformaInvoiceService.createFromQuotation(response.data.id, piPayload)

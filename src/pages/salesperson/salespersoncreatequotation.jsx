@@ -1,43 +1,44 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef } from "react"
-import { X, FileText, Calendar, User, Package, DollarSign, Plus, Eye, Edit, Building2, Layout, Download, Truck, CreditCard } from "lucide-react"
-import QuotationPreview from "../../components/QuotationPreview"
-import QuotationPreviewTemplate2 from "../../components/QuotationPreviewTemplate2"
-import QuotationPreviewTemplate3 from "../../components/QuotationPreviewTemplate3"
-import { defaultQuotationTerms } from '../../constants/quotationTerms'
-import html2pdf from 'html2pdf.js'
+import { useState, useEffect } from "react";
+import { X, FileText, Calendar, User, Package, DollarSign, Plus, Eye, Building2, Layout, Download, Truck, CreditCard } from "lucide-react";
+import DynamicTemplateRenderer from "../../components/DynamicTemplateRenderer";
+import { defaultQuotationTerms } from '../../constants/quotationTerms';
+import html2pdf from 'html2pdf.js';
+import templateService from '../../services/TemplateService';
+import companyBranchService from '../../services/CompanyBranchService';
+import { QuotationDataMapper } from '../../utils/QuotationDataMapper';
 
 function Card({ className, children }) {
-  return <div className={`rounded-lg border bg-white shadow-sm ${className || ''}`}>{children}</div>
+  return <div className={`rounded-lg border bg-white shadow-sm ${className || ''}`}>{children}</div>;
 }
 
 function CardContent({ className, children }) {
-  return <div className={`p-0 ${className || ''}`}>{children}</div>
+  return <div className={`p-0 ${className || ''}`}>{children}</div>;
 }
 
 function CardHeader({ className, children }) {
-  return <div className={`p-6 ${className || ''}`}>{children}</div>
+  return <div className={`p-6 ${className || ''}`}>{children}</div>;
 }
 
 function CardTitle({ className, children }) {
-  return <h3 className={`text-lg font-semibold ${className || ''}`}>{children}</h3>
+  return <h3 className={`text-lg font-semibold ${className || ''}`}>{children}</h3>;
 }
 
 function Button({ children, onClick, type = "button", variant = "default", size = "default", className = "" }) {
-  const baseClasses = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none"
+  const baseClasses = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
   
   const variants = {
     default: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
     outline: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-500",
     ghost: "text-gray-700 hover:bg-gray-100 focus:ring-blue-500"
-  }
+  };
   
   const sizes = {
     default: "h-10 py-2 px-4",
     sm: "h-8 py-1 px-3 text-xs",
     icon: "h-10 w-10"
-  }
+  };
   
   return (
     <button
@@ -47,60 +48,41 @@ function Button({ children, onClick, type = "button", variant = "default", size 
     >
       {children}
     </button>
-  )
+  );
 }
 
-// removed local QuotationPreview; using shared component
+const calculateTotals = (items, discountRate, taxRate) => {
+  const subtotal = items.reduce((sum, item) => sum + (item.amount || 0), 0);
+  const discountRateNum = parseFloat(discountRate) || 0;
+  const taxRateNum = parseFloat(taxRate) || 0;
+  const discountAmount = (subtotal * discountRateNum) / 100;
+  const taxable = Math.max(0, subtotal - discountAmount);
+  const taxAmount = (taxable * taxRateNum) / 100;
+  const total = taxable + taxAmount;
+
+  return {
+    subtotal,
+    discountAmount,
+    taxAmount,
+    total
+  };
+};
 
 export default function CreateQuotationForm({ customer, user, onClose, onSave, standalone = false }) {
-  // Debug: Log user data
-  console.log('CreateQuotationForm received user:', user);
-  
   const getSevenDaysLater = (dateString) => {
     const date = new Date(dateString);
     date.setDate(date.getDate() + 7);
     return date.toISOString().split('T')[0];
   };
 
-  // Company branch configuration
-  const companyBranches = {
-    ANODE: {
-      name: 'ANODE ELECTRIC PRIVATE LIMITED',
-      gstNumber: '(23AANCA7455R1ZX)',
-      description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
-      address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
-      tel: '6262002116, 6262002113',
-      web: 'www.anocab.com',
-      email: 'info@anocab.com',
-      logo: 'Anocab - A Positive Connection.....'
-    },
-    SAMRIDDHI_CABLE: {
-      name: 'SAMRIDDHI CABLE INDUSTRIES PRIVATE LIMITED',
-      gstNumber: '(23ABPCS7684F1ZT)',
-      description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
-      address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
-      tel: '6262002116, 6262002113',
-      web: 'www.samriddhicable.com',
-      email: 'info@samriddhicable.com',
-      logo: 'Samriddhi Cable - Quality & Excellence.....'
-    },
-    SAMRIDDHI_INDUSTRIES: {
-      name: 'SAMRIDDHI INDUSTRIES',
-      gstNumber: '(23ABWFS1117M1ZT)',
-      description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
-      address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
-      tel: '6262002116, 6262002113',
-      web: 'www.samriddhiindustries.com',
-      email: 'info@samriddhiindustries.com',
-      logo: 'Samriddhi Industries - Innovation & Trust.....'
-    }
-  };
+  const [companyBranches, setCompanyBranches] = useState({});
+  const [organizations, setOrganizations] = useState([]);
 
   const [quotationData, setQuotationData] = useState({
     quotationNumber: `ANQ${Date.now().toString().slice(-6)}`,
     quotationDate: new Date().toISOString().split('T')[0],
     validUpto: getSevenDaysLater(new Date().toISOString().split('T')[0]),
-    selectedBranch: 'ANODE', // Default branch
+    selectedBranch: '', // Will be set from organizations list
     items: [
       {
         id: 1,
@@ -119,10 +101,16 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
     taxRate: 18,
     taxAmount: 0,
     total: 0,
+    paymentMode: "",
+    transportTc: "",
+    dispatchThrough: "",
+    deliveryTerms: "",
+    materialType: "",
     termsSections: defaultQuotationTerms.map(section => ({ ...section, points: [...section.points] })),
     // Editable bill-to information
     billTo: {
       business: "",
+      buyerName: "",
       address: "",
       phone: "",
       gstNo: "",
@@ -142,26 +130,72 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
       accountNumber: "657605601783",
       ifscCode: "ICIC0006576"
     }
-  })
+  });
 
-  // Template selection state
-  const [selectedTemplate, setSelectedTemplate] = useState('template1') // 'template1', 'template2', 'template3'
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [availableTemplates, setAvailableTemplates] = useState([]);
 
   // Auto-fill bill-to from customer data
   useEffect(() => {
-    if (customer) {
+    if (!customer) {
+      return;
+    }
+
     setQuotationData(prev => ({
       ...prev,
+      customer: customer, // Store the full customer object
       billTo: {
-          business: (customer?.business && customer.business !== 'N/A') ? customer.business : (customer?.name || ""),
-          address: (customer?.address && customer.address !== 'N/A') ? customer.address : "",
-          phone: customer?.phone || "",
-          gstNo: (customer?.gstNo && customer.gstNo !== 'N/A' && customer.gstNo.trim() !== '') ? customer.gstNo : "URC",
-          state: customer?.state || ""
+        business: (customer.business && customer.business !== 'N/A') ? customer.business : (customer.name || ""),
+        buyerName: (customer.business && customer.business !== 'N/A') ? customer.business : (customer.name || ""), // Set Buyer Name same as Business Name
+        address: (customer.address && customer.address !== 'N/A') ? customer.address : "",
+        phone: customer.phone || "",
+        gstNo: (customer.gstNo && customer.gstNo !== 'N/A' && customer.gstNo.trim() !== '') ? customer.gstNo : "URC",
+        state: customer.state || ""
         }
-      }))
-    }
-  }, [customer])
+    }));
+  }, [customer]);
+
+  // Load quotation templates from configuration
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        const templates = await templateService.getTemplatesByType('quotation');
+        setAvailableTemplates(templates);
+        if (!selectedTemplate && templates.length > 0) {
+          setSelectedTemplate(templates[0].template_key);
+        }
+      } catch (error) {
+        console.error('Failed to load quotation templates:', error);
+      }
+    };
+
+    loadTemplates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Load company branches (organizations) from backend
+  useEffect(() => {
+    const loadBranches = async () => {
+      try {
+        const { branches, organizations: orgs } = await companyBranchService.fetchBranches();
+        setCompanyBranches(branches);
+        setOrganizations(orgs);
+
+        if (!quotationData.selectedBranch && orgs.length > 0) {
+          setQuotationData(prev => ({
+            ...prev,
+            selectedBranch: String(orgs[0].id)
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to load organizations for quotation:', error);
+      }
+    };
+
+    loadBranches();
+    // We intentionally omit quotationData from deps to avoid resetting selection
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleInputChange = (field, value) => {
     const newData = {
@@ -176,24 +210,22 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
 
     // Recalculate totals when discount or tax changes
     if (field === 'discountRate' || field === 'taxRate') {
-      const subtotal = newData.items.reduce((sum, item) => sum + item.amount, 0)
-      const discountRateNum = parseFloat(newData.discountRate) || 0
-      const taxRateNum = parseFloat(newData.taxRate) || 0
-      const discountAmount = (subtotal * discountRateNum) / 100
-      const taxable = Math.max(0, subtotal - discountAmount)
-      const taxAmount = (taxable * taxRateNum) / 100
-      const total = taxable + taxAmount
-      newData.subtotal = subtotal
-      newData.discountAmount = discountAmount
-      newData.taxAmount = taxAmount
-      newData.total = total
+      const totals = calculateTotals(
+        newData.items,
+        newData.discountRate,
+        newData.taxRate
+      );
+      newData.subtotal = totals.subtotal;
+      newData.discountAmount = totals.discountAmount;
+      newData.taxAmount = totals.taxAmount;
+      newData.total = totals.total;
     }
 
     setQuotationData(newData);
-  }
+  };
 
   const handleItemChange = (index, field, value) => {
-    const updatedItems = [...quotationData.items]
+    const updatedItems = [...quotationData.items];
     updatedItems[index] = {
       ...updatedItems[index],
       [field]: value
@@ -202,27 +234,26 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
     // Calculate amount for this item
     if (['quantity', 'companyRate', 'buyerRate'].includes(field)) {
       // Use buyerRate for amount calculation
-      const qty = parseFloat(updatedItems[index].quantity) || 0
-      const rate = parseFloat(updatedItems[index].buyerRate) || 0
+      const qty = parseFloat(updatedItems[index].quantity) || 0;
+      const rate = parseFloat(updatedItems[index].buyerRate) || 0;
       updatedItems[index].amount = qty * rate;
     }
     
-    // Calculate totals with discount before tax
-    const subtotal = updatedItems.reduce((sum, item) => sum + item.amount, 0)
-    const discountAmount = (subtotal * (quotationData.discountRate || 0)) / 100
-    const taxable = Math.max(0, subtotal - discountAmount)
-    const taxAmount = (taxable * quotationData.taxRate) / 100
-    const total = taxable + taxAmount
+    const totals = calculateTotals(
+      updatedItems,
+      quotationData.discountRate,
+      quotationData.taxRate
+    );
     
     setQuotationData(prev => ({
       ...prev,
       items: updatedItems,
-      subtotal,
-      discountAmount,
-      taxAmount,
-      total
-    }))
-  }
+      subtotal: totals.subtotal,
+      discountAmount: totals.discountAmount,
+      taxAmount: totals.taxAmount,
+      total: totals.total
+    }));
+  };
 
   const handleTermTitleChange = (index, value) => {
     setQuotationData(prev => {
@@ -254,8 +285,8 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
         title: section.title,
         points: [...section.points]
       }))
-    }))
-  }
+    }));
+  };
 
   const handleTransportDetailsChange = (field, value) => {
     setQuotationData(prev => ({
@@ -264,8 +295,8 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
         ...prev.transportDetails,
         [field]: value
       }
-    }))
-  }
+    }));
+  };
 
   const handleBankDetailsChange = (field, value) => {
     setQuotationData(prev => ({
@@ -274,8 +305,8 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
         ...prev.bankDetails,
         [field]: value
       }
-    }))
-  }
+    }));
+  };
 
   const addItem = () => {
     setQuotationData(prev => ({
@@ -290,47 +321,53 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
         amount: 0,
         hsn: ""
       }]
-    }))
-  }
+    }));
+  };
 
   const removeItem = (index) => {
     if (quotationData.items.length > 1) {
-      const updatedItems = quotationData.items.filter((_, i) => i !== index)
-      const subtotal = updatedItems.reduce((sum, item) => sum + item.amount, 0)
-      const discountAmount = (subtotal * (quotationData.discountRate || 0)) / 100
-      const taxable = Math.max(0, subtotal - discountAmount)
-      const taxAmount = (taxable * quotationData.taxRate) / 100
-      const total = taxable + taxAmount
+      const updatedItems = quotationData.items.filter((_, i) => i !== index);
+      const totals = calculateTotals(
+        updatedItems,
+        quotationData.discountRate,
+        quotationData.taxRate
+      );
       
       setQuotationData(prev => ({
         ...prev,
         items: updatedItems,
-        subtotal,
-        discountAmount,
-        taxAmount,
-        total
-      }))
+        subtotal: totals.subtotal,
+        discountAmount: totals.discountAmount,
+        taxAmount: totals.taxAmount,
+        total: totals.total
+      }));
     }
-  }
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
+
+    if (!selectedTemplate) {
+      alert('Please select a quotation template.');
+      return;
+    }
+
     try {
       await onSave({
       ...quotationData,
-      customer: customer,
+        customer,
       createdAt: new Date().toISOString(),
-      template: selectedTemplate // Include the selected template
-    })
+        template: selectedTemplate
+      });
       // Let parent decide whether to close (onSave may handle it)
       if (!standalone && typeof onClose === 'function') {
-    onClose()
+        onClose();
       }
     } catch (error) {
-      console.error('Failed to save quotation:', error)
-      alert('Failed to save quotation. Please try again.')
+      console.error('Failed to save quotation:', error);
+      alert('Failed to save quotation. Please try again.');
     }
-  }
+  };
 
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState({});
@@ -410,7 +447,9 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
     }
     
     // Check items
-    if (items.length === 0) return false;
+    if (items.length === 0) {
+      return false;
+    }
     
     return items.every(item => 
       item.productName && 
@@ -430,39 +469,20 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
             <div className="flex items-center gap-3">
               {/* Template Selector */}
               <div className="flex gap-2">
+                {availableTemplates.map((template) => (
                 <button
-                  onClick={() => setSelectedTemplate('template1')}
+                    key={template.id}
+                    onClick={() => setSelectedTemplate(template.template_key)}
                   className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                    selectedTemplate === 'template1'
+                      selectedTemplate === template.template_key
                       ? 'bg-blue-600 text-white border-blue-600'
                       : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                   }`}
-                  title="Classic Template"
+                    title={template.description || template.name}
                 >
-                  Classic
+                    {template.name}
                 </button>
-                <button
-                  onClick={() => setSelectedTemplate('template2')}
-                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                    selectedTemplate === 'template2'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                  }`}
-                  title="Modern Template"
-                >
-                  Modern
-                </button>
-                <button
-                  onClick={() => setSelectedTemplate('template3')}
-                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                    selectedTemplate === 'template3'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                  }`}
-                  title="Minimal Template"
-                >
-                  Minimal
-                </button>
+                ))}
               </div>
           {/* Close button */}
           <button
@@ -477,28 +497,29 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
           
           {/* Preview Content */}
           <div className="p-6">
-            {selectedTemplate === 'template1' && (
-          <QuotationPreview 
-            data={previewData} 
-            onEdit={togglePreview}
-            companyBranches={companyBranches}
-            user={user}
-          />
-            )}
-            {selectedTemplate === 'template2' && (
-              <QuotationPreviewTemplate2 
-                data={previewData} 
-                companyBranches={companyBranches}
-                user={user}
-              />
-            )}
-            {selectedTemplate === 'template3' && (
-              <QuotationPreviewTemplate3 
-                data={previewData} 
-                companyBranches={companyBranches}
-                user={user}
-              />
-            )}
+            {(() => {
+              const activeTemplate = availableTemplates.find(
+                (tpl) => tpl.template_key === selectedTemplate
+              );
+              if (!activeTemplate?.html_content) {
+                return null;
+              }
+
+              const context = QuotationDataMapper.prepareContext(
+                previewData,
+                companyBranches,
+                user,
+                selectedTemplate
+              );
+
+              return (
+                <DynamicTemplateRenderer
+                  html={activeTemplate.html_content}
+                  data={context}
+                  containerId="quotation-content"
+                />
+              );
+            })()}
           </div>
           <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
             <Button 
@@ -605,9 +626,12 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   required
                 >
-                  <option value="ANODE">ANODE ELECTRIC PRIVATE LIMITED</option>
-                  <option value="SAMRIDDHI_CABLE">SAMRIDDHI CABLE INDUSTRIES PRIVATE LIMITED</option>
-                  <option value="SAMRIDDHI_INDUSTRIES">SAMRIDDHI INDUSTRIES</option>
+                  <option value="">Select Organization</option>
+                  {organizations.map((org) => (
+                    <option key={org.id} value={String(org.id)}>
+                      {org.organization_name || org.legal_name || `Organization #${org.id}`}
+                    </option>
+                  ))}
                 </select>
                 <p className="text-xs text-gray-500">
                   Selected branch will determine the letterhead and company details for this quotation.
@@ -631,6 +655,19 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     onChange={(e) => setQuotationData(prev => ({
                       ...prev,
                       billTo: { ...prev.billTo, business: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Buyer Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={quotationData.billTo.buyerName}
+                    onChange={(e) => setQuotationData(prev => ({
+                      ...prev,
+                      billTo: { ...prev.billTo, buyerName: e.target.value }
                     }))}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
@@ -813,6 +850,66 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
               </div>
             </div>
 
+            {/* Transport & Delivery Terms - New Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                <Truck className="h-5 w-5 text-orange-500" />
+                Delivery & Payment Terms
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Mode/Term & Payment</label>
+                  <input
+                    type="text"
+                    value={quotationData.paymentMode}
+                    onChange={(e) => handleInputChange('paymentMode', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g. Advance, 30 days credit"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Transport T&C</label>
+                  <input
+                    type="text"
+                    value={quotationData.transportTc}
+                    onChange={(e) => handleInputChange('transportTc', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g. To Pay, Paid"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Dispatch Through</label>
+                  <input
+                    type="text"
+                    value={quotationData.dispatchThrough}
+                    onChange={(e) => handleInputChange('dispatchThrough', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g. Road, Transport Name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Terms of Delivery</label>
+                  <input
+                    type="text"
+                    value={quotationData.deliveryTerms}
+                    onChange={(e) => handleInputChange('deliveryTerms', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g. Within 7 days"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Material Type</label>
+                  <input
+                    type="text"
+                    value={quotationData.materialType}
+                    onChange={(e) => handleInputChange('materialType', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g. Original, Spare"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Transport Details */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
@@ -870,6 +967,16 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                 Bank Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Account Holder Name</label>
+                  <input
+                    type="text"
+                    value={quotationData.bankDetails.accountHolderName || ''}
+                    onChange={(e) => handleBankDetailsChange('accountHolderName', e.target.value)}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter Account Holder Name"
+                  />
+                </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">Bank Name</label>
                   <input
@@ -988,39 +1095,20 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
               
               {/* Template Selector */}
               <div className="flex gap-2 mb-3">
+                {availableTemplates.map((template) => (
                 <button
-                  onClick={() => setSelectedTemplate('template1')}
+                    key={template.id}
+                    onClick={() => setSelectedTemplate(template.template_key)}
                   className={`flex-1 px-2 py-1.5 text-xs rounded border transition-colors ${
-                    selectedTemplate === 'template1'
+                      selectedTemplate === template.template_key
                       ? 'bg-blue-600 text-white border-blue-600'
                       : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                   }`}
-                  title="Classic Template"
+                    title={template.description || template.name}
                 >
-                  Classic
+                    {template.name}
                 </button>
-                <button
-                  onClick={() => setSelectedTemplate('template2')}
-                  className={`flex-1 px-2 py-1.5 text-xs rounded border transition-colors ${
-                    selectedTemplate === 'template2'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                  }`}
-                  title="Modern Template"
-                >
-                  Modern
-                </button>
-                <button
-                  onClick={() => setSelectedTemplate('template3')}
-                  className={`flex-1 px-2 py-1.5 text-xs rounded border transition-colors ${
-                    selectedTemplate === 'template3'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                  }`}
-                  title="Minimal Template"
-                >
-                  Minimal
-                </button>
+                ))}
               </div>
             </div>
             <div
@@ -1032,28 +1120,29 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                 width: '125%'
               }}
             >
-              {selectedTemplate === 'template1' && (
-                <QuotationPreview 
-                  data={previewData} 
-                  onEdit={() => {}}
-                  companyBranches={companyBranches}
-                  user={user}
-                />
-              )}
-              {selectedTemplate === 'template2' && (
-                <QuotationPreviewTemplate2 
-                  data={previewData} 
-                  companyBranches={companyBranches}
-                  user={user}
-                />
-              )}
-              {selectedTemplate === 'template3' && (
-                <QuotationPreviewTemplate3 
-                  data={previewData} 
-                  companyBranches={companyBranches}
-                  user={user}
-                />
-              )}
+              {(() => {
+                const activeTemplate = availableTemplates.find(
+                  (tpl) => tpl.template_key === selectedTemplate
+                );
+                if (!activeTemplate?.html_content) {
+                  return null;
+                }
+
+                const context = QuotationDataMapper.prepareContext(
+                  previewData,
+                  companyBranches,
+                  user,
+                  selectedTemplate
+                );
+
+                return (
+                  <DynamicTemplateRenderer
+                    html={activeTemplate.html_content}
+                    data={context}
+                    containerId="quotation-content"
+                  />
+                );
+              })()}
             </div>
           </div>
         </div>

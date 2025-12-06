@@ -11,12 +11,6 @@ export const DepartmentType = {
   IT: 'it',
 };
 
-export const CompanyName = {
-  ANODE_ELECTRIC: 'Anode Electric Pvt. Ltd.',
-  ANODE_METALS: 'Anode Metals',
-  SAMRRIDHI: 'Samrridhi Industries',
-};
-
 export const uiToApiDepartment = (uiValue) => {
   const map = {
     'Sales Department': DepartmentType.OFFICE_SALES,
