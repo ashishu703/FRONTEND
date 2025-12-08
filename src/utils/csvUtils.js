@@ -172,3 +172,86 @@ export const formatDate = (dateString) => {
   return new Date().toISOString().split('T')[0];
 };
 
+/**
+ * Exports leads data to Excel (CSV format - Excel compatible)
+ * Applies DRY principle for data export
+ * @param {Array} leads - Array of lead objects to export
+ * @param {string} filename - Optional filename (default: 'leads_export')
+ */
+export const exportToExcel = (leads, filename = 'leads_export') => {
+  if (!leads || leads.length === 0) {
+    toastManager.error('No data to export');
+    return;
+  }
+
+  // Define column headers
+  const headers = [
+    'Customer Name',
+    'Phone',
+    'Email',
+    'Business',
+    'Address',
+    'State',
+    'GST Number',
+    'Product Type',
+    'Lead Source',
+    'Customer Type',
+    'Sales Status',
+    'Follow Up Status',
+    'Assigned Salesperson',
+    'Assigned Telecaller',
+    'Date',
+    'Created At'
+  ];
+
+  // Escape CSV values (handles commas, quotes, newlines)
+  const escapeCSV = (value) => {
+    if (value === null || value === undefined) return '';
+    const str = String(value);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  // Build CSV content
+  const rows = leads.map(lead => [
+    escapeCSV(lead.customer || lead.name || 'N/A'),
+    escapeCSV(lead.phone || 'N/A'),
+    escapeCSV(lead.email || 'N/A'),
+    escapeCSV(lead.business || 'N/A'),
+    escapeCSV(lead.address || 'N/A'),
+    escapeCSV(lead.state || 'N/A'),
+    escapeCSV(lead.gst_no || lead.gstNo || 'N/A'),
+    escapeCSV(lead.product_names || lead.productNames || lead.product_type || 'N/A'),
+    escapeCSV(lead.lead_source || lead.leadSource || 'N/A'),
+    escapeCSV(lead.customer_type || lead.customerType || 'N/A'),
+    escapeCSV(lead.sales_status || lead.salesStatus || 'N/A'),
+    escapeCSV(lead.follow_up_status || lead.followUpStatus || 'N/A'),
+    escapeCSV(lead.assigned_salesperson || lead.assignedSalesperson || 'Unassigned'),
+    escapeCSV(lead.assigned_telecaller || lead.assignedTelecaller || 'Unassigned'),
+    escapeCSV(lead.date || 'N/A'),
+    escapeCSV(lead.created_at || lead.createdAt || 'N/A')
+  ]);
+
+  // Combine headers and rows
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n');
+
+  // Create and download file
+  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel UTF-8
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  
+  toastManager.success(`Exported ${leads.length} lead(s) to Excel`);
+};
+

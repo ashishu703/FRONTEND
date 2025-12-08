@@ -15,28 +15,31 @@ import LeadPreviewDrawer from '../../components/LeadPreviewDrawer';
 import apiErrorHandler from '../../utils/ApiErrorHandler';
 import toastManager from '../../utils/ToastManager';
 import apiClient from '../../utils/apiClient';
+import { API_ENDPOINTS } from '../../api/admin_api/api';
 import { LeadsFilterService } from '../../services/LeadsFilterService';
 import LeadService from '../../services/LeadService';
 import UserService from '../../services/UserService';
 import PIService from '../../services/PIService';
 import QuotationService from '../../services/QuotationService';
 import { generateQuotationPDF } from '../../utils/pdfUtils';
-import { downloadCSVTemplate, parseCSV, formatDate as formatDateUtil } from '../../utils/csvUtils';
+import { downloadCSVTemplate, parseCSV, formatDate as formatDateUtil, exportToExcel } from '../../utils/csvUtils';
 import { getStatusBadge as getStatusBadgeUtil } from '../../utils/statusUtils';
 import { calculateAssignedCounts, getUnassignedLeadIds, filterLeads } from '../../utils/leadFilters';
 import { COMPANY_BRANCHES, DEFAULT_USER, DEFAULT_BRANCH } from '../../config/appConfig';
+import { useAuth } from '../../hooks/useAuth';
+import CSVImportValidationService from '../../services/CSVImportValidationService';
 
 const LeadsSimplified = () => {
+  const { user } = useAuth();
   const [leadsData, setLeadsData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(200);
   const [total, setTotal] = useState(0);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showImportPopup, setShowImportPopup] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [importFile, setImportFile] = useState(null);
   const [importPreview, setImportPreview] = useState([]);
   const [importing, setImporting] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -240,7 +243,6 @@ const LeadsSimplified = () => {
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file && file.type === 'text/csv') {
-      setImportFile(file);
       const reader = new FileReader();
       reader.onload = (e) => {
         const csvText = e.target.result;
@@ -257,31 +259,74 @@ const LeadsSimplified = () => {
     }
   };
 
+  /**
+   * Handles CSV import with validation
+   * Applies OOP and DRY principles using CSVImportValidationService
+   */
   const handleImportLeads = async () => {
     if (importPreview.length === 0) {
       toastManager.error('No data to import');
       return;
     }
 
+    if (!user?.id) {
+      toastManager.error('User information not available. Please refresh and try again.');
+      return;
+    }
+
     setImporting(true);
 
     try {
+      // Initialize validation service
+      const validationService = new CSVImportValidationService(user.id);
+      await validationService.initialize();
+
+      // Build initial payloads - STRICT: filter out null payloads (invalid rows)
       const validationErrors = [];
-      const leadsPayload = importPreview.map((row, index) => {
-        const payload = leadService.buildCSVLeadPayload(row, index, validationErrors);
-        payload.date = formatDateUtil(row['Date (YYYY-MM-DD)']);
-        return payload;
-      });
-      
+      const initialPayloads = importPreview
+        .map((row, index) => {
+          const payload = leadService.buildCSVLeadPayload(row, index, validationErrors);
+          if (!payload) {
+            return null; // Row was skipped due to validation
+          }
+          payload.date = formatDateUtil(row['Date (YYYY-MM-DD)']);
+          return payload;
+        })
+        .filter(payload => payload !== null); // Remove null payloads (skipped rows)
+
+      // Show initial validation errors (from buildCSVLeadPayload)
       if (validationErrors.length > 0) {
-        console.warn('CSV Import Validation Warnings:', validationErrors);
-        const errorMsg = validationErrors.slice(0, 3).join('; ') + 
-          (validationErrors.length > 3 ? ` and ${validationErrors.length - 3} more...` : '');
-        toastManager.error(`Validation issues found: ${errorMsg}`);
+        const errorPreview = validationErrors.slice(0, 3).join('; ');
+        const errorMsg = `${validationErrors.length} row(s) skipped due to validation errors. Examples: ${errorPreview}${validationErrors.length > 3 ? ` and ${validationErrors.length - 3} more...` : ''}`;
+        toastManager.warning(errorMsg);
       }
 
-      await leadService.importLeads(leadsPayload);
+      // Validate and process leads (further validation)
+      const validLeads = validationService.processLeads(initialPayloads);
+      const summary = validationService.getSummary();
 
+      // Show validation summary
+      const totalSkipped = validationErrors.length + summary.skippedCount;
+      if (totalSkipped > 0) {
+        const skippedMsg = `${totalSkipped} lead(s) skipped due to validation errors`;
+        const allErrors = [...validationErrors, ...summary.errors];
+        const errorPreview = allErrors.slice(0, 3).join('; ');
+        const fullMsg = errorPreview 
+          ? `${skippedMsg}. Examples: ${errorPreview}${allErrors.length > 3 ? ` and ${allErrors.length - 3} more...` : ''}`
+          : skippedMsg;
+        toastManager.warning(fullMsg);
+      }
+
+      if (validLeads.length === 0) {
+        toastManager.error('No valid leads to import. Please check your CSV data.');
+        setImporting(false);
+        return;
+      }
+
+      // Import valid leads
+      await leadService.importLeads(validLeads);
+
+      // Refresh leads list
       const response = await leadService.fetchLeads({ page, limit });
       if (response.data) {
         setLeadsData(response.data);
@@ -290,15 +335,22 @@ const LeadsSimplified = () => {
         }
         requestAllLeadsRefresh();
       }
+
+      // Show success message
+      const successMsg = validLeads.length === importPreview.length
+        ? `Successfully imported ${validLeads.length} lead(s)`
+        : `Successfully imported ${validLeads.length} lead(s). ${summary.skippedCount} lead(s) skipped.`;
+      toastManager.success(successMsg);
       
       setShowImportModal(false);
       setImportPreview([]);
-      setImportFile(null);
       if (importFileInputRef.current) {
         importFileInputRef.current.value = '';
       }
     } catch (error) {
+      console.error('CSV Import Error:', error);
       apiErrorHandler.handleError(error, 'import leads');
+      toastManager.error(`Failed to import leads: ${error.message}`);
     } finally {
       setImporting(false);
     }
@@ -374,6 +426,57 @@ const LeadsSimplified = () => {
   const handleManualRefresh = () => {
     fetchLeads();
     requestAllLeadsRefresh();
+  };
+
+  /**
+   * Handles bulk delete of selected leads
+   * Applies DRY principle with reusable error handling
+   */
+  const handleBulkDelete = async () => {
+    if (selectedLeadIds.length === 0) {
+      toastManager.warning('Please select leads to delete');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete ${selectedLeadIds.length} lead(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await apiClient.delete(API_ENDPOINTS.LEADS_BATCH_DELETE(), {
+        ids: selectedLeadIds
+      });
+
+      if (response.success) {
+        toastManager.success(`Successfully deleted ${response.deletedCount || selectedLeadIds.length} lead(s)`);
+        setSelectedLeadIds([]);
+        setIsAllSelected(false);
+        await fetchLeads();
+        requestAllLeadsRefresh();
+      } else {
+        toastManager.error(response.message || 'Failed to delete leads');
+      }
+    } catch (error) {
+      apiErrorHandler.handleError(error, 'bulk delete leads');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Handles export to Excel functionality
+   * Exports currently visible/filtered leads
+   */
+  const handleExportToExcel = () => {
+    const leadsToExport = uniqueFilteredLeads.length > 0 ? uniqueFilteredLeads : leadsData;
+    
+    if (!leadsToExport || leadsToExport.length === 0) {
+      toastManager.warning('No leads to export');
+      return;
+    }
+
+    exportToExcel(leadsToExport, 'leads_export');
   };
 
   const fetchQuotationAndPICounts = async () => {
@@ -856,6 +959,8 @@ const LeadsSimplified = () => {
           setAssignForm({ salesperson: '', telecaller: '' });
           setShowAssignModal(true);
         }}
+        onBulkDelete={handleBulkDelete}
+        onExportExcel={handleExportToExcel}
         selectedCount={selectedLeadIds.length}
         onRefresh={handleManualRefresh}
       />
@@ -914,6 +1019,8 @@ const LeadsSimplified = () => {
             <option value={10}>10</option>
             <option value={20}>20</option>
             <option value={50}>50</option>
+            <option value={100}>100</option>
+            <option value={200}>200</option>
           </select>
           <span>{paginationSummary}</span>
         </div>

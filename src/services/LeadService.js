@@ -185,68 +185,75 @@ class LeadService {
     };
   }
 
+  /**
+   * Build CSV lead payload - STRICT validation, no fallbacks
+   * Phone must be exactly 10 digits, no truncation or warnings
+   */
   buildCSVLeadPayload(row, index, validationErrors) {
-    let customer = (row['Customer Name'] || '').trim();
-    let phone = (row['Mobile Number'] || '').trim();
-    let whatsapp = (row['WhatsApp Number'] || '').trim();
+    const customer = (row['Customer Name'] || '').trim();
+    const phone = (row['Mobile Number'] || '').trim();
+    const whatsapp = (row['WhatsApp Number'] || '').trim();
     const email = (row['Email'] || '').trim();
     const address = (row['Address'] || '').trim();
     const business = (row['Business Name'] || '').trim();
     const gstNo = (row['GST Number'] || '').trim();
     
+    // STRICT: Customer name validation - no truncation, exact data only
     if (customer.length > 100) {
-      validationErrors.push(`Row ${index + 2}: Customer Name exceeds 100 characters (${customer.length} chars). Truncating.`);
-      customer = customer.substring(0, 100);
+      validationErrors.push(`Row ${index + 2}: Customer Name exceeds 100 characters (${customer.length} chars). Skipping row.`);
+      return null; // Skip this row
     }
     
+    // STRICT: Phone validation - must be exactly 10 digits
+    let normalizedPhone = null;
     if (phone) {
-      phone = phone.replace(/\D/g, '');
-      if (phone.length > 50) {
-        validationErrors.push(`Row ${index + 2}: Mobile Number exceeds 50 characters. Truncating.`);
-        phone = phone.substring(0, 50);
+      const phoneDigits = phone.replace(/\D/g, '');
+      if (phoneDigits.length !== 10) {
+        validationErrors.push(`Row ${index + 2}: Mobile Number must be exactly 10 digits (found ${phoneDigits.length} digits). Skipping row.`);
+        return null; // Skip this row
       }
-    }
-    
-    if (whatsapp) {
-      whatsapp = whatsapp.replace(/\D/g, '');
-      if (whatsapp.length > 50) {
-        validationErrors.push(`Row ${index + 2}: WhatsApp Number exceeds 50 characters. Truncating.`);
-        whatsapp = whatsapp.substring(0, 50);
-      }
+      normalizedPhone = phoneDigits;
     } else {
-      whatsapp = phone;
+      validationErrors.push(`Row ${index + 2}: Mobile Number is required. Skipping row.`);
+      return null; // Skip this row
     }
     
-    if (phone && phone.length > 0 && phone.length < 10) {
-      validationErrors.push(`Row ${index + 2}: Mobile Number seems too short (${phone.length} digits). Minimum 10 digits recommended.`);
-    }
-    
-    if (whatsapp && whatsapp.length > 0 && whatsapp.length < 10) {
-      validationErrors.push(`Row ${index + 2}: WhatsApp Number seems too short (${whatsapp.length} digits). Minimum 10 digits recommended.`);
+    // STRICT: WhatsApp validation - must be exactly 10 digits if provided
+    let normalizedWhatsapp = null;
+    if (whatsapp) {
+      const whatsappDigits = whatsapp.replace(/\D/g, '');
+      if (whatsappDigits.length !== 10) {
+        validationErrors.push(`Row ${index + 2}: WhatsApp Number must be exactly 10 digits (found ${whatsappDigits.length} digits). Skipping row.`);
+        return null; // Skip this row
+      }
+      normalizedWhatsapp = whatsappDigits;
+    } else {
+      // Use phone as whatsapp if not provided
+      normalizedWhatsapp = normalizedPhone;
     }
     
     return {
       customer: customer || null,
-      phone: phone || null,
+      phone: normalizedPhone,
       email: email || null,
       address: address || null,
       business: business || null,
       leadSource: (row['Lead Source'] || '').trim() || null,
-      category: (row['Business Category'] || '').trim() || 'N/A',
-      salesStatus: 'PENDING',
+      category: (row['Business Category'] || '').trim() || null,
+      salesStatus: null,
       gstNo: gstNo || null,
-      productNames: (row['Product Names (comma separated)'] || '').trim() || 'N/A',
+      productNames: (row['Product Names (comma separated)'] || '').trim() || null,
       state: (row['State'] || '').trim() || null,
       assignedSalesperson: (row['Assigned Salesperson'] || '').trim() || null,
       assignedTelecaller: (row['Assigned Telecaller'] || '').trim() || null,
-      whatsapp: whatsapp || phone || null,
-      date: row['Date (YYYY-MM-DD)'] || new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString().split('T')[0],
-      telecallerStatus: 'INACTIVE',
-      paymentStatus: 'PENDING',
-      connectedStatus: 'pending',
-      finalStatus: 'open',
-      customerType: 'business'
+      whatsapp: normalizedWhatsapp,
+      date: row['Date (YYYY-MM-DD)'] || null,
+      createdAt: null,
+      telecallerStatus: null,
+      paymentStatus: null,
+      connectedStatus: null,
+      finalStatus: null,
+      customerType: null
     };
   }
 }
