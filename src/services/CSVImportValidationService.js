@@ -2,10 +2,6 @@ import departmentUserService from '../api/admin_api/departmentUserService';
 import apiClient from '../utils/apiClient';
 import { API_ENDPOINTS } from '../api/admin_api/api';
 
-/**
- * CSV Import Validation Service
- * Applies OOP and DRY principles for CSV import validation
- */
 class CSVImportValidationService {
   constructor(headUserId) {
     this.headUserId = headUserId;
@@ -16,15 +12,10 @@ class CSVImportValidationService {
     this.skippedLeads = [];
   }
 
-  /**
-   * Initialize service - fetch department users and existing phones
-   */
   async initialize() {
     try {
-      // Fetch department users under this head
       const usersResponse = await departmentUserService.getByHeadId(this.headUserId);
       
-      // Handle different response structures
       let users = [];
       if (usersResponse?.data?.users && Array.isArray(usersResponse.data.users)) {
         users = usersResponse.data.users;
@@ -39,8 +30,6 @@ class CSVImportValidationService {
       }
 
       this.departmentUsers = users;
-      
-      // Create email to user map for quick lookup
       this.userEmailMap = new Map();
       users.forEach(user => {
         if (user.email) {
@@ -52,7 +41,6 @@ class CSVImportValidationService {
         }
       });
 
-      // Fetch existing phone numbers to check duplicates
       await this.loadExistingPhones();
     } catch (error) {
       console.error('Error initializing CSV validation service:', error);
@@ -60,10 +48,6 @@ class CSVImportValidationService {
     }
   }
 
-  /**
-   * Load existing phone numbers from database
-   * Uses pagination to fetch all leads efficiently
-   */
   async loadExistingPhones() {
     try {
       let page = 1;
@@ -83,7 +67,6 @@ class CSVImportValidationService {
             }
           });
 
-          // Check if there are more pages
           const total = response?.pagination?.total || 0;
           const currentCount = page * limit;
           hasMore = currentCount < total && response.data.length === limit;
@@ -94,34 +77,21 @@ class CSVImportValidationService {
       }
     } catch (error) {
       console.warn('Could not load existing phones for duplicate check:', error);
-      // Continue without duplicate check if this fails
     }
   }
 
-  /**
-   * Normalize and validate phone number - STRICT: exactly 10 digits
-   * Returns null if invalid (not exactly 10 digits)
-   */
   normalizePhone(phone) {
     if (!phone) return null;
     const digits = phone.replace(/\D/g, '').trim();
-    // STRICT: Must be exactly 10 digits
-    if (digits.length !== 10) {
-      return null;
-    }
-    return digits;
+    return digits.length === 10 ? digits : null;
   }
 
-  /**
-   * Validate phone number format - STRICT: exactly 10 digits
-   */
   validatePhone(phone, rowIndex) {
     if (!phone || !phone.trim()) {
       return { valid: false, reason: 'Phone number is required' };
     }
 
     const normalizedPhone = this.normalizePhone(phone);
-    
     if (!normalizedPhone) {
       const digits = phone.replace(/\D/g, '').trim();
       if (digits.length > 10) {
@@ -154,73 +124,48 @@ class CSVImportValidationService {
     return { valid: true, user };
   }
 
-  /**
-   * Check if phone number is duplicate
-   */
-  isDuplicatePhone(phone) {
-    if (!phone) return false;
-    const normalizedPhone = this.normalizePhone(phone);
-    if (!normalizedPhone) return false;
-    return this.existingPhones.has(normalizedPhone);
-  }
-
-  /**
-   * Validate and process a single lead from CSV
-   * STRICT validation - no fallbacks, exact data only
-   */
   validateLead(lead, rowIndex) {
     const errors = [];
 
-    // STRICT: Validate phone number - must be exactly 10 digits
     const phoneValidation = this.validatePhone(lead.phone, rowIndex);
     if (!phoneValidation.valid) {
       errors.push(`Row ${rowIndex + 2}: ${phoneValidation.reason}`);
       return { valid: false, errors, skip: true };
     }
 
-    // STRICT: Check for duplicate phone in database
     if (this.existingPhones.has(phoneValidation.normalizedPhone)) {
       errors.push(`Row ${rowIndex + 2}: Duplicate phone number ${lead.phone} already exists in database`);
       return { valid: false, errors, skip: true };
     }
 
-    // STRICT: Update lead with normalized phone (exactly 10 digits)
     lead.phone = phoneValidation.normalizedPhone;
 
-    // STRICT: Validate assigned salesperson email if provided
     if (lead.assignedSalesperson) {
       const assignedValue = lead.assignedSalesperson.trim();
       if (!assignedValue) {
         lead.assignedSalesperson = null;
       } else if (assignedValue.includes('@')) {
-        // Must be email - validate it belongs to department
         const salespersonValidation = this.validateDepartmentUserEmail(assignedValue);
         if (!salespersonValidation.valid) {
           errors.push(`Row ${rowIndex + 2}: ${salespersonValidation.reason}`);
           return { valid: false, errors, skip: true };
         }
-        // Replace email with username for assignment
         lead.assignedSalesperson = salespersonValidation.user.username;
       }
-      // If username provided, keep as is (assumed valid)
     }
 
-    // STRICT: Validate assigned telecaller email if provided
     if (lead.assignedTelecaller) {
       const assignedValue = lead.assignedTelecaller.trim();
       if (!assignedValue) {
         lead.assignedTelecaller = null;
       } else if (assignedValue.includes('@')) {
-        // Must be email - validate it belongs to department
         const telecallerValidation = this.validateDepartmentUserEmail(assignedValue);
         if (!telecallerValidation.valid) {
           errors.push(`Row ${rowIndex + 2}: ${telecallerValidation.reason}`);
           return { valid: false, errors, skip: true };
         }
-        // Replace email with username for assignment
         lead.assignedTelecaller = telecallerValidation.user.username;
       }
-      // If username provided, keep as is (assumed valid)
     }
 
     return { valid: true, errors, skip: false };
@@ -301,9 +246,6 @@ class CSVImportValidationService {
     return validLeads;
   }
 
-  /**
-   * Get validation summary
-   */
   getSummary() {
     return {
       total: this.validationErrors.length + (this.skippedLeads.length > 0 ? this.skippedLeads.length : 0),
