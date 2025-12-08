@@ -1,10 +1,6 @@
 import React from 'react';
 import { Search, Plus, Upload, RefreshCw, Download, Trash2, FileSpreadsheet } from 'lucide-react';
 
-/**
- * SearchBar Component - Icon-only action buttons with tooltips
- * Applies DRY principle for button styling
- */
 const SearchBar = ({ 
   searchTerm, 
   onSearchChange, 
@@ -16,7 +12,6 @@ const SearchBar = ({
   selectedCount,
   onRefresh 
 }) => {
-  // Reusable button style classes (DRY principle)
   const iconButtonBase = "p-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2";
   const iconButtonStyles = {
     import: `${iconButtonBase} bg-green-600 text-white hover:bg-green-700 focus:ring-green-500`,
@@ -43,7 +38,6 @@ const SearchBar = ({
       </div>
 
       <div className="flex items-center space-x-2">
-        {/* Import CSV - Icon only */}
         <button
           onClick={onImportClick}
           className={iconButtonStyles.import}
@@ -52,7 +46,6 @@ const SearchBar = ({
           <Upload className="w-5 h-5" />
         </button>
         
-        {/* Add Customer - Icon only */}
         <button
           onClick={onAddCustomer}
           className={iconButtonStyles.add}
@@ -61,7 +54,6 @@ const SearchBar = ({
           <Plus className="w-5 h-5" />
         </button>
 
-        {/* Assign Selected - Icon only */}
         <button
           onClick={onAssignSelected}
           disabled={selectedCount === 0}
@@ -71,7 +63,6 @@ const SearchBar = ({
           <Upload className="w-5 h-5" />
         </button>
 
-        {/* Bulk Delete - Icon only */}
         {onBulkDelete && (
           <button
             onClick={onBulkDelete}
@@ -83,7 +74,6 @@ const SearchBar = ({
           </button>
         )}
 
-        {/* Export to Excel - Icon only */}
         {onExportExcel && (
           <button
             onClick={onExportExcel}
@@ -94,7 +84,6 @@ const SearchBar = ({
           </button>
         )}
           
-        {/* Refresh - Icon only */}
         <button
           onClick={onRefresh}
           className={iconButtonStyles.refresh}

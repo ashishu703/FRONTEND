@@ -144,12 +144,7 @@ class LeadService {
   async importLeads(leadsPayload) {
     try {
       const resp = await departmentHeadService.importLeads(leadsPayload);
-      const inserted = resp?.data?.importedCount ?? leadsPayload.length;
-      const duplicates = resp?.data?.duplicatesCount ?? 0;
-      const msg = duplicates > 0
-        ? `Import completed! ${inserted} added, ${duplicates} duplicate(s) skipped`
-        : `Import completed! ${inserted} leads processed`;
-      toastManager.success(msg);
+      // Return full response including skipped rows info
       return resp;
     } catch (error) {
       apiErrorHandler.handleError(error, 'import leads');
@@ -185,52 +180,47 @@ class LeadService {
     };
   }
 
-  /**
-   * Build CSV lead payload - STRICT validation, no fallbacks
-   * Phone must be exactly 10 digits, no truncation or warnings
-   */
   buildCSVLeadPayload(row, index, validationErrors) {
-    const customer = (row['Customer Name'] || '').trim();
+    const trimField = (value, maxLength) => {
+      if (!value || typeof value !== 'string') return value;
+      const trimmed = value.trim();
+      return trimmed.length > maxLength ? trimmed.substring(0, maxLength) : trimmed;
+    };
+    
+    const customer = trimField(row['Customer Name'], 100);
     const phone = (row['Mobile Number'] || '').trim();
     const whatsapp = (row['WhatsApp Number'] || '').trim();
-    const email = (row['Email'] || '').trim();
-    const address = (row['Address'] || '').trim();
-    const business = (row['Business Name'] || '').trim();
-    const gstNo = (row['GST Number'] || '').trim();
+    const email = trimField(row['Email'], 255);
+    const address = trimField(row['Address'], 1000);
+    const business = trimField(row['Business Name'], 100);
+    const gstNo = trimField(row['GST Number'], 50);
+    const leadSource = trimField(row['Lead Source'], 100);
+    const category = trimField(row['Business Category'], 100);
+    const state = trimField(row['State'], 100);
+    const productNames = trimField(row['Product Names (comma separated)'], 500);
+    const assignedSalesperson = trimField(row['Assigned Salesperson'], 255);
+    const assignedTelecaller = trimField(row['Assigned Telecaller'], 255);
     
-    // STRICT: Customer name validation - no truncation, exact data only
-    if (customer.length > 100) {
-      validationErrors.push(`Row ${index + 2}: Customer Name exceeds 100 characters (${customer.length} chars). Skipping row.`);
-      return null; // Skip this row
-    }
-    
-    // STRICT: Phone validation - must be exactly 10 digits
-    let normalizedPhone = null;
-    if (phone) {
-      const phoneDigits = phone.replace(/\D/g, '');
-      if (phoneDigits.length !== 10) {
-        validationErrors.push(`Row ${index + 2}: Mobile Number must be exactly 10 digits (found ${phoneDigits.length} digits). Skipping row.`);
-        return null; // Skip this row
+    const normalizePhoneDigits = (phoneValue, fieldName) => {
+      if (!phoneValue) {
+        if (fieldName === 'Mobile Number') {
+          validationErrors.push(`Row ${index + 2}: Mobile Number is required. Skipping row.`);
+        }
+        return null;
       }
-      normalizedPhone = phoneDigits;
-    } else {
-      validationErrors.push(`Row ${index + 2}: Mobile Number is required. Skipping row.`);
-      return null; // Skip this row
-    }
-    
-    // STRICT: WhatsApp validation - must be exactly 10 digits if provided
-    let normalizedWhatsapp = null;
-    if (whatsapp) {
-      const whatsappDigits = whatsapp.replace(/\D/g, '');
-      if (whatsappDigits.length !== 10) {
-        validationErrors.push(`Row ${index + 2}: WhatsApp Number must be exactly 10 digits (found ${whatsappDigits.length} digits). Skipping row.`);
-        return null; // Skip this row
+      const digits = phoneValue.replace(/\D/g, '');
+      if (digits.length !== 10) {
+        validationErrors.push(`Row ${index + 2}: ${fieldName} must be exactly 10 digits (found ${digits.length} digits). Skipping row.`);
+        return null;
       }
-      normalizedWhatsapp = whatsappDigits;
-    } else {
-      // Use phone as whatsapp if not provided
-      normalizedWhatsapp = normalizedPhone;
-    }
+      return digits;
+    };
+    
+    const normalizedPhone = normalizePhoneDigits(phone, 'Mobile Number');
+    if (!normalizedPhone) return null;
+    
+    const normalizedWhatsapp = whatsapp ? normalizePhoneDigits(whatsapp, 'WhatsApp Number') : normalizedPhone;
+    if (whatsapp && !normalizedWhatsapp) return null;
     
     return {
       customer: customer || null,
@@ -238,14 +228,14 @@ class LeadService {
       email: email || null,
       address: address || null,
       business: business || null,
-      leadSource: (row['Lead Source'] || '').trim() || null,
-      category: (row['Business Category'] || '').trim() || null,
+      leadSource: leadSource || null,
+      category: category || null,
       salesStatus: null,
       gstNo: gstNo || null,
-      productNames: (row['Product Names (comma separated)'] || '').trim() || null,
-      state: (row['State'] || '').trim() || null,
-      assignedSalesperson: (row['Assigned Salesperson'] || '').trim() || null,
-      assignedTelecaller: (row['Assigned Telecaller'] || '').trim() || null,
+      productNames: productNames || null,
+      state: state || null,
+      assignedSalesperson: assignedSalesperson || null,
+      assignedTelecaller: assignedTelecaller || null,
       whatsapp: normalizedWhatsapp,
       date: row['Date (YYYY-MM-DD)'] || null,
       createdAt: null,

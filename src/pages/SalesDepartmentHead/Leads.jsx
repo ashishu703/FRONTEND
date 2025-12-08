@@ -259,10 +259,6 @@ const LeadsSimplified = () => {
     }
   };
 
-  /**
-   * Handles CSV import with validation
-   * Applies OOP and DRY principles using CSVImportValidationService
-   */
   const handleImportLeads = async () => {
     if (importPreview.length === 0) {
       toastManager.error('No data to import');
@@ -306,9 +302,9 @@ const LeadsSimplified = () => {
       const summary = validationService.getSummary();
 
       // Show validation summary
-      const totalSkipped = validationErrors.length + summary.skippedCount;
-      if (totalSkipped > 0) {
-        const skippedMsg = `${totalSkipped} lead(s) skipped due to validation errors`;
+      const frontendSkipped = validationErrors.length + summary.skippedCount;
+      if (frontendSkipped > 0) {
+        const skippedMsg = `${frontendSkipped} lead(s) skipped due to validation errors`;
         const allErrors = [...validationErrors, ...summary.errors];
         const errorPreview = allErrors.slice(0, 3).join('; ');
         const fullMsg = errorPreview 
@@ -323,10 +319,7 @@ const LeadsSimplified = () => {
         return;
       }
 
-      // Import valid leads
-      await leadService.importLeads(validLeads);
-
-      // Refresh leads list
+      const importResult = await leadService.importLeads(validLeads);
       const response = await leadService.fetchLeads({ page, limit });
       if (response.data) {
         setLeadsData(response.data);
@@ -336,10 +329,22 @@ const LeadsSimplified = () => {
         requestAllLeadsRefresh();
       }
 
-      // Show success message
-      const successMsg = validLeads.length === importPreview.length
-        ? `Successfully imported ${validLeads.length} lead(s)`
-        : `Successfully imported ${validLeads.length} lead(s). ${summary.skippedCount} lead(s) skipped.`;
+      const totalSkipped = validationErrors.length + summary.skippedCount + (importResult?.data?.skippedCount || 0);
+      const backendSkipped = importResult?.data?.skippedRows || [];
+      const allSkippedReasons = [
+        ...validationErrors,
+        ...summary.errors,
+        ...backendSkipped.map(s => `Row ${s.row}: ${s.reason}`)
+      ];
+      
+      if (totalSkipped > 0) {
+        const errorPreview = allSkippedReasons.slice(0, 5).join('; ');
+        const warningMsg = `${totalSkipped} row(s) skipped due to validation errors. Examples: ${errorPreview}${allSkippedReasons.length > 5 ? ` and ${allSkippedReasons.length - 5} more...` : ''}`;
+        toastManager.warning(warningMsg);
+      }
+      
+      const importedCount = importResult?.data?.importedCount || validLeads.length;
+      const successMsg = `Successfully imported ${importedCount} lead(s)`;
       toastManager.success(successMsg);
       
       setShowImportModal(false);
@@ -464,10 +469,6 @@ const LeadsSimplified = () => {
     }
   };
 
-  /**
-   * Handles export to Excel functionality
-   * Exports currently visible/filtered leads
-   */
   const handleExportToExcel = () => {
     const leadsToExport = uniqueFilteredLeads.length > 0 ? uniqueFilteredLeads : leadsData;
     
