@@ -298,6 +298,99 @@ export default function CustomerListContent({ isDarkMode = false }) {
     leadsHook.setSelectedTag(tag)
   }
 
+  // Save customer handler (create or update)
+  const handleSaveCustomer = async (customerData) => {
+    try {
+      const formData = new FormData()
+      
+      if (editingCustomer) {
+        // Update existing customer
+        formData.append('name', customerData.customerName)
+        formData.append('phone', customerData.mobileNumber.replace(/\D/g, '').slice(-10))
+        formData.append('whatsapp', customerData.whatsappNumber ? customerData.whatsappNumber.replace(/\D/g, '').slice(-10) : customerData.mobileNumber.replace(/\D/g, '').slice(-10))
+        formData.append('email', customerData.email || '')
+        formData.append('business', customerData.business || 'N/A')
+        formData.append('address', customerData.address || 'N/A')
+        formData.append('gst_no', customerData.gstNumber || '')
+        formData.append('product_type', customerData.productName || 'N/A')
+        formData.append('state', customerData.state || 'N/A')
+        formData.append('lead_source', customerData.leadSource || 'N/A')
+        formData.append('customer_type', customerData.customerType || 'N/A')
+        formData.append('date', customerData.date)
+        formData.append('sales_status', customerData.salesStatus || 'pending')
+        formData.append('sales_status_remark', customerData.salesStatusRemark || '')
+        formData.append('follow_up_status', customerData.followUpStatus || '')
+        formData.append('follow_up_remark', customerData.followUpRemark || '')
+        formData.append('follow_up_date', customerData.followUpDate || '')
+        formData.append('follow_up_time', customerData.followUpTime || '')
+        formData.append('call_duration_seconds', customerData.callDurationSeconds || '')
+        formData.append('transferred_to', customerData.transferredTo || '')
+        
+        if (customerData.callRecordingFile) {
+          formData.append('call_recording', customerData.callRecordingFile)
+        }
+        
+        await apiClient.putFormData(API_ENDPOINTS.SALESPERSON_LEAD_BY_ID(editingCustomer.id), formData)
+        
+        // If lead is being transferred, call the transfer API
+        if (customerData.transferredTo) {
+          try {
+            await apiClient.post(API_ENDPOINTS.LEAD_TRANSFER(editingCustomer.id), {
+              transferredTo: customerData.transferredTo,
+              reason: `Transferred via edit form`
+            })
+            Toast.success(`Customer updated and transferred to ${customerData.transferredTo} successfully!`)
+          } catch (transferErr) {
+            console.error('Failed to transfer lead:', transferErr)
+            Toast.warning('Customer updated but transfer failed. Please try again.')
+          }
+        } else {
+          Toast.success('Customer updated successfully!')
+        }
+      } else {
+        // Create new customer
+        // Send actual data if present, empty string if not - backend will handle 'N/A' conversion
+        formData.append('name', customerData.customerName || '')
+        formData.append('phone', customerData.mobileNumber.replace(/\D/g, '').slice(-10))
+        formData.append('whatsapp', customerData.whatsappNumber ? customerData.whatsappNumber.replace(/\D/g, '').slice(-10) : customerData.mobileNumber.replace(/\D/g, '').slice(-10))
+        formData.append('email', customerData.email || '')
+        formData.append('business', customerData.business || '')
+        formData.append('address', customerData.address || '')
+        formData.append('gst_no', customerData.gstNumber || '')
+        formData.append('product_type', customerData.productName || '')
+        formData.append('state', customerData.state || '')
+        formData.append('lead_source', customerData.leadSource || '')
+        formData.append('customer_type', customerData.customerType || '')
+        formData.append('date', customerData.date || '')
+        formData.append('sales_status', customerData.salesStatus || 'pending')
+        formData.append('sales_status_remark', customerData.salesStatusRemark || '')
+        formData.append('follow_up_status', customerData.followUpStatus || '')
+        formData.append('follow_up_remark', customerData.followUpRemark || '')
+        formData.append('follow_up_date', customerData.followUpDate || '')
+        formData.append('follow_up_time', customerData.followUpTime || '')
+        formData.append('call_duration_seconds', customerData.callDurationSeconds || '')
+        formData.append('transferred_to', customerData.transferredTo || '')
+        
+        if (customerData.callRecordingFile) {
+          formData.append('call_recording', customerData.callRecordingFile)
+        }
+        
+        await apiClient.postFormData(API_ENDPOINTS.SALESPERSON_CREATE_LEAD(), formData)
+        Toast.success('Customer added successfully!')
+      }
+      
+      // Refresh leads from API
+      await handleRefresh()
+      
+      // Close modal and reset editing state
+      setShowAddCustomer(false)
+      setEditingCustomer(null)
+    } catch (error) {
+      console.error('Error saving customer:', error)
+      Toast.error(editingCustomer ? 'Failed to update customer. Please try again.' : 'Failed to add customer. Please try again.')
+    }
+  }
+
   // Save quotation handler
   const handleSaveQuotation = async (quotationData) => {
     const customerToUse = viewingCustomerForQuotation || viewingCustomer
@@ -587,7 +680,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
 
       {/* Modals */}
       {viewingCustomer && <CustomerDetailSidebar customer={viewingCustomer} onClose={() => setViewingCustomer(null)} onEdit={() => { setEditingCustomer(viewingCustomer); setViewingCustomer(null); setShowAddCustomer(true) }} onQuotation={handleQuotation} quotations={quotationHook.quotations} onViewQuotation={handleViewQuotation} onSendQuotation={quotationHook.handleSendQuotation} onDeleteQuotation={quotationHook.handleDeleteQuotation} onCreatePI={(quotation, customer) => { setSelectedQuotationForPI(quotation); setViewingCustomerForQuotation(customer); setShowCreatePIModal(true); setViewingCustomer(null) }} quotationPIs={piHook.quotationPIs} piHook={piHook} onViewPI={piHook.handleViewPI} />}
-      {showAddCustomer && <AddCustomerForm onClose={() => { setShowAddCustomer(false); setEditingCustomer(null) }} editingCustomer={editingCustomer} />}
+      {showAddCustomer && <AddCustomerForm onClose={() => { setShowAddCustomer(false); setEditingCustomer(null) }} onSave={handleSaveCustomer} editingCustomer={editingCustomer} />}
       {showCreateQuotation && viewingCustomerForQuotation && <CreateQuotationForm customer={viewingCustomerForQuotation} user={user} onClose={() => { setShowCreateQuotation(false); setViewingCustomerForQuotation(null) }} onSave={handleSaveQuotation} />}
       {showCreatePIModal && selectedQuotationForPI && viewingCustomerForQuotation && <CreatePIForm quotation={selectedQuotationForPI} customer={viewingCustomerForQuotation} user={user} modal={true} onClose={async (savedPI) => { 
         setShowCreatePIModal(false)

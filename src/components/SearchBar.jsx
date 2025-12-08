@@ -1,15 +1,32 @@
 import React from 'react';
-import { Search, Plus, Upload, RefreshCw, Download } from 'lucide-react';
+import { Search, Plus, Upload, RefreshCw, Download, Trash2, FileSpreadsheet } from 'lucide-react';
 
+/**
+ * SearchBar Component - Icon-only action buttons with tooltips
+ * Applies DRY principle for button styling
+ */
 const SearchBar = ({ 
   searchTerm, 
   onSearchChange, 
   onImportClick, 
   onAddCustomer, 
   onAssignSelected, 
+  onBulkDelete,
+  onExportExcel,
   selectedCount,
   onRefresh 
 }) => {
+  // Reusable button style classes (DRY principle)
+  const iconButtonBase = "p-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2";
+  const iconButtonStyles = {
+    import: `${iconButtonBase} bg-green-600 text-white hover:bg-green-700 focus:ring-green-500`,
+    add: `${iconButtonBase} bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500`,
+    assign: `${iconButtonBase} ${selectedCount === 0 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500'}`,
+    delete: `${iconButtonBase} ${selectedCount === 0 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500'}`,
+    export: `${iconButtonBase} bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500`,
+    refresh: `${iconButtonBase} bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500`
+  };
+
   return (
     <div className="flex items-center justify-between space-x-4">
       <div className="flex-1 max-w-md">
@@ -26,36 +43,64 @@ const SearchBar = ({
       </div>
 
       <div className="flex items-center space-x-2">
+        {/* Import CSV - Icon only */}
         <button
           onClick={onImportClick}
-          className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          className={iconButtonStyles.import}
+          title="Import CSV"
         >
-          <Download className="w-4 h-4" />
-          <span>Import CSV</span>
+          <Upload className="w-5 h-5" />
         </button>
         
+        {/* Add Customer - Icon only */}
         <button
           onClick={onAddCustomer}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className={iconButtonStyles.add}
+          title="Add Customer"
         >
-          <Plus className="w-4 h-4" />
-          <span>Add Customer</span>
+          <Plus className="w-5 h-5" />
         </button>
+
+        {/* Assign Selected - Icon only */}
         <button
           onClick={onAssignSelected}
           disabled={selectedCount === 0}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${selectedCount === 0 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
-          title={selectedCount > 0 ? `Reassign ${selectedCount} selected lead(s)` : 'Select leads to assign/reassign'}
+          className={iconButtonStyles.assign}
+          title={selectedCount > 0 ? `Assign ${selectedCount} selected lead(s)` : 'Select leads to assign'}
         >
-          <span>{selectedCount > 0 ? 'Reassign' : 'Assign'} Selected{selectedCount ? ` (${selectedCount})` : ''}</span>
+          <Upload className="w-5 h-5" />
         </button>
+
+        {/* Bulk Delete - Icon only */}
+        {onBulkDelete && (
+          <button
+            onClick={onBulkDelete}
+            disabled={selectedCount === 0}
+            className={iconButtonStyles.delete}
+            title={selectedCount > 0 ? `Delete ${selectedCount} selected lead(s)` : 'Select leads to delete'}
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Export to Excel - Icon only */}
+        {onExportExcel && (
+          <button
+            onClick={onExportExcel}
+            className={iconButtonStyles.export}
+            title="Export to Excel"
+          >
+            <FileSpreadsheet className="w-5 h-5" />
+          </button>
+        )}
           
+        {/* Refresh - Icon only */}
         <button
           onClick={onRefresh}
-          className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          className={iconButtonStyles.refresh}
+          title="Refresh"
         >
-          <RefreshCw className="w-4 h-4" />
-          <span>Refresh</span>
+          <RefreshCw className="w-5 h-5" />
         </button>
       </div>
     </div>
