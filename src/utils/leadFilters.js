@@ -25,7 +25,9 @@ export const getUnassignedLeadIds = (leads, isLeadAssigned) => {
   return ids;
 };
 
-export const filterLeads = (activeLeadPool, searchTerm, assignmentFilter, statusFilter, filteredCustomerIds, isLeadAssigned) => {
+const includes = (val, q) => String(val || '').toLowerCase().includes(String(q || '').toLowerCase());
+
+export const filterLeads = (activeLeadPool, searchTerm, assignmentFilter, statusFilter, filteredCustomerIds, isLeadAssigned, assignedSalespersonFilter, assignedTelecallerFilter, columnFilters = {}) => {
   const searchLower = searchTerm?.toLowerCase() || '';
   const hasStatusFilter = Boolean(statusFilter.type && statusFilter.status);
   const hasCustomerIdFilter = hasStatusFilter && filteredCustomerIds.size > 0;
@@ -52,7 +54,53 @@ export const filterLeads = (activeLeadPool, searchTerm, assignmentFilter, status
       }
     }
     
+    if (assignedSalespersonFilter) {
+      const leadSalesperson = (lead.assignedSalesperson || '').trim();
+      if (assignedSalespersonFilter === 'Unassigned') {
+        if (leadSalesperson && leadSalesperson.toLowerCase() !== 'n/a' && leadSalesperson.toLowerCase() !== 'na' && leadSalesperson !== '-') {
+          continue;
+        }
+      } else if (leadSalesperson !== assignedSalespersonFilter) {
+        continue;
+      }
+    }
+    
+    if (assignedTelecallerFilter) {
+      const leadTelecaller = (lead.assignedTelecaller || '').trim();
+      if (assignedTelecallerFilter === 'Unassigned') {
+        if (leadTelecaller && leadTelecaller.toLowerCase() !== 'n/a' && leadTelecaller.toLowerCase() !== 'na' && leadTelecaller !== '-') {
+          continue;
+        }
+      } else if (leadTelecaller !== assignedTelecallerFilter) {
+        continue;
+      }
+    }
+    
     if (hasCustomerIdFilter && !IDMatcher.matchesLead(lead, filteredCustomerIds)) {
+      continue;
+    }
+    
+    // Apply column filters
+    const cf = columnFilters || {};
+    if (
+      (cf.customerId && !includes(lead.customerId, cf.customerId)) ||
+      (cf.customer && !includes(lead.customer, cf.customer)) ||
+      (cf.business && !includes(lead.business, cf.business)) ||
+      (cf.address && !includes(lead.address, cf.address)) ||
+      (cf.state && !includes(lead.state, cf.state)) ||
+      (cf.phone && !includes(lead.phone, cf.phone)) ||
+      (cf.email && !includes(lead.email, cf.email)) ||
+      (cf.gstNo && !includes(lead.gstNo, cf.gstNo)) ||
+      (cf.leadSource && !includes(lead.leadSource, cf.leadSource)) ||
+      (cf.productNames && !includes(lead.productNames || lead.productNamesText, cf.productNames)) ||
+      (cf.category && !includes(lead.category, cf.category)) ||
+      (cf.followUpStatus && !includes(lead.followUpStatus || lead.connectedStatus || lead.telecallerStatus, cf.followUpStatus)) ||
+      (cf.salesStatus && !includes(lead.salesStatus, cf.salesStatus)) ||
+      (cf.telecallerStatus && !includes(lead.telecallerStatus, cf.telecallerStatus)) ||
+      (cf.paymentStatus && !includes(lead.paymentStatus, cf.paymentStatus)) ||
+      (cf.createdAt && !includes(lead.createdAt, cf.createdAt)) ||
+      (cf.updatedAt && !includes(lead.updated_at || lead.createdAt, cf.updatedAt))
+    ) {
       continue;
     }
     
