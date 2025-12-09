@@ -449,7 +449,8 @@ const MobileLeads = () => {
           break;
           
         case 'Customer Type':
-          data.customerType = value || 'N/A';
+          // Only set customerType if value exists in CSV - no default assignment
+          data.customerType = value && value.trim() ? value.trim() : null;
           break;
           
         case 'Date':
@@ -552,7 +553,10 @@ const MobileLeads = () => {
               formData.append('gst_no', lead.gstNo || 'N/A');
               formData.append('product_type', lead.productName || 'N/A');
               formData.append('lead_source', lead.leadSource || 'N/A');
-              formData.append('customer_type', lead.customerType || 'N/A');
+              // Only send customer_type if it exists in CSV - no auto-assignment
+              if (lead.customerType && lead.customerType.trim() && lead.customerType !== 'N/A') {
+                formData.append('customer_type', lead.customerType);
+              }
               formData.append('date', lead.date);
               formData.append('sales_status', lead.salesStatus || 'follow up');
               

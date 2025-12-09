@@ -35,6 +35,7 @@ const LeadsSimplified = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(200);
+  const [showAll, setShowAll] = useState(false);
   const [total, setTotal] = useState(0);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -52,6 +53,28 @@ const LeadsSimplified = () => {
   const [statusFilter, setStatusFilter] = useState({ type: null, status: null });
   const [assignmentFilter, setAssignmentFilter] = useState(null);
   const [filteredCustomerIds, setFilteredCustomerIds] = useState(new Set());
+  const [assignedSalespersonFilter, setAssignedSalespersonFilter] = useState('');
+  const [assignedTelecallerFilter, setAssignedTelecallerFilter] = useState('');
+  const [columnFilters, setColumnFilters] = useState({
+    customerId: '',
+    customer: '',
+    business: '',
+    address: '',
+    state: '',
+    phone: '',
+    email: '',
+    gstNo: '',
+    leadSource: '',
+    productNames: '',
+    category: '',
+    followUpStatus: '',
+    salesStatus: '',
+    telecallerStatus: '',
+    paymentStatus: '',
+    createdAt: '',
+    updatedAt: ''
+  });
+  const [showColumnFilterRow, setShowColumnFilterRow] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -367,7 +390,14 @@ const LeadsSimplified = () => {
   };
 
   const buildLeadFetchParams = () => {
-    const params = { page, limit };
+    const params = { page };
+    // If limit is 'all' or a very large number, use max allowed by backend (50000)
+    if (limit && limit !== 'all' && limit < 50000) {
+      params.limit = limit;
+    } else {
+      // For "All" option, use maximum allowed by backend validation (50000)
+      params.limit = 50000;
+    }
     const trimmedSearch = searchTerm.trim();
     if (trimmedSearch) {
       params.search = trimmedSearch;
@@ -495,6 +525,15 @@ const LeadsSimplified = () => {
   };
 
   useEffect(() => {
+    // Sync showAll state with limit value
+    if (limit >= 50000) {
+      setShowAll(true);
+    } else {
+      setShowAll(false);
+    }
+  }, [limit]);
+
+  useEffect(() => {
     fetchLeads();
     fetchQuotationAndPICounts();
   }, [page, limit, searchTerm]);
@@ -596,9 +635,12 @@ const LeadsSimplified = () => {
         assignmentFilter,
         statusFilter,
         filteredCustomerIds,
-        isLeadAssigned
+        isLeadAssigned,
+        assignedSalespersonFilter,
+        assignedTelecallerFilter,
+        columnFilters
       ),
-    [activeLeadPool, searchTerm, assignmentFilter, statusFilter, filteredCustomerIds, isLeadAssigned]
+    [activeLeadPool, searchTerm, assignmentFilter, statusFilter, filteredCustomerIds, isLeadAssigned, assignedSalespersonFilter, assignedTelecallerFilter, columnFilters]
   );
 
   const uniqueFilteredLeads = useMemo(() => {
@@ -651,12 +693,15 @@ const LeadsSimplified = () => {
 
   const tableLoading = loading || (hasStatusFilter && loadingAllLeads && allLeadsData.length === 0);
   const paginationDisabled = hasStatusFilter;
-  const totalPages = Math.max(1, Math.ceil(total / limit) || 1);
-  const pageStart = total === 0 ? 0 : (page - 1) * limit + 1;
-  const pageEnd = total === 0 ? 0 : Math.min(page * limit, total);
+  const effectiveLimit = (limit === 'all' || limit >= 50000) ? total : limit;
+  const totalPages = showAll ? 1 : Math.max(1, Math.ceil(total / effectiveLimit) || 1);
+  const pageStart = total === 0 ? 0 : showAll ? 1 : (page - 1) * effectiveLimit + 1;
+  const pageEnd = total === 0 ? 0 : showAll ? total : Math.min(page * effectiveLimit, total);
   const paginationSummary = paginationDisabled
     ? `${uniqueFilteredLeads.length} matching lead${uniqueFilteredLeads.length === 1 ? '' : 's'}`
-    : `${pageStart} - ${pageEnd} of ${total}`;
+    : showAll 
+      ? `Showing all ${total} leads`
+      : `${pageStart} - ${pageEnd} of ${total}`;
   
   const { assignedCount, unassignedCount } = useMemo(
     () => calculateAssignedCounts(leadsData, isLeadAssigned),
@@ -980,6 +1025,27 @@ const LeadsSimplified = () => {
           setStatusFilter({ type: null, status: null });
           setAssignmentFilter(null);
           setFilteredCustomerIds(new Set());
+          setAssignedSalespersonFilter('');
+          setAssignedTelecallerFilter('');
+          setColumnFilters({
+            customerId: '',
+            customer: '',
+            business: '',
+            address: '',
+            state: '',
+            phone: '',
+            email: '',
+            gstNo: '',
+            leadSource: '',
+            productNames: '',
+            category: '',
+            followUpStatus: '',
+            salesStatus: '',
+            telecallerStatus: '',
+            paymentStatus: '',
+            createdAt: '',
+            updatedAt: ''
+          });
         }}
       />
 
@@ -1003,16 +1069,33 @@ const LeadsSimplified = () => {
         onAssign={openAssignModal}
         showCustomerTimeline={showCustomerTimeline}
         setShowColumnFilter={setShowColumnFilter}
+        allLeadsData={allLeadsData}
+        assignedSalespersonFilter={assignedSalespersonFilter}
+        assignedTelecallerFilter={assignedTelecallerFilter}
+        onAssignedSalespersonFilterChange={setAssignedSalespersonFilter}
+        onAssignedTelecallerFilterChange={setAssignedTelecallerFilter}
+        usernames={usernames}
+        columnFilters={columnFilters}
+        onColumnFilterChange={(key, value) => setColumnFilters(prev => ({ ...prev, [key]: value }))}
+        showColumnFilterRow={showColumnFilterRow}
+        onToggleColumnFilterRow={() => setShowColumnFilterRow(prev => !prev)}
       />
 
       <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="flex items-center space-x-2 text-sm text-gray-600">
           <span>Rows per page:</span>
           <select
-            value={limit}
+            value={showAll ? 'all' : limit}
             onChange={(e) => {
               setPage(1);
-              setLimit(Number(e.target.value));
+              const value = e.target.value;
+              if (value === 'all') {
+                setShowAll(true);
+                setLimit(50000); // Use max allowed by backend validation
+              } else {
+                setShowAll(false);
+                setLimit(Number(value));
+              }
             }}
             disabled={paginationDisabled}
             className={`border border-gray-300 rounded px-2 py-1 text-sm ${paginationDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
@@ -1022,15 +1105,16 @@ const LeadsSimplified = () => {
             <option value={50}>50</option>
             <option value={100}>100</option>
             <option value={200}>200</option>
+            <option value="all">All</option>
           </select>
           <span>{paginationSummary}</span>
         </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={paginationDisabled || page === 1}
+            disabled={paginationDisabled || page === 1 || showAll}
             className={`px-3 py-1 border rounded ${
-              paginationDisabled || page === 1
+              paginationDisabled || page === 1 || showAll
                 ? 'text-gray-300 border-gray-200 cursor-not-allowed'
                 : 'text-gray-700 border-gray-300 hover:bg-gray-50'
             }`}
@@ -1038,13 +1122,13 @@ const LeadsSimplified = () => {
             Prev
           </button>
           <span className="text-sm text-gray-600">
-            {paginationDisabled ? 'Filtered view' : `Page ${page} of ${totalPages}`}
+            {paginationDisabled ? 'Filtered view' : showAll ? 'Showing all' : `Page ${page} of ${totalPages}`}
           </span>
           <button
             onClick={() => setPage((p) => (p < totalPages ? p + 1 : p))}
-            disabled={paginationDisabled || page >= totalPages || total === 0}
+            disabled={paginationDisabled || page >= totalPages || total === 0 || showAll}
             className={`px-3 py-1 border rounded ${
-              paginationDisabled || page >= totalPages || total === 0
+              paginationDisabled || page >= totalPages || total === 0 || showAll
                 ? 'text-gray-300 border-gray-200 cursor-not-allowed'
                 : 'text-gray-700 border-gray-300 hover:bg-gray-50'
             }`}
