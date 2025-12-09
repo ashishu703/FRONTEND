@@ -12,7 +12,7 @@ import toastManager from '../../utils/ToastManager';
 // Edit Lead Status Modal Component
 const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   const [formData, setFormData] = useState({
-    sales_status: lead?.sales_status || 'follow up',
+    sales_status: lead?.sales_status || '',
     sales_status_remark: lead?.sales_status_remark || '',
     follow_up_status: lead?.follow_up_status || '',
     follow_up_remark: lead?.follow_up_remark || '',
@@ -39,6 +39,7 @@ const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   };
 
   const statusOptions = [
+    { value: '', label: 'Select Lead Status' },
     { value: 'pending', label: 'Pending' },
     { value: 'running', label: 'Running' },
     { value: 'converted', label: 'Converted' },
