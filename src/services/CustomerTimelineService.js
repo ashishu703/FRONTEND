@@ -25,7 +25,7 @@ class CustomerTimelineService {
       const [historyRes, quotationsRes, leadRes] = await Promise.allSettled([
         apiClient.get(API_ENDPOINTS.SALESPERSON_LEAD_HISTORY(leadId)),
         quotationService.getQuotationsByCustomer(leadId),
-        apiClient.get(`/api/leads/${leadId}`).catch(() => ({ status: 'rejected' }))
+        apiClient.get(API_ENDPOINTS.SALESPERSON_LEAD_BY_ID(leadId)).catch(() => ({ status: 'rejected' }))
       ]);
 
       const history = historyRes.status === 'fulfilled' 
