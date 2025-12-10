@@ -14,6 +14,8 @@ import OfficeSalesPersonDashboard from './SuperAdmin/OfficeSalesPersonDashboard'
 import HRDepartmentDashboard from './SuperAdmin/HRDepartmentDashboard';
 import ProductionDepartmentDashboard from './SuperAdmin/ProductionDepartmentDashboard';
 import CreateOrganisation from './SuperAdmin/CreateOrganisation';
+import ReportsPage from './Reports/ReportsPage';
+import DetailedReportPage from './Reports/DetailedReportPage';
 
 const MainDashboard = ({ activeView, setActiveView }) => {
   const { selectedCompany } = useCompany();
@@ -62,7 +64,12 @@ const MainDashboard = ({ activeView, setActiveView }) => {
         return <ProductionDepartmentDashboard />;
       case 'create-organisation':
         return <CreateOrganisation />;
+      case 'reports':
+        return <ReportsPage setActiveView={setActiveView} />;
       default:
+        if (activeView?.startsWith('detailed-report-')) {
+          return <DetailedReportPage activeView={activeView} setActiveView={setActiveView} />;
+        }
         return <SuperAdminSalesDashboard setActiveView={setActiveView} />;
     }
   };
