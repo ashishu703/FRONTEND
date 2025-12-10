@@ -172,11 +172,21 @@ class QuotationService {
   }
 
   // OPTIMIZED: Get quotations for multiple customers in one call
+  // Uses POST for large arrays (>100 IDs) to avoid URL length limits
   async getBulkQuotationsByCustomers(customerIds) {
     try {
-      const idsParam = JSON.stringify(customerIds);
-      const response = await apiClient.get(`/api/quotations/bulk-by-customers?customerIds=${encodeURIComponent(idsParam)}`);
-      return response;
+      // Use POST for large arrays to avoid URL length limits (431 error)
+      if (customerIds.length > 100) {
+        const response = await apiClient.post('/api/quotations/bulk-by-customers', {
+          customerIds: customerIds
+        });
+        return response;
+      } else {
+        // Use GET for small arrays (backward compatibility)
+        const idsParam = JSON.stringify(customerIds);
+        const response = await apiClient.get(`/api/quotations/bulk-by-customers?customerIds=${encodeURIComponent(idsParam)}`);
+        return response;
+      }
     } catch (error) {
       console.error('Error fetching bulk quotations by customers:', error);
       throw error;
@@ -184,11 +194,21 @@ class QuotationService {
   }
 
   // OPTIMIZED: Get summaries for multiple quotations in one call
+  // Uses POST for large arrays (>100 IDs) to avoid URL length limits
   async getBulkSummaries(quotationIds) {
     try {
-      const idsParam = JSON.stringify(quotationIds);
-      const response = await apiClient.get(`/api/quotations/bulk-summaries?quotationIds=${encodeURIComponent(idsParam)}`);
-      return response;
+      // Use POST for large arrays to avoid URL length limits (431 error)
+      if (quotationIds.length > 100) {
+        const response = await apiClient.post('/api/quotations/bulk-summaries', {
+          quotationIds: quotationIds
+        });
+        return response;
+      } else {
+        // Use GET for small arrays (backward compatibility)
+        const idsParam = JSON.stringify(quotationIds);
+        const response = await apiClient.get(`/api/quotations/bulk-summaries?quotationIds=${encodeURIComponent(idsParam)}`);
+        return response;
+      }
     } catch (error) {
       console.error('Error fetching bulk summaries:', error);
       throw error;

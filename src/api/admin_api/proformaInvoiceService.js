@@ -79,11 +79,22 @@ class ProformaInvoiceService {
   }
 
   // OPTIMIZED: Get PIs for multiple quotations in one call
+  // OPTIMIZED: Get PIs for multiple quotations in one call
+  // Uses POST for large arrays (>100 IDs) to avoid URL length limits
   async getBulkPIsByQuotations(quotationIds) {
     try {
-      const idsParam = JSON.stringify(quotationIds);
-      const response = await apiClient.get(`/api/proforma-invoices/bulk-by-quotations?quotationIds=${encodeURIComponent(idsParam)}`);
-      return response;
+      // Use POST for large arrays to avoid URL length limits (431 error)
+      if (quotationIds.length > 100) {
+        const response = await apiClient.post('/api/proforma-invoices/bulk-by-quotations', {
+          quotationIds: quotationIds
+        });
+        return response;
+      } else {
+        // Use GET for small arrays (backward compatibility)
+        const idsParam = JSON.stringify(quotationIds);
+        const response = await apiClient.get(`/api/proforma-invoices/bulk-by-quotations?quotationIds=${encodeURIComponent(idsParam)}`);
+        return response;
+      }
     } catch (error) {
       console.error('Error fetching bulk PIs by quotations:', error);
       throw error;

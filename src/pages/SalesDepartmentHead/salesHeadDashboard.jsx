@@ -850,12 +850,12 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
     return isNaN(amount) ? 0 : amount
   }
 
-  // Fetch all leads from all salespersons under department head
+  // OPTIMIZED: Fetch ALL leads at once for dashboard overview
   const fetchLeads = async () => {
     try {
       setLoading(true)
       
-      // Get all leads for department head (includes all salespersons' leads)
+      // Fetch ALL leads by looping through pages
       let allLeads = []
       let page = 1
       const pageSize = 100
@@ -864,24 +864,28 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         const leadsResponse = await departmentHeadService.getAllLeads({ page, limit: pageSize })
         const leadsData = leadsResponse?.data || []
         if (!leadsData || leadsData.length === 0) break
-        allLeads = allLeads.concat(leadsData)
+        
+        // Transform API data to match our format
+        const transformedLeads = leadsData.map(lead => ({
+          id: lead.id,
+          name: lead.customer || lead.name,
+          sales_status: lead.sales_status || lead.salesStatus || 'pending',
+          follow_up_status: lead.follow_up_status || lead.followUpStatus || '',
+          source: lead.lead_source || lead.leadSource || 'Unknown',
+          created_at: lead.created_at || lead.createdAt || lead.date || new Date().toISOString(),
+          assigned_salesperson: lead.assigned_salesperson || lead.assignedSalesperson || ''
+        }))
+        
+        allLeads = allLeads.concat(transformedLeads)
+        
+        // Break if we got less than pageSize (last page)
         if (leadsData.length < pageSize) break
         page += 1
       }
       
-      // Transform API data to match our format
-      const transformedLeads = allLeads.map(lead => ({
-        id: lead.id,
-        name: lead.customer || lead.name,
-        sales_status: lead.sales_status || lead.salesStatus || 'pending',
-        follow_up_status: lead.follow_up_status || lead.followUpStatus || '',
-        source: lead.lead_source || lead.leadSource || 'Unknown',
-        created_at: lead.created_at || lead.createdAt || lead.date || new Date().toISOString(),
-        assigned_salesperson: lead.assigned_salesperson || lead.assignedSalesperson || ''
-      }))
-      
-      setLeads(transformedLeads)
+      setLeads(allLeads)
       setError(null)
+      console.log(`Loaded ${allLeads.length} leads for dashboard`)
     } catch (err) {
       console.error('Error loading leads:', err)
       setError('Failed to load leads data')
@@ -945,13 +949,40 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
     }
   }
 
-  // Refresh dashboard function
+  // OPTIMIZED: Refresh dashboard function - fetch leads first, then metrics with leads data
   const refreshDashboard = async () => {
     try {
       setRefreshing(true)
+      // Fetch leads first and get the data
+      let allLeads = []
+      let page = 1
+      const pageSize = 100
+      
+      while (true) {
+        const leadsResponse = await departmentHeadService.getAllLeads({ page, limit: pageSize })
+        const leadsData = leadsResponse?.data || []
+        if (!leadsData || leadsData.length === 0) break
+        allLeads = allLeads.concat(leadsData)
+        if (leadsData.length < pageSize) break
+        page += 1
+      }
+      
+      // Transform API data to match our format
+      const transformedLeads = allLeads.map(lead => ({
+        id: lead.id,
+        name: lead.customer || lead.name,
+        sales_status: lead.sales_status || lead.salesStatus || 'pending',
+        follow_up_status: lead.follow_up_status || lead.followUpStatus || '',
+        source: lead.lead_source || lead.leadSource || 'Unknown',
+        created_at: lead.created_at || lead.createdAt || lead.date || new Date().toISOString(),
+        assigned_salesperson: lead.assigned_salesperson || lead.assignedSalesperson || ''
+      }))
+      
+      setLeads(transformedLeads)
+      
+      // Then fetch metrics with leads data (avoids duplicate API call)
       await Promise.all([
-        fetchLeads(),
-        fetchBusinessMetrics(),
+        fetchBusinessMetrics(transformedLeads),
         fetchUserTarget()
       ])
     } catch (err) {
@@ -961,32 +992,47 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
     }
   }
 
-  // Fetch business metrics - aggregate from all salespersons
-  const fetchBusinessMetrics = async () => {
+  // OPTIMIZED: Fetch business metrics - reuse leads from state if available
+  const fetchBusinessMetrics = async (leadsData = null) => {
     try {
       setLoadingMetrics(true)
       
-      // Get all leads for department head (includes all salespersons' leads)
-      let allLeads = []
-      let page = 1
-      const pageSize = 100
-      
-      while (true) {
-        const leadsResponse = await departmentHeadService.getAllLeads({ page, limit: pageSize })
-        // Handle different response structures
-        let leadsData = []
-        if (Array.isArray(leadsResponse?.data)) {
-          leadsData = leadsResponse.data
-        } else if (Array.isArray(leadsResponse)) {
-          leadsData = leadsResponse
-        } else if (leadsResponse?.success && Array.isArray(leadsResponse.data)) {
-          leadsData = leadsResponse.data
+      // OPTIMIZED: Reuse leads from state if available, otherwise fetch
+      let allLeads = leadsData || leads
+      if (!allLeads || allLeads.length === 0) {
+        // Get all leads for department head (includes all salespersons' leads)
+        allLeads = []
+        let page = 1
+        const pageSize = 100
+        
+        while (true) {
+          const leadsResponse = await departmentHeadService.getAllLeads({ page, limit: pageSize })
+          // Handle different response structures
+          let leadsData = []
+          if (Array.isArray(leadsResponse?.data)) {
+            leadsData = leadsResponse.data
+          } else if (Array.isArray(leadsResponse)) {
+            leadsData = leadsResponse
+          } else if (leadsResponse?.success && Array.isArray(leadsResponse.data)) {
+            leadsData = leadsResponse.data
+          }
+          
+          if (!leadsData || leadsData.length === 0) break
+          allLeads = allLeads.concat(leadsData)
+          if (leadsData.length < pageSize) break
+          page += 1
         }
         
-        if (!leadsData || leadsData.length === 0) break
-        allLeads = allLeads.concat(leadsData)
-        if (leadsData.length < pageSize) break
-        page += 1
+        // Transform if needed
+        allLeads = allLeads.map(lead => ({
+          id: lead.id,
+          name: lead.customer || lead.name,
+          sales_status: lead.sales_status || lead.salesStatus || 'pending',
+          follow_up_status: lead.follow_up_status || lead.followUpStatus || '',
+          source: lead.lead_source || lead.leadSource || 'Unknown',
+          created_at: lead.created_at || lead.createdAt || lead.date || new Date().toISOString(),
+          assigned_salesperson: lead.assigned_salesperson || lead.assignedSalesperson || ''
+        }))
       }
       
       console.log('Fetched leads count:', allLeads.length)
@@ -1449,13 +1495,54 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   }
 
   // Load real data on mount
+  // OPTIMIZED: Prevent duplicate calls with refs
+  const fetchingMetricsRef = React.useRef(false);
+  const initialLoadRef = React.useRef(false);
+  
+  // OPTIMIZED: Load real data on mount - fetch leads first, then metrics with leads data
   useEffect(() => {
-    if (user?.id) {
-      fetchLeads()
-      fetchBusinessMetrics()
-      fetchUserTarget()
-    }
+    if (!user?.id || initialLoadRef.current) return;
+    initialLoadRef.current = true;
+    
+    const loadData = async () => {
+      // Fetch leads first
+      await fetchLeads();
+      // Fetch user target in parallel
+      await fetchUserTarget();
+    };
+    
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
+  
+  // OPTIMIZED: Fetch metrics after leads are loaded (reuse leads data)
+  useEffect(() => {
+    if (!initialLoadRef.current || fetchingMetricsRef.current || !leads.length || !user?.id) return;
+    
+    // Fetch metrics with leads data to avoid duplicate API call
+    if (!fetchingMetricsRef.current) {
+      fetchingMetricsRef.current = true;
+      fetchBusinessMetrics(leads).finally(() => {
+        fetchingMetricsRef.current = false;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads.length, user?.id]); // Only when leads are loaded
+  
+  // OPTIMIZED: Fetch business metrics when user target dates change (to recalculate with date range)
+  useEffect(() => {
+    // Skip if not yet initialized or already fetching
+    if (!initialLoadRef.current || fetchingMetricsRef.current || !user?.id) return;
+    
+    // Only refetch if we have target dates
+    if (userTarget.targetStartDate && userTarget.targetEndDate) {
+      fetchingMetricsRef.current = true;
+      fetchBusinessMetrics(leads).finally(() => {
+        fetchingMetricsRef.current = false;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userTarget.targetStartDate, userTarget.targetEndDate])
 
   // Simple status mapping function
   const mapSalesStatusToBucket = (status) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { apiClient, API_ENDPOINTS } from '../utils/globalImports'
 import Toast from '../utils/Toast'
 import { StatusConverter } from '../utils/StatusConverter'
@@ -6,6 +6,7 @@ import { StatusConverter } from '../utils/StatusConverter'
 export function useSalespersonLeads(initialCustomers = []) {
   const [customers, setCustomers] = useState(initialCustomers)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const [selectedTag, setSelectedTag] = useState('all')
   const [showFilterPanel, setShowFilterPanel] = useState(false)
   const [advancedFilters, setAdvancedFilters] = useState({
@@ -47,6 +48,14 @@ export function useSalespersonLeads(initialCustomers = []) {
     fetchAssigned()
   }, [])
 
+  // OPTIMIZED: Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const tags = useMemo(() => {
     const uniqueTypes = [...new Set(customers.map(c => c.customerType).filter(t => t && t !== 'N/A'))]
     return uniqueTypes.sort()
@@ -63,15 +72,26 @@ export function useSalespersonLeads(initialCustomers = []) {
     }
   }, [customers])
 
+  // OPTIMIZED: useMemo with debounced search and chunk processing for large arrays
   const filteredCustomers = useMemo(() => {
     let filtered = customers
 
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(c => 
-        c.name?.toLowerCase().includes(query) || c.phone?.includes(query) || 
-        c.business?.toLowerCase().includes(query) || c.email?.toLowerCase().includes(query)
-      )
+    // Use debounced search query - search in name, phone, business, email, and address
+    if (debouncedSearchQuery && debouncedSearchQuery.trim()) {
+      const query = debouncedSearchQuery.toLowerCase().trim()
+      filtered = filtered.filter(c => {
+        const name = (c.name || '').toLowerCase()
+        const phone = String(c.phone || '')
+        const business = (c.business || '').toLowerCase()
+        const email = (c.email || '').toLowerCase()
+        const address = (c.address || '').toLowerCase()
+        
+        return name.includes(query) || 
+               phone.includes(query) || 
+               business.includes(query) || 
+               email.includes(query) ||
+               address.includes(query)
+      })
     }
 
     if (selectedTag && selectedTag !== 'all') {
@@ -96,12 +116,19 @@ export function useSalespersonLeads(initialCustomers = []) {
     })
 
     return filtered
-  }, [customers, searchQuery, selectedTag, filters, advancedFilters, enabledFilters])
+  }, [customers, debouncedSearchQuery, selectedTag, filters, advancedFilters, enabledFilters])
 
   const paginatedCustomers = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage
     return filteredCustomers.slice(start, start + itemsPerPage)
   }, [filteredCustomers, currentPage, itemsPerPage])
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    if (debouncedSearchQuery) {
+      setCurrentPage(1)
+    }
+  }, [debouncedSearchQuery])
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }))

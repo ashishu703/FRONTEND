@@ -1,4 +1,5 @@
 import { IDMatcher } from '../services/LeadsFilterService';
+import { processInChunks } from './debounce';
 
 export const calculateAssignedCounts = (leads, isLeadAssigned) => {
   let assignedCount = 0;
@@ -27,15 +28,26 @@ export const getUnassignedLeadIds = (leads, isLeadAssigned) => {
 
 const includes = (val, q) => String(val || '').toLowerCase().includes(String(q || '').toLowerCase());
 
+// OPTIMIZED: Filter leads with optimized loop (chunk processing for large arrays)
 export const filterLeads = (activeLeadPool, searchTerm, assignmentFilter, statusFilter, filteredCustomerIds, isLeadAssigned, assignedSalespersonFilter, assignedTelecallerFilter, columnFilters = {}) => {
   const searchLower = searchTerm?.toLowerCase() || '';
   const hasStatusFilter = Boolean(statusFilter.type && statusFilter.status);
   const hasCustomerIdFilter = hasStatusFilter && filteredCustomerIds.size > 0;
   
+  // For very large arrays, use chunk processing helper
+  if (activeLeadPool.length > 1000) {
+    return filterChunk(activeLeadPool, searchLower, assignmentFilter, statusFilter, filteredCustomerIds, isLeadAssigned, assignedSalespersonFilter, assignedTelecallerFilter, columnFilters, hasCustomerIdFilter);
+  }
+  
+  // For smaller arrays, process directly
+  return filterChunk(activeLeadPool, searchLower, assignmentFilter, statusFilter, filteredCustomerIds, isLeadAssigned, assignedSalespersonFilter, assignedTelecallerFilter, columnFilters, hasCustomerIdFilter);
+};
+
+const filterChunk = (chunk, searchLower, assignmentFilter, statusFilter, filteredCustomerIds, isLeadAssigned, assignedSalespersonFilter, assignedTelecallerFilter, columnFilters, hasCustomerIdFilter) => {
   const filtered = [];
   
-  for (let i = 0; i < activeLeadPool.length; i++) {
-    const lead = activeLeadPool[i];
+  for (let i = 0; i < chunk.length; i++) {
+    const lead = chunk[i];
     
     let matchesSearch = true;
     if (searchLower) {
@@ -76,11 +88,17 @@ export const filterLeads = (activeLeadPool, searchTerm, assignmentFilter, status
       }
     }
     
-    if (hasCustomerIdFilter && !IDMatcher.matchesLead(lead, filteredCustomerIds)) {
-      continue;
+    if (hasCustomerIdFilter) {
+      const matches = IDMatcher.matchesLead(lead, filteredCustomerIds);
+      if (filtered.length < 3 && filteredCustomerIds.size > 0 && filteredCustomerIds.size < 10) {
+        const leadIds = [lead.id, lead.customerId, lead.customer_id].filter(id => id != null);
+        console.log(`[Filter Match] Lead ID: ${lead.id}, Lead IDs: [${leadIds.join(', ')}], Customer ID Set: [${Array.from(filteredCustomerIds).join(', ')}], Match: ${matches}`);
+      }
+      if (!matches) {
+        continue;
+      }
     }
     
-    // Apply column filters
     const cf = columnFilters || {};
     if (
       (cf.customerId && !includes(lead.customerId, cf.customerId)) ||

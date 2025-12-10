@@ -81,6 +81,9 @@ export class QuotationDataMapper {
       return stateMatch ? stateMatch[0] : '';
     };
 
+    // Default logo URL if not provided
+    const defaultLogoUrl = 'https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png';
+    
     return {
       ...rawBranch,
       name: rawBranch.name || rawBranch.companyName || '',
@@ -90,7 +93,8 @@ export class QuotationDataMapper {
       tel: rawBranch.tel || rawBranch.phone || rawBranch.companyContact || '',
       email: rawBranch.email || rawBranch.companyEmail || '',
       web: rawBranch.web || rawBranch.website || rawBranch.companyWebsite || '',
-      logoUrl: rawBranch.logoUrl || rawBranch.logo || ''
+      logoUrl: rawBranch.logoUrl || rawBranch.logo || defaultLogoUrl,
+      logo: rawBranch.logo || rawBranch.logoUrl || defaultLogoUrl
     };
   }
 

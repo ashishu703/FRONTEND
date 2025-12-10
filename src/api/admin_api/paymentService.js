@@ -182,11 +182,22 @@ class PaymentService {
   }
 
   // OPTIMIZED: Get payments for multiple quotations in one call
+  // OPTIMIZED: Get payments for multiple quotations in one call
+  // Uses POST for large arrays (>100 IDs) to avoid URL length limits
   async getBulkPaymentsByQuotations(quotationIds) {
     try {
-      const idsParam = JSON.stringify(quotationIds);
-      const response = await apiClient.get(`/api/payments/bulk-by-quotations?quotationIds=${encodeURIComponent(idsParam)}`);
-      return response;
+      // Use POST for large arrays to avoid URL length limits (431 error)
+      if (quotationIds.length > 100) {
+        const response = await apiClient.post('/api/payments/bulk-by-quotations', {
+          quotationIds: quotationIds
+        });
+        return response;
+      } else {
+        // Use GET for small arrays (backward compatibility)
+        const idsParam = JSON.stringify(quotationIds);
+        const response = await apiClient.get(`/api/payments/bulk-by-quotations?quotationIds=${encodeURIComponent(idsParam)}`);
+        return response;
+      }
     } catch (error) {
       console.error('Error fetching bulk payments by quotations:', error);
       throw error;
@@ -194,11 +205,21 @@ class PaymentService {
   }
 
   // OPTIMIZED: Get payments for multiple customers in one call
+  // Uses POST for large arrays (>100 IDs) to avoid URL length limits
   async getBulkPaymentsByCustomers(customerIds) {
     try {
-      const idsParam = JSON.stringify(customerIds);
-      const response = await apiClient.get(`/api/payments/bulk-by-customers?customerIds=${encodeURIComponent(idsParam)}`);
-      return response;
+      // Use POST for large arrays to avoid URL length limits (431 error)
+      if (customerIds.length > 100) {
+        const response = await apiClient.post('/api/payments/bulk-by-customers', {
+          customerIds: customerIds
+        });
+        return response;
+      } else {
+        // Use GET for small arrays (backward compatibility)
+        const idsParam = JSON.stringify(customerIds);
+        const response = await apiClient.get(`/api/payments/bulk-by-customers?customerIds=${encodeURIComponent(idsParam)}`);
+        return response;
+      }
     } catch (error) {
       console.error('Error fetching bulk payments by customers:', error);
       throw error;
