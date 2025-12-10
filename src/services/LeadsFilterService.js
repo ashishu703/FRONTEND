@@ -63,15 +63,23 @@ class IDMatcher {
     for (const leadId of leadIdFields) {
       const normalized = IDMatcher.normalizeId(leadId);
       
+      // Try numeric match first
       if (normalized.numeric !== null && customerIdSet.has(normalized.numeric)) {
         return true;
       }
       
+      // Try string match
       if (customerIdSet.has(normalized.string)) {
         return true;
       }
       
+      // Try UUID match
       if (normalized.uuid && customerIdSet.has(normalized.uuid)) {
+        return true;
+      }
+      
+      // Also try the raw value as string (in case of type mismatches)
+      if (customerIdSet.has(String(leadId))) {
         return true;
       }
     }
@@ -247,13 +255,51 @@ class LeadsFilterService {
   }
 
   async extractCustomerIdsFromQuotations(quotations) {
-    return IDMatcher.buildCustomerIdSet(quotations);
+    if (!Array.isArray(quotations) || quotations.length === 0) {
+      console.warn('[LeadsFilterService] No quotations provided to extractCustomerIdsFromQuotations');
+      return new Set();
+    }
+    
+    const customerIds = IDMatcher.buildCustomerIdSet(quotations);
+    console.log(`[LeadsFilterService] Extracted ${customerIds.size} customer IDs from ${quotations.length} quotations`);
+    
+    // Debug: Log first few quotations to see their structure
+    if (quotations.length > 0) {
+      console.log('[LeadsFilterService] Sample quotation structure:', {
+        id: quotations[0].id,
+        customer_id: quotations[0].customer_id,
+        customerId: quotations[0].customerId,
+        customerID: quotations[0].customerID,
+        full: quotations[0]
+      });
+    }
+    
+    return customerIds;
   }
 
   async extractCustomerIdsFromPIs(pis) {
+    if (!Array.isArray(pis) || pis.length === 0) {
+      console.warn('[LeadsFilterService] No PIs provided to extractCustomerIdsFromPIs');
+      return new Set();
+    }
+    
     // PIs already carry customer_id that points to department_head_leads.id,
     // so we can build the customer ID set directly without refetching quotations.
-    return IDMatcher.buildCustomerIdSet(pis || []);
+    const customerIds = IDMatcher.buildCustomerIdSet(pis || []);
+    console.log(`[LeadsFilterService] Extracted ${customerIds.size} customer IDs from ${pis.length} PIs`);
+    
+    // Debug: Log first few PIs to see their structure
+    if (pis.length > 0) {
+      console.log('[LeadsFilterService] Sample PI structure:', {
+        id: pis[0].id,
+        customer_id: pis[0].customer_id,
+        customerId: pis[0].customerId,
+        customerID: pis[0].customerID,
+        full: pis[0]
+      });
+    }
+    
+    return customerIds;
   }
 }
 

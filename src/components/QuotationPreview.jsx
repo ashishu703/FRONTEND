@@ -87,8 +87,8 @@ export default function QuotationPreview({ quotationData, companyBranches, user,
 
   return (
     <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-        <div className="p-4 flex-1 overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] flex flex-col">
+        <div className="p-4 flex-1 overflow-y-auto overflow-x-auto">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Quotation - {quotationData.billTo?.business || quotationData.customer?.name || 'Customer'}</h3>
             <button onClick={onClose} className="text-gray-500 hover:text-gray-700 p-1 rounded hover:bg-gray-100"><X className="h-5 w-5" /></button>

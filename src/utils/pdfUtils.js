@@ -24,10 +24,11 @@ export const generateQuotationPDF = async (quotationData) => {
     <head>
       <meta charset="utf-8">
       <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { 
-          font-family: Arial, sans-serif; 
+          font-family: 'Inter', 'Arial', 'Helvetica', sans-serif; 
           font-size: 11px; 
-          line-height: 1.3; 
+          line-height: 1.4; 
           margin: 0; 
           padding: 15px; 
           background: white; 
@@ -35,6 +36,8 @@ export const generateQuotationPDF = async (quotationData) => {
           width: 100%;
           max-width: 750px;
           box-sizing: border-box;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
         }
         .header { border: 2px solid black; margin-bottom: 20px; padding: 15px; }
         .company-name { font-size: 20px; font-weight: bold; margin: 0; }
@@ -49,10 +52,11 @@ export const generateQuotationPDF = async (quotationData) => {
         .section-content { padding: 10px; }
         .quotation-grid { display: table; width: 100%; }
         .quotation-cell { display: table-cell; width: 25%; padding: 5px; }
-        .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 9px; table-layout: fixed; }
+        .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 9px; table-layout: fixed; page-break-inside: avoid; }
         .table th, .table td { border: 1px solid black; padding: 4px; word-wrap: break-word; }
         .table th { background-color: #f5f5f5; text-align: center; font-weight: bold; }
         .table td { text-align: center; }
+        .table tr { page-break-inside: avoid; }
         .table td:first-child { text-align: left; width: 5%; }
         .table td:nth-child(2) { text-align: left; width: 25%; }
         .table td:nth-child(3) { width: 12%; }
@@ -203,31 +207,53 @@ export const generateQuotationPDF = async (quotationData) => {
   tempDiv.offsetHeight;
   
   try {
+    // OPTIMIZED: Wait for fonts and content to fully render
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // Ensure element dimensions are calculated
+    const elementHeight = tempDiv.scrollHeight;
+    const elementWidth = tempDiv.scrollWidth || 750;
+    
     const opt = {
-      margin: [0.2, 0.2, 0.2, 0.2],
+      margin: [0.3, 0.3, 0.3, 0.3],
       filename: `Quotation-${quotationData.quotation_number}-${quotationData.customer_name.replace(/\s+/g, '-')}.pdf`,
-      image: { type: 'jpeg', quality: 1.0 },
+      image: { type: 'jpeg', quality: 0.95 },
       html2canvas: { 
-        scale: 1.5,
+        scale: 2, // Higher scale for better quality and font rendering
         useCORS: true,
         letterRendering: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
-        logging: true,
-        width: 750,
-        height: tempDiv.scrollHeight,
+        logging: false,
+        width: elementWidth,
+        height: elementHeight,
         scrollX: 0,
         scrollY: 0,
-        windowWidth: 750,
-        windowHeight: tempDiv.scrollHeight
+        windowWidth: elementWidth,
+        windowHeight: elementHeight,
+        onclone: (clonedDoc) => {
+          // Ensure fonts are properly loaded
+          const style = clonedDoc.createElement('style');
+          style.textContent = `
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+            * {
+              font-family: 'Inter', 'Arial', 'Helvetica', sans-serif !important;
+              -webkit-font-smoothing: antialiased;
+              -moz-osx-font-smoothing: grayscale;
+            }
+          `;
+          clonedDoc.head.appendChild(style);
+        }
       },
       jsPDF: { 
         unit: 'in', 
         format: 'a4', 
         orientation: 'portrait',
-        compress: false,
-        putOnlyUsedFonts: false
-      }
+        compress: true,
+        putOnlyUsedFonts: false, // Include all fonts
+        precision: 16
+      },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // Prevent unwanted page breaks
     };
     
     await html2pdf().set(opt).from(tempDiv).save();

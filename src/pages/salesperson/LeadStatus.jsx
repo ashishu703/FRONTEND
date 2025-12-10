@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Eye, Edit, Mail, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, RefreshCcw } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
@@ -8,6 +8,7 @@ import quotationService from '../../api/admin_api/quotationService';
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
 import toastManager from '../../utils/ToastManager';
+import { debounce } from '../../utils/debounce';
 
 // Edit Lead Status Modal Component
 const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
@@ -226,13 +227,24 @@ export default function LeadStatusPage() {
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [followUpFilter, setFollowUpFilter] = useState('');
   const [quotationFilter, setQuotationFilter] = useState(''); 
   const [piFilter, setPiFilter] = useState('');
+  
+  // OPTIMIZED: Prevent duplicate API calls with ref
+  const fetchingRef = React.useRef(false);
+  const initialLoadRef = React.useRef(false);
 
+  // OPTIMIZED: Document status now comes from backend, no need for separate state
+  // Keeping for backward compatibility during transition
   const [quotationStatusByLead, setQuotationStatusByLead] = useState({});
   const [piStatusByLead, setPiStatusByLead] = useState({});
+  
+  // Pagination state
+  const [totalLeads, setTotalLeads] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const leadStatusBadges = [
     { key: 'pending', label: 'Pending', bg: 'bg-yellow-100', text: 'text-yellow-800', ring: 'ring-yellow-300' },
@@ -253,78 +265,13 @@ export default function LeadStatusPage() {
     handleFollowUpFilter(next);
   };
 
+  // OPTIMIZED: Document status now comes from backend API response
+  // This function is kept for backward compatibility but is no longer needed
+  // The backend now includes quotation_count, latest_quotation_status, pi_count, latest_pi_status in the response
   const hydrateDocStatuses = async () => {
-    const missingLeadIds = leads
-      .filter(l => !quotationStatusByLead[l.id] || (quotationStatusByLead[l.id] && !piStatusByLead[l.id]))
-      .map(l => l.id);
-    if (missingLeadIds.length === 0) return;
-    
-    try {
-      setHydratingDocs(true);
-      
-      // OPTIMIZED: Fetch all quotations in parallel
-      const quotationPromises = leads.map(async (lead) => {
-        if (quotationStatusByLead[lead.id] && piStatusByLead[lead.id]) {
-          return { leadId: lead.id, quotationStatus: quotationStatusByLead[lead.id], piStatus: piStatusByLead[lead.id], latestQuotationId: null };
-        }
-        
-        try {
-          const qRes = await quotationService.getQuotationsByCustomer(lead.id);
-          const qList = (qRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-          const latestQ = qList[0];
-          
-          if (latestQ) {
-            return { 
-              leadId: lead.id, 
-              quotationStatus: (latestQ.status || '').toLowerCase(), 
-              latestQuotationId: latestQ.id,
-              piStatus: null 
-            };
-          } else {
-            return { leadId: lead.id, quotationStatus: '', piStatus: '', latestQuotationId: null };
-          }
-        } catch (_) {
-          return { leadId: lead.id, quotationStatus: '', piStatus: '', latestQuotationId: null };
-        }
-      });
-      
-      const quotationResults = await Promise.all(quotationPromises);
-      
-      // Update quotation statuses first
-      const newQuotationStatuses = {};
-      quotationResults.forEach(result => {
-        newQuotationStatuses[result.leadId] = result.quotationStatus;
-      });
-      setQuotationStatusByLead(prev => ({ ...prev, ...newQuotationStatuses }));
-      
-      // OPTIMIZED: Fetch all PIs in parallel
-      const piPromises = quotationResults.map(async (result) => {
-        if (!result.latestQuotationId || result.piStatus !== null) {
-          return { leadId: result.leadId, piStatus: result.piStatus || '' };
-        }
-        
-        try {
-          const piRes = await proformaInvoiceService.getPIsByQuotation(result.latestQuotationId);
-          const piList = (piRes?.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-          const latestPi = piList[0];
-          return { leadId: result.leadId, piStatus: latestPi ? (latestPi.status || '').toLowerCase() : '' };
-        } catch (_) {
-          return { leadId: result.leadId, piStatus: '' };
-        }
-      });
-      
-      const piResults = await Promise.all(piPromises);
-      
-      // Update PI statuses
-      const newPiStatuses = {};
-      piResults.forEach(result => {
-        newPiStatuses[result.leadId] = result.piStatus;
-      });
-      setPiStatusByLead(prev => ({ ...prev, ...newPiStatuses }));
-      
-    } finally {
-      setHydratingDocs(false);
-    }
+    // No-op: Document status is now included in the API response
+    // This function is kept to avoid breaking existing code that might call it
+    setHydratingDocs(false);
   };
 
   // Counts for badges
@@ -346,10 +293,12 @@ export default function LeadStatusPage() {
     return counts;
   }, [leads]);
 
+  // OPTIMIZED: Use document status from API response instead of separate state
   const quotationCounts = React.useMemo(() => {
     const result = { pending_approval: 0, approved: 0, rejected: 0 };
     leads.forEach((l) => {
-      const st = String(quotationStatusByLead[l.id] || '').toLowerCase();
+      // Use latest_quotation_status from API response if available, fallback to old state
+      const st = String(l.latest_quotation_status || quotationStatusByLead[l.id] || '').toLowerCase();
       if (result[st] != null) result[st] += 1;
     });
     return result;
@@ -358,34 +307,64 @@ export default function LeadStatusPage() {
   const piCounts = React.useMemo(() => {
     const result = { pending_approval: 0, approved: 0, rejected: 0 };
     leads.forEach((l) => {
-      const st = String(piStatusByLead[l.id] || '').toLowerCase();
+      // Use latest_pi_status from API response if available, fallback to old state
+      const st = String(l.latest_pi_status || piStatusByLead[l.id] || '').toLowerCase();
       if (result[st] != null) result[st] += 1;
     });
     return result;
   }, [leads, piStatusByLead]);
 
-  // Hydrate doc statuses once leads arrive so counts are visible
-  useEffect(() => {
-    if (leads && leads.length > 0) {
-      hydrateDocStatuses();
+  // OPTIMIZED: Fetch leads with pagination and document status in single request
+  const fetchLeads = async (pageNum = currentPage, fetchAllForFiltering = false) => {
+    // OPTIMIZED: Prevent duplicate calls
+    if (fetchingRef.current) {
+      console.log('Already fetching leads, skipping duplicate call');
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leads.length]);
-
-  // Fetch leads data (reused for refresh)
-  const fetchLeads = async () => {
+    
     try {
+      fetchingRef.current = true;
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
+      // Check if filters are active - if so, fetch all leads for client-side filtering
+      const hasFilters = searchQuery || statusFilter || followUpFilter || quotationFilter || piFilter;
+      const shouldFetchAll = fetchAllForFiltering || hasFilters;
+      
+      // If filters active, fetch all (use large limit), otherwise use pagination
+      const limit = shouldFetchAll ? 10000 : itemsPerPage;
+      
+      // OPTIMIZED: Use paginated endpoint with document status included
+      const response = await apiClient.get(
+        `${API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME()}?page=${shouldFetchAll ? 1 : pageNum}&limit=${limit}&includeDocStatus=true`
+      );
+      
       const leadsData = response?.data || [];
+      const pagination = response?.pagination || {};
 
+      // Store leads - always replace (backend handles pagination)
       setLeads(leadsData);
-      // Re-apply current filters/search after fetch
-      if (searchQuery || statusFilter || followUpFilter) {
+      setTotalLeads(pagination.total || leadsData.length);
+      setTotalPages(pagination.totalPages || 1);
+      
+      // Extract document status from API response and populate state for backward compatibility
+      const newQuotationStatuses = {};
+      const newPiStatuses = {};
+      leadsData.forEach(lead => {
+        if (lead.latest_quotation_status) {
+          newQuotationStatuses[lead.id] = lead.latest_quotation_status;
+        }
+        if (lead.latest_pi_status) {
+          newPiStatuses[lead.id] = lead.latest_pi_status;
+        }
+      });
+      setQuotationStatusByLead(prev => ({ ...prev, ...newQuotationStatuses }));
+      setPiStatusByLead(prev => ({ ...prev, ...newPiStatuses }));
+
+      // Apply filters if active, otherwise use paginated results directly
+      if (hasFilters) {
         setFilteredLeads(leadsData);
-        setTimeout(() => applyFilters(statusFilter, followUpFilter), 0);
+        setTimeout(() => applyFilters(statusFilter, followUpFilter, quotationFilter, piFilter), 0);
       } else {
         setFilteredLeads(leadsData);
       }
@@ -394,13 +373,46 @@ export default function LeadStatusPage() {
       setError('Failed to load leads data');
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   };
 
+  // OPTIMIZED: Single useEffect to handle initial load and prevent duplicate calls
   useEffect(() => {
-    fetchLeads();
+    // Initial load only once
+    if (!initialLoadRef.current) {
+      initialLoadRef.current = true;
+      const hasFilters = searchQuery || statusFilter || followUpFilter || quotationFilter || piFilter;
+      fetchLeads(1, hasFilters);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // Only run on mount
+
+  // OPTIMIZED: Handle pagination changes (only if no filters active)
+  useEffect(() => {
+    // Skip if not yet initialized or already fetching
+    if (!initialLoadRef.current || fetchingRef.current) return;
+    
+    const hasFilters = searchQuery || statusFilter || followUpFilter || quotationFilter || piFilter;
+    // Only fetch if no filters and page actually changed
+    if (!hasFilters && currentPage > 0) {
+      fetchLeads(currentPage, false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, itemsPerPage]);
+  
+  // OPTIMIZED: Re-fetch all leads when filters change (for client-side filtering)
+  useEffect(() => {
+    // Skip if not yet initialized or already fetching
+    if (!initialLoadRef.current || fetchingRef.current) return;
+    
+    const hasFilters = searchQuery || statusFilter || followUpFilter || quotationFilter || piFilter;
+    // Only fetch if filters are active
+    if (hasFilters) {
+      fetchLeads(1, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, statusFilter, followUpFilter, quotationFilter, piFilter]);
 
   // Handle search
   const handleSearch = (query) => {
@@ -440,41 +452,36 @@ export default function LeadStatusPage() {
     setCurrentPage(1);
   };
 
-  // Handle status filter
-  const handleStatusFilter = (status) => {
+  // OPTIMIZED: useCallback for filter handlers
+  const handleStatusFilter = useCallback((status) => {
     setStatusFilter(status);
-    applyFilters(status, followUpFilter);
     setCurrentPage(1);
-  };
+  }, []);
 
-  // Handle follow-up filter
-  const handleFollowUpFilter = (followUp) => {
+  const handleFollowUpFilter = useCallback((followUp) => {
     setFollowUpFilter(followUp);
-    applyFilters(statusFilter, followUp);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleQuotationFilter = async (status) => {
+  const handleQuotationFilter = useCallback(async (status) => {
     const next = quotationFilter === status ? '' : status;
     setQuotationFilter(next);
-    applyFilters(statusFilter, followUpFilter, next, piFilter);
     setCurrentPage(1);
-  };
+  }, [quotationFilter]);
 
-  const handlePiFilter = async (status) => {
+  const handlePiFilter = useCallback(async (status) => {
     const next = piFilter === status ? '' : status;
     setPiFilter(next);
-    applyFilters(statusFilter, followUpFilter, quotationFilter, next);
     setCurrentPage(1);
-  };
+  }, [piFilter]);
 
-  // Apply both filters
-  const applyFilters = (status, followUp, quotation = quotationFilter, pi = piFilter) => {
+  // OPTIMIZED: useMemo for filtered leads with chunk processing for large arrays
+  const filteredLeadsMemo = useMemo(() => {
     let filtered = leads;
     
-    // Apply search query first if exists
-    if (searchQuery.trim()) {
-      const lowercasedQuery = searchQuery.toLowerCase();
+    // Apply debounced search query first if exists
+    if (debouncedSearchQuery.trim()) {
+      const lowercasedQuery = debouncedSearchQuery.toLowerCase();
       filtered = filtered.filter(
         (lead) =>
           lead.name?.toLowerCase().includes(lowercasedQuery) ||
@@ -491,30 +498,50 @@ export default function LeadStatusPage() {
     }
     
     // Apply sales status filter
-    if (status) {
-      filtered = filtered.filter(lead => lead.sales_status?.toLowerCase() === status.toLowerCase());
+    if (statusFilter) {
+      filtered = filtered.filter(lead => lead.sales_status?.toLowerCase() === statusFilter.toLowerCase());
     }
     
     // Apply follow-up status filter
-    if (followUp) {
+    if (followUpFilter) {
       filtered = filtered.filter(lead => {
         const leadFollowUp = lead.follow_up_status?.toLowerCase() || '';
-        return leadFollowUp === followUp.toLowerCase();
+        return leadFollowUp === followUpFilter.toLowerCase();
       });
     }
 
     // Apply quotation status filter
-    if (quotation) {
-      filtered = filtered.filter(lead => (quotationStatusByLead[lead.id] || '') === quotation.toLowerCase());
+    if (quotationFilter) {
+      filtered = filtered.filter(lead => {
+        const status = lead.latest_quotation_status || quotationStatusByLead[lead.id] || '';
+        return status.toLowerCase() === quotationFilter.toLowerCase();
+      });
     }
 
     // Apply PI status filter
-    if (pi) {
-      filtered = filtered.filter(lead => (piStatusByLead[lead.id] || '') === pi.toLowerCase());
+    if (piFilter) {
+      filtered = filtered.filter(lead => {
+        const status = lead.latest_pi_status || piStatusByLead[lead.id] || '';
+        return status.toLowerCase() === piFilter.toLowerCase();
+      });
     }
     
-    setFilteredLeads(filtered);
-  };
+    return filtered;
+  }, [leads, debouncedSearchQuery, statusFilter, followUpFilter, quotationFilter, piFilter, quotationStatusByLead, piStatusByLead]);
+
+  // OPTIMIZED: useCallback for applyFilters (now just sets the memoized result)
+  const applyFilters = useCallback((status, followUp, quotation = quotationFilter, pi = piFilter) => {
+    // Filters are now applied via useMemo, this just triggers re-computation
+    setStatusFilter(status || '');
+    setFollowUpFilter(followUp || '');
+    setQuotationFilter(quotation || '');
+    setPiFilter(pi || '');
+  }, [quotationFilter, piFilter]);
+
+  // Sync filteredLeadsMemo to filteredLeads state
+  useEffect(() => {
+    setFilteredLeads(filteredLeadsMemo);
+  }, [filteredLeadsMemo]);
 
   // Handle lead status update
   const handleUpdateLeadStatus = async (leadId, statusData) => {
@@ -635,11 +662,25 @@ export default function LeadStatusPage() {
     );
   };
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, filteredLeads.length);
-  const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
+  // OPTIMIZED: Pagination is now handled by backend when no filters
+  // For filtered results, we need client-side pagination
+  const needsClientPagination = searchQuery || statusFilter || followUpFilter || quotationFilter || piFilter;
+  const paginatedLeads = needsClientPagination
+    ? filteredLeads.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+    : filteredLeads; // Backend already paginated, filteredLeads = current page leads
+  
+  const displayTotalPages = needsClientPagination 
+    ? Math.ceil(filteredLeads.length / itemsPerPage)
+    : totalPages;
+  const displayTotal = needsClientPagination ? filteredLeads.length : totalLeads;
+  
+  // Calculate start/end for display
+  const startIndex = needsClientPagination 
+    ? (currentPage - 1) * itemsPerPage + 1
+    : (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = needsClientPagination
+    ? Math.min(currentPage * itemsPerPage, displayTotal)
+    : Math.min(currentPage * itemsPerPage, displayTotal);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -669,7 +710,10 @@ export default function LeadStatusPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={fetchLeads}
+              onClick={() => {
+                const hasFilters = searchQuery || statusFilter || followUpFilter || quotationFilter || piFilter;
+                fetchLeads(currentPage, hasFilters);
+              }}
               className="px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 inline-flex items-center gap-2"
               title="Refresh"
             >
@@ -914,9 +958,9 @@ export default function LeadStatusPage() {
 
             {/* Page info */}
             <div className="text-sm text-gray-700">
-              {filteredLeads.length > 0 ? (
+              {paginatedLeads.length > 0 ? (
                 <>
-                  Showing {startIndex + 1} to {endIndex} of {filteredLeads.length} results
+                  Showing {startIndex} to {endIndex} of {displayTotal} results
                 </>
               ) : (
                 <>No results found</>
@@ -928,7 +972,7 @@ export default function LeadStatusPage() {
               {/* First page */}
               <button
                 onClick={() => handlePageChange(1)}
-                disabled={currentPage === 1 || filteredLeads.length === 0}
+                disabled={currentPage === 1 || paginatedLeads.length === 0}
                 className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="First page"
               >
@@ -938,7 +982,7 @@ export default function LeadStatusPage() {
               {/* Previous page */}
               <button
                 onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1 || filteredLeads.length === 0}
+                disabled={currentPage === 1 || paginatedLeads.length === 0}
                 className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Previous page"
               >
@@ -947,14 +991,14 @@ export default function LeadStatusPage() {
 
               {/* Page numbers */}
               <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                {Array.from({ length: Math.min(5, displayTotalPages) }, (_, i) => {
                   let pageNum;
-                  if (totalPages <= 5) {
+                  if (displayTotalPages <= 5) {
                     pageNum = i + 1;
                   } else if (currentPage <= 3) {
                     pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
+                  } else if (currentPage >= displayTotalPages - 2) {
+                    pageNum = displayTotalPages - 4 + i;
                   } else {
                     pageNum = currentPage - 2 + i;
                   }
@@ -977,8 +1021,8 @@ export default function LeadStatusPage() {
 
               {/* Next page */}
               <button
-                onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages || filteredLeads.length === 0}
+                onClick={() => handlePageChange(Math.min(displayTotalPages, currentPage + 1))}
+                disabled={currentPage === displayTotalPages || paginatedLeads.length === 0}
                 className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Next page"
               >
@@ -987,8 +1031,8 @@ export default function LeadStatusPage() {
 
               {/* Last page */}
               <button
-                onClick={() => handlePageChange(totalPages)}
-                disabled={currentPage === totalPages || filteredLeads.length === 0}
+                onClick={() => handlePageChange(displayTotalPages)}
+                disabled={currentPage === displayTotalPages || paginatedLeads.length === 0}
                 className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Last page"
               >

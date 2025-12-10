@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import AddCustomerModal from './AddCustomerModal';
 import QuotationPreview from '../../components/QuotationPreview';
 import PIPreview from '../../components/PIPreview';
@@ -16,7 +16,7 @@ import apiErrorHandler from '../../utils/ApiErrorHandler';
 import toastManager from '../../utils/ToastManager';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
-import { LeadsFilterService } from '../../services/LeadsFilterService';
+import { LeadsFilterService, IDMatcher } from '../../services/LeadsFilterService';
 import LeadService from '../../services/LeadService';
 import UserService from '../../services/UserService';
 import PIService from '../../services/PIService';
@@ -28,19 +28,21 @@ import { calculateAssignedCounts, getUnassignedLeadIds, filterLeads } from '../.
 import { COMPANY_BRANCHES, DEFAULT_USER, DEFAULT_BRANCH } from '../../config/appConfig';
 import { useAuth } from '../../hooks/useAuth';
 import CSVImportValidationService from '../../services/CSVImportValidationService';
+import { debounce } from '../../utils/debounce';
 
 const LeadsSimplified = () => {
   const { user } = useAuth();
   const [leadsData, setLeadsData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(200);
+  const [limit, setLimit] = useState(10);
   const [showAll, setShowAll] = useState(false);
   const [total, setTotal] = useState(0);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showImportPopup, setShowImportPopup] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [importPreview, setImportPreview] = useState([]);
   const [importing, setImporting] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -349,7 +351,13 @@ const LeadsSimplified = () => {
         if (response.pagination) {
           setTotal(Number(response.pagination.total) || 0);
         }
-        requestAllLeadsRefresh();
+        // Only refresh all leads if filters are active
+        const hasActiveFilters = statusFilter.type || assignmentFilter || 
+          Object.values(columnFilters).some(v => v) || 
+          assignedSalespersonFilter || assignedTelecallerFilter;
+        if (hasActiveFilters) {
+          requestAllLeadsRefresh();
+        }
       }
 
       const totalSkipped = validationErrors.length + summary.skippedCount + (importResult?.data?.skippedCount || 0);
@@ -391,11 +399,9 @@ const LeadsSimplified = () => {
 
   const buildLeadFetchParams = () => {
     const params = { page };
-    // If limit is 'all' or a very large number, use max allowed by backend (50000)
     if (limit && limit !== 'all' && limit < 50000) {
       params.limit = limit;
     } else {
-      // For "All" option, use maximum allowed by backend validation (50000)
       params.limit = 50000;
     }
     const trimmedSearch = searchTerm.trim();
@@ -427,9 +433,16 @@ const LeadsSimplified = () => {
       }
     }
 
+    // If already loading, wait for existing promise
+    if (allLeadsFetchPromiseRef.current) {
+      return allLeadsFetchPromiseRef.current;
+    }
+
     const fetchPromise = (async () => {
       setLoadingAllLeads(true);
       try {
+        // Use setTimeout to yield to UI thread and prevent blocking
+        await new Promise(resolve => setTimeout(resolve, 0));
         const transformed = await leadService.fetchAllLeads();
         setAllLeadsData(transformed);
         allLeadsDataRef.current = transformed;
@@ -458,15 +471,19 @@ const LeadsSimplified = () => {
     }
   };
 
+  // OPTIMIZED: Only refresh all leads if filters are active
   const handleManualRefresh = () => {
     fetchLeads();
-    requestAllLeadsRefresh();
+    // Only refresh all leads if filters are active
+    const hasActiveFilters = statusFilter.type || assignmentFilter || 
+      Object.values(columnFilters).some(v => v) || 
+      assignedSalespersonFilter || assignedTelecallerFilter;
+    if (hasActiveFilters) {
+      requestAllLeadsRefresh();
+    }
   };
 
-  /**
-   * Handles bulk delete of selected leads
-   * Applies DRY principle with reusable error handling
-   */
+  
   const handleBulkDelete = async () => {
     if (selectedLeadIds.length === 0) {
       toastManager.warning('Please select leads to delete');
@@ -488,7 +505,12 @@ const LeadsSimplified = () => {
         setSelectedLeadIds([]);
         setIsAllSelected(false);
         await fetchLeads();
-        requestAllLeadsRefresh();
+        const hasActiveFilters = statusFilter.type || assignmentFilter || 
+          Object.values(columnFilters).some(v => v) || 
+          assignedSalespersonFilter || assignedTelecallerFilter;
+        if (hasActiveFilters) {
+          requestAllLeadsRefresh();
+        }
       } else {
         toastManager.error(response.message || 'Failed to delete leads');
       }
@@ -533,14 +555,54 @@ const LeadsSimplified = () => {
     }
   }, [limit]);
 
+  // OPTIMIZED: Debounce search term to prevent excessive filtering
   useEffect(() => {
-    fetchLeads();
-    fetchQuotationAndPICounts();
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // OPTIMIZED: Load counts on initial mount, but don't load all leads until filters are used
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        // Only load counts on initial mount (fast)
+        // Don't load all leads until filters are actually used
+        await fetchQuotationAndPICounts();
+        // Then fetch paginated leads for display (only 10 initially)
+        await fetchLeads();
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+      }
+    };
+    
+    loadInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only on mount
+
+  // Separate effect for pagination/search changes (only when no filters active)
+  useEffect(() => {
+    // Only fetch paginated leads if no filters are active
+    // When filters are active, we use allLeadsData and filter client-side
+    if (!statusFilter.type && !assignmentFilter) {
+      fetchLeads();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, searchTerm]);
 
+  // OPTIMIZED: Only load all leads when filters are actually active
   useEffect(() => {
-    loadAllLeadsForFilters(true).catch(() => {});
-  }, [allLeadsRefreshKey]);
+    const hasActiveFilters = statusFilter.type || assignmentFilter || 
+      Object.values(columnFilters).some(v => v) || 
+      assignedSalespersonFilter || assignedTelecallerFilter;
+    
+    // Only fetch all leads if filters are active or explicitly requested
+    if (hasActiveFilters || allLeadsRefreshKey > 0) {
+      loadAllLeadsForFilters(true).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allLeadsRefreshKey, statusFilter.type, assignmentFilter, assignedSalespersonFilter, assignedTelecallerFilter]);
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
@@ -623,25 +685,31 @@ const LeadsSimplified = () => {
   };
 
   const hasStatusFilter = Boolean(statusFilter.type && statusFilter.status);
-  const activeLeadPool = hasStatusFilter 
+  const hasAssignmentFilter = Boolean(assignmentFilter);
+  // OPTIMIZED: Use all leads when filters are active (quotation, PI, or assignment)
+  const activeLeadPool = (hasStatusFilter || hasAssignmentFilter)
     ? (allLeadsDataRef.current.length > 0 ? allLeadsDataRef.current : allLeadsData.length > 0 ? allLeadsData : []) 
     : leadsData;
 
-  const filteredLeads = useMemo(
-    () =>
-      filterLeads(
-        activeLeadPool,
-        searchTerm,
-        assignmentFilter,
-        statusFilter,
-        filteredCustomerIds,
-        isLeadAssigned,
-        assignedSalespersonFilter,
-        assignedTelecallerFilter,
-        columnFilters
-      ),
-    [activeLeadPool, searchTerm, assignmentFilter, statusFilter, filteredCustomerIds, isLeadAssigned, assignedSalespersonFilter, assignedTelecallerFilter, columnFilters]
-  );
+  // OPTIMIZED: useMemo with async chunk processing for large arrays
+  const filteredLeads = useMemo(() => {
+    // For large arrays, use chunk processing (handled inside filterLeads)
+    // For now, return synchronous result (filterLeads will handle chunking internally)
+    const result = filterLeads(
+      activeLeadPool,
+      debouncedSearchTerm, // Use debounced search instead of immediate
+      assignmentFilter,
+      statusFilter,
+      filteredCustomerIds,
+      isLeadAssigned,
+      assignedSalespersonFilter,
+      assignedTelecallerFilter,
+      columnFilters
+    );
+    // If result is a promise, we need to handle it differently
+    // For now, assuming filterLeads returns sync result for small arrays
+    return result;
+  }, [activeLeadPool, debouncedSearchTerm, assignmentFilter, statusFilter, filteredCustomerIds, isLeadAssigned, assignedSalespersonFilter, assignedTelecallerFilter, columnFilters]);
 
   const uniqueFilteredLeads = useMemo(() => {
     const seen = new Set();
@@ -664,7 +732,8 @@ const LeadsSimplified = () => {
     [uniqueFilteredLeads, isLeadAssigned]
   );
 
-  const toggleSelectAll = () => {
+  // OPTIMIZED: useCallback to prevent unnecessary re-renders
+  const toggleSelectAll = useCallback(() => {
     if (isAllSelected) {
       setSelectedLeadIds([]);
       setIsAllSelected(false);
@@ -674,9 +743,9 @@ const LeadsSimplified = () => {
     const allVisibleLeadIds = uniqueFilteredLeads.map(l => l.id).filter(id => id != null);
     setSelectedLeadIds([...allVisibleLeadIds]);
     setIsAllSelected(allVisibleLeadIds.length > 0);
-  };
+  }, [isAllSelected, uniqueFilteredLeads]);
 
-  const toggleSelectOne = (id) => {
+  const toggleSelectOne = useCallback((id) => {
     setSelectedLeadIds((prev) => {
       const prevSet = new Set(prev);
       if (prevSet.has(id)) {
@@ -689,10 +758,10 @@ const LeadsSimplified = () => {
       setIsAllSelected(next.length > 0 && next.length === uniqueFilteredLeads.length);
       return next;
     });
-  };
+  }, [uniqueFilteredLeads]);
 
-  const tableLoading = loading || (hasStatusFilter && loadingAllLeads && allLeadsData.length === 0);
-  const paginationDisabled = hasStatusFilter;
+  const tableLoading = loading || ((hasStatusFilter || hasAssignmentFilter) && loadingAllLeads && allLeadsData.length === 0);
+  const paginationDisabled = hasStatusFilter || hasAssignmentFilter;
   const effectiveLimit = (limit === 'all' || limit >= 50000) ? total : limit;
   const totalPages = showAll ? 1 : Math.max(1, Math.ceil(total / effectiveLimit) || 1);
   const pageStart = total === 0 ? 0 : showAll ? 1 : (page - 1) * effectiveLimit + 1;
@@ -703,10 +772,12 @@ const LeadsSimplified = () => {
       ? `Showing all ${total} leads`
       : `${pageStart} - ${pageEnd} of ${total}`;
   
-  const { assignedCount, unassignedCount } = useMemo(
-    () => calculateAssignedCounts(leadsData, isLeadAssigned),
-    [leadsData, isLeadAssigned]
-  );
+  // OPTIMIZED: Calculate assigned counts from ALL leads, not just current page
+  const { assignedCount, unassignedCount } = useMemo(() => {
+    // Use all leads data if available, otherwise use current page data
+    const leadsToCount = allLeadsData.length > 0 ? allLeadsData : leadsData;
+    return calculateAssignedCounts(leadsToCount, isLeadAssigned);
+  }, [allLeadsData, leadsData, isLeadAssigned]);
 
   const handleBadgeClick = async (type, status) => {
     if (statusFilter.type === type && statusFilter.status === status) {
@@ -717,29 +788,109 @@ const LeadsSimplified = () => {
     
     try {
       setStatusFilter({ type, status });
+      setPage(1); // Reset to first page when filter is applied
       
+      // Show loading state immediately
+      setLoadingAllLeads(true);
+      
+      // OPTIMIZED: Load all leads and counts in parallel, but with proper loading states
+      // This ensures counts and filtering work on ALL leads (5000+), not just current page
       const [loadedLeads, countsResult] = await Promise.all([
-        loadAllLeadsForFilters(true),
-        fetchQuotationAndPICounts()
+        loadAllLeadsForFilters(true).catch(err => {
+          console.error('Error loading all leads:', err);
+          return [];
+        }),
+        fetchQuotationAndPICounts().catch(err => {
+          console.error('Error loading counts:', err);
+          return null;
+        })
       ]);
       
       let customerIds = new Set();
       if (type === 'pi') {
         const relevantPIs = countsResult?.filteredPIs[status] || [];
+        console.log(`[Filter Debug] PI Filter - Status: ${status}, Relevant PIs:`, relevantPIs.length, relevantPIs);
         if (relevantPIs.length > 0) {
           customerIds = await leadsFilterService.extractCustomerIdsFromPIs(relevantPIs);
+          console.log(`[Filter Debug] Extracted customer IDs from PIs:`, Array.from(customerIds));
         }
       } else if (type === 'quotation') {
         const relevantQuotations = countsResult?.filteredQuotations[status] || [];
+        console.log(`[Filter Debug] Quotation Filter - Status: ${status}, Relevant Quotations:`, relevantQuotations.length, relevantQuotations);
         if (relevantQuotations.length > 0) {
+          // Log customer IDs from quotations
+          const customerIdsFromQuotations = relevantQuotations.map(q => ({
+            id: q.id,
+            customer_id: q.customer_id,
+            customerId: q.customerId,
+            customerID: q.customerID
+          }));
+          console.log(`[Filter Debug] Customer IDs from quotations:`, customerIdsFromQuotations);
+          
           customerIds = await leadsFilterService.extractCustomerIdsFromQuotations(relevantQuotations);
+          console.log(`[Filter Debug] Extracted customer IDs:`, Array.from(customerIds));
         }
       }
       
+      // Debug: Check sample lead IDs and test matching
+      if (loadedLeads.length > 0) {
+        const sampleLeadIds = loadedLeads.slice(0, 10).map(lead => ({
+          id: lead.id,
+          customerId: lead.customerId,
+          customer_id: lead.customer_id,
+          customer: lead.customer
+        }));
+        console.log(`[Filter Debug] Sample lead IDs:`, sampleLeadIds);
+        
+        // Test matching on sample leads
+        const matchingLeads = loadedLeads.filter(lead => {
+          const leadIdFields = [lead.id, lead.customerId, lead.customer_id].filter(
+            (id) => id !== null && id !== undefined
+          );
+          for (const leadId of leadIdFields) {
+            const normalized = IDMatcher.normalizeId(leadId);
+            if (normalized.numeric !== null && customerIds.has(normalized.numeric)) {
+              return true;
+            }
+            if (customerIds.has(normalized.string)) {
+              return true;
+            }
+            if (customerIds.has(String(leadId))) {
+              return true;
+            }
+          }
+          return false;
+        });
+        console.log(`[Filter Debug] Matching leads found:`, matchingLeads.length, matchingLeads.slice(0, 3));
+        
+        // Check if customer_id 7634 exists in any lead
+        const leadWith7634 = loadedLeads.find(lead => 
+          lead.id === 7634 || lead.customerId === 7634 || lead.customer_id === 7634 ||
+          String(lead.id) === '7634' || String(lead.customerId) === '7634' || String(lead.customer_id) === '7634'
+        );
+        console.log(`[Filter Debug] Lead with ID 7634:`, leadWith7634);
+        
+        // Check all leads with IDs close to 7634
+        const leadsNear7634 = loadedLeads.filter(lead => {
+          const id = lead.id || lead.customerId || lead.customer_id;
+          return id && (Math.abs(Number(id) - 7634) < 10);
+        }).slice(0, 5);
+        console.log(`[Filter Debug] Leads near ID 7634:`, leadsNear7634);
+        
+        // Verify customerIds set contains 7634
+        console.log(`[Filter Debug] Customer IDs set contains 7634:`, customerIds.has(7634), customerIds.has('7634'));
+        console.log(`[Filter Debug] All customer IDs in set:`, Array.from(customerIds));
+      }
+      
       setFilteredCustomerIds(customerIds);
+      console.log(`[Filter Debug] Filter applied: ${type} - ${status}, Customer IDs set size: ${customerIds.size}, Total leads loaded: ${loadedLeads.length}`);
     } catch (err) {
+      console.error('Error in handleBadgeClick:', err);
       toastManager.error('Failed to load leads for filtering');
       setStatusFilter({ type: null, status: null });
+      setFilteredCustomerIds(new Set());
+    } finally {
+      setLoadingAllLeads(false);
     }
   };
 
@@ -1020,7 +1171,22 @@ const LeadsSimplified = () => {
         assignedCount={assignedCount}
         unassignedCount={unassignedCount}
         onBadgeClick={handleBadgeClick}
-        onAssignmentFilter={setAssignmentFilter}
+        onAssignmentFilter={async (filter) => {
+          // OPTIMIZED: Load all leads before applying assignment filter
+          if (filter && allLeadsData.length === 0) {
+            setLoadingAllLeads(true);
+            try {
+              await loadAllLeadsForFilters(true);
+            } catch (err) {
+              console.error('Error loading all leads for assignment filter:', err);
+              toastManager.error('Failed to load leads for filtering');
+            } finally {
+              setLoadingAllLeads(false);
+            }
+          }
+          setAssignmentFilter(filter);
+          setPage(1); // Reset to first page
+        }}
         onClearFilter={() => {
           setStatusFilter({ type: null, status: null });
           setAssignmentFilter(null);

@@ -58,6 +58,10 @@ export default function CustomerListContent({ isDarkMode = false }) {
   const [bulkActionType, setBulkActionType] = React.useState('tag') // 'tag' or 'sku'
   const [bulkTagValue, setBulkTagValue] = React.useState('')
   const [bulkSkuValue, setBulkSkuValue] = React.useState('')
+  
+  // Duplicate lead modal state
+  const [showDuplicateModal, setShowDuplicateModal] = React.useState(false)
+  const [duplicateLeadInfo, setDuplicateLeadInfo] = React.useState(null)
 
   // Import leads modal
   const [showImportModal, setShowImportModal] = React.useState(false)
@@ -116,10 +120,20 @@ export default function CustomerListContent({ isDarkMode = false }) {
     loadBranches()
   }, [])
 
-  // Refresh leads
+  // OPTIMIZED: Prevent duplicate refresh calls
+  const refreshingRef = React.useRef(false)
+  
+  // OPTIMIZED: Refresh leads
   const handleRefresh = async () => {
-    setIsRefreshing(true)
+    // Prevent duplicate calls
+    if (refreshingRef.current) {
+      console.log('Already refreshing, skipping duplicate call')
+      return
+    }
+    
     try {
+      refreshingRef.current = true
+      setIsRefreshing(true)
       const res = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME())
       const rows = res?.data || []
       const mapped = rows.map((r) => ({
@@ -144,6 +158,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
       Toast.error('Failed to refresh leads')
     } finally {
       setIsRefreshing(false)
+      refreshingRef.current = false
     }
   }
 
@@ -375,19 +390,68 @@ export default function CustomerListContent({ isDarkMode = false }) {
           formData.append('call_recording', customerData.callRecordingFile)
         }
         
-        await apiClient.postFormData(API_ENDPOINTS.SALESPERSON_CREATE_LEAD(), formData)
-        Toast.success('Customer added successfully!')
+        try {
+          const response = await apiClient.postFormData(API_ENDPOINTS.SALESPERSON_CREATE_LEAD(), formData)
+          
+          // Check if response indicates duplicate (shouldn't happen if API throws error, but just in case)
+          if (response?.isDuplicate || response?.data?.isDuplicate) {
+            const duplicateInfo = response?.duplicateLead || response?.data?.duplicateLead
+            setDuplicateLeadInfo(duplicateInfo)
+            setShowDuplicateModal(true)
+            Toast.error('Duplicate lead found! Lead not added.')
+            return // Don't close modal or refresh
+          }
+          
+          Toast.success('Customer added successfully!')
+          
+          // Refresh leads from API
+          await handleRefresh()
+          
+          // Close modal and reset editing state
+          setShowAddCustomer(false)
+          setEditingCustomer(null)
+        } catch (createError) {
+          // Check if error is due to duplicate (409 status)
+          if (createError.status === 409 || createError.data?.isDuplicate) {
+            // Extract duplicate info from error response
+            const duplicateInfo = createError.data?.duplicateLead || createError.duplicateLead
+            if (duplicateInfo) {
+              setDuplicateLeadInfo(duplicateInfo)
+              setShowDuplicateModal(true)
+              Toast.error('Duplicate lead found! Lead not added.')
+              return // Don't close modal or refresh
+            }
+          }
+          
+          // Re-throw if not a duplicate error so it gets caught by outer catch
+          throw createError
+        }
       }
       
-      // Refresh leads from API
-      await handleRefresh()
-      
-      // Close modal and reset editing state
-      setShowAddCustomer(false)
-      setEditingCustomer(null)
+      // Refresh leads from API (for edit case)
+      if (editingCustomer) {
+        await handleRefresh()
+        setShowAddCustomer(false)
+        setEditingCustomer(null)
+      }
     } catch (error) {
       console.error('Error saving customer:', error)
-      Toast.error(editingCustomer ? 'Failed to update customer. Please try again.' : 'Failed to add customer. Please try again.')
+      
+      // Check if error is due to duplicate (409 status) - in case it wasn't caught above
+      if (error.status === 409 || error.data?.isDuplicate) {
+        // Extract duplicate info from error response
+        const duplicateInfo = error.data?.duplicateLead || error.duplicateLead
+        if (duplicateInfo) {
+          setDuplicateLeadInfo(duplicateInfo)
+          setShowDuplicateModal(true)
+          Toast.error('Duplicate lead found! Lead not added.')
+          return
+        }
+      }
+      
+      // Only show generic error if it's not a duplicate error
+      const errorMessage = error.data?.message || error.message || 'Failed to add customer. Please try again.'
+      Toast.error(editingCustomer ? 'Failed to update customer. Please try again.' : errorMessage)
     }
   }
 
@@ -681,6 +745,66 @@ export default function CustomerListContent({ isDarkMode = false }) {
       {/* Modals */}
       {viewingCustomer && <CustomerDetailSidebar customer={viewingCustomer} onClose={() => setViewingCustomer(null)} onEdit={() => { setEditingCustomer(viewingCustomer); setViewingCustomer(null); setShowAddCustomer(true) }} onQuotation={handleQuotation} quotations={quotationHook.quotations} onViewQuotation={handleViewQuotation} onSendQuotation={quotationHook.handleSendQuotation} onDeleteQuotation={quotationHook.handleDeleteQuotation} onCreatePI={(quotation, customer) => { setSelectedQuotationForPI(quotation); setViewingCustomerForQuotation(customer); setShowCreatePIModal(true); setViewingCustomer(null) }} quotationPIs={piHook.quotationPIs} piHook={piHook} onViewPI={piHook.handleViewPI} />}
       {showAddCustomer && <AddCustomerForm onClose={() => { setShowAddCustomer(false); setEditingCustomer(null) }} onSave={handleSaveCustomer} editingCustomer={editingCustomer} />}
+      
+      {/* Duplicate Lead Modal */}
+      {showDuplicateModal && duplicateLeadInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <X className="h-6 w-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Duplicate Lead Found</h3>
+                    <p className="text-sm text-gray-600">This lead already exists in the system</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowDuplicateModal(false)
+                    setDuplicateLeadInfo(null)
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <p className="text-sm font-medium text-red-800 mb-2">Lead not added due to duplicate entry.</p>
+                <div className="space-y-2 text-sm text-gray-700">
+                  <div>
+                    <span className="font-semibold">Business Name:</span>{' '}
+                    <span className="text-gray-900">{duplicateLeadInfo.business || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold">Assigned Salesperson:</span>{' '}
+                    <span className="text-gray-900">
+                      {duplicateLeadInfo.assignedSalesperson && duplicateLeadInfo.assignedSalesperson !== 'N/A' 
+                        ? duplicateLeadInfo.assignedSalesperson 
+                        : 'Contact to your Department Head'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowDuplicateModal(false)
+                    setDuplicateLeadInfo(null)
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {showCreateQuotation && viewingCustomerForQuotation && <CreateQuotationForm customer={viewingCustomerForQuotation} user={user} onClose={() => { setShowCreateQuotation(false); setViewingCustomerForQuotation(null) }} onSave={handleSaveQuotation} />}
       {showCreatePIModal && selectedQuotationForPI && viewingCustomerForQuotation && <CreatePIForm quotation={selectedQuotationForPI} customer={viewingCustomerForQuotation} user={user} modal={true} onClose={async (savedPI) => { 
         setShowCreatePIModal(false)

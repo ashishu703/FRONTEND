@@ -842,13 +842,28 @@ export default function DashboardContent({ isDarkMode = false }) {
     }
   }
 
-  // Refresh dashboard function
+  // OPTIMIZED: Refresh dashboard function - fetch leads first, then metrics with leads data
   const refreshDashboard = async () => {
     try {
       setRefreshing(true)
+      // Fetch leads first and get the data
+      const leadsResponse = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME())
+      const assignedLeads = leadsResponse?.data || []
+      
+      // Transform API data to match our format
+      const transformedLeads = assignedLeads.map(lead => ({
+        id: lead.id,
+        name: lead.name,
+        sales_status: lead.sales_status || lead.salesStatus || 'pending',
+        source: lead.lead_source || lead.leadSource || 'Unknown',
+        created_at: lead.created_at || lead.createdAt || lead.date || new Date().toISOString()
+      }))
+      
+      setLeads(transformedLeads)
+      
+      // Then fetch metrics with leads data (avoids duplicate API call)
       await Promise.all([
-        fetchLeads(),
-        fetchBusinessMetrics(),
+        fetchBusinessMetrics(transformedLeads),
         fetchUserTarget()
       ])
     } catch (err) {
@@ -858,14 +873,26 @@ export default function DashboardContent({ isDarkMode = false }) {
     }
   }
 
-  // Fetch business metrics
-  const fetchBusinessMetrics = async () => {
+  // OPTIMIZED: Fetch business metrics - reuse leads from state if available
+  const fetchBusinessMetrics = async (leadsData = null) => {
     try {
       setLoadingMetrics(true)
       
-      // Fetch assigned leads for the salesperson
-      const leadsResponse = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME())
-      const assignedLeads = leadsResponse?.data || []
+      // OPTIMIZED: Reuse leads from state if available, otherwise fetch
+      let assignedLeads = leadsData || leads
+      if (!assignedLeads || assignedLeads.length === 0) {
+        const leadsResponse = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME())
+        const rawLeads = leadsResponse?.data || []
+        // Transform if needed (if coming from API directly)
+        assignedLeads = rawLeads.map(lead => ({
+          id: lead.id,
+          name: lead.name,
+          sales_status: lead.sales_status || lead.salesStatus || 'pending',
+          source: lead.lead_source || lead.leadSource || 'Unknown',
+          created_at: lead.created_at || lead.createdAt || lead.date || new Date().toISOString()
+        }))
+      }
+      
       const leadIds = assignedLeads.map(lead => lead.id)
       
       if (leadIds.length === 0) {
@@ -1071,19 +1098,24 @@ export default function DashboardContent({ isDarkMode = false }) {
         dateFilter = { startDate, endDate }
       }
       
+      // OPTIMIZED: Use already fetched PIs instead of making N+1 queries
+      // Create a map of quotation_id -> PIs for quick lookup
+      const pisByQuotationIdMap = new Map();
+      allPIs.forEach(pi => {
+        if (pi.quotation_id) {
+          if (!pisByQuotationIdMap.has(pi.quotation_id)) {
+            pisByQuotationIdMap.set(pi.quotation_id, []);
+          }
+          pisByQuotationIdMap.get(pi.quotation_id).push(pi);
+        }
+      });
+      
       for (const quotation of allQuotations) {
         const status = (quotation.status || '').toLowerCase()
         if (status === 'approved') {
-          // Check if PI exists for this quotation - ONLY count quotations with PI
-          let hasPIForQuotation = false;
-          try {
-            const piRes = await proformaInvoiceService.getPIsByQuotation(quotation.id);
-            const pis = piRes?.data || [];
-            hasPIForQuotation = pis.length > 0;
-          } catch (err) {
-            console.warn(`Error checking PI for quotation ${quotation.id} in dashboard:`, err);
-            hasPIForQuotation = false;
-          }
+          // OPTIMIZED: Check if PI exists using already fetched data (no API call)
+          const quotationPIs = pisByQuotationIdMap.get(quotation.id) || [];
+          const hasPIForQuotation = quotationPIs.length > 0;
           
           // Skip if no PI exists
           if (!hasPIForQuotation) {
@@ -1176,20 +1208,53 @@ export default function DashboardContent({ isDarkMode = false }) {
     }
   }
 
-  // Load real data on mount
+  // OPTIMIZED: Prevent duplicate calls with refs
+  const fetchingMetricsRef = React.useRef(false);
+  const initialLoadRef = React.useRef(false);
+  
+  // OPTIMIZED: Load real data on mount - fetch leads first, then metrics with leads data
   useEffect(() => {
-    fetchLeads()
-    fetchUserTarget()
-    // Fetch metrics initially (will be refetched when target dates are loaded)
-    fetchBusinessMetrics()
+    if (initialLoadRef.current) return;
+    initialLoadRef.current = true;
+    
+    const loadData = async () => {
+      // Fetch leads first
+      await fetchLeads();
+      // Fetch user target in parallel
+      await fetchUserTarget();
+    };
+    
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   
-  // Fetch business metrics when user target dates change (to recalculate with date range)
+  // OPTIMIZED: Fetch metrics after leads are loaded (reuse leads data)
   useEffect(() => {
-    // Only refetch if we have target dates or if target was just loaded
-    if (userTarget.targetStartDate && userTarget.targetEndDate) {
-      fetchBusinessMetrics()
+    if (!initialLoadRef.current || fetchingMetricsRef.current || leads.length === 0) return;
+    
+    // Fetch metrics with leads data to avoid duplicate API call
+    if (!fetchingMetricsRef.current) {
+      fetchingMetricsRef.current = true;
+      fetchBusinessMetrics(leads).finally(() => {
+        fetchingMetricsRef.current = false;
+      });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads.length]); // Only when leads are loaded
+  
+  // OPTIMIZED: Fetch business metrics when user target dates change (to recalculate with date range)
+  useEffect(() => {
+    // Skip if not yet initialized or already fetching
+    if (!initialLoadRef.current || fetchingMetricsRef.current) return;
+    
+    // Only refetch if we have target dates
+    if (userTarget.targetStartDate && userTarget.targetEndDate) {
+      fetchingMetricsRef.current = true;
+      fetchBusinessMetrics(leads).finally(() => {
+        fetchingMetricsRef.current = false;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userTarget.targetStartDate, userTarget.targetEndDate])
 
   // Simple status mapping function
