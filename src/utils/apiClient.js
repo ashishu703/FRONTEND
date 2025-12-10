@@ -1,3 +1,5 @@
+import CacheBuster from './cacheBuster';
+
 class ApiClient {
   constructor() {
     
@@ -146,9 +148,16 @@ class ApiClient {
   }
 
   /**
-   * GET request
+   * GET request with automatic cache busting
+   * @param {string} url - API endpoint URL
+   * @param {boolean} useCacheBusting - Whether to add cache busting (default: true)
+   * @returns {Promise} - API response
    */
-  async get(url) {
+  async get(url, useCacheBusting = true) {
+    // Apply global cache busting utility (DRY principle)
+    if (useCacheBusting) {
+      url = CacheBuster.addCacheBuster(url, true);
+    }
     return this.request(url, { method: 'GET' });
   }
 

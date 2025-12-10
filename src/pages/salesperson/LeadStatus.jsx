@@ -4,11 +4,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Eye, Edit, Mail, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, RefreshCcw } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
-import quotationService from '../../api/admin_api/quotationService';
-import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
-import toastManager from '../../utils/ToastManager';
-import { debounce } from '../../utils/debounce';
+import { useAuth } from '../../hooks/useAuth';
 
 // Edit Lead Status Modal Component
 const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
@@ -233,16 +230,16 @@ export default function LeadStatusPage() {
   const [quotationFilter, setQuotationFilter] = useState(''); 
   const [piFilter, setPiFilter] = useState('');
   
-  // OPTIMIZED: Prevent duplicate API calls with ref
   const fetchingRef = React.useRef(false);
   const initialLoadRef = React.useRef(false);
+  
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+  const lastUserIdRef = React.useRef(null);
 
-  // OPTIMIZED: Document status now comes from backend, no need for separate state
-  // Keeping for backward compatibility during transition
   const [quotationStatusByLead, setQuotationStatusByLead] = useState({});
   const [piStatusByLead, setPiStatusByLead] = useState({});
   
-  // Pagination state
   const [totalLeads, setTotalLeads] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -259,19 +256,6 @@ export default function LeadStatusPage() {
   const toggleLeadStatusBadge = (key) => {
     const next = statusFilter === key ? '' : key;
     handleStatusFilter(next);
-  };
-  const toggleFollowBadge = (key) => {
-    const next = followUpFilter === key ? '' : key;
-    handleFollowUpFilter(next);
-  };
-
-  // OPTIMIZED: Document status now comes from backend API response
-  // This function is kept for backward compatibility but is no longer needed
-  // The backend now includes quotation_count, latest_quotation_status, pi_count, latest_pi_status in the response
-  const hydrateDocStatuses = async () => {
-    // No-op: Document status is now included in the API response
-    // This function is kept to avoid breaking existing code that might call it
-    setHydratingDocs(false);
   };
 
   // Counts for badges
@@ -293,11 +277,9 @@ export default function LeadStatusPage() {
     return counts;
   }, [leads]);
 
-  // OPTIMIZED: Use document status from API response instead of separate state
   const quotationCounts = React.useMemo(() => {
     const result = { pending_approval: 0, approved: 0, rejected: 0 };
     leads.forEach((l) => {
-      // Use latest_quotation_status from API response if available, fallback to old state
       const st = String(l.latest_quotation_status || quotationStatusByLead[l.id] || '').toLowerCase();
       if (result[st] != null) result[st] += 1;
     });
@@ -307,16 +289,13 @@ export default function LeadStatusPage() {
   const piCounts = React.useMemo(() => {
     const result = { pending_approval: 0, approved: 0, rejected: 0 };
     leads.forEach((l) => {
-      // Use latest_pi_status from API response if available, fallback to old state
       const st = String(l.latest_pi_status || piStatusByLead[l.id] || '').toLowerCase();
       if (result[st] != null) result[st] += 1;
     });
     return result;
   }, [leads, piStatusByLead]);
 
-  // OPTIMIZED: Fetch leads with pagination and document status in single request
   const fetchLeads = async (pageNum = currentPage, fetchAllForFiltering = false) => {
-    // OPTIMIZED: Prevent duplicate calls
     if (fetchingRef.current) {
       console.log('Already fetching leads, skipping duplicate call');
       return;
@@ -327,27 +306,24 @@ export default function LeadStatusPage() {
       setLoading(true);
       setError(null);
 
-      // Check if filters are active - if so, fetch all leads for client-side filtering
       const hasFilters = searchQuery || statusFilter || followUpFilter || quotationFilter || piFilter;
       const shouldFetchAll = fetchAllForFiltering || hasFilters;
       
-      // If filters active, fetch all (use large limit), otherwise use pagination
       const limit = shouldFetchAll ? 10000 : itemsPerPage;
       
-      // OPTIMIZED: Use paginated endpoint with document status included
       const response = await apiClient.get(
         `${API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME()}?page=${shouldFetchAll ? 1 : pageNum}&limit=${limit}&includeDocStatus=true`
       );
       
       const leadsData = response?.data || [];
       const pagination = response?.pagination || {};
+      
+      console.log(`[LeadStatus] Received ${leadsData.length} leads from API for user: ${user?.email}`);
 
-      // Store leads - always replace (backend handles pagination)
       setLeads(leadsData);
       setTotalLeads(pagination.total || leadsData.length);
       setTotalPages(pagination.totalPages || 1);
       
-      // Extract document status from API response and populate state for backward compatibility
       const newQuotationStatuses = {};
       const newPiStatuses = {};
       leadsData.forEach(lead => {
@@ -361,7 +337,6 @@ export default function LeadStatusPage() {
       setQuotationStatusByLead(prev => ({ ...prev, ...newQuotationStatuses }));
       setPiStatusByLead(prev => ({ ...prev, ...newPiStatuses }));
 
-      // Apply filters if active, otherwise use paginated results directly
       if (hasFilters) {
         setFilteredLeads(leadsData);
         setTimeout(() => applyFilters(statusFilter, followUpFilter, quotationFilter, piFilter), 0);
@@ -377,8 +352,22 @@ export default function LeadStatusPage() {
     }
   };
 
-  // OPTIMIZED: Single useEffect to handle initial load and prevent duplicate calls
   useEffect(() => {
+    if (!currentUserId) {
+      return;
+    }
+
+    if (lastUserIdRef.current !== null && lastUserIdRef.current !== currentUserId) {
+      console.log('[LeadStatus] User changed, clearing leads. Old:', lastUserIdRef.current, 'New:', currentUserId);
+      setLeads([]);
+      setFilteredLeads([]);
+      setError(null);
+      initialLoadRef.current = false;
+    }
+
+    // Update last user ID
+    lastUserIdRef.current = currentUserId;
+
     // Initial load only once
     if (!initialLoadRef.current) {
       initialLoadRef.current = true;
@@ -386,7 +375,7 @@ export default function LeadStatusPage() {
       fetchLeads(1, hasFilters);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount
+  }, [currentUserId]); // Run on mount and when user changes
 
   // OPTIMIZED: Handle pagination changes (only if no filters active)
   useEffect(() => {
@@ -411,55 +400,15 @@ export default function LeadStatusPage() {
     if (hasFilters) {
       fetchLeads(1, true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, statusFilter, followUpFilter, quotationFilter, piFilter]);
 
-  // Handle search
   const handleSearch = (query) => {
     setSearchQuery(query);
-    
-    if (!query.trim()) {
-      // When search is cleared, apply existing filters
-      applyFilters(statusFilter, followUpFilter);
-      setCurrentPage(1);
-      return;
-    }
-    
-    const lowercasedQuery = query.toLowerCase();
-    let filtered = leads.filter(
-      (lead) =>
-        lead.name?.toLowerCase().includes(lowercasedQuery) ||
-        lead.phone?.toLowerCase().includes(lowercasedQuery) ||
-        lead.email?.toLowerCase().includes(lowercasedQuery) ||
-        lead.business?.toLowerCase().includes(lowercasedQuery) ||
-        lead.address?.toLowerCase().includes(lowercasedQuery) ||
-        lead.product_type?.toLowerCase().includes(lowercasedQuery) ||
-        lead.lead_source?.toLowerCase().includes(lowercasedQuery) ||
-        lead.sales_status?.toLowerCase().includes(lowercasedQuery) ||
-        lead.follow_up_status?.toLowerCase().includes(lowercasedQuery) ||
-        lead.id?.toString().includes(lowercasedQuery)
-    );
-    
-    // Apply filters on top of search results
-    if (statusFilter) {
-      filtered = filtered.filter(lead => lead.sales_status === statusFilter);
-    }
-    if (followUpFilter) {
-      filtered = filtered.filter(lead => lead.follow_up_status === followUpFilter);
-    }
-    
-    setFilteredLeads(filtered);
     setCurrentPage(1);
   };
 
-  // OPTIMIZED: useCallback for filter handlers
   const handleStatusFilter = useCallback((status) => {
     setStatusFilter(status);
-    setCurrentPage(1);
-  }, []);
-
-  const handleFollowUpFilter = useCallback((followUp) => {
-    setFollowUpFilter(followUp);
     setCurrentPage(1);
   }, []);
 
@@ -475,11 +424,9 @@ export default function LeadStatusPage() {
     setCurrentPage(1);
   }, [piFilter]);
 
-  // OPTIMIZED: useMemo for filtered leads with chunk processing for large arrays
   const filteredLeadsMemo = useMemo(() => {
     let filtered = leads;
     
-    // Apply debounced search query first if exists
     if (debouncedSearchQuery.trim()) {
       const lowercasedQuery = debouncedSearchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -537,6 +484,15 @@ export default function LeadStatusPage() {
     setQuotationFilter(quotation || '');
     setPiFilter(pi || '');
   }, [quotationFilter, piFilter]);
+
+  // Debounce search query to avoid excessive filtering
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300); // 300ms debounce delay
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Sync filteredLeadsMemo to filteredLeads state
   useEffect(() => {
