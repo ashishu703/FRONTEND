@@ -10,6 +10,7 @@ import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import uploadService from '../../api/admin_api/uploadService';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
+import { useAuth } from '../../hooks/useAuth';
 
 class DataExtractor {
   static extractArray(response) {
@@ -1508,12 +1509,35 @@ export default function DuePaymentPage({ isDarkMode = false }) {
     proformaInvoiceService
   );
 
+  // Get current user for role-based filtering
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+  const lastUserIdRef = React.useRef(null);
+
   useEffect(() => {
+    // If no user is logged in, do nothing
+    if (!currentUserId) {
+      return;
+    }
+
+    // If user has changed, clear existing data
+    if (lastUserIdRef.current !== null && lastUserIdRef.current !== currentUserId) {
+      console.log('[DuePayment] User changed, clearing data. Old:', lastUserIdRef.current, 'New:', currentUserId);
+      setPaymentTracking([]);
+      setFilteredPaymentTracking([]);
+      setError(null);
+    }
+
+    // Update last user ID
+    lastUserIdRef.current = currentUserId;
+
     const fetchPaymentTracking = async () => {
       try {
         setLoading(true);
         setError(null);
+        // Global cache busting is automatically applied by apiClient.get()
         const duePayments = await paymentTrackingService.fetchDuePaymentData();
+        console.log(`[DuePayment] Received ${duePayments.length} due payments for user: ${user?.email}`);
         setPaymentTracking(duePayments);
         setFilteredPaymentTracking(duePayments);
       } catch (error) {
@@ -1525,7 +1549,8 @@ export default function DuePaymentPage({ isDarkMode = false }) {
     };
 
     fetchPaymentTracking();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
 
   // Handle search and filtering
   const handleSearch = (searchQuery) => {

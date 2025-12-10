@@ -10,6 +10,7 @@ import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import uploadService from '../../api/admin_api/uploadService';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
+import { useAuth } from '../../hooks/useAuth';
 
 // Utility Functions
 class DataExtractor {
@@ -1708,6 +1709,11 @@ export default function ProductsPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPaymentItem, setSelectedPaymentItem] = useState(null);
 
+  // Get current user for role-based filtering
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+  const lastUserIdRef = useRef(null);
+
   // Guard to avoid duplicate initial fetches (e.g. React StrictMode)
   const initialFetchDoneRef = useRef(false);
   const paymentTrackingService = new PaymentTrackingService(
@@ -1721,7 +1727,9 @@ export default function ProductsPage() {
     try {
       setLoading(true);
       setError(null);
+      // Global cache busting is automatically applied by apiClient.get()
       const paymentTrackingData = await paymentTrackingService.fetchAllPaymentTrackingData();
+      console.log(`[PaymentTracking] Received ${paymentTrackingData.length} payment tracking items for user: ${user?.email}`);
       setPaymentTracking(paymentTrackingData);
       setFilteredPaymentTracking(paymentTrackingData);
     } catch (err) {
@@ -1732,12 +1740,30 @@ export default function ProductsPage() {
     }
   };
 
-  // Initial load
+  // Initial load with user change detection
   useEffect(() => {
+    // If no user is logged in, do nothing
+    if (!currentUserId) {
+      return;
+    }
+
+    // If user has changed, clear existing data
+    if (lastUserIdRef.current !== null && lastUserIdRef.current !== currentUserId) {
+      console.log('[PaymentTracking] User changed, clearing data. Old:', lastUserIdRef.current, 'New:', currentUserId);
+      setPaymentTracking([]);
+      setFilteredPaymentTracking([]);
+      setError(null);
+      initialFetchDoneRef.current = false; // Reset fetch guard
+    }
+
+    // Update last user ID
+    lastUserIdRef.current = currentUserId;
+
     if (initialFetchDoneRef.current) return;
     initialFetchDoneRef.current = true;
     fetchPaymentTrackingData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
 
   const handleSearch = (query) => {
     if (!query.trim()) {

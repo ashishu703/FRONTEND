@@ -6,6 +6,7 @@ import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
 import toastManager from '../../utils/ToastManager';
+import { useAuth } from '../../hooks/useAuth';
 
 // Edit Lead Status Modal Component
 const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
@@ -227,14 +228,22 @@ export default function ScheduledCall() {
   const [followUpFilter, setFollowUpFilter] = useState('');
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   
+  // Get current user for role-based filtering
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+  const lastUserIdRef = React.useRef(null);
+
   // Refresh function
   const refreshData = async () => {
     try {
       setLoading(true);
       setError(null);
       
+      // Global cache busting is automatically applied by apiClient.get()
       const response = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
       const leadsData = response?.data || [];
+      
+      console.log(`[ScheduledCall] Received ${leadsData.length} leads from API for user: ${user?.email}`);
       
       // Filter leads that have scheduled meetings
       const scheduledLeads = leadsData.filter(lead => {
@@ -252,6 +261,8 @@ export default function ScheduledCall() {
                hasMeetingDate || hasMeetingTime || hasScheduledDate || hasScheduledTime || hasNextMeetingStatus;
       });
       
+      console.log(`[ScheduledCall] Filtered to ${scheduledLeads.length} scheduled leads for user: ${user?.email}`);
+      
       setLeads(scheduledLeads);
       setFilteredLeads(scheduledLeads);
     } catch (err) {
@@ -262,10 +273,27 @@ export default function ScheduledCall() {
     }
   };
 
-  // Fetch leads data
+  // Fetch leads data with user change detection
   useEffect(() => {
+    // If no user is logged in, do nothing
+    if (!currentUserId) {
+      return;
+    }
+
+    // If user has changed, clear existing leads
+    if (lastUserIdRef.current !== null && lastUserIdRef.current !== currentUserId) {
+      console.log('[ScheduledCall] User changed, clearing leads. Old:', lastUserIdRef.current, 'New:', currentUserId);
+      setLeads([]);
+      setFilteredLeads([]);
+      setError(null);
+    }
+
+    // Update last user ID
+    lastUserIdRef.current = currentUserId;
+
     refreshData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
 
   // Close filter panel when clicking outside
   useEffect(() => {

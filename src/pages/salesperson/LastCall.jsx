@@ -8,6 +8,7 @@ import quotationService from '../../api/admin_api/quotationService';
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
 import toastManager from '../../utils/ToastManager';
+import { useAuth } from '../../hooks/useAuth';
 
 // Lead Status Preview Modal Component
 const LeadStatusPreview = ({ lead, onClose }) => {
@@ -498,15 +499,39 @@ export default function LastCall() {
   const [followUpFilter, setFollowUpFilter] = useState('');
   const [showFilterPanel, setShowFilterPanel] = useState(false);
 
-  // Fetch leads data
+  // Get current user for role-based filtering
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+  const lastUserIdRef = React.useRef(null);
+
+  // Fetch leads data with user change detection
   useEffect(() => {
+    // If no user is logged in, do nothing
+    if (!currentUserId) {
+      return;
+    }
+
+    // If user has changed, clear existing leads
+    if (lastUserIdRef.current !== null && lastUserIdRef.current !== currentUserId) {
+      console.log('[LastCall] User changed, clearing leads. Old:', lastUserIdRef.current, 'New:', currentUserId);
+      setLeads([]);
+      setFilteredLeads([]);
+      setError(null);
+    }
+
+    // Update last user ID
+    lastUserIdRef.current = currentUserId;
+
     const fetchLeads = async () => {
       try {
         setLoading(true);
         setError(null);
         
+        // Global cache busting is automatically applied by apiClient.get()
         const response = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
         const leadsData = response?.data || [];
+        
+        console.log(`[LastCall] Received ${leadsData.length} leads from API for user: ${user?.email}`);
         
         // Filter leads - only show leads that have actual follow-up/call data
         // This means they must have follow_up_status or follow_up_remark (indicating a call/interaction happened)
@@ -517,6 +542,8 @@ export default function LastCall() {
           // Only include leads that have actual call/follow-up data
           return hasFollowUpStatus || hasFollowUpRemark;
         });
+        
+        console.log(`[LastCall] Filtered to ${lastCallLeads.length} last call leads for user: ${user?.email}`);
         
         setLeads(lastCallLeads);
         setFilteredLeads(lastCallLeads);
@@ -529,7 +556,8 @@ export default function LastCall() {
     };
 
     fetchLeads();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
 
   // Close filter panel when clicking outside
   useEffect(() => {

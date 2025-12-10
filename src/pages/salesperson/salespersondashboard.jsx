@@ -8,6 +8,7 @@ import quotationService from '../../api/admin_api/quotationService'
 import paymentService from '../../api/admin_api/paymentService'
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService'
 import departmentUserService from '../../api/admin_api/departmentUserService'
+import { useAuth } from '../../hooks/useAuth'
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000
 
@@ -784,12 +785,17 @@ export default function DashboardContent({ isDarkMode = false }) {
     return Math.max(0, Math.round(diffTime / MS_IN_DAY))
   }
 
-  // Fetch real leads from API
+  // Fetch real leads from API - with cache busting to ensure fresh data
   const fetchLeads = async () => {
     try {
       setLoading(true)
-      const leadsResponse = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME())
+      // Add timestamp to prevent caching
+      const url = `${API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME()}?_t=${Date.now()}`;
+      console.log('[Dashboard] Fetching leads from API for user:', currentUser?.email || currentUser?.username);
+      const leadsResponse = await apiClient.get(url)
       const assignedLeads = leadsResponse?.data || []
+      
+      console.log('[Dashboard] Received', assignedLeads.length, 'leads from API for user:', currentUser?.email || currentUser?.username);
       
       // Transform API data to match our format
       const transformedLeads = assignedLeads.map(lead => ({
@@ -800,10 +806,11 @@ export default function DashboardContent({ isDarkMode = false }) {
         created_at: lead.created_at || lead.createdAt || lead.date || new Date().toISOString()
       }))
       
+      console.log('[Dashboard] Setting', transformedLeads.length, 'leads in state for user:', currentUser?.email || currentUser?.username);
       setLeads(transformedLeads)
       setError(null)
     } catch (err) {
-      console.error('Error loading leads:', err)
+      console.error('[Dashboard] Error loading leads:', err)
       setError('Failed to load leads data')
       setLeads([])
     } finally {
@@ -846,9 +853,12 @@ export default function DashboardContent({ isDarkMode = false }) {
   const refreshDashboard = async () => {
     try {
       setRefreshing(true)
-      // Fetch leads first and get the data
-      const leadsResponse = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME())
+      // Fetch leads first with cache busting
+      const url = `${API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME()}?_t=${Date.now()}`;
+      const leadsResponse = await apiClient.get(url)
       const assignedLeads = leadsResponse?.data || []
+      
+      console.log('[Dashboard] Refresh: Received', assignedLeads.length, 'leads for user:', currentUser?.email || currentUser?.username);
       
       // Transform API data to match our format
       const transformedLeads = assignedLeads.map(lead => ({
@@ -878,10 +888,11 @@ export default function DashboardContent({ isDarkMode = false }) {
     try {
       setLoadingMetrics(true)
       
-      // OPTIMIZED: Reuse leads from state if available, otherwise fetch
+      // OPTIMIZED: Reuse leads from state if available, otherwise fetch with cache busting
       let assignedLeads = leadsData || leads
       if (!assignedLeads || assignedLeads.length === 0) {
-        const leadsResponse = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME())
+        const url = `${API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME()}?_t=${Date.now()}`;
+        const leadsResponse = await apiClient.get(url)
         const rawLeads = leadsResponse?.data || []
         // Transform if needed (if coming from API directly)
         assignedLeads = rawLeads.map(lead => ({
@@ -1208,29 +1219,56 @@ export default function DashboardContent({ isDarkMode = false }) {
     }
   }
 
-  // OPTIMIZED: Prevent duplicate calls with refs
   const fetchingMetricsRef = React.useRef(false);
-  const initialLoadRef = React.useRef(false);
+  const lastUserIdRef = React.useRef(null);
   
-  // OPTIMIZED: Load real data on mount - fetch leads first, then metrics with leads data
+  const { user: currentUser } = useAuth();
+  const currentUserId = currentUser?.id || currentUser?.email || null;
+  
   useEffect(() => {
-    if (initialLoadRef.current) return;
-    initialLoadRef.current = true;
+    if (lastUserIdRef.current === currentUserId && lastUserIdRef.current !== null) {
+      return;
+    }
+    
+    if (lastUserIdRef.current !== null && lastUserIdRef.current !== currentUserId) {
+      console.log('[Dashboard] User changed, clearing leads. Old:', lastUserIdRef.current, 'New:', currentUserId);
+      setLeads([]);
+      setError(null);
+      setBusinessMetrics({
+        totalQuotation: 0,
+        approvedQuotation: 0,
+        pendingQuotation: 0,
+        totalPI: 0,
+        approvedPI: 0,
+        pendingPI: 0,
+        totalAdvancePayment: 0,
+        duePayment: 0,
+        totalSaleOrder: 0,
+        totalReceivedPayment: 0,
+        totalRevenue: 0
+      });
+    }
+    
+    // Update last user ID
+    lastUserIdRef.current = currentUserId;
     
     const loadData = async () => {
+      console.log('[Dashboard] Fetching leads for user:', currentUserId);
       // Fetch leads first
       await fetchLeads();
       // Fetch user target in parallel
       await fetchUserTarget();
     };
     
-    loadData();
+    if (currentUserId) {
+      loadData();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [currentUserId])
   
   // OPTIMIZED: Fetch metrics after leads are loaded (reuse leads data)
   useEffect(() => {
-    if (!initialLoadRef.current || fetchingMetricsRef.current || leads.length === 0) return;
+    if (!currentUserId || fetchingMetricsRef.current || leads.length === 0) return;
     
     // Fetch metrics with leads data to avoid duplicate API call
     if (!fetchingMetricsRef.current) {
@@ -1240,22 +1278,22 @@ export default function DashboardContent({ isDarkMode = false }) {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leads.length]); // Only when leads are loaded
+  }, [leads.length, currentUserId]); // Only when leads are loaded and user is set
   
   // OPTIMIZED: Fetch business metrics when user target dates change (to recalculate with date range)
   useEffect(() => {
-    // Skip if not yet initialized or already fetching
-    if (!initialLoadRef.current || fetchingMetricsRef.current) return;
+    // Skip if user not set or already fetching
+    if (!currentUserId || fetchingMetricsRef.current) return;
     
-    // Only refetch if we have target dates
-    if (userTarget.targetStartDate && userTarget.targetEndDate) {
+    // Only refetch if we have target dates and leads
+    if (userTarget.targetStartDate && userTarget.targetEndDate && leads.length > 0) {
       fetchingMetricsRef.current = true;
       fetchBusinessMetrics(leads).finally(() => {
         fetchingMetricsRef.current = false;
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userTarget.targetStartDate, userTarget.targetEndDate])
+  }, [userTarget.targetStartDate, userTarget.targetEndDate, currentUserId])
 
   // Simple status mapping function
   const mapSalesStatusToBucket = (status) => {
