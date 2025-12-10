@@ -243,7 +243,7 @@ class PaymentTrackingService {
       paymentTrackingData.push({
         id: `${quotation.customer_id || lead.id}-${quotation.id}`,
         leadId: `LD-${quotation.customer_id || lead.id}`,
-        customerName: quotation?.customer_name || lead.name || firstPayment?.customer_name || 'N/A',
+        customerName: quotation?.customer_name || lead?.name || lead?.customer_name || firstPayment?.customer_name || 'N/A',
         productName: productNames,
         address: quotation?.customer_address || lead.address || firstPayment?.address || 'N/A',
         quotationId: quotation?.quotation_number || `QT-${quotation.id}`,
@@ -898,7 +898,7 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
           <div className="space-y-2">
             <div>
               <span className="text-sm font-medium text-gray-600">Customer Name:</span>
-              <span className="ml-2 text-sm text-gray-900">{item.customerName}</span>
+              <span className="ml-2 text-sm text-gray-900">{item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}</span>
             </div>
             <div>
               <span className="text-sm font-medium text-gray-600">Lead ID:</span>
@@ -1213,7 +1213,7 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
 
         <div className="flex-1 overflow-y-auto p-6">
           <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-gray-900">{item.customerName}</h4>
+            <h4 className="font-medium text-gray-900">{item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}</h4>
             <p className="text-sm text-gray-600">Lead ID: {item.leadId}</p>
             <div className="mt-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Quotation (approved only)</label>
@@ -1741,7 +1741,7 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
                     </td>
                     <td className="px-6 py-4">
                       <div>
-                        <div className="font-medium text-sm text-gray-900">{item.customerName}</div>
+                        <div className="font-medium text-sm text-gray-900">{item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}</div>
                         <div className="text-xs text-gray-500">{item.leadData?.phone || 'N/A'}</div>
                         {item.leadData?.whatsapp && (
                           <div className="text-xs mt-1 text-green-600">

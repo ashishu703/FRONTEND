@@ -13,7 +13,8 @@ import {
   LogOut,
   Calendar,
   HelpCircle,
-  PlusCircle
+  PlusCircle,
+  FileText
 } from 'lucide-react';
 
 const Sidebar = ({ onLogout, activeView, setActiveView }) => {
@@ -81,6 +82,12 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
       id: 'performance',
       label: 'Performance',
       icon: <TrendingUp className="w-5 h-5" />,
+      hasDropdown: false
+    },
+    {
+      id: 'reports',
+      label: 'Reports',
+      icon: <FileText className="w-5 h-5" />,
       hasDropdown: false
     }
   ];

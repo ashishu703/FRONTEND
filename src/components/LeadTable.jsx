@@ -626,17 +626,17 @@ const LeadTable = ({
                     <td className="px-4 py-4 text-sm text-gray-700">{lead.customerId}</td>
                   )}
                   {visibleColumns.customer && (
-                    <td className="px-4 py-4 text-sm text-gray-900">
+                    <td className="px-4 py-4 text-sm text-gray-900 max-w-[220px]">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{lead.customer}</span>
+                        <div className="flex items-start gap-2 flex-wrap">
+                          <span className="font-medium break-words whitespace-normal">{lead.customer}</span>
                           {lead.leadSource && lead.leadSource.toUpperCase() === 'TRADEINDIA' && (
-                            <span className="px-2 py-0.5 text-xs font-semibold text-orange-700 bg-orange-100 border border-orange-300 rounded-full" title="Generated from TradeIndia">
+                            <span className="px-2 py-0.5 text-xs font-semibold text-orange-700 bg-orange-100 border border-orange-300 rounded-full flex-shrink-0" title="Generated from TradeIndia">
                               TRADEINDIA
                             </span>
                           )}
                         </div>
-                        <div className="text-gray-600">{lead.phone}</div>
+                        <div className="text-gray-600 break-words whitespace-normal">{lead.phone}</div>
                         {lead.whatsapp && (
                           <a 
                             href={`https://wa.me/91${lead.whatsapp}`} 
@@ -659,10 +659,10 @@ const LeadTable = ({
                     </td>
                   )}
                   {visibleColumns.business && (
-                    <td className="px-4 py-4 text-sm text-gray-900">{lead.business}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900 max-w-[200px] break-words whitespace-normal">{lead.business}</td>
                   )}
                   {visibleColumns.address && (
-                    <td className="px-4 py-4 text-sm text-gray-900">{lead.address}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900 max-w-[200px] break-words whitespace-normal">{lead.address}</td>
                   )}
                   {visibleColumns.state && (
                     <td className="px-4 py-4 text-sm text-gray-900">{lead.state}</td>
