@@ -103,9 +103,15 @@ const UserManagementTable = ({ setActiveView }) => {
       const res = await departmentUsersService.listUsers(params);
       const payload = res.data || res;
       const items = (payload.users || []).map(u => {
-        const target = parseFloat(u.target || 0);
-        const achievedTarget = parseFloat(u.achievedTarget || u.achieved_target || 0);
-        const remainingTarget = target - achievedTarget;
+        const target = Number(u.target || 0);
+        const achievedTarget = Number(
+          u.achieved_target ?? u.achievedTarget ?? 0
+        );
+        // Use backend-provided remaining_target if available, otherwise calculate
+        const remainingTarget =
+          u.remaining_target != null
+            ? Number(u.remaining_target)
+            : Math.max(target - achievedTarget, 0);
         
         return {
           id: u.id,
@@ -114,7 +120,7 @@ const UserManagementTable = ({ setActiveView }) => {
           role: 'DEPARTMENT USER',
           department: apiToUiDepartment(u.departmentType || u.department_type),
           target: String(target),
-          achievedTarget: String(achievedTarget),
+          achievedTarget: String(Math.max(achievedTarget, 0)), // Ensure non-negative
           remainingTarget: String(remainingTarget),
         targetStartDate: u.targetStartDate || u.target_start_date || null,
           targetEndDate: u.targetEndDate || u.target_end_date || null,

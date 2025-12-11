@@ -10,6 +10,7 @@ import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService'
 import departmentUserService from '../../api/admin_api/departmentUserService'
 import departmentHeadService from '../../api/admin_api/departmentHeadService'
 import { useAuth } from '../../hooks/useAuth'
+import salesDataService from '../../services/SalesDataService'
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")
@@ -851,41 +852,29 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   }
 
   // OPTIMIZED: Fetch ALL leads at once for dashboard overview
+  // Use salesDataService.fetchAllLeads() to match SuperAdmin dashboard logic
   const fetchLeads = async () => {
     try {
       setLoading(true)
       
-      // Fetch ALL leads by looping through pages
-      let allLeads = []
-      let page = 1
-      const pageSize = 100
+      // Use the same fetching method as SuperAdmin dashboard
+      // Pass departmentType to ensure we get all leads from the department (not just created by this user)
+      const departmentType = user?.departmentType || user?.department_type || 'office_sales'
+      const allLeads = await salesDataService.fetchAllLeads(departmentType)
       
-      while (true) {
-        const leadsResponse = await departmentHeadService.getAllLeads({ page, limit: pageSize })
-        const leadsData = leadsResponse?.data || []
-        if (!leadsData || leadsData.length === 0) break
-        
-        // Transform API data to match our format
-        const transformedLeads = leadsData.map(lead => ({
-          id: lead.id,
-          name: lead.customer || lead.name,
-          sales_status: lead.sales_status || lead.salesStatus || 'pending',
-          follow_up_status: lead.follow_up_status || lead.followUpStatus || '',
-          source: lead.lead_source || lead.leadSource || 'Unknown',
-          created_at: lead.created_at || lead.createdAt || lead.date || new Date().toISOString(),
-          assigned_salesperson: lead.assigned_salesperson || lead.assignedSalesperson || ''
-        }))
-        
-        allLeads = allLeads.concat(transformedLeads)
-        
-        // Break if we got less than pageSize (last page)
-        if (leadsData.length < pageSize) break
-        page += 1
-      }
+      // Transform API data to match our format
+      const transformedLeads = allLeads.map(lead => ({
+        id: lead.id,
+        name: lead.customer || lead.name,
+        sales_status: lead.sales_status || lead.salesStatus || 'pending',
+        follow_up_status: lead.follow_up_status || lead.followUpStatus || '',
+        source: lead.lead_source || lead.leadSource || 'Unknown',
+        created_at: lead.created_at || lead.createdAt || lead.date || new Date().toISOString(),
+        assigned_salesperson: lead.assigned_salesperson || lead.assignedSalesperson || ''
+      }))
       
-      setLeads(allLeads)
+      setLeads(transformedLeads)
       setError(null)
-      console.log(`Loaded ${allLeads.length} leads for dashboard`)
     } catch (err) {
       console.error('Error loading leads:', err)
       setError('Failed to load leads data')
@@ -950,22 +939,13 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   }
 
   // OPTIMIZED: Refresh dashboard function - fetch leads first, then metrics with leads data
+  // Use salesDataService.fetchAllLeads() to match SuperAdmin dashboard logic
   const refreshDashboard = async () => {
     try {
       setRefreshing(true)
-      // Fetch leads first and get the data
-      let allLeads = []
-      let page = 1
-      const pageSize = 100
-      
-      while (true) {
-        const leadsResponse = await departmentHeadService.getAllLeads({ page, limit: pageSize })
-        const leadsData = leadsResponse?.data || []
-        if (!leadsData || leadsData.length === 0) break
-        allLeads = allLeads.concat(leadsData)
-        if (leadsData.length < pageSize) break
-        page += 1
-      }
+      // Fetch leads using the same method as SuperAdmin dashboard
+      const departmentType = user?.departmentType || user?.department_type || 'office_sales'
+      const allLeads = await salesDataService.fetchAllLeads(departmentType)
       
       // Transform API data to match our format
       const transformedLeads = allLeads.map(lead => ({
@@ -1061,7 +1041,6 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       allQuotations = Array.from(uniqueQuotations.values())
       console.log('Unique quotations count:', allQuotations.length)
       
-      // OPTIMIZED: Get all payments in TWO bulk API calls
       const quotationIds = allQuotations.map(q => q.id).filter(id => id != null)
       
       console.log('Fetching bulk payments for', quotationIds.length, 'quotations...')
@@ -1412,40 +1391,30 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         }
       })
       
-      // Count sale orders per salesperson (approved quotations with payments)
-      const approvedQuotationIds = new Set(
-        quotations
-          .filter(q => {
-            const status = (q.status || '').toLowerCase()
-            return status === 'approved'
-          })
-          .map(q => q.id)
-      )
-      
-      // Calculate sale order amount per salesperson (sum of total_amount from approved quotations with payments)
-      completedPayments.forEach(payment => {
-        if (payment.quotation_id && approvedQuotationIds.has(payment.quotation_id)) {
-          const salespersonId = quotationToSalesperson.get(payment.quotation_id)
+      // Count sale orders per salesperson
+      // Business rule: any quotation that has at least one PI created is treated as a Sale Order
+      // This matches the logic used in the salesperson dashboard (no approval status check needed)
+      quotations.forEach(quotation => {
+        // Only check if quotation has a PI (matches salesperson dashboard logic)
+        if (quotationIdsWithPI.has(quotation.id)) {
+          const salespersonId = quotationToSalesperson.get(quotation.id)
           if (salespersonId && performerMap.has(salespersonId)) {
             const performer = performerMap.get(salespersonId)
             // Count unique quotations as sale orders
             if (!performer.saleOrderQuotations) {
               performer.saleOrderQuotations = new Set()
             }
-            performer.saleOrderQuotations.add(payment.quotation_id)
+            performer.saleOrderQuotations.add(quotation.id)
             
             // Get quotation total amount for sale order amount
-            const quotation = quotations.find(q => q.id === payment.quotation_id)
-            if (quotation) {
-              const quotationAmount = Number(quotation.total_amount || 0)
-              if (!performer.saleOrderAmountMap) {
-                performer.saleOrderAmountMap = new Map()
-              }
-              // Only add once per quotation (use Map to avoid duplicates)
-              if (!performer.saleOrderAmountMap.has(payment.quotation_id)) {
-                performer.saleOrderAmountMap.set(payment.quotation_id, quotationAmount)
-                performer.saleOrderAmount = (performer.saleOrderAmount || 0) + quotationAmount
-              }
+            const quotationAmount = Number(quotation.total_amount || 0)
+            if (!performer.saleOrderAmountMap) {
+              performer.saleOrderAmountMap = new Map()
+            }
+            // Only add once per quotation (use Map to avoid duplicates)
+            if (!performer.saleOrderAmountMap.has(quotation.id)) {
+              performer.saleOrderAmountMap.set(quotation.id, quotationAmount)
+              performer.saleOrderAmount = (performer.saleOrderAmount || 0) + quotationAmount
             }
           }
         }
@@ -1974,26 +1943,35 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   const overviewMetrics = overviewData.metrics
 
   // Counts mapped directly from lead status values used in Lead Status page
+  // Use SalesDataService.calculateLeadStatuses() for consistency with SuperAdmin dashboard
   const salesStatusCounts = React.useMemo(() => {
-    const c = { all: 0, pending: 0, running: 0, converted: 0, interested: 0, 'win/closed': 0, closed: 0, lost: 0 }
     const filtered = getFilteredLeads()
-    c.all = filtered.length
-    filtered.forEach(l => {
-      const k = String(l.sales_status || '').toLowerCase()
-      if (c[k] != null) c[k] += 1
-    })
-    return c
+    // Use the same calculation method as SuperAdmin dashboard
+    const leadStatuses = salesDataService.calculateLeadStatuses(filtered)
+    // Convert to the format expected by this component
+    return {
+      all: leadStatuses.total,
+      pending: leadStatuses.pending,
+      running: leadStatuses.running,
+      converted: leadStatuses.converted,
+      interested: leadStatuses.interested,
+      'win/closed': leadStatuses.winClosed,
+      closed: leadStatuses.closed,
+      lost: leadStatuses.lost
+    }
   }, [leads, overviewDateFilter])
 
   // Follow-up specific counts (only the requested ones)
+  // Use SalesDataService.calculateLeadStatuses() for consistency with SuperAdmin dashboard
   const followUpCounts = React.useMemo(() => {
-    const c = { 'appointment scheduled': 0, 'closed/lost': 0, 'quotation sent': 0 }
     const filtered = getFilteredLeads()
-    filtered.forEach(l => {
-      const k = String(l.follow_up_status || '').toLowerCase()
-      if (c[k] != null) c[k] += 1
-    })
-    return c
+    // Use the same calculation method as SuperAdmin dashboard
+    const leadStatuses = salesDataService.calculateLeadStatuses(filtered)
+    return {
+      'appointment scheduled': leadStatuses.meetingScheduled,
+      'closed/lost': leadStatuses.closedLostFollowup,
+      'quotation sent': leadStatuses.quotationSent
+    }
   }, [leads, overviewDateFilter])
 
   const leadStatuses = [

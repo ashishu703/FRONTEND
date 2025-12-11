@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Package, Eye, X, Edit, Clock, CheckCircle, MessageCircle, Mail, CreditCard } from 'lucide-react';
+import { Package, Eye, X, Edit, Clock, CheckCircle, MessageCircle, Mail, CreditCard, XCircle, AlertCircle } from 'lucide-react';
 import Toolbar, { ProductPagination } from './PaymentTracking';
 import apiClient from '../../utils/apiClient';
 import quotationService from '../../api/admin_api/quotationService';
@@ -1638,17 +1638,71 @@ export default function DuePaymentPage({ isDarkMode = false }) {
     setShowPaymentModal(true);
   };
 
+  // Helper function to format address by splitting on commas
+  const formatAddress = (address) => {
+    if (!address || address === 'N/A') return 'N/A';
+    const parts = address.split(',').map(part => part.trim()).filter(part => part);
+    return parts.length > 0 ? parts : ['N/A'];
+  };
+
+  // Helper function to get status color (matching PaymentInfo.jsx)
+  const getStatusColor = (status) => {
+    const statusLower = (status || '').toLowerCase();
+    switch (statusLower) {
+      case 'paid':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'advance':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'due':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'rejected':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  // Helper function to get status icon (matching PaymentInfo.jsx)
+  const getStatusIcon = (status) => {
+    const statusLower = (status || '').toLowerCase();
+    switch (statusLower) {
+      case 'paid':
+        return <CheckCircle className="w-4 h-4" />;
+      case 'advance':
+        return <Clock className="w-4 h-4" />;
+      case 'due':
+        return <XCircle className="w-4 h-4" />;
+      case 'rejected':
+        return <XCircle className="w-4 h-4" />;
+      case 'pending':
+        return <Clock className="w-4 h-4" />;
+      default:
+        return <AlertCircle className="w-4 h-4" />;
+    }
+  };
+
   const getPaymentStatusBadge = (status, item) => {
-    const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium";
+    // Check if payment is rejected
+    const hasRejectedPayment = item?.paymentsData?.some(p => 
+      (p.approval_status || '').toLowerCase() === 'rejected'
+    ) || false;
+
+    if (hasRejectedPayment) {
+      return (
+        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor('Rejected')}`}>
+          {getStatusIcon('Rejected')}
+          Rejected
+        </span>
+      );
+    }
     
     // Always show "Due" for items in this page since they have remaining amount
     const isOverdue = item.daysOverdue > 0;
     return (
-      <span className={`${baseClasses} ${
-        isOverdue 
-          ? 'bg-red-100 text-red-800' 
-          : 'bg-orange-100 text-orange-800'
-      }`}>
+      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor('Due')}`}>
+        {getStatusIcon('Due')}
         {isOverdue ? `Overdue (${item.daysOverdue} days)` : 'Due'}
       </span>
     );
@@ -1721,7 +1775,7 @@ export default function DuePaymentPage({ isDarkMode = false }) {
             const fullDateStr = date ? date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'No Due Date Set';
             
             return (
-              <div key={dateKey} className="bg-white shadow overflow-hidden sm:rounded-lg">
+              <div key={dateKey} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 {/* Date Header */}
                 <div className="bg-blue-50 px-6 py-4 border-b border-blue-100">
                   <div className="flex items-center justify-between">
@@ -1742,45 +1796,49 @@ export default function DuePaymentPage({ isDarkMode = false }) {
 
                 {/* Table for this date group */}
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Lead ID
+                        <th className="px-6 py-4 text-left">
+                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Lead ID</span>
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Customer Name
+                        <th className="px-6 py-4 text-left">
+                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Customer Name</span>
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Product Name
+                        <th className="px-6 py-4 text-left">
+                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Product Name</span>
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Address
+                        <th className="px-6 py-4 text-left">
+                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Address</span>
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Quotation ID
+                        <th className="px-6 py-4 text-left">
+                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Quotation ID</span>
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Payment Status
+                        <th className="px-6 py-4 text-left">
+                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Payment Status</span>
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Due Amount
+                        <th className="px-6 py-4 text-left">
+                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Due Amount</span>
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Action
+                        <th className="px-6 py-4 text-center">
+                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Action</span>
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {datePayments.map((item) => (
-                        <tr key={item.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {item.leadId}
+                        <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <span className="text-sm text-gray-900 font-medium">
+                              {item.leadId}
+                            </span>
                           </td>
                           <td className="px-6 py-4">
                             <div>
-                              <div className="font-medium text-sm text-gray-900">{item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}</div>
-                              <div className="text-xs text-gray-500">{item.leadData?.phone || 'N/A'}</div>
+                              <div className="font-medium text-gray-900 text-sm">{item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}</div>
+                              {item.leadData?.phone && (
+                                <div className="text-xs text-gray-600 mt-1">{item.leadData.phone}</div>
+                              )}
                               {item.leadData?.whatsapp && (
                                 <div className="text-xs mt-1 text-green-600">
                                   <a href={`https://wa.me/${item.leadData.whatsapp.replace(/[^\d]/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1">
@@ -1801,22 +1859,28 @@ export default function DuePaymentPage({ isDarkMode = false }) {
                               )}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {item.productName}
+                          <td className="px-6 py-4">
+                            <span className="text-sm text-gray-900">{item.productName || 'N/A'}</span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {item.address}
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col gap-0.5">
+                              {formatAddress(item.address).map((part, idx) => (
+                                <span key={idx} className="text-sm text-gray-700">{part}</span>
+                              ))}
+                            </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {item.quotationId}
+                          <td className="px-6 py-4">
+                            <span className="text-sm text-gray-900 font-mono">{item.quotationId || 'N/A'}</span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <td className="px-6 py-4">
                             {getPaymentStatusBadge(item.paymentStatus, item)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">
-                            ₹{item.dueAmount?.toFixed(2) || '0'}
+                          <td className="px-6 py-4">
+                            <span className="text-sm text-red-600 font-semibold">
+                              ₹{item.dueAmount?.toFixed(2) || '0.00'}
+                            </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className="px-6 py-4 text-center">
                             <div className="flex items-center justify-end space-x-2">
                               <Tooltip text="View Details">
                                 <button 
