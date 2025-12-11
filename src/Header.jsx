@@ -259,8 +259,8 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
       case 'performance':
         return {
           icon: <Award className="w-6 h-6 text-white" />,
-          title: "Performance Analytics",
-          subtitle: "View performance metrics and analytics"
+          title: "Payment Info",
+          subtitle: "View payment details from all companies and department heads"
         };
       case 'marketing-leads':
         return {

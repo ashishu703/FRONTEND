@@ -35,7 +35,8 @@ const SalesDepartmentUser = ({ setActiveView }) => {
     user.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.target.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.achievedTarget.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.remainingTarget.toLowerCase().includes(searchTerm.toLowerCase())
+    user.remainingTarget.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.duePayment.toLowerCase().includes(searchTerm.toLowerCase())
   );
   // UI state (to preserve previous experience)
   const [showAddModal, setShowAddModal] = useState(false);
@@ -263,9 +264,10 @@ const SalesDepartmentUser = ({ setActiveView }) => {
       const res = await departmentUserService.listUsers(params);
       const payload = res.data || res;
       const items = (payload.users || []).map(u => {
-        const target = parseFloat(u.target || 0);
-        const achievedTarget = parseFloat(u.achievedTarget || u.achieved_target || 0);
-        const remainingTarget = Math.max(target - achievedTarget, 0);
+        const target = Number(u.target || 0);
+        const achievedTarget = Number(u.achieved_target || 0);
+        const remainingTarget = Number(u.remaining_target || 0);
+        const duePayment = Number(u.duePayment || u.due_payment || 0);
         
         // Format dates properly for display (supports 'YYYY-MM-DD' and full ISO strings)
         const formatDateForDisplay = (dateString) => {
@@ -328,8 +330,8 @@ const SalesDepartmentUser = ({ setActiveView }) => {
           department: apiToUiDepartment(u.departmentType || u.department_type),
           target: String(target),
           achievedTarget: String(achievedTarget),
-          achievementDelta: achievedTarget - target,
           remainingTarget: String(remainingTarget),
+          duePayment: String(duePayment),
           isActive: u.isActive ?? u.is_active ?? true,
           targetStartDate: u.targetStartDate || u.target_start_date || null,
           targetEndDate: u.targetEndDate || u.target_end_date || null,
@@ -384,7 +386,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search by username, email, department type, target, achieved target, or remaining target"
+              placeholder="Search by username, email, department type, target, achieved target, remaining target, or due payment"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700"
@@ -465,6 +467,12 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                 </th>
                 <th className="text-left py-3 px-4">
                   <div className="flex items-center gap-2 text-gray-600 font-medium">
+                    <Target className="w-4 h-4 text-orange-600" />
+                    Due Payment
+                  </div>
+                </th>
+                <th className="text-left py-3 px-4">
+                  <div className="flex items-center gap-2 text-gray-600 font-medium">
                     <Calendar className="w-4 h-4 text-red-600" />
                     Target Expiry
                   </div>
@@ -491,10 +499,10 @@ const SalesDepartmentUser = ({ setActiveView }) => {
             </thead>
             <tbody>
               {loading && (
-                <tr><td className="py-8 px-4 text-center text-gray-500" colSpan={12}>Loading...</td></tr>
+                <tr><td className="py-8 px-4 text-center text-gray-500" colSpan={13}>Loading...</td></tr>
               )}
               {!loading && filteredUsers.length === 0 && (
-                <tr><td className="py-8 px-4 text-center text-gray-500" colSpan={12}>{error || 'No users found'}</td></tr>
+                <tr><td className="py-8 px-4 text-center text-gray-500" colSpan={13}>{error || 'No users found'}</td></tr>
               )}
               {!loading && filteredUsers.map((user) => (
                 <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
@@ -525,28 +533,43 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                   </td>
                   <td className="py-4 px-4">
                     {(() => {
-                      const delta = Number(user.achievementDelta ?? 0);
-                      const formatted =
-                        delta === 0
-                          ? '0'
-                          : delta > 0
-                            ? `+${delta.toLocaleString('en-IN')}`
-                            : delta.toLocaleString('en-IN');
-                      const deltaClass =
-                        delta > 0
-                          ? 'text-green-600 bg-green-50'
-                          : delta < 0
-                            ? 'text-red-600 bg-red-50'
-                            : 'text-gray-600 bg-gray-100';
+                      const achievedTarget = Number(user.achievedTarget || 0);
+                      const target = Number(user.target || 0);
+                      const isAchievedGreaterOrEqual = achievedTarget >= target;
+                      
+                      // Format the actual achieved amount (not the difference)
+                      const formatted = achievedTarget.toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      });
+                      
+                      // Color based on whether target is met
+                      const achievedClass = isAchievedGreaterOrEqual
+                        ? 'text-green-600 bg-green-50'
+                        : 'text-red-600 bg-red-50';
+                      
                       return (
-                        <span className={`${deltaClass} font-medium px-2 py-1 rounded-md`}>
+                        <span className={`${achievedClass} font-medium px-2 py-1 rounded-md`}>
                           {formatted}
                         </span>
                       );
                     })()}
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-red-600 font-medium bg-red-50 px-2 py-1 rounded-md">{user.remainingTarget}</span>
+                    <span className="text-red-600 font-medium bg-red-50 px-2 py-1 rounded-md">
+                      {Number(user.remainingTarget || 0).toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className="text-orange-600 font-medium bg-orange-50 px-2 py-1 rounded-md">
+                      ₹{Number(user.duePayment || user.due_payment || 0).toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}
+                    </span>
                   </td>
                   <td className="py-4 px-4 text-xs text-gray-500 whitespace-nowrap">
                     {user.targetDaysRemaining !== null && user.targetDaysRemaining !== undefined ? (

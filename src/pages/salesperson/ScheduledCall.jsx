@@ -760,18 +760,18 @@ export default function ScheduledCall() {
                 </div>
               </div>
               
-              <div className="overflow-x-hidden">
-                <table className="w-full">
+              <div className="overflow-x-auto">
+                <table className="min-w-[1200px] w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LEAD ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CUSTOMER NAME</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">BUSINESS NAME</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ADDRESS</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">FOLLOW UP STATUS & REMARK</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LEAD STATUS & REMARK</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SCHEDULED CALL</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACTION</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">LEAD ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">CUSTOMER NAME</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">BUSINESS NAME</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">ADDRESS</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">FOLLOW UP STATUS & REMARK</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">LEAD STATUS & REMARK</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">SCHEDULED CALL</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">ACTION</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -803,8 +803,17 @@ export default function ScheduledCall() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {lead.business || 'N/A'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {lead.address || 'N/A'}
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          <div className="flex flex-col gap-0.5">
+                            {(() => {
+                              const address = lead.address || 'N/A';
+                              if (!address || address === 'N/A') return <span>N/A</span>;
+                              const parts = address.split(',').map(part => part.trim()).filter(part => part);
+                              return parts.length > 0 ? parts.map((part, idx) => (
+                                <span key={idx}>{part}</span>
+                              )) : <span>N/A</span>;
+                            })()}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <div className="space-y-1">

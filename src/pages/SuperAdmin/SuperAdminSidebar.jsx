@@ -20,19 +20,17 @@ import {
 const Sidebar = ({ onLogout, activeView, setActiveView }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [openDropdowns, setOpenDropdowns] = useState({
-    dashboard: false,
     department: false,
     salesDepartment: false,
     marketingSalesperson: false
   });
-  const [activeDashboardDepartment, setActiveDashboardDepartment] = useState('Sales Department');
 
   const toggleSidebar = () => {
     setIsExpanded(!isExpanded);
     if (!isExpanded) {
-      setOpenDropdowns({ dashboard: false, department: false, salesDepartment: false, marketingSalesperson: false });
+      setOpenDropdowns({ department: false, salesDepartment: false, marketingSalesperson: false });
     } else {
-      setOpenDropdowns({ dashboard: false, department: false, salesDepartment: false, marketingSalesperson: false });
+      setOpenDropdowns({ department: false, salesDepartment: false, marketingSalesperson: false });
     }
   };
 
@@ -48,17 +46,7 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
       id: 'dashboard',
       label: 'Dashboard',
       icon: <BarChart3 className="w-5 h-5" />,
-      hasDropdown: true,
-      dropdownItems: [
-        { 
-          label: 'Sales Department', 
-          active: true, 
-          hasSubDropdown: false
-        },
-        { label: 'HR Department', active: false },
-        { label: 'Production Department', active: false },
-        { label: 'Gate Entry Department', active: false }
-      ]
+      hasDropdown: false
     },
     {
       id: 'department',
@@ -80,7 +68,7 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
     },
     {
       id: 'performance',
-      label: 'Performance',
+      label: 'Payment Info',
       icon: <TrendingUp className="w-5 h-5" />,
       hasDropdown: false
     },
@@ -142,7 +130,6 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
                   activeView === item.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-700'
                 }`}
                 onClick={() => {
-                  console.log('Clicked on:', item.label, 'hasDropdown:', item.hasDropdown);
                   if (item.hasDropdown) {
                     toggleDropdown(item.id);
                   } else {
@@ -170,16 +157,11 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
               </div>
               
               {/* Dropdown Items */}
-              {(() => {
-                console.log('Checking dropdown for:', item.id, 'isExpanded:', isExpanded, 'hasDropdown:', item.hasDropdown, 'openDropdowns[item.id]:', openDropdowns[item.id]);
-                return isExpanded && item.hasDropdown && openDropdowns[item.id];
-              })() && (
+              {isExpanded && item.hasDropdown && openDropdowns[item.id] && (
                 <ul className="ml-8 mt-1 space-y-1">
                   {item.dropdownItems.map((subItem, index) => (
                     <li key={index}>
-                      <div className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                        (item.id === 'dashboard' && activeDashboardDepartment === subItem.label) ? 'bg-blue-500 text-white' : 'hover:bg-gray-50 text-gray-600'
-                      }`}
+                      <div className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-50 text-gray-600`}
                       onClick={() => {
                         if (subItem.hasSubDropdown) {
                           if (subItem.label === 'Marketing Salesperson') {
@@ -188,20 +170,15 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
                             toggleDropdown('salesDepartment');
                           }
                         } else {
-                          if (item.id === 'dashboard') {
-                            setActiveDashboardDepartment(subItem.label);
-                          }
                           setActiveView(subItem.label.toLowerCase().replace(/\s+/g, '-'));
                         }
                       }}>
                         <div className="flex items-center space-x-2">
-                          <div className={`w-1.5 h-1.5 rounded-full ${
-                            (item.id === 'dashboard' && activeDashboardDepartment === subItem.label) ? 'bg-white' : 'bg-gray-400'
-                          }`}></div>
+                          <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
                           <span className="text-sm">{subItem.label}</span>
                         </div>
                         {subItem.hasSubDropdown && (
-                          <div className={(item.id === 'dashboard' && activeDashboardDepartment === subItem.label) ? 'text-white' : 'text-gray-400'}>
+                          <div className="text-gray-400">
                             {(subItem.label === 'Marketing Salesperson' ? openDropdowns.marketingSalesperson : openDropdowns.salesDepartment) ? (
                               <ChevronDown className="w-4 h-4" />
                             ) : (

@@ -535,12 +535,34 @@ export default function LastCall() {
         
         // Filter leads - only show leads that have actual follow-up/call data
         // This means they must have follow_up_status or follow_up_remark (indicating a call/interaction happened)
+        // AND the follow-up date must be <= today's date
+        const today = new Date();
+        today.setHours(23, 59, 59, 999); // Set to end of today for comparison
+        
         const lastCallLeads = leadsData.filter(lead => {
           const hasFollowUpStatus = lead.follow_up_status && lead.follow_up_status.trim() !== '';
           const hasFollowUpRemark = lead.follow_up_remark && lead.follow_up_remark.trim() !== '';
           
           // Only include leads that have actual call/follow-up data
-          return hasFollowUpStatus || hasFollowUpRemark;
+          if (!hasFollowUpStatus && !hasFollowUpRemark) {
+            return false;
+          }
+          
+          // Check if the follow-up date is <= today
+          let callDate = null;
+          if (lead.follow_up_date) {
+            callDate = new Date(lead.follow_up_date);
+          } else if (lead.updated_at) {
+            callDate = new Date(lead.updated_at);
+          }
+          
+          // If no date is available, exclude the lead
+          if (!callDate || isNaN(callDate.getTime())) {
+            return false;
+          }
+          
+          // Only include if call date is <= today
+          return callDate <= today;
         });
         
         console.log(`[LastCall] Filtered to ${lastCallLeads.length} last call leads for user: ${user?.email}`);
@@ -1089,8 +1111,15 @@ export default function LastCall() {
                             {lead.business || 'N/A'}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-500">
-                            <div className="max-w-xs truncate" title={lead.address || 'N/A'}>
-                              {lead.address || 'N/A'}
+                            <div className="flex flex-col gap-0.5 max-w-xs">
+                              {(() => {
+                                const address = lead.address || 'N/A';
+                                if (!address || address === 'N/A') return <span>N/A</span>;
+                                const parts = address.split(',').map(part => part.trim()).filter(part => part);
+                                return parts.length > 0 ? parts.map((part, idx) => (
+                                  <span key={idx}>{part}</span>
+                                )) : <span>N/A</span>;
+                              })()}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">

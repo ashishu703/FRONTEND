@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, RefreshCw, Edit, Trash2, LogOut, Calendar, Users, Building, User, Mail, Filter, Eye, EyeOff, X } from 'lucide-react';
 import departmentHeadService, { uiToApiDepartment, apiToUiDepartment } from '../../api/admin_api/departmentHeadService';
 import departmentUserService from '../../api/admin_api/departmentUserService';
@@ -8,10 +8,12 @@ import organizationService from '../../api/admin_api/organizationService';
 const DepartmentManagement = () => {
   const { login, impersonate, user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All Departments');
   const [showFilters, setShowFilters] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const searchTimeoutRef = useRef(null);
 
   const [departments, setDepartments] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -94,7 +96,7 @@ const DepartmentManagement = () => {
         limit,
       };
       if (selectedFilter !== 'All Departments') params.departmentType = uiToApiDepartment(selectedFilter);
-      if (searchTerm.trim()) params.search = searchTerm.trim();
+      if (debouncedSearchTerm.trim()) params.search = debouncedSearchTerm.trim();
       
       const headsRes = await departmentHeadService.listHeads(params);
       const heads = (headsRes.users || headsRes.data?.users || []).map(mapUserFromApi);
@@ -137,10 +139,33 @@ const DepartmentManagement = () => {
     setIsRefreshing(false);
   };
 
+  // Debounce search term
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setPage(1); // Reset to first page when search changes
+    }, 500); // 500ms debounce delay
+    
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchTerm]);
+
+  // Fetch users when filters change
   useEffect(() => {
     fetchUsers();
+  }, [page, limit, selectedFilter, debouncedSearchTerm]);
+
+  // Fetch companies on mount
+  useEffect(() => {
     fetchCompanies();
-  }, [page, limit, selectedFilter, searchTerm]);
+  }, []);
 
   useEffect(() => {
     fetchStats();
@@ -197,17 +222,22 @@ const DepartmentManagement = () => {
     }
   };
 
+  // Frontend date filtering (backend doesn't support date filters)
   const isWithinDateRange = (dateStr) => {
     if (!dateFrom && !dateTo) return true;
-    const parsed = new Date(dateStr);
-    const fromOk = dateFrom ? parsed >= new Date(dateFrom) : true;
-    const toOk = dateTo ? parsed <= new Date(dateTo) : true;
-    return fromOk && toOk;
+    if (!dateStr) return false;
+    try {
+      const parsed = new Date(dateStr);
+      const fromOk = dateFrom ? parsed >= new Date(dateFrom + 'T00:00:00') : true;
+      const toOk = dateTo ? parsed <= new Date(dateTo + 'T23:59:59') : true;
+      return fromOk && toOk;
+    } catch (e) {
+      return false;
+    }
   };
 
   const filteredDepartments = departments.filter((dept) => {
-    const matchesDate = isWithinDateRange(dept.createdAt);
-    return matchesDate;
+    return isWithinDateRange(dept.createdAt);
   });
 
   return (
@@ -230,7 +260,7 @@ const DepartmentManagement = () => {
           <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-3xl font-bold text-purple-600 mb-1">{(stats?.byRole || []).find(r => r.role === 'department_head')?.totalUsers || 0}</div>
+                <div className="text-3xl font-bold text-purple-600 mb-1">{total}</div>
                 <div className="text-gray-500 text-sm">Department Heads</div>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
@@ -288,7 +318,10 @@ const DepartmentManagement = () => {
 
               <select 
                 value={selectedFilter}
-                onChange={(e) => setSelectedFilter(e.target.value)}
+                onChange={(e) => {
+                  setSelectedFilter(e.target.value);
+                  setPage(1); // Reset to first page when filter changes
+                }}
                 disabled={!isSuperAdmin}
                 className={`h-9 px-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white text-sm ${!isSuperAdmin ? 'opacity-60 cursor-not-allowed' : ''}`}
                 title="Department Type"
@@ -299,6 +332,8 @@ const DepartmentManagement = () => {
                 <option>Marketing Department</option>
                 <option>HR Department</option>
                 <option>Production Department</option>
+                <option>Accounts Department</option>
+                <option>IT Department</option>
                 <option>Telesales Department</option>
               </select>
 
@@ -336,17 +371,23 @@ const DepartmentManagement = () => {
               </div>
               <div className="md:col-span-2 flex items-center justify-end gap-3">
                 <button
+                  type="button"
                   className="px-4 py-2 text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50"
                   onClick={() => {
                     setDateFrom('');
                     setDateTo('');
+                    setPage(1); // Reset to first page when clearing filters
                   }}
                 >
                   Clear
                 </button>
                 <button
+                  type="button"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  onClick={() => setShowFilters(false)}
+                  onClick={() => {
+                    // Date filter is applied on frontend, no need to refetch
+                    setShowFilters(false);
+                  }}
                 >
                   Apply
                 </button>
