@@ -15,7 +15,9 @@ import {
   Clock,
   IndianRupee,
   User,
-  HelpCircle
+  HelpCircle,
+  CalendarCheck,
+  Camera
 } from 'lucide-react';
 
 const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
@@ -41,6 +43,18 @@ const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
       id: 'all-leads',
       label: 'All Leads',
       icon: <UserCheck className="w-5 h-5" />,
+      hasDropdown: false
+    },
+    {
+      id: 'assigned-meetings',
+      label: 'Assigned Meetings',
+      icon: <CalendarCheck className="w-5 h-5" />,
+      hasDropdown: false
+    },
+    {
+      id: 'checkin-history',
+      label: 'Check-In History',
+      icon: <Camera className="w-5 h-5" />,
       hasDropdown: false
     },
     {

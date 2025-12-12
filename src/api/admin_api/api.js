@@ -89,6 +89,21 @@ export const API_ENDPOINTS = {
   // Admin Users
   ADMIN_USERS_LIST: (query = '') => `${ADMIN_BASE}/users${query ? `?${query}` : ''}`,
 
+  // Marketing Meetings & Check-ins
+  MARKETING_BASE: `${API_BASE_URL}/api/marketing`,
+  MARKETING_MEETINGS_GET_ALL: (query = '') => `${API_BASE_URL}/api/marketing/meetings${query ? `?${query}` : ''}`,
+  MARKETING_MEETINGS_CREATE: () => `${API_BASE_URL}/api/marketing/meetings`,
+  MARKETING_MEETINGS_ASSIGNED: () => `${API_BASE_URL}/api/marketing/meetings/assigned`,
+  MARKETING_MEETING_BY_ID: (id) => `${API_BASE_URL}/api/marketing/meetings/${id}`,
+  MARKETING_MEETING_UPDATE: (id) => `${API_BASE_URL}/api/marketing/meetings/${id}`,
+  MARKETING_MEETING_DELETE: (id) => `${API_BASE_URL}/api/marketing/meetings/${id}`,
+  MARKETING_CHECK_INS_GET_ALL: (query = '') => `${API_BASE_URL}/api/marketing/check-ins${query ? `?${query}` : ''}`,
+  MARKETING_CHECK_INS_CREATE: () => `${API_BASE_URL}/api/marketing/check-ins`,
+  MARKETING_CHECK_INS_MY_CHECKINS: () => `${API_BASE_URL}/api/marketing/check-ins/my-checkins`,
+  MARKETING_CHECK_INS_BY_MEETING: (meetingId) => `${API_BASE_URL}/api/marketing/check-ins/meeting/${meetingId}`,
+  MARKETING_CHECK_IN_BY_ID: (id) => `${API_BASE_URL}/api/marketing/check-ins/${id}`,
+  MARKETING_CHECK_IN_UPDATE: (id) => `${API_BASE_URL}/api/marketing/check-ins/${id}`,
+
   // Organizations
   ORGANIZATIONS_BASE: ORG_BASE,
   ORGANIZATIONS_CREATE: () => ORG_BASE,

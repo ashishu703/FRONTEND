@@ -14,7 +14,9 @@ import {
   TrendingUp,
   Package,
   Megaphone,
-  HelpCircle
+  HelpCircle,
+  CalendarCheck,
+  Camera
 } from 'lucide-react';
 
 const MarketingDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => {
@@ -43,6 +45,18 @@ const MarketingDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView })
       id: 'marketing-leads',
       label: 'Leads',
       icon: <UserCheck className="w-5 h-5" />,
+      hasDropdown: false
+    },
+    {
+      id: 'meeting-assignment',
+      label: 'Meeting Assignment',
+      icon: <CalendarCheck className="w-5 h-5" />,
+      hasDropdown: false
+    },
+    {
+      id: 'checkin-dashboard',
+      label: 'Check-In Dashboard',
+      icon: <Camera className="w-5 h-5" />,
       hasDropdown: false
     },
     {
