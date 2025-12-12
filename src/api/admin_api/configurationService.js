@@ -136,6 +136,51 @@ class ConfigurationService {
       throw error;
     }
   }
+
+  // Get document templates (optionally filtered by type)
+  async getDocumentTemplates(templateType) {
+    try {
+      const query = templateType ? `?type=${encodeURIComponent(templateType)}` : '';
+      const response = await apiClient.get(`/api/configuration/document-templates${query}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching document templates:', error);
+      throw error;
+    }
+  }
+
+  // Create document template
+  async createDocumentTemplate(template) {
+    try {
+      const response = await apiClient.post('/api/configuration/document-templates', template);
+      return response;
+    } catch (error) {
+      console.error('Error creating document template:', error);
+      throw error;
+    }
+  }
+
+  // Update document template
+  async updateDocumentTemplate(id, template) {
+    try {
+      const response = await apiClient.put(`/api/configuration/document-templates/${id}`, template);
+      return response;
+    } catch (error) {
+      console.error('Error updating document template:', error);
+      throw error;
+    }
+  }
+
+  // Delete document template
+  async deleteDocumentTemplate(id) {
+    try {
+      const response = await apiClient.delete(`/api/configuration/document-templates/${id}`);
+      return response;
+    } catch (error) {
+      console.error('Error deleting document template:', error);
+      throw error;
+    }
+  }
 }
 
 export default new ConfigurationService();

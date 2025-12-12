@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Package, Eye, X, Clock, CheckCircle, MessageCircle, Mail, CreditCard, Receipt } from 'lucide-react';
+import { Package, Eye, X, Clock, CheckCircle, MessageCircle, Mail, CreditCard, Receipt, XCircle, AlertCircle } from 'lucide-react';
 import Toolbar, { ProductPagination } from './PaymentTracking';
 import apiClient from '../../utils/apiClient';
 import quotationService from '../../api/admin_api/quotationService';
@@ -10,6 +10,7 @@ import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import uploadService from '../../api/admin_api/uploadService';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
+import { useAuth } from '../../hooks/useAuth';
 
 // Utility Functions
 class DataExtractor {
@@ -228,8 +229,24 @@ class PaymentTrackingService {
     for (const [, { quotation, lead, payments }] of paymentMap.entries()) {
       if (!quotation) continue;
 
-      const hasPI = await this.checkPIExists(quotation.id);
-      if (!hasPI) continue;
+      // Fetch PI data for this quotation to get product names from PI
+      let pis = [];
+      try {
+        console.log('🔍 Fetching PI for quotation:', quotation.id);
+        const response = await this.proformaInvoiceService.getPIsByQuotation(quotation.id);
+        pis = DataExtractor.extractArray(response);
+        console.log('✅ PI data fetched:', pis);
+      } catch (error) {
+        console.warn(`❌ Failed to fetch PI for quotation ${quotation.id}:`, error);
+      }
+
+      // Only include if PI exists
+      if (pis.length === 0) {
+        console.log('⚠️ No PI found for quotation:', quotation.id, '- Skipping');
+        continue;
+      }
+      
+      console.log('✅ PI exists for quotation:', quotation.id, '- Processing payment tracking');
 
       const validPayments = payments.filter(PaymentValidator.isValid);
       const approvedPayments = validPayments.filter(PaymentValidator.isApproved);
@@ -250,11 +267,49 @@ class PaymentTrackingService {
 
       const firstPayment = validPayments.length > 0 ? validPayments[0] : null;
 
+      // Fetch product names from PI (via quotation items that PI references)
+      let productNames = 'N/A';
+      console.log('🔍 Building payment tracking - Quotation ID:', quotation.id);
+      console.log('📦 Quotation data:', quotation);
+      console.log('📋 PI data:', pis);
+      
+      // Fetch quotation items if not already included
+      let quotationItems = quotation?.items;
+      if (!quotationItems || !Array.isArray(quotationItems) || quotationItems.length === 0) {
+        try {
+          console.log('📥 Fetching quotation items for:', quotation.id);
+          const quotationWithItems = await this.quotationService.getQuotation(quotation.id);
+          quotationItems = quotationWithItems?.data?.items || quotationWithItems?.items || [];
+          console.log('✅ Quotation items fetched:', quotationItems);
+        } catch (error) {
+          console.warn('⚠️ Failed to fetch quotation items:', error);
+          quotationItems = [];
+        }
+      }
+      
+      // PI references quotation, so get product names from quotation items
+      // Since PI is created from quotation, items are the same
+      if (quotationItems && Array.isArray(quotationItems) && quotationItems.length > 0) {
+        productNames = quotationItems
+          .map(item => item.product_name || item.productName || item.description)
+          .filter(Boolean)
+          .join(', ');
+        console.log('✅ Product names from quotation items:', productNames);
+      } else if (lead.product_type) {
+        productNames = lead.product_type;
+        console.log('⚠️ Using lead product_type as fallback:', productNames);
+      } else if (firstPayment?.product_name) {
+        productNames = firstPayment.product_name;
+        console.log('⚠️ Using payment product_name as fallback:', productNames);
+      }
+      
+      console.log('📝 Final product name for payment tracking:', productNames);
+
       paymentTrackingData.push({
         id: `${quotation.customer_id || lead.id}-${quotation.id}`,
         leadId: `LD-${quotation.customer_id || lead.id}`,
-        customerName: quotation?.customer_name || lead.name || firstPayment?.customer_name || 'N/A',
-        productName: lead.product_type || quotation?.items?.[0]?.description || firstPayment?.product_name || 'N/A',
+        customerName: quotation?.customer_name || lead?.name || lead?.customer_name || firstPayment?.customer_name || 'N/A',
+        productName: productNames,
         address: quotation?.customer_address || lead.address || firstPayment?.address || 'N/A',
         quotationId: quotation?.quotation_number || `QT-${quotation.id}`,
         paymentStatus,
@@ -1017,7 +1072,7 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
           <div className="space-y-2">
             <div>
               <span className="text-sm font-medium text-gray-600">Customer Name:</span>
-              <span className="ml-2 text-sm text-gray-900">{item.customerName}</span>
+              <span className="ml-2 text-sm text-gray-900">{item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}</span>
             </div>
             <div>
               <span className="text-sm font-medium text-gray-600">Lead ID:</span>
@@ -1300,11 +1355,22 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         receiptUrl = await uploadService.uploadFile(receiptFile, 'payments');
       }
 
+      // Validate installment amount
+      const installmentAmount = parseFloat(paymentData.installment_amount);
+      console.log('💰 Payment submission - installment_amount:', installmentAmount);
+      console.log('💰 Payment data:', paymentData);
+      
+      if (!installmentAmount || isNaN(installmentAmount) || installmentAmount <= 0) {
+        setError('Please enter a valid payment amount greater than 0');
+        setLoading(false);
+        return;
+      }
+
       const paymentPayload = {
         lead_id: item.leadData?.id,
         quotation_id: selectedQuotationId,
         pi_id: selectedPIId,
-        installment_amount: parseFloat(paymentData.installment_amount),
+        installment_amount: installmentAmount,
         payment_method: paymentData.payment_method,
         payment_reference: paymentData.payment_reference,
         payment_status: paymentData.payment_status,
@@ -1317,7 +1383,9 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         delivery_status: paymentData.delivery_status
       };
 
+      console.log('📤 Sending payment payload:', paymentPayload);
       const response = await paymentService.createPayment(paymentPayload);
+      console.log('✅ Payment response:', response);
       if (response.success) {
         const { summary: responseSummary } = response.data;
         onClose();
@@ -1354,7 +1422,7 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         <div className="flex-1 overflow-y-auto p-6">
 
         <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-medium text-gray-900">{item.customerName}</h4>
+          <h4 className="font-medium text-gray-900">{item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}</h4>
           <p className="text-sm text-gray-600">Lead ID: {item.leadId}</p>
           <div className="mt-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1641,6 +1709,11 @@ export default function ProductsPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPaymentItem, setSelectedPaymentItem] = useState(null);
 
+  // Get current user for role-based filtering
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+  const lastUserIdRef = useRef(null);
+
   // Guard to avoid duplicate initial fetches (e.g. React StrictMode)
   const initialFetchDoneRef = useRef(false);
   const paymentTrackingService = new PaymentTrackingService(
@@ -1654,7 +1727,9 @@ export default function ProductsPage() {
     try {
       setLoading(true);
       setError(null);
+      // Global cache busting is automatically applied by apiClient.get()
       const paymentTrackingData = await paymentTrackingService.fetchAllPaymentTrackingData();
+      console.log(`[PaymentTracking] Received ${paymentTrackingData.length} payment tracking items for user: ${user?.email}`);
       setPaymentTracking(paymentTrackingData);
       setFilteredPaymentTracking(paymentTrackingData);
     } catch (err) {
@@ -1665,12 +1740,30 @@ export default function ProductsPage() {
     }
   };
 
-  // Initial load
+  // Initial load with user change detection
   useEffect(() => {
+    // If no user is logged in, do nothing
+    if (!currentUserId) {
+      return;
+    }
+
+    // If user has changed, clear existing data
+    if (lastUserIdRef.current !== null && lastUserIdRef.current !== currentUserId) {
+      console.log('[PaymentTracking] User changed, clearing data. Old:', lastUserIdRef.current, 'New:', currentUserId);
+      setPaymentTracking([]);
+      setFilteredPaymentTracking([]);
+      setError(null);
+      initialFetchDoneRef.current = false; // Reset fetch guard
+    }
+
+    // Update last user ID
+    lastUserIdRef.current = currentUserId;
+
     if (initialFetchDoneRef.current) return;
     initialFetchDoneRef.current = true;
     fetchPaymentTrackingData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
 
   const handleSearch = (query) => {
     if (!query.trim()) {
@@ -1793,79 +1886,125 @@ export default function ProductsPage() {
   };
 
 
-  const getPaymentStatusBadge = (item) => {
-    // Use displayStatus if available, otherwise fall back to paymentStatus
-    const displayStatus = item?.displayStatus || item?.paymentStatus || 'pending';
-    const status = displayStatus.toLowerCase();
-    const pendingApprovals = item?.approvalSummary?.pending || 0;
-    const rejectedApprovals = item?.approvalSummary?.rejected || 0;
-    const latestNote = item?.approvalSummary?.latestNote;
+  // Helper function to format address by splitting on commas
+  const formatAddress = (address) => {
+    if (!address || address === 'N/A') return 'N/A';
+    const parts = address.split(',').map(part => part.trim()).filter(part => part);
+    return parts.length > 0 ? parts : ['N/A'];
+  };
 
-    if (pendingApprovals > 0) {
+  // Helper function to get status color (matching PaymentInfo.jsx)
+  const getStatusColor = (status) => {
+    const statusLower = (status || '').toLowerCase();
+    switch (statusLower) {
+      case 'paid':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'advance':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'due':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'rejected':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  // Helper function to get status icon (matching PaymentInfo.jsx)
+  const getStatusIcon = (status) => {
+    const statusLower = (status || '').toLowerCase();
+    switch (statusLower) {
+      case 'paid':
+        return <CheckCircle className="w-4 h-4" />;
+      case 'advance':
+        return <Clock className="w-4 h-4" />;
+      case 'due':
+        return <XCircle className="w-4 h-4" />;
+      case 'rejected':
+        return <XCircle className="w-4 h-4" />;
+      case 'pending':
+        return <Clock className="w-4 h-4" />;
+      default:
+        return <AlertCircle className="w-4 h-4" />;
+    }
+  };
+
+  const getPaymentStatusBadge = (item) => {
+    // Check for rejected payments first
+    const rejectedApprovals = item?.approvalSummary?.rejected || 0;
+    const pendingApprovals = item?.approvalSummary?.pending || 0;
+    const latestNote = item?.approvalSummary?.latestNote;
+    
+    // Check if any payment has approval_status = 'rejected'
+    const hasRejectedPayment = item?.paymentsData?.some(p => 
+      (p.approval_status || '').toLowerCase() === 'rejected'
+    ) || false;
+
+    if (hasRejectedPayment || rejectedApprovals > 0) {
       return (
-        <div className="flex flex-col">
-          <span className="px-2 py-1 text-xs font-semibold rounded bg-amber-100 text-amber-800 border border-amber-200">
-            Pending Accounts Approval
+        <div className="flex flex-col gap-1">
+          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor('Rejected')}`}>
+            {getStatusIcon('Rejected')}
+            Rejected
           </span>
-          <span className="text-[11px] text-amber-700 mt-1">
-            {pendingApprovals} payment{pendingApprovals > 1 ? 's' : ''} awaiting approval
-          </span>
+          {rejectedApprovals > 0 && (
+            <span className="text-xs text-orange-700">
+              {rejectedApprovals} payment{rejectedApprovals > 1 ? 's' : ''} rejected
+            </span>
+          )}
           {latestNote && (
-            <span className="text-[11px] text-slate-500 mt-1 truncate">Note: {latestNote}</span>
+            <span className="text-xs text-gray-500 truncate">Note: {latestNote}</span>
           )}
         </div>
       );
     }
 
-    if (rejectedApprovals > 0) {
+    if (pendingApprovals > 0) {
       return (
-        <div className="flex flex-col">
-          <span className="px-2 py-1 text-xs font-semibold rounded bg-rose-100 text-rose-800 border border-rose-200">
-            Rejected by Accounts
+        <div className="flex flex-col gap-1">
+          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor('Pending')}`}>
+            {getStatusIcon('Pending')}
+            Pending Accounts Approval
           </span>
-          <span className="text-[11px] text-rose-700 mt-1">
-            {rejectedApprovals} payment{rejectedApprovals > 1 ? 's' : ''} rejected
+          <span className="text-xs text-yellow-700">
+            {pendingApprovals} payment{pendingApprovals > 1 ? 's' : ''} awaiting approval
           </span>
           {latestNote && (
-            <span className="text-[11px] text-slate-500 mt-1 truncate">Note: {latestNote}</span>
+            <span className="text-xs text-gray-500 truncate">Note: {latestNote}</span>
           )}
         </div>
       );
     }
     
-    const statusClasses = {
-      'paid': 'bg-green-100 text-green-800 border border-green-200',
-      'pending': 'bg-yellow-100 text-yellow-800 border border-yellow-200',
-      'partial': 'bg-blue-100 text-blue-800 border border-blue-200',
-      'overdue': 'bg-red-100 text-red-800 border border-red-200',
-      'advance': 'bg-purple-100 text-purple-800 border border-purple-200',
-      'due': 'bg-orange-100 text-orange-800 border border-orange-200',
-    };
-
+    // Use displayStatus if available, otherwise fall back to paymentStatus
+    const displayStatus = item?.displayStatus || item?.paymentStatus || 'pending';
+    const status = displayStatus.toLowerCase();
+    
     const statusText = {
       'paid': 'Paid',
       'pending': 'Pending',
       'partial': 'Partial',
-      'overdue': 'Overdue',
+      'overdue': 'Due',
       'advance': 'Advance',
       'due': 'Due',
     };
 
     // Get paid amount from item data
     const paidAmount = Number(item?.paidAmount || item?.quotationData?.paid_amount || 0);
-    const amount = paidAmount > 0 ? `₹${paidAmount.toLocaleString('en-IN')}` : '';
+    const amount = paidAmount > 0 ? `₹${paidAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : '';
 
     return (
-      <div className="space-y-1">
-        <span
-          className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClasses[status] || 'bg-gray-100 text-gray-800 border border-gray-200'}`}
-        >
+      <div className="flex flex-col gap-1">
+        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(status)}`}>
+          {getStatusIcon(status)}
           {statusText[status] || displayStatus}
         </span>
         {amount && (
-          <div className="text-xs text-gray-600 font-medium">
+          <span className="text-xs text-gray-600 font-medium">
             {amount}
-          </div>
+          </span>
         )}
       </div>
     );
@@ -1908,37 +2047,37 @@ export default function ProductsPage() {
           </div>
         </div>
       ) : (
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Lead ID
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer Name
+                <th className="px-6 py-4 text-left">
+                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Lead ID</span>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Product Name
+                <th className="px-6 py-4 text-left">
+                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Customer Name</span>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Address
+                <th className="px-6 py-4 text-left">
+                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Product Name</span>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Quotation ID
+                <th className="px-6 py-4 text-left">
+                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Address</span>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Payment Status
+                <th className="px-6 py-4 text-left">
+                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Quotation ID</span>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Purchase Order
+                <th className="px-6 py-4 text-left">
+                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Payment Status</span>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Delivery Date
+                <th className="px-6 py-4 text-left">
+                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Purchase Order</span>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Action
+                <th className="px-6 py-4 text-left">
+                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Delivery Date</span>
+                </th>
+                <th className="px-6 py-4 text-center">
+                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Action</span>
                 </th>
               </tr>
             </thead>
@@ -1946,13 +2085,17 @@ export default function ProductsPage() {
                 {paginatedPaymentTracking.length > 0 ? (
                   paginatedPaymentTracking.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-900 font-medium">
                         {item.leadId}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <div>
-                        <div className="font-medium text-sm text-gray-900">{item.customerName}</div>
-                        <div className="text-xs text-gray-500">{item.leadData?.phone || 'N/A'}</div>
+                        <div className="font-medium text-gray-900 text-sm">{item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}</div>
+                        {item.leadData?.phone && (
+                          <div className="text-xs text-gray-600 mt-1">{item.leadData.phone}</div>
+                        )}
                         {item.leadData?.whatsapp && (
                           <div className="text-xs mt-1 text-green-600">
                             <a href={`https://wa.me/${item.leadData.whatsapp.replace(/[^\d]/g, "")}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1">
@@ -1973,35 +2116,41 @@ export default function ProductsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.productName}
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-900">{item.productName || 'N/A'}</span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.address}
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-0.5">
+                        {formatAddress(item.address).map((part, idx) => (
+                          <span key={idx} className="text-sm text-gray-700">{part}</span>
+                        ))}
+                      </div>
                     </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.quotationId}
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-900 font-mono">{item.quotationId || 'N/A'}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {getPaymentStatusBadge(item)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.workOrderId}
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-900">{item.workOrderId || 'N/A'}</span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium">
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-900">
                           {item.quotationData?.delivery_date ? 
                             new Date(item.quotationData.delivery_date).toLocaleDateString('en-GB') : 
                             'N/A'
                           }
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {item.quotationData?.delivery_status || 'Pending'}
-                        </div>
+                        </span>
+                        {item.quotationData?.delivery_status && (
+                          <span className="text-xs text-gray-600 mt-1">
+                            {item.quotationData.delivery_status}
+                          </span>
+                        )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-end space-x-2">
                         <Tooltip text="View Details">
                           <button 

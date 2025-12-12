@@ -144,7 +144,7 @@ const MobileLeads = () => {
           customerType: newCustomerData.customerType || 'N/A',
           date: newCustomerData.date,
           whatsapp: newCustomerData.whatsappNumber ? `+91${newCustomerData.whatsappNumber.replace(/\D/g, '').slice(-10)}` : null,
-          salesStatus: newCustomerData.salesStatus || 'pending',
+          salesStatus: newCustomerData.salesStatus || '',
           salesStatusRemark: newCustomerData.salesStatusRemark || '',
           followUpStatus: newCustomerData.followUpStatus || '',
           followUpRemark: newCustomerData.followUpRemark || '',
@@ -167,7 +167,7 @@ const MobileLeads = () => {
         formData.append('customer_type', updatedCustomer.customerType || 'N/A');
         formData.append('date', updatedCustomer.date);
         formData.append('whatsapp', updatedCustomer.whatsapp ? updatedCustomer.whatsapp.replace('+91', '') : '');
-        formData.append('sales_status', updatedCustomer.salesStatus || 'pending');
+        formData.append('sales_status', updatedCustomer.salesStatus || '');
         formData.append('sales_status_remark', updatedCustomer.salesStatusRemark || '');
         formData.append('follow_up_status', updatedCustomer.followUpStatus || '');
         formData.append('follow_up_remark', updatedCustomer.followUpRemark || '');
@@ -219,7 +219,7 @@ const MobileLeads = () => {
         formData.append('lead_source', newCustomerData.leadSource || 'N/A');
         formData.append('customer_type', newCustomerData.customerType || 'N/A');
         formData.append('date', newCustomerData.date);
-        formData.append('sales_status', newCustomerData.salesStatus || 'pending');
+        formData.append('sales_status', newCustomerData.salesStatus || '');
 
         if (newCustomerData.callRecordingFile) {
           formData.append('call_recording', newCustomerData.callRecordingFile);
@@ -449,7 +449,7 @@ const MobileLeads = () => {
           break;
           
         case 'Customer Type':
-          data.customerType = value || 'N/A';
+          data.customerType = value && value.trim() ? value.trim() : null;
           break;
           
         case 'Date':
@@ -552,9 +552,12 @@ const MobileLeads = () => {
               formData.append('gst_no', lead.gstNo || 'N/A');
               formData.append('product_type', lead.productName || 'N/A');
               formData.append('lead_source', lead.leadSource || 'N/A');
-              formData.append('customer_type', lead.customerType || 'N/A');
+              // Only send customer_type if it exists in CSV - no auto-assignment
+              if (lead.customerType && lead.customerType.trim() && lead.customerType !== 'N/A') {
+                formData.append('customer_type', lead.customerType);
+              }
               formData.append('date', lead.date);
-              formData.append('sales_status', lead.salesStatus || 'follow up');
+              formData.append('sales_status', lead.salesStatus || '');
               
               await apiClient.postFormData(API_ENDPOINTS.LEADS_CREATE(), formData);
             }

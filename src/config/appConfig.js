@@ -6,7 +6,9 @@ export const COMPANY_BRANCHES = {
     address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA',
     tel: '6262002116, 6262002113',
     web: 'www.anocab.com',
-    email: 'info@anocab.com'
+    email: 'info@anocab.com',
+    logoUrl: 'https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png',
+    logo: 'https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png'
   }
 };
 

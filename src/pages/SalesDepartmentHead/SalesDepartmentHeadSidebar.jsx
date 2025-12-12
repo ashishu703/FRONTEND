@@ -13,7 +13,8 @@ import {
   Calendar,
   TrendingUp,
   Package,
-  HelpCircle
+  HelpCircle,
+  FileText
 } from 'lucide-react';
 
 const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => {
@@ -67,6 +68,12 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => 
       label: 'Stock Update',
       icon: <Package className="w-5 h-5" />,
       hasDropdown: false
+    },
+    {
+      id: 'reports',
+      label: 'Reports',
+      icon: <FileText className="w-5 h-5" />,
+      hasDropdown: false
     }
   ];
 
@@ -107,7 +114,7 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => 
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 p-2">
+      <nav className="flex-1 p-2 overflow-y-auto">
         <ul className="space-y-1">
           {sidebarItems.map((item) => (
             <li key={item.id}>
@@ -160,12 +167,17 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => 
               ) : (
                 <div
                   className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                    activeView === item.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-700'
+                    activeView === item.id || (item.id === 'reports' && activeView?.startsWith('detailed-report-')) 
+                      ? 'bg-blue-50 text-blue-700' 
+                      : 'hover:bg-gray-50 text-gray-700'
                   }`}
-                  onClick={() => setActiveView(item.id)}
+                  onClick={() => {
+                    console.log('Sidebar click - setting activeView to:', item.id);
+                    setActiveView(item.id);
+                  }}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className={activeView === item.id ? 'text-blue-600' : 'text-gray-500'}>
+                    <div className={activeView === item.id || (item.id === 'reports' && activeView?.startsWith('detailed-report-')) ? 'text-blue-600' : 'text-gray-500'}>
                       {item.icon}
                     </div>
                     {isExpanded && (

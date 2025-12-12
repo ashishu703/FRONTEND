@@ -37,53 +37,83 @@ export const downloadCSVTemplate = () => {
 };
 
 export const parseCSV = (csvText) => {
-  const lines = csvText.split(/\r?\n/).filter(line => line.trim());
-  if (lines.length === 0) return [];
+  if (!csvText || !csvText.trim()) return [];
   
-  const parseCSVLine = (line) => {
-    const result = [];
-    let current = '';
+  const parseCSVRows = (text) => {
+    const rows = [];
+    let currentRow = [];
+    let currentField = '';
     let inQuotes = false;
+    let i = 0;
     
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      const nextChar = i < line.length - 1 ? line[i + 1] : null;
+    while (i < text.length) {
+      const char = text[i];
+      const nextChar = i < text.length - 1 ? text[i + 1] : null;
       
       if (char === '"') {
         if (inQuotes) {
           if (nextChar === '"') {
-            current += '"';
-            i++;
-          } else if (nextChar === ',' || nextChar === null || nextChar === '\r' || nextChar === '\n') {
+            currentField += '"';
+            i += 2;
+            continue;
+          } else if (nextChar === ',' || nextChar === '\r' || nextChar === '\n' || nextChar === null) {
             inQuotes = false;
-          } else {
-            current += char;
+            i++;
+            continue;
           }
         } else {
           inQuotes = true;
+          i++;
+          continue;
         }
-      } else if (char === ',' && !inQuotes) {
-        result.push(current);
-        current = '';
-      } else {
-        current += char;
+      }
+      
+      if (char === ',' && !inQuotes) {
+        currentRow.push(currentField.trim());
+        currentField = '';
+        i++;
+        continue;
+      }
+      
+      if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+        if (char === '\r' && nextChar === '\n') {
+          i += 2;
+        } else {
+          i++;
+        }
+        
+        if (currentField !== '' || currentRow.length > 0) {
+          currentRow.push(currentField.trim());
+          if (currentRow.some(field => field.length > 0)) {
+            rows.push(currentRow);
+          }
+          currentRow = [];
+          currentField = '';
+        }
+        continue;
+      }
+      
+      currentField += char;
+      i++;
+    }
+    
+    if (currentField !== '' || currentRow.length > 0) {
+      currentRow.push(currentField.trim());
+      if (currentRow.some(field => field.length > 0)) {
+        rows.push(currentRow);
       }
     }
     
-    result.push(current);
-    
-    return result.map(field => {
-      let cleaned = field.trim();
-      if (cleaned.length >= 2 && cleaned.startsWith('"') && cleaned.endsWith('"')) {
-        cleaned = cleaned.slice(1, -1);
-      }
-      cleaned = cleaned.replace(/""/g, '"');
-      return cleaned;
-    });
+    return rows;
   };
   
-  const headerLine = parseCSVLine(lines[0]);
-  const headers = headerLine.map(h => h.trim());
+  // Parse CSV into rows
+  const rawRows = parseCSVRows(csvText);
+  if (rawRows.length === 0) return [];
+  
+  // First row is headers
+  const headerRow = rawRows[0];
+  const headers = headerRow.map(h => h.trim());
   
   const headerMap = {
     'customer name': 'Customer Name',
@@ -112,40 +142,78 @@ export const parseCSV = (csvText) => {
     return headerMap[lower] || h;
   });
   
+  const expectedColumnCount = normalizedHeaders.length;
   const data = [];
+  const seenPhones = new Set();
   const isBlank = (v) => {
     const s = (v || '').toString().trim().toLowerCase();
     return s === '' || s === 'n/a' || /^-+$/.test(s);
   };
   
-  const expectedColumnCount = normalizedHeaders.length;
-  for (let i = 1; i < lines.length; i++) {
-    if (lines[i].trim()) {
-      const values = parseCSVLine(lines[i]);
+  const trimField = (value, maxLength = 100) => {
+    if (!value || typeof value !== 'string') return value;
+    const trimmed = value.trim();
+    return trimmed.length > maxLength ? trimmed.substring(0, maxLength) : trimmed;
+  };
+  
+  const getMaxLength = (header) => {
+    if (header === 'Customer Name' || header === 'Business Name') return 100;
+    if (header === 'Address') return 1000;
+    if (header === 'Email') return 255;
+    if (header === 'Mobile Number' || header === 'WhatsApp Number') return 10;
+    if (header === 'State' || header === 'Lead Source' || header === 'Business Category' || header === 'Category') return 100;
+    if (header === 'GST Number') return 50;
+    if (header === 'Product Names (comma separated)') return 500;
+    return 255;
+  };
+  
+  for (let i = 1; i < rawRows.length; i++) {
+    try {
+      const values = rawRows[i];
       
       if (values.length !== expectedColumnCount) {
-        console.warn(`Row ${i + 1}: Expected ${expectedColumnCount} columns, found ${values.length}. Data may be misaligned.`);
-        while (values.length < expectedColumnCount) {
-          values.push('');
-        }
-        if (values.length > expectedColumnCount) {
-          values.splice(expectedColumnCount);
-        }
+        console.warn(`Row ${i + 1}: Column count mismatch (expected ${expectedColumnCount}, found ${values.length}). Skipping row.`);
+        continue;
       }
       
       const row = {};
+      let hasValidData = false;
+      
       normalizedHeaders.forEach((header, index) => {
-        const value = (values[index] || '').trim();
+        const value = trimField((values[index] || '').trim(), getMaxLength(header));
         row[header] = value;
+        if (!isBlank(value)) {
+          hasValidData = true;
+        }
       });
+      
+      if (!hasValidData) {
+        continue;
+      }
+      
+      const phone = row['Mobile Number'] || '';
+      const phoneDigits = phone.replace(/\D/g, '');
+      if (phoneDigits && phoneDigits.length === 10) {
+        if (seenPhones.has(phoneDigits)) {
+          console.warn(`Row ${i + 1}: Duplicate phone number ${phoneDigits}. Skipping row.`);
+          continue;
+        }
+        seenPhones.add(phoneDigits);
+      }
       
       const name = row['Customer Name'] || '';
       const mobile = row['Mobile Number'] || '';
-      if (!(isBlank(name) && isBlank(mobile))) {
-        data.push(row);
+      if (isBlank(name) && isBlank(mobile)) {
+        continue;
       }
+      
+      data.push(row);
+    } catch (error) {
+      console.warn(`Row ${i + 1}: Error processing row - ${error.message}. Skipping row.`);
+      continue;
     }
   }
+  
   return data;
 };
 
@@ -196,5 +264,79 @@ export const formatDate = (dateString) => {
   }
   
   return new Date().toISOString().split('T')[0];
+};
+
+export const exportToExcel = (leads, filename = 'leads_export') => {
+  if (!leads || leads.length === 0) {
+    toastManager.error('No data to export');
+    return;
+  }
+
+  const headers = [
+    'Customer Name',
+    'Phone',
+    'Email',
+    'Business',
+    'Address',
+    'State',
+    'GST Number',
+    'Product Type',
+    'Lead Source',
+    'Customer Type',
+    'Sales Status',
+    'Follow Up Status',
+    'Assigned Salesperson',
+    'Assigned Telecaller',
+    'Date',
+    'Created At'
+  ];
+
+  // Escape CSV values (handles commas, quotes, newlines)
+  const escapeCSV = (value) => {
+    if (value === null || value === undefined) return '';
+    const str = String(value);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  // Build CSV content
+  const rows = leads.map(lead => [
+    escapeCSV(lead.customer || lead.name || 'N/A'),
+    escapeCSV(lead.phone || 'N/A'),
+    escapeCSV(lead.email || 'N/A'),
+    escapeCSV(lead.business || 'N/A'),
+    escapeCSV(lead.address || 'N/A'),
+    escapeCSV(lead.state || 'N/A'),
+    escapeCSV(lead.gst_no || lead.gstNo || 'N/A'),
+    escapeCSV(lead.product_names || lead.productNames || lead.product_type || 'N/A'),
+    escapeCSV(lead.lead_source || lead.leadSource || 'N/A'),
+    escapeCSV(lead.customer_type || lead.customerType || 'N/A'),
+    escapeCSV(lead.sales_status || lead.salesStatus || 'N/A'),
+    escapeCSV(lead.follow_up_status || lead.followUpStatus || 'N/A'),
+    escapeCSV(lead.assigned_salesperson || lead.assignedSalesperson || 'Unassigned'),
+    escapeCSV(lead.assigned_telecaller || lead.assignedTelecaller || 'Unassigned'),
+    escapeCSV(lead.date || 'N/A'),
+    escapeCSV(lead.created_at || lead.createdAt || 'N/A')
+  ]);
+
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.join(','))
+  ].join('\n');
+
+  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  
+  toastManager.success(`Exported ${leads.length} lead(s) to Excel`);
 };
 

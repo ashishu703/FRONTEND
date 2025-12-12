@@ -63,7 +63,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     state: editingCustomer?.state || "",
     customerType: editingCustomer?.customerType || "",
     leadSource: editingCustomer?.enquiryBy || "",
-    salesStatus: editingCustomer?.salesStatus || 'pending',
+    salesStatus: editingCustomer?.salesStatus || '',
     salesStatusRemark: editingCustomer?.salesStatusRemark || '',
     followUpStatus: editingCustomer?.followUpStatus || '',
     followUpRemark: editingCustomer?.followUpRemark || '',
@@ -240,8 +240,20 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
   }
   const handleSubmit = (e) => {
     e.preventDefault()
+    
+    // Validate only phone number (required field)
+    if (!formData.mobileNumber || !formData.mobileNumber.trim()) {
+      alert('Please enter mobile number')
+      return
+    }
+    
+    if (!onSave) {
+      console.error('onSave function is not provided')
+      alert('Error: Save handler is not configured. Please contact support.')
+      return
+    }
+    
     onSave(formData)
-    onClose()
   }
 
   
@@ -276,7 +288,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   <User className="h-4 w-4 text-blue-500" />
-                  Customer Name *
+                  Customer Name
                 </label>
                 <input
                   type="text"
@@ -339,7 +351,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   <Package className="h-4 w-4 text-purple-500" />
-                  Product Name *
+                  Product Name
                 </label>
                 <input
                   type="text"
@@ -347,7 +359,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                   value={formData.productName}
                   onChange={(e) => handleInputChange("productName", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter product name"
+                  placeholder="Enter product name (optional)"
                 />
               </div>
 
@@ -369,7 +381,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   <Globe className="h-4 w-4 text-red-500" />
-                  State *
+                  State
                 </label>
                 <input
                   type="text"
@@ -402,7 +414,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-red-500" />
-                Address *
+                Address
               </label>
               <textarea
                 disabled={isDisabled('address')}
@@ -420,7 +432,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   <User className="h-4 w-4 text-purple-500" />
-                  Customer Type *
+                  Customer Type
                 </label>
                 <input
                   type="text"
@@ -435,7 +447,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   <Globe className="h-4 w-4 text-orange-500" />
-                  Lead Source *
+                  Lead Source
                 </label>
                 <input
                   type="text"
@@ -450,7 +462,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   <FileText className="h-4 w-4 text-indigo-500" />
-                  Date *
+                  Date
                 </label>
                 <input
                   type="date"
@@ -501,6 +513,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                   onChange={(e) => handleInputChange("salesStatus", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
+                  <option value="">Select Lead Status</option>
                   <option value="pending">Pending</option>
                   <option value="running">Running</option>
                   <option value="converted">Converted</option>

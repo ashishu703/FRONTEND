@@ -3,6 +3,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4500
 const ADMIN_BASE = `${API_BASE_URL}/api/admin`;
 const DEPT_HEADS_BASE = `${ADMIN_BASE}/department-heads`;
 const DEPT_USERS_BASE = `${ADMIN_BASE}/department-users`;
+const ORG_BASE = `${API_BASE_URL}/api/organizations`;
 const LEADS_BASE = `${API_BASE_URL}/api/leads`;
 const PRODUCTION_BASE = `${API_BASE_URL}/api/production`;
 
@@ -38,6 +39,7 @@ export const API_ENDPOINTS = {
   LEADS_CREATE: () => `${LEADS_BASE}`,
   LEADS_IMPORT: () => `${LEADS_BASE}/import`,
   LEADS_BATCH_UPDATE: () => `${LEADS_BASE}/batch`,
+  LEADS_BATCH_DELETE: () => `${LEADS_BASE}/batch`,
   LEAD_BY_ID: (id) => `${LEADS_BASE}/${id}`,
   LEADS_STATS: () => `${LEADS_BASE}/stats`,
   SALESPERSON_ASSIGNED_LEADS_ME: () => `${LEADS_BASE}/assigned/salesperson`,
@@ -63,6 +65,11 @@ export const API_ENDPOINTS = {
   STOCK_GET_BY_PRODUCT: (productName) => `${API_BASE_URL}/api/stock/${encodeURIComponent(productName)}`,
   STOCK_UPDATE: (productName) => `${API_BASE_URL}/api/stock/${encodeURIComponent(productName)}`,
   STOCK_BATCH_UPDATE: () => `${API_BASE_URL}/api/stock/batch`,
+
+  // Product images (toolbox interface)
+  // GET returns images for a given product; UPLOAD posts a new image.
+  PRODUCT_IMAGES_GET: (productName) => `${API_BASE_URL}/api/product-images/${encodeURIComponent(productName)}`,
+  PRODUCT_IMAGES_UPLOAD: () => `${API_BASE_URL}/api/product-images`,
 
   // Tickets
   TICKETS_BASE: `${API_BASE_URL}/api/tickets`,
@@ -96,6 +103,15 @@ export const API_ENDPOINTS = {
   MARKETING_CHECK_INS_BY_MEETING: (meetingId) => `${API_BASE_URL}/api/marketing/check-ins/meeting/${meetingId}`,
   MARKETING_CHECK_IN_BY_ID: (id) => `${API_BASE_URL}/api/marketing/check-ins/${id}`,
   MARKETING_CHECK_IN_UPDATE: (id) => `${API_BASE_URL}/api/marketing/check-ins/${id}`,
+
+  // Organizations
+  ORGANIZATIONS_BASE: ORG_BASE,
+  ORGANIZATIONS_CREATE: () => ORG_BASE,
+  ORGANIZATIONS_LIST: (query = '') => `${ORG_BASE}${query ? `?${query}` : ''}`,
+  ORGANIZATIONS_ACTIVE: () => `${ORG_BASE}/active`,
+
+  // expose base URL for rare direct uses
+  API_BASE_URL,
 };
 
 export default API_BASE_URL;

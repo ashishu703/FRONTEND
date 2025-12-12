@@ -18,15 +18,6 @@ class WorkOrderService {
   }
 
   /**
-   * Generates a BNA number
-   * @param {string} workOrderNumber - Work order number
-   * @returns {string} Generated BNA number
-   */
-  generateBNANumber(workOrderNumber) {
-    return `BNA-${workOrderNumber}`;
-  }
-
-  /**
    * Builds work order data from payment data
    * @param {Object} paymentData - Payment data object
    * @returns {Object} Work order data object
@@ -35,10 +26,11 @@ class WorkOrderService {
     const workOrderNumber = this.generateWorkOrderNumber();
     const today = DateFormatter.formatDateISO(new Date());
     const deliveryDate = paymentData.deliveryDate || paymentData.paymentData?.delivery_date;
+    const quotationId = paymentData.quotationId || paymentData.paymentData?.quotation_number || paymentData.paymentData?.quotation_id || 'N/A';
     
     return {
       workOrderNumber,
-      bnaNumber: this.generateBNANumber(workOrderNumber),
+      quotationId: quotationId,
       date: today,
       deliveryDate: deliveryDate || DateFormatter.formatDateISO(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
       contact: paymentData.customer?.phone || paymentData.paymentData?.lead_phone || '+91 98765 43210',

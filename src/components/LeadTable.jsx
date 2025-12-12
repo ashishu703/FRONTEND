@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Hash, User, Building, Shield, Tag, Clock, Settings,
-  Calendar, CheckCircle, XCircle, Edit, Eye, Phone, RefreshCw
+  Calendar, CheckCircle, XCircle, Edit, Eye, Phone, RefreshCw, Filter, X
 } from 'lucide-react';
 
 const LeadTable = ({
@@ -20,8 +20,65 @@ const LeadTable = ({
   onViewTimeline,
   onAssign,
   showCustomerTimeline,
-  setShowColumnFilter
+  setShowColumnFilter,
+  allLeadsData,
+  assignedSalespersonFilter,
+  assignedTelecallerFilter,
+  onAssignedSalespersonFilterChange,
+  onAssignedTelecallerFilterChange,
+  usernames,
+  columnFilters = {},
+  onColumnFilterChange,
+  showColumnFilterRow = false,
+  onToggleColumnFilterRow
 }) => {
+  const [showSalespersonFilter, setShowSalespersonFilter] = useState(false);
+  const [showTelecallerFilter, setShowTelecallerFilter] = useState(false);
+  const salespersonFilterRef = useRef(null);
+  const telecallerFilterRef = useRef(null);
+
+  // Get unique salesperson values from all leads
+  const uniqueSalespersons = React.useMemo(() => {
+    const salespersons = new Set();
+    const allData = allLeadsData && allLeadsData.length > 0 ? allLeadsData : filteredLeads;
+    allData.forEach(lead => {
+      const sp = lead.assignedSalesperson?.trim();
+      if (sp && sp.toLowerCase() !== 'n/a' && sp.toLowerCase() !== 'na' && sp !== '-' && sp !== '') {
+        salespersons.add(sp);
+      }
+    });
+    return Array.from(salespersons).sort();
+  }, [allLeadsData, filteredLeads]);
+
+  // Get unique telecaller values from all leads
+  const uniqueTelecallers = React.useMemo(() => {
+    const telecallers = new Set();
+    const allData = allLeadsData && allLeadsData.length > 0 ? allLeadsData : filteredLeads;
+    allData.forEach(lead => {
+      const tc = lead.assignedTelecaller?.trim();
+      if (tc && tc.toLowerCase() !== 'n/a' && tc.toLowerCase() !== 'na' && tc !== '-' && tc !== '') {
+        telecallers.add(tc);
+      }
+    });
+    return Array.from(telecallers).sort();
+  }, [allLeadsData, filteredLeads]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (salespersonFilterRef.current && !salespersonFilterRef.current.contains(event.target)) {
+        setShowSalespersonFilter(false);
+      }
+      if (telecallerFilterRef.current && !telecallerFilterRef.current.contains(event.target)) {
+        setShowTelecallerFilter(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
   return (
     <div
       className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
@@ -114,17 +171,163 @@ const LeadTable = ({
               )}
               {visibleColumns.assignedSalesperson && (
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 relative" ref={salespersonFilterRef}>
                     <User className="w-4 h-4 text-sky-600" />
                     <span>Assigned Salesperson</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowSalespersonFilter(!showSalespersonFilter);
+                        setShowTelecallerFilter(false);
+                      }}
+                      className={`ml-1 p-1 rounded hover:bg-gray-200 transition-colors ${
+                        assignedSalespersonFilter ? 'text-blue-600' : 'text-gray-400'
+                      }`}
+                      title="Filter by Salesperson"
+                    >
+                      <Filter className="w-3 h-3" />
+                    </button>
+                    {showSalespersonFilter && (
+                      <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[200px] max-h-[300px] overflow-y-auto">
+                        <div className="p-2 border-b border-gray-200 flex items-center justify-between">
+                          <span className="text-xs font-semibold text-gray-700">Filter by Salesperson</span>
+                          {assignedSalespersonFilter && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAssignedSalespersonFilterChange('');
+                                setShowSalespersonFilter(false);
+                              }}
+                              className="text-gray-500 hover:text-gray-700"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="py-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAssignedSalespersonFilterChange('');
+                              setShowSalespersonFilter(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                              !assignedSalespersonFilter ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                            }`}
+                          >
+                            All Salespersons
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAssignedSalespersonFilterChange('Unassigned');
+                              setShowSalespersonFilter(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                              assignedSalespersonFilter === 'Unassigned' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                            }`}
+                          >
+                            Unassigned
+                          </button>
+                          {uniqueSalespersons.map((sp) => (
+                            <button
+                              key={sp}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAssignedSalespersonFilterChange(sp);
+                                setShowSalespersonFilter(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                                assignedSalespersonFilter === sp ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                              }`}
+                            >
+                              {sp}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </th>
               )}
               {visibleColumns.assignedTelecaller && (
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 relative" ref={telecallerFilterRef}>
                     <Phone className="w-4 h-4 text-cyan-600" />
                     <span>Assigned Telecaller</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowTelecallerFilter(!showTelecallerFilter);
+                        setShowSalespersonFilter(false);
+                      }}
+                      className={`ml-1 p-1 rounded hover:bg-gray-200 transition-colors ${
+                        assignedTelecallerFilter ? 'text-blue-600' : 'text-gray-400'
+                      }`}
+                      title="Filter by Telecaller"
+                    >
+                      <Filter className="w-3 h-3" />
+                    </button>
+                    {showTelecallerFilter && (
+                      <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[200px] max-h-[300px] overflow-y-auto">
+                        <div className="p-2 border-b border-gray-200 flex items-center justify-between">
+                          <span className="text-xs font-semibold text-gray-700">Filter by Telecaller</span>
+                          {assignedTelecallerFilter && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAssignedTelecallerFilterChange('');
+                                setShowTelecallerFilter(false);
+                              }}
+                              className="text-gray-500 hover:text-gray-700"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="py-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAssignedTelecallerFilterChange('');
+                              setShowTelecallerFilter(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                              !assignedTelecallerFilter ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                            }`}
+                          >
+                            All Telecallers
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAssignedTelecallerFilterChange('Unassigned');
+                              setShowTelecallerFilter(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                              assignedTelecallerFilter === 'Unassigned' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                            }`}
+                          >
+                            Unassigned
+                          </button>
+                          {uniqueTelecallers.map((tc) => (
+                            <button
+                              key={tc}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAssignedTelecallerFilterChange(tc);
+                                setShowTelecallerFilter(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 ${
+                                assignedTelecallerFilter === tc ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                              }`}
+                            >
+                              {tc}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </th>
               )}
@@ -197,14 +400,198 @@ const LeadTable = ({
                   <button
                     onClick={() => setShowColumnFilter(true)}
                     className="text-gray-600 hover:text-gray-900"
-                    title="Column Filter"
+                    title="Column Visibility"
                   >
                     <Settings className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={onToggleColumnFilterRow}
+                    className={`text-gray-600 hover:text-gray-900 ${showColumnFilterRow ? 'text-blue-600' : ''}`}
+                    title="Toggle Column Filters"
+                  >
+                    <Filter className="w-4 h-4" />
                   </button>
                   <span>Actions</span>
                 </div>
               </th>
             </tr>
+            {showColumnFilterRow && (
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <td className="px-4 py-2"></td>
+                {visibleColumns.customerId && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.customerId || ''}
+                      onChange={(e) => onColumnFilterChange?.('customerId', e.target.value)}
+                      placeholder="Filter ID"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                {visibleColumns.customer && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.customer || ''}
+                      onChange={(e) => onColumnFilterChange?.('customer', e.target.value)}
+                      placeholder="Filter Customer"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                {visibleColumns.business && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.business || ''}
+                      onChange={(e) => onColumnFilterChange?.('business', e.target.value)}
+                      placeholder="Filter Business"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                {visibleColumns.address && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.address || ''}
+                      onChange={(e) => onColumnFilterChange?.('address', e.target.value)}
+                      placeholder="Filter Address"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                {visibleColumns.state && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.state || ''}
+                      onChange={(e) => onColumnFilterChange?.('state', e.target.value)}
+                      placeholder="Filter State"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                {visibleColumns.followUpStatus && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.followUpStatus || ''}
+                      onChange={(e) => onColumnFilterChange?.('followUpStatus', e.target.value)}
+                      placeholder="Filter Status"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                {visibleColumns.salesStatus && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.salesStatus || ''}
+                      onChange={(e) => onColumnFilterChange?.('salesStatus', e.target.value)}
+                      placeholder="Filter Status"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                {visibleColumns.assignedSalesperson && (
+                  <td className="px-4 py-2"></td>
+                )}
+                {visibleColumns.assignedTelecaller && (
+                  <td className="px-4 py-2"></td>
+                )}
+                {visibleColumns.gstNo && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.gstNo || ''}
+                      onChange={(e) => onColumnFilterChange?.('gstNo', e.target.value)}
+                      placeholder="Filter GST"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                {visibleColumns.leadSource && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.leadSource || ''}
+                      onChange={(e) => onColumnFilterChange?.('leadSource', e.target.value)}
+                      placeholder="Filter Source"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                {visibleColumns.productNames && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.productNames || ''}
+                      onChange={(e) => onColumnFilterChange?.('productNames', e.target.value)}
+                      placeholder="Filter Product"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                {visibleColumns.category && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.category || ''}
+                      onChange={(e) => onColumnFilterChange?.('category', e.target.value)}
+                      placeholder="Filter Category"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                {visibleColumns.createdAt && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.createdAt || ''}
+                      onChange={(e) => onColumnFilterChange?.('createdAt', e.target.value)}
+                      placeholder="Filter Date"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                {visibleColumns.telecallerStatus && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.telecallerStatus || ''}
+                      onChange={(e) => onColumnFilterChange?.('telecallerStatus', e.target.value)}
+                      placeholder="Filter Status"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                {visibleColumns.paymentStatus && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.paymentStatus || ''}
+                      onChange={(e) => onColumnFilterChange?.('paymentStatus', e.target.value)}
+                      placeholder="Filter Status"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                {visibleColumns.updatedAt && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.updatedAt || ''}
+                      onChange={(e) => onColumnFilterChange?.('updatedAt', e.target.value)}
+                      placeholder="Filter Date"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
+                <td className="px-4 py-2"></td>
+              </tr>
+            )}
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {tableLoading ? (
@@ -239,10 +626,17 @@ const LeadTable = ({
                     <td className="px-4 py-4 text-sm text-gray-700">{lead.customerId}</td>
                   )}
                   {visibleColumns.customer && (
-                    <td className="px-4 py-4 text-sm text-gray-900">
+                    <td className="px-4 py-4 text-sm text-gray-900 max-w-[220px]">
                       <div>
-                        <div className="font-medium">{lead.customer}</div>
-                        <div className="text-gray-600">{lead.phone}</div>
+                        <div className="flex items-start gap-2 flex-wrap">
+                          <span className="font-medium break-words whitespace-normal">{lead.customer}</span>
+                          {lead.leadSource && lead.leadSource.toUpperCase() === 'TRADEINDIA' && (
+                            <span className="px-2 py-0.5 text-xs font-semibold text-orange-700 bg-orange-100 border border-orange-300 rounded-full flex-shrink-0" title="Generated from TradeIndia">
+                              TRADEINDIA
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-gray-600 break-words whitespace-normal">{lead.phone}</div>
                         {lead.whatsapp && (
                           <a 
                             href={`https://wa.me/91${lead.whatsapp}`} 
@@ -265,10 +659,10 @@ const LeadTable = ({
                     </td>
                   )}
                   {visibleColumns.business && (
-                    <td className="px-4 py-4 text-sm text-gray-900">{lead.business}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900 max-w-[200px] break-words whitespace-normal">{lead.business}</td>
                   )}
                   {visibleColumns.address && (
-                    <td className="px-4 py-4 text-sm text-gray-900">{lead.address}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900 max-w-[200px] break-words whitespace-normal">{lead.address}</td>
                   )}
                   {visibleColumns.state && (
                     <td className="px-4 py-4 text-sm text-gray-900">{lead.state}</td>

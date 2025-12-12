@@ -178,12 +178,7 @@ class LeadService {
   async importLeads(leadsPayload) {
     try {
       const resp = await departmentHeadService.importLeads(leadsPayload);
-      const inserted = resp?.data?.importedCount ?? leadsPayload.length;
-      const duplicates = resp?.data?.duplicatesCount ?? 0;
-      const msg = duplicates > 0
-        ? `Import completed! ${inserted} added, ${duplicates} duplicate(s) skipped`
-        : `Import completed! ${inserted} leads processed`;
-      toastManager.success(msg);
+      // Return full response including skipped rows info
       return resp;
     } catch (error) {
       apiErrorHandler.handleError(error, 'import leads');
@@ -268,11 +263,6 @@ class LeadService {
     if (!customer || customer === 'N/A' || customer.length < 2) {
       validationErrors.push(`Row ${index + 2}: Customer Name is required and must be at least 2 characters`);
       customer = customer === 'N/A' ? '' : customer;
-    }
-    
-    if (customer.length > 100) {
-      validationErrors.push(`Row ${index + 2}: Customer Name exceeds 100 characters (${customer.length} chars). Truncating.`);
-      customer = customer.substring(0, 100);
     }
     
     // Process phone number

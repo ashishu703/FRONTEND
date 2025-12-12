@@ -166,11 +166,11 @@ const WorkOrderFormat = ({ paymentData, onClose, onSave }) => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">BNA Number</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Quotation ID</label>
                     <input
                       type="text"
-                      value={workOrder.bnaNumber}
-                      onChange={(e) => setWorkOrder(prev => ({ ...prev, bnaNumber: e.target.value }))}
+                      value={workOrder.quotationId}
+                      onChange={(e) => setWorkOrder(prev => ({ ...prev, quotationId: e.target.value }))}
                       className="w-full border border-gray-300 rounded px-3 py-2"
                     />
                   </div>
@@ -427,8 +427,8 @@ const WorkOrderPreview = ({ workOrder }) => {
           <p className="font-semibold text-gray-900">{formattedDeliveryDate}</p>
         </div>
         <div className="bg-amber-50 p-2 rounded border border-amber-200">
-          <p className="text-xs text-gray-600">BNA</p>
-          <p className="font-semibold text-gray-900">{workOrder.bnaNumber}</p>
+          <p className="text-xs text-gray-600">Quotation ID</p>
+          <p className="font-semibold text-gray-900">{workOrder.quotationId}</p>
         </div>
         <div className="bg-amber-50 p-2 rounded border border-amber-200">
           <p className="text-xs text-gray-600">Contact</p>

@@ -1,8 +1,52 @@
-import React from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { X, Download } from 'lucide-react';
-import QuotationPreview from './QuotationPreview';
+import DynamicTemplateRenderer from './DynamicTemplateRenderer';
+import templateService from '../services/TemplateService';
 
 const QuotationPreviewModal = ({ isOpen, onClose, quotationData, companyBranches, user, onDownloadPDF }) => {
+  const [templateHtml, setTemplateHtml] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const templateKey = quotationData?.template;
+
+  useEffect(() => {
+    const loadTemplate = async () => {
+      if (!isOpen || !templateKey) {
+        setTemplateHtml('');
+        return;
+      }
+      setLoading(true);
+      try {
+        const tpl = await templateService.getTemplateByTypeAndKey('quotation', templateKey);
+        setTemplateHtml(tpl?.html_content || '');
+      } catch (err) {
+        console.error('Failed to load quotation template for preview modal:', err);
+        setTemplateHtml('');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadTemplate();
+  }, [isOpen, templateKey]);
+
+  const context = useMemo(() => {
+    if (!quotationData) return {};
+    const branch =
+      (quotationData.selectedBranch &&
+        companyBranches?.[quotationData.selectedBranch]) ||
+      (companyBranches ? Object.values(companyBranches)[0] : {}) ||
+      {};
+
+    return {
+      ...quotationData,
+      branch,
+      billTo: quotationData.billTo,
+      user,
+      templateKey: quotationData.template,
+      templateType: 'quotation',
+    };
+  }, [quotationData, companyBranches, user]);
+
   if (!isOpen || !quotationData) return null;
 
   return (
@@ -21,11 +65,13 @@ const QuotationPreviewModal = ({ isOpen, onClose, quotationData, companyBranches
         </div>
         
         <div className="p-6">
-          <QuotationPreview
-            data={quotationData}
-            companyBranches={companyBranches}
-            user={user}
+          {!loading && templateHtml && (
+            <DynamicTemplateRenderer
+              html={templateHtml}
+              data={context}
+              containerId="quotation-content"
           />
+          )}
         </div>
         
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">

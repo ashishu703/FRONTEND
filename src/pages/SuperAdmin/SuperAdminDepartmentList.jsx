@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, RefreshCw, Edit, Trash2, LogOut, Calendar, Users, Building, User, Mail, Filter, Eye, EyeOff, X } from 'lucide-react';
 import departmentHeadService, { uiToApiDepartment, apiToUiDepartment } from '../../api/admin_api/departmentHeadService';
 import departmentUserService from '../../api/admin_api/departmentUserService';
 import { useAuth } from '../../hooks/useAuth';
+import organizationService from '../../api/admin_api/organizationService';
 
 const DepartmentManagement = () => {
   const { login, impersonate, user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All Departments');
   const [showFilters, setShowFilters] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const searchTimeoutRef = useRef(null);
 
   const [departments, setDepartments] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -21,8 +24,8 @@ const DepartmentManagement = () => {
     username: '',
     email: '',
     password: '',
-    departmentType: 'office_sales',
-    companyName: 'Anode Electric Pvt. Ltd.',
+    departmentType: '',
+    companyName: '',
     role: 'department_head',
     monthlyTarget: ''
   });
@@ -42,6 +45,7 @@ const DepartmentManagement = () => {
   const [pages, setPages] = useState(0);
   const [stats, setStats] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [companies, setCompanies] = useState([]);
   const isSuperAdmin = (user?.role === 'superadmin');
 
   const getDepartmentTypeColor = (type) => {
@@ -92,15 +96,13 @@ const DepartmentManagement = () => {
         limit,
       };
       if (selectedFilter !== 'All Departments') params.departmentType = uiToApiDepartment(selectedFilter);
-      if (searchTerm.trim()) params.search = searchTerm.trim();
+      if (debouncedSearchTerm.trim()) params.search = debouncedSearchTerm.trim();
       
-      // Fetch only department heads (UI supports heads only)
       const headsRes = await departmentHeadService.listHeads(params);
       const heads = (headsRes.users || headsRes.data?.users || []).map(mapUserFromApi);
       const sorted = heads.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setDepartments(sorted);
       
-      // Use pagination from heads response (they should be the same)
       const pagination = headsRes.pagination || headsRes.data?.pagination || {};
       if (pagination) {
         setTotal(pagination.total || 0);
@@ -118,7 +120,16 @@ const DepartmentManagement = () => {
       const res = await departmentUserService.getStats();
       setStats(res);
     } catch (err) {
-      // Silently fail stats loading
+    }
+  };
+
+  const fetchCompanies = async () => {
+    try {
+      const res = await organizationService.listActive();
+      const items = res.organizations || res.data?.organizations || [];
+      setCompanies(items);
+    } catch (err) {
+      console.error('Failed to load organizations for company list', err);
     }
   };
 
@@ -128,9 +139,33 @@ const DepartmentManagement = () => {
     setIsRefreshing(false);
   };
 
+  // Debounce search term
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setPage(1); // Reset to first page when search changes
+    }, 500); // 500ms debounce delay
+    
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchTerm]);
+
+  // Fetch users when filters change
   useEffect(() => {
     fetchUsers();
-  }, [page, limit, selectedFilter, searchTerm]);
+  }, [page, limit, selectedFilter, debouncedSearchTerm]);
+
+  // Fetch companies on mount
+  useEffect(() => {
+    fetchCompanies();
+  }, []);
 
   useEffect(() => {
     fetchStats();
@@ -169,7 +204,6 @@ const DepartmentManagement = () => {
         companyName: selectedDept.companyName,
         role: 'department_head',
       };
-      // Only include monthlyTarget for sales, marketing, and telesales departments
       const apiDeptType = uiToApiDepartment(selectedDept.departmentType);
       if (apiDeptType === 'office_sales' || 
           apiDeptType === 'marketing_sales' || 
@@ -188,17 +222,22 @@ const DepartmentManagement = () => {
     }
   };
 
+  // Frontend date filtering (backend doesn't support date filters)
   const isWithinDateRange = (dateStr) => {
     if (!dateFrom && !dateTo) return true;
-    const parsed = new Date(dateStr);
-    const fromOk = dateFrom ? parsed >= new Date(dateFrom) : true;
-    const toOk = dateTo ? parsed <= new Date(dateTo) : true;
-    return fromOk && toOk;
+    if (!dateStr) return false;
+    try {
+      const parsed = new Date(dateStr);
+      const fromOk = dateFrom ? parsed >= new Date(dateFrom + 'T00:00:00') : true;
+      const toOk = dateTo ? parsed <= new Date(dateTo + 'T23:59:59') : true;
+      return fromOk && toOk;
+    } catch (e) {
+      return false;
+    }
   };
 
   const filteredDepartments = departments.filter((dept) => {
-    const matchesDate = isWithinDateRange(dept.createdAt);
-    return matchesDate;
+    return isWithinDateRange(dept.createdAt);
   });
 
   return (
@@ -221,7 +260,7 @@ const DepartmentManagement = () => {
           <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-3xl font-bold text-purple-600 mb-1">{(stats?.byRole || []).find(r => r.role === 'department_head')?.totalUsers || 0}</div>
+                <div className="text-3xl font-bold text-purple-600 mb-1">{total}</div>
                 <div className="text-gray-500 text-sm">Department Heads</div>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
@@ -279,7 +318,10 @@ const DepartmentManagement = () => {
 
               <select 
                 value={selectedFilter}
-                onChange={(e) => setSelectedFilter(e.target.value)}
+                onChange={(e) => {
+                  setSelectedFilter(e.target.value);
+                  setPage(1); // Reset to first page when filter changes
+                }}
                 disabled={!isSuperAdmin}
                 className={`h-9 px-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white text-sm ${!isSuperAdmin ? 'opacity-60 cursor-not-allowed' : ''}`}
                 title="Department Type"
@@ -290,6 +332,8 @@ const DepartmentManagement = () => {
                 <option>Marketing Department</option>
                 <option>HR Department</option>
                 <option>Production Department</option>
+                <option>Accounts Department</option>
+                <option>IT Department</option>
                 <option>Telesales Department</option>
               </select>
 
@@ -327,17 +371,23 @@ const DepartmentManagement = () => {
               </div>
               <div className="md:col-span-2 flex items-center justify-end gap-3">
                 <button
+                  type="button"
                   className="px-4 py-2 text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50"
                   onClick={() => {
                     setDateFrom('');
                     setDateTo('');
+                    setPage(1); // Reset to first page when clearing filters
                   }}
                 >
                   Clear
                 </button>
                 <button
+                  type="button"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  onClick={() => setShowFilters(false)}
+                  onClick={() => {
+                    // Date filter is applied on frontend, no need to refetch
+                    setShowFilters(false);
+                  }}
                 >
                   Apply
                 </button>
@@ -450,7 +500,7 @@ const DepartmentManagement = () => {
                       </td>
                       <td className="py-3 px-6">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-600 border border-indigo-200">
-                          {dept.companyName || 'Anode Electric Pvt. Ltd.'}
+                          {dept.companyName || 'N/A'}
                         </span>
                       </td>
                       <td className="py-3 px-6">
@@ -574,24 +624,47 @@ const DepartmentManagement = () => {
                   e.preventDefault();
                   setSaving(true);
                   try {
+                    // Prevent accidental defaulting to Sales – department type must be chosen
+                    if (!newDept.departmentType) {
+                      alert('Please select a Department Type');
+                      setSaving(false);
+                      return;
+                    }
+
+                    // Validate company name is selected
+                    if (!newDept.companyName || newDept.companyName.trim() === '') {
+                      alert('Please select a Company Name');
+                      setSaving(false);
+                      return;
+                    }
+
                     const payload = {
-                      username: newDept.username,
-                      email: newDept.email,
+                      username: newDept.username.trim(),
+                      email: newDept.email.trim(),
                       password: newDept.password,
                       departmentType: newDept.departmentType,
-                      companyName: newDept.companyName,
+                      companyName: newDept.companyName.trim(),
                       role: newDept.role,
                     };
-                    // Only include monthlyTarget for sales, marketing, and telesales departments
                     if (newDept.departmentType === 'office_sales' || 
                         newDept.departmentType === 'marketing_sales' || 
                         newDept.departmentType === 'telesales') {
                       payload.monthlyTarget = newDept.monthlyTarget || 0;
                     }
+                    
+                    console.log('📤 Submitting department head payload:', payload);
                     await departmentHeadService.createHead(payload);
                     await fetchUsers();
                     setShowAddModal(false);
-                    setNewDept({ username: '', email: '', password: '', departmentType: 'office_sales', companyName: 'Anode Electric Pvt. Ltd.', role: 'department_head', monthlyTarget: '' });
+                    setNewDept({
+                      username: '',
+                      email: '',
+                      password: '',
+                      departmentType: '',
+                      companyName: 'Anode Electric Pvt. Ltd.',
+                      role: 'department_head',
+                      monthlyTarget: ''
+                    });
                   } catch (err) {
                     alert(err.message || 'Failed to create user');
                   } finally {
@@ -649,6 +722,7 @@ const DepartmentManagement = () => {
                       onChange={(e) => setNewDept({ ...newDept, departmentType: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                     >
+                      <option value="">Select Department Type</option>
                       <option value="office_sales">Sales Department</option>
                       <option value="marketing_sales">Marketing Department</option>
                       <option value="hr">HR Department</option>
@@ -659,16 +733,30 @@ const DepartmentManagement = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">Company Name</label>
+                    <label className="block text-xs text-gray-600 mb-1">Company Name *</label>
                     <select
                       value={newDept.companyName}
-                      onChange={(e) => setNewDept({ ...newDept, companyName: e.target.value })}
+                      onChange={(e) => {
+                        console.log('🏢 Company selected:', e.target.value);
+                        setNewDept({ ...newDept, companyName: e.target.value });
+                      }}
+                      required
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
                     >
-                      <option>Anode Electric Pvt. Ltd.</option>
-                      <option>Anode Metals</option>
-                      <option>Samrridhi Industries</option>
+                      <option value="">Select Company Name</option>
+                      {companies.length === 0 ? (
+                        <option value="" disabled>No organizations available</option>
+                      ) : (
+                        companies.map((org) => (
+                          <option key={org.id} value={org.name}>
+                            {org.name}
+                          </option>
+                        ))
+                      )}
                     </select>
+                    {!newDept.companyName && (
+                      <p className="text-red-500 text-xs mt-1">Please select a company name</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs text-gray-600 mb-1">Role</label>
@@ -798,11 +886,19 @@ const DepartmentManagement = () => {
                     <select
                       value={selectedDept.companyName}
                       onChange={(e) => setSelectedDept({ ...selectedDept, companyName: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus-border-blue-500 outline-none bg-white"
                     >
-                      <option>Anode Electric Pvt. Ltd.</option>
-                      <option>Anode Metals</option>
-                      <option>Samrridhi Industries</option>
+                      {companies.length === 0 ? (
+                        <option value={selectedDept.companyName || ''}>
+                          {selectedDept.companyName || 'No organizations available'}
+                        </option>
+                      ) : (
+                        companies.map((org) => (
+                          <option key={org.id} value={org.name}>
+                            {org.name}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
                   <div>

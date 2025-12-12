@@ -1,12 +1,11 @@
-import React from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import html2pdf from 'html2pdf.js'
 import { Check, X } from 'lucide-react'
-import { CorporateStandardInvoice } from './salespersonpi'
-import PITemplate2 from '../../components/PITemplate2'
-import PITemplate3 from '../../components/PITemplate3'
 import apiClient from '../../utils/apiClient'
 import { API_ENDPOINTS } from '../../api/admin_api/api'
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService'
+import DynamicTemplateRenderer from '../../components/DynamicTemplateRenderer'
+import templateService from '../../services/TemplateService'
 
 export default function PIPreviewModal({
   open,
@@ -18,6 +17,52 @@ export default function PIPreviewModal({
   viewingCustomerId,
   onPICreated
 }) {
+  const [templateHtml, setTemplateHtml] = useState('')
+  const [loadingTemplate, setLoadingTemplate] = useState(false)
+
+  const effectiveTemplateKey =
+    piPreviewData?.template || piPreviewData?.data?.template || null
+
+  useEffect(() => {
+    const loadTemplate = async () => {
+      if (!open || !effectiveTemplateKey) {
+        setTemplateHtml('')
+        return
+      }
+      setLoadingTemplate(true)
+      try {
+        const tpl = await templateService.getTemplateByTypeAndKey('pi', effectiveTemplateKey)
+        setTemplateHtml(tpl?.html_content || '')
+      } catch (err) {
+        console.error('Failed to load PI template for preview modal:', err)
+        setTemplateHtml('')
+      } finally {
+        setLoadingTemplate(false)
+      }
+    }
+    loadTemplate()
+  }, [open, effectiveTemplateKey])
+
+  const context = useMemo(() => {
+    if (!piPreviewData) return {}
+
+    const branchObj =
+      (piPreviewData.selectedBranch &&
+        companyBranches?.[piPreviewData.selectedBranch]) ||
+      (companyBranches ? Object.values(companyBranches)[0] : {}) ||
+      {}
+
+    const baseData = piPreviewData.data || piPreviewData
+
+    return {
+      ...baseData,
+      branch: branchObj,
+      billTo: baseData.billTo,
+      templateKey: effectiveTemplateKey,
+      templateType: 'pi',
+    }
+  }, [piPreviewData, companyBranches, effectiveTemplateKey])
+
   if (!open) return null
 
   const handleSave = async () => {
@@ -188,34 +233,13 @@ export default function PIPreviewModal({
           <div className="flex justify-center p-4">
             <div className="bg-white max-w-full" style={{width: '100%', maxWidth: '8.5in'}}>
               <div id="pi-preview-content">
-                {(() => {
-                  const template = piPreviewData?.template || piPreviewData?.data?.template || 'template1'
-                  if (template === 'template2') {
-                    return (
-                      <PITemplate2 
-                        selectedBranch={(piPreviewData && piPreviewData.selectedBranch) || selectedBranch}
-                        companyBranches={companyBranches}
-                        quotations={piPreviewData?.data ? [piPreviewData.data] : []}
-                      />
-                    )
-                  } else if (template === 'template3') {
-                    return (
-                      <PITemplate3 
-                        selectedBranch={(piPreviewData && piPreviewData.selectedBranch) || selectedBranch}
-                        companyBranches={companyBranches}
-                        quotations={piPreviewData?.data ? [piPreviewData.data] : []}
-                      />
-                    )
-                  } else {
-                    return (
-                      <CorporateStandardInvoice 
-                        selectedBranch={(piPreviewData && piPreviewData.selectedBranch) || selectedBranch}
-                        companyBranches={companyBranches}
-                        quotations={piPreviewData?.data ? [piPreviewData.data] : []}
-                      />
-                    )
-                  }
-                })()}
+                {!loadingTemplate && templateHtml && (
+                  <DynamicTemplateRenderer
+                    html={templateHtml}
+                    data={context}
+                    containerId="pi-content"
+                  />
+                )}
               </div>
             </div>
           </div>

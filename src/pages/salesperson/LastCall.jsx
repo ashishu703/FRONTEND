@@ -1,13 +1,14 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
-import { Eye, Edit, MessageCircle, Mail, Search, Filter, Download, ChevronDown, X, Save, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, FileText, Receipt, CreditCard, Phone } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Eye, Edit, MessageCircle, Mail, Search, Filter, Download, ChevronDown, X, Save, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, FileText, Receipt, CreditCard, Phone, Calendar } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import quotationService from '../../api/admin_api/quotationService';
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
 import toastManager from '../../utils/ToastManager';
+import { useAuth } from '../../hooks/useAuth';
 
 // Lead Status Preview Modal Component
 const LeadStatusPreview = ({ lead, onClose }) => {
@@ -281,7 +282,7 @@ const LeadStatusPreview = ({ lead, onClose }) => {
 // Edit Lead Status Modal Component
 const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   const [formData, setFormData] = useState({
-    sales_status: lead?.sales_status || 'pending',
+    sales_status: lead?.sales_status || '',
     sales_status_remark: lead?.sales_status_remark || '',
     follow_up_status: lead?.follow_up_status || '',
     follow_up_remark: lead?.follow_up_remark || '',
@@ -308,6 +309,7 @@ const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   };
 
   const statusOptions = [
+    { value: '', label: 'Select Lead Status' },
     { value: 'pending', label: 'Pending' },
     { value: 'running', label: 'Running' },
     { value: 'converted', label: 'Converted' },
@@ -497,29 +499,76 @@ export default function LastCall() {
   const [followUpFilter, setFollowUpFilter] = useState('');
   const [showFilterPanel, setShowFilterPanel] = useState(false);
 
-  // Fetch leads data
+  // Get current user for role-based filtering
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+  const lastUserIdRef = React.useRef(null);
+
+  // Fetch leads data with user change detection
   useEffect(() => {
+    // If no user is logged in, do nothing
+    if (!currentUserId) {
+      return;
+    }
+
+    // If user has changed, clear existing leads
+    if (lastUserIdRef.current !== null && lastUserIdRef.current !== currentUserId) {
+      console.log('[LastCall] User changed, clearing leads. Old:', lastUserIdRef.current, 'New:', currentUserId);
+      setLeads([]);
+      setFilteredLeads([]);
+      setError(null);
+    }
+
+    // Update last user ID
+    lastUserIdRef.current = currentUserId;
+
     const fetchLeads = async () => {
       try {
         setLoading(true);
         setError(null);
         
+        // Global cache busting is automatically applied by apiClient.get()
         const response = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
         const leadsData = response?.data || [];
         
-        // Filter leads - only show leads that have been interacted with (status changed)
-        const interactedLeads = leadsData.filter(lead => {
-          // Show leads where salesperson has made status updates
-          const hasSalesStatus = lead.sales_status && lead.sales_status !== 'pending';
-          const hasSalesRemark = lead.sales_status_remark && lead.sales_status_remark.trim() !== '';
+        console.log(`[LastCall] Received ${leadsData.length} leads from API for user: ${user?.email}`);
+        
+        // Filter leads - only show leads that have actual follow-up/call data
+        // This means they must have follow_up_status or follow_up_remark (indicating a call/interaction happened)
+        // AND the follow-up date must be <= today's date
+        const today = new Date();
+        today.setHours(23, 59, 59, 999); // Set to end of today for comparison
+        
+        const lastCallLeads = leadsData.filter(lead => {
           const hasFollowUpStatus = lead.follow_up_status && lead.follow_up_status.trim() !== '';
           const hasFollowUpRemark = lead.follow_up_remark && lead.follow_up_remark.trim() !== '';
           
-          return hasSalesStatus || hasSalesRemark || hasFollowUpStatus || hasFollowUpRemark;
+          // Only include leads that have actual call/follow-up data
+          if (!hasFollowUpStatus && !hasFollowUpRemark) {
+            return false;
+          }
+          
+          // Check if the follow-up date is <= today
+          let callDate = null;
+          if (lead.follow_up_date) {
+            callDate = new Date(lead.follow_up_date);
+          } else if (lead.updated_at) {
+            callDate = new Date(lead.updated_at);
+          }
+          
+          // If no date is available, exclude the lead
+          if (!callDate || isNaN(callDate.getTime())) {
+            return false;
+          }
+          
+          // Only include if call date is <= today
+          return callDate <= today;
         });
         
-        setLeads(interactedLeads);
-        setFilteredLeads(interactedLeads);
+        console.log(`[LastCall] Filtered to ${lastCallLeads.length} last call leads for user: ${user?.email}`);
+        
+        setLeads(lastCallLeads);
+        setFilteredLeads(lastCallLeads);
       } catch (err) {
         console.error('Error fetching leads:', err);
         setError('Failed to load last call data');
@@ -529,7 +578,8 @@ export default function LastCall() {
     };
 
     fetchLeads();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
 
   // Close filter panel when clicking outside
   useEffect(() => {
@@ -560,10 +610,11 @@ export default function LastCall() {
     }
     
     const lowercasedQuery = query.toLowerCase();
+    const queryStr = query.trim();
     let filtered = leads.filter(
       (lead) =>
         lead.name?.toLowerCase().includes(lowercasedQuery) ||
-        lead.phone?.toLowerCase().includes(lowercasedQuery) ||
+        String(lead.phone || '').includes(queryStr) ||
         lead.email?.toLowerCase().includes(lowercasedQuery) ||
         lead.business?.toLowerCase().includes(lowercasedQuery) ||
         lead.address?.toLowerCase().includes(lowercasedQuery) ||
@@ -571,7 +622,7 @@ export default function LastCall() {
         lead.lead_source?.toLowerCase().includes(lowercasedQuery) ||
         lead.sales_status?.toLowerCase().includes(lowercasedQuery) ||
         lead.follow_up_status?.toLowerCase().includes(lowercasedQuery) ||
-        lead.id?.toString().includes(lowercasedQuery)
+        lead.id?.toString().includes(queryStr)
     );
     
     // Apply filters on top of search results
@@ -610,10 +661,11 @@ export default function LastCall() {
     // Apply search query first if exists
     if (searchQuery.trim()) {
       const lowercasedQuery = searchQuery.toLowerCase();
+      const queryStr = searchQuery.trim();
       filtered = filtered.filter(
         (lead) =>
           lead.name?.toLowerCase().includes(lowercasedQuery) ||
-          lead.phone?.toLowerCase().includes(lowercasedQuery) ||
+          String(lead.phone || '').includes(queryStr) ||
           lead.email?.toLowerCase().includes(lowercasedQuery) ||
           lead.business?.toLowerCase().includes(lowercasedQuery) ||
           lead.address?.toLowerCase().includes(lowercasedQuery) ||
@@ -621,7 +673,7 @@ export default function LastCall() {
           lead.lead_source?.toLowerCase().includes(lowercasedQuery) ||
           lead.sales_status?.toLowerCase().includes(lowercasedQuery) ||
           lead.follow_up_status?.toLowerCase().includes(lowercasedQuery) ||
-          lead.id?.toString().includes(lowercasedQuery)
+          lead.id?.toString().includes(queryStr)
       );
     }
     
@@ -763,11 +815,77 @@ export default function LastCall() {
     );
   };
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+  // Format date for display (short format like "10 Dec")
+  const formatDateShort = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short'
+    });
+  };
+
+  // Format date for grouping (full format)
+  const formatDateForGrouping = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  // Group leads by date (last call date)
+  const groupedLeads = useMemo(() => {
+    const groups = {};
+    
+    filteredLeads.forEach(lead => {
+      // Use follow_up_date if available, otherwise use updated_at
+      let dateObj = null;
+      let dateKey = '';
+      
+      if (lead.follow_up_date) {
+        dateObj = new Date(lead.follow_up_date);
+        dateKey = lead.follow_up_date; // Use ISO date string as key
+      } else if (lead.updated_at) {
+        dateObj = new Date(lead.updated_at);
+        dateKey = lead.updated_at.split('T')[0]; // Use date part only
+      } else {
+        dateKey = 'No Date';
+        dateObj = new Date(0); // Use epoch for sorting
+      }
+      
+      if (!groups[dateKey]) {
+        groups[dateKey] = {
+          dateObj: dateObj,
+          dateKey: dateKey,
+          leads: []
+        };
+      }
+      groups[dateKey].leads.push(lead);
+    });
+    
+    // Sort dates in descending order (most recent first)
+    const sortedDates = Object.keys(groups).sort((a, b) => {
+      if (a === 'No Date') return 1;
+      if (b === 'No Date') return -1;
+      return groups[b].dateObj - groups[a].dateObj;
+    });
+    
+    return sortedDates.map(dateKey => ({
+      dateKey,
+      dateObj: groups[dateKey].dateObj,
+      leads: groups[dateKey].leads
+    }));
+  }, [filteredLeads]);
+
+  // Pagination logic for grouped leads
+  const totalPages = Math.ceil(groupedLeads.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
+  const paginatedGroups = groupedLeads.slice(startIndex, endIndex);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -918,133 +1036,152 @@ export default function LastCall() {
             </div>
           </div>
         </div>
-      ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Lead ID
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer Name
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Business Name
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Address
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Follow Up Status & Remark
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Lead Status & Remark
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Last Call
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedLeads.length > 0 ? (
-                  paginatedLeads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {lead.id}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="font-medium text-sm text-gray-900">{lead.name}</div>
-                          <div className="text-xs text-gray-500 flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            {lead.phone}
-                          </div>
-                          {lead.email && lead.email !== "N/A" && (
-                            <div className="text-xs mt-1 text-cyan-600">
-                              <button 
-                                onClick={() => window.open(`mailto:${lead.email}?subject=Follow up from ANOCAB&body=Dear ${lead.name},%0D%0A%0D%0AThank you for your interest in our products.%0D%0A%0D%0ABest regards,%0D%0AANOCAB Team`, '_blank')}
-                                className="inline-flex items-center gap-1 transition-colors hover:text-cyan-700"
-                                title="Send Email"
-                              >
-                                <Mail className="h-3 w-3" /> {lead.email}
-                              </button>
+      ) : groupedLeads.length > 0 ? (
+        <div className="space-y-6">
+          {paginatedGroups.map((group) => {
+            const dateDisplay = group.dateKey === 'No Date' 
+              ? 'No Date' 
+              : formatDateShort(group.dateKey);
+            const dateFull = group.dateKey === 'No Date' 
+              ? 'No Date' 
+              : formatDateForGrouping(group.dateKey);
+            
+            return (
+              <div key={group.dateKey} className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                        <Clock className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {dateDisplay}
+                        </h3>
+                        <p className="text-sm text-gray-600">{dateFull}</p>
+                      </div>
+                    </div>
+                    <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                      {group.leads.length} call{group.leads.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LEAD ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CUSTOMER NAME</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">BUSINESS NAME</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ADDRESS</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">FOLLOW UP STATUS & REMARK</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LEAD STATUS & REMARK</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LAST CALL</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACTION</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {group.leads.map((lead) => (
+                        <tr key={lead.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {lead.id}
+                          </td>
+                          <td className="px-6 py-4 whitespace-normal break-words text-sm text-gray-900">
+                            <div>
+                              <div className="font-medium">{lead.name}</div>
+                              <div className="text-xs text-gray-500 flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {lead.phone}
+                              </div>
+                              {lead.email && lead.email !== "N/A" && (
+                                <div className="text-xs mt-1 text-cyan-600">
+                                  <button 
+                                    onClick={() => window.open(`mailto:${lead.email}?subject=Follow up from ANOCAB&body=Dear ${lead.name},%0D%0A%0D%0AThank you for your interest in our products.%0D%0A%0D%0ABest regards,%0D%0AANOCAB Team`, '_blank')}
+                                    className="inline-flex items-center gap-1 transition-colors hover:text-cyan-700"
+                                    title="Send Email"
+                                  >
+                                    <Mail className="h-3 w-3" /> {lead.email}
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {lead.business || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {lead.address || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="space-y-1">
-                          {getFollowUpBadge(lead.follow_up_status)}
-                          {lead.follow_up_remark && (
-                            <div className="text-xs text-gray-600 italic">
-                              "{lead.follow_up_remark}"
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {lead.business || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            <div className="flex flex-col gap-0.5 max-w-xs">
+                              {(() => {
+                                const address = lead.address || 'N/A';
+                                if (!address || address === 'N/A') return <span>N/A</span>;
+                                const parts = address.split(',').map(part => part.trim()).filter(part => part);
+                                return parts.length > 0 ? parts.map((part, idx) => (
+                                  <span key={idx}>{part}</span>
+                                )) : <span>N/A</span>;
+                              })()}
                             </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="space-y-1">
-                          {getStatusBadge(lead.sales_status)}
-                          {lead.sales_status_remark && (
-                            <div className="text-xs text-gray-600 italic">
-                              "{lead.sales_status_remark}"
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <div className="space-y-1">
+                              {getFollowUpBadge(lead.follow_up_status)}
+                              {lead.follow_up_remark && (
+                                <div className="text-xs text-gray-600 italic">
+                                  "{lead.follow_up_remark}"
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {lead.updated_at ? new Date(lead.updated_at).toLocaleDateString('en-GB') : 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center space-x-2">
-                          <Tooltip text="View Details">
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePreview(lead);
-                              }}
-                              className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                          </Tooltip>
-                          <Tooltip text="Edit Status">
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(lead);
-                              }}
-                              className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-50"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                          </Tooltip>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="8" className="px-6 py-4 text-center text-sm text-gray-500">
-                      No leads found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <div className="space-y-1">
+                              {getStatusBadge(lead.sales_status)}
+                              {lead.sales_status_remark && (
+                                <div className="text-xs text-gray-600 italic">
+                                  "{lead.sales_status_remark}"
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {lead.follow_up_date 
+                              ? new Date(lead.follow_up_date).toLocaleDateString('en-GB') 
+                              : (lead.updated_at ? new Date(lead.updated_at).toLocaleDateString('en-GB') : 'N/A')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex items-center space-x-2">
+                              <Tooltip text="View Details">
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePreview(lead);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                              </Tooltip>
+                              <Tooltip text="Edit Status">
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEdit(lead);
+                                  }}
+                                  className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-50"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </button>
+                              </Tooltip>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}  
+          
           {/* Pagination */}
           <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-lg border border-gray-200">
             {/* Items per page selector */}
@@ -1065,9 +1202,9 @@ export default function LastCall() {
 
             {/* Page info */}
             <div className="text-sm text-gray-700">
-              {filteredLeads.length > 0 ? (
+              {groupedLeads.length > 0 ? (
                 <>
-                  Showing {startIndex + 1} to {endIndex} of {filteredLeads.length} results
+                  Showing {startIndex + 1} to {Math.min(endIndex, groupedLeads.length)} of {groupedLeads.length} date groups ({filteredLeads.length} total calls)
                 </>
               ) : (
                 <>No results found</>
@@ -1146,6 +1283,16 @@ export default function LastCall() {
                 <ChevronsRight className="h-4 w-4" />
               </button>
             </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+          <div className="px-6 py-12 text-center">
+            <Clock className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No last call data</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              You don't have any last call activities at the moment.
+            </p>
           </div>
         </div>
       )}

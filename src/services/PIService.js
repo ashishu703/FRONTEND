@@ -116,7 +116,6 @@ class PIService {
         originalQuotationTotal = quotationTotal;
       }
     } catch (e) {
-      console.warn('Failed to fetch payments for advance calculation:', e);
       if (piTotal > 0 && quotationTotal > 0 && piTotal < quotationTotal) {
         advancePayment = quotationTotal - piTotal;
         originalQuotationTotal = quotationTotal;
@@ -156,13 +155,34 @@ class PIService {
     return finalTotal;
   }
 
-  buildBillTo(completeQuotation, pi) {
+  buildBillTo(completeQuotation, pi, customerData = null) {
+    // Extract raw values from multiple sources
+    const rawBusiness = completeQuotation.customer_business || 
+                        completeQuotation.customer_name ||
+                        completeQuotation.billTo?.business || 
+                        pi.customer_business ||
+                        customerData?.business || '';
+    
+    const rawName = completeQuotation.contact_person || 
+                    completeQuotation.customer_contact ||
+                    completeQuotation.billTo?.name ||
+                    customerData?.name ||
+                    customerData?.contact_person || '';
+    
+    const rawGst = completeQuotation.customer_gst_no || 
+                   completeQuotation.billTo?.gstNo || 
+                   customerData?.gstNo ||
+                   customerData?.gst_no || '';
+    
     return {
-      business: completeQuotation.customer_business || completeQuotation.billTo?.business || pi.customer_business || '',
-      address: completeQuotation.customer_address || completeQuotation.billTo?.address || '',
-      phone: completeQuotation.customer_phone || completeQuotation.billTo?.phone || '',
-      gstNo: completeQuotation.customer_gst_no || completeQuotation.billTo?.gstNo || '',
-      state: completeQuotation.customer_state || completeQuotation.billTo?.state || ''
+      // If business is N/A, use name as business
+      business: (rawBusiness && rawBusiness !== 'N/A') ? rawBusiness : rawName,
+      buyerName: rawName,
+      name: rawName,
+      address: completeQuotation.customer_address || completeQuotation.billTo?.address || customerData?.address || '',
+      phone: completeQuotation.customer_phone || completeQuotation.billTo?.phone || customerData?.phone || customerData?.mobile || '',
+      gstNo: (rawGst && rawGst !== 'N/A') ? rawGst : '',
+      state: completeQuotation.customer_state || completeQuotation.billTo?.state || customerData?.state || ''
     };
   }
 

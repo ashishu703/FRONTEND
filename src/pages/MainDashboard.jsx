@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useCompany } from '../context/CompanyContext';
-import SuperAdminSalesDashboard from './SuperAdmin/SuperAdminSalesDashboard';
+import SuperAdminDashboard from './SuperAdmin/SuperAdminDashboard';
 import AllcustomerList from './SuperAdmin/AllcustomerList';
 import SuperAdminDepartmentList from './SuperAdmin/SuperAdminDepartmentList';
 import AllLeads from './SuperAdmin/AllLeads';
 import Configuration from './SuperAdmin/Configuration';
-import Performance from './SuperAdmin/Performance';
+import PaymentInfo from './SuperAdmin/PaymentInfo';
 import MarketingLeads from './SalesDepartmentHead/MarketingLeads';
 import TodayVisit from './SalesDepartmentHead/TodayVisit';
 import MarketingSalespersonDashboard from './SuperAdmin/MarketingSalespersonDashboard';
 import TeleSalesDashboard from './SuperAdmin/TeleSalesDashboard';
 import OfficeSalesPersonDashboard from './SuperAdmin/OfficeSalesPersonDashboard';
-import HRDepartmentDashboard from './SuperAdmin/HRDepartmentDashboard';
-import ProductionDepartmentDashboard from './SuperAdmin/ProductionDepartmentDashboard';
 import CreateOrganisation from './SuperAdmin/CreateOrganisation';
+import ReportsPage from './Reports/ReportsPage';
+import DetailedReportPage from './Reports/DetailedReportPage';
 
 const MainDashboard = ({ activeView, setActiveView }) => {
   const { selectedCompany } = useCompany();
@@ -23,17 +23,14 @@ const MainDashboard = ({ activeView, setActiveView }) => {
     // placeholder to trigger effects/data refetch in children via props/context if needed
   }, [selectedCompany]);
   const renderContent = () => {
-    console.log('MainDashboard - activeView:', activeView);
     switch (activeView) {
       case 'dashboard':
-        return <SuperAdminSalesDashboard setActiveView={setActiveView} />;
+        return <SuperAdminDashboard />;
       case 'leads':
         return <AllLeads />;
       case 'marketing-leads':
-        console.log('MainDashboard: Rendering MarketingLeads component');
         return <MarketingLeads />;
       case 'today-visit':
-        console.log('MainDashboard: Rendering TodayVisit component');
         try {
           return <TodayVisit />;
         } catch (error) {
@@ -49,21 +46,22 @@ const MainDashboard = ({ activeView, setActiveView }) => {
       case 'configuration':
         return <Configuration />;
       case 'performance':
-        return <Performance />;
+        return <PaymentInfo />;
       case 'marketing-salesperson':
         return <MarketingSalespersonDashboard />;
       case 'tele-sales':
         return <TeleSalesDashboard />;
       case 'office-sales-person':
         return <OfficeSalesPersonDashboard />;
-      case 'hr-department':
-        return <HRDepartmentDashboard />;
-      case 'production-department':
-        return <ProductionDepartmentDashboard />;
       case 'create-organisation':
         return <CreateOrganisation />;
+      case 'reports':
+        return <ReportsPage setActiveView={setActiveView} />;
       default:
-        return <SuperAdminSalesDashboard setActiveView={setActiveView} />;
+        if (activeView?.startsWith('detailed-report-')) {
+          return <DetailedReportPage activeView={activeView} setActiveView={setActiveView} />;
+        }
+        return <SuperAdminDashboard />;
     }
   };
 

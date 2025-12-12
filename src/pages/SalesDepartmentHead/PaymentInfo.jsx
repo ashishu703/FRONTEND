@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Download, User, DollarSign, Clock, Calendar, Link, Copy, Eye, MoreHorizontal, CreditCard, AlertCircle, CheckCircle, XCircle, ChevronDown, Edit, Package, FileText, RotateCw } from 'lucide-react';
+import { Search, Filter, Download, User, DollarSign, Clock, Calendar, Link, Copy, Eye, MoreHorizontal, CreditCard, AlertCircle, CheckCircle, XCircle, ChevronDown, Edit, Package, FileText, RotateCw, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import paymentService from '../../api/admin_api/paymentService';
 import WorkOrderFormat from './WorkOrderFormat';
 
@@ -28,45 +28,58 @@ const PaymentsDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 50,
+    limit: 10, // Items per page
     total: 0,
     pages: 0
   });
 
-  // Fetch all payments directly from payment API
+  // Fetch all payments directly from payment API (fetch all at once for client-side pagination)
   const fetchAllPayments = async () => {
     try {
       setLoading(true);
       console.log('=== PAYMENT INFO: Fetching all payments ===');
       
+      // Fetch all payments with a large limit to get all data for client-side pagination
       const response = await paymentService.getAllPayments({
-        page: pagination.page,
-        limit: pagination.limit
+        page: 1,
+        limit: 10000 // Large limit to fetch all payments
       });
       
       const paymentsData = response?.data || [];
       const paginationData = response?.pagination || { page: 1, limit: 50, total: 0, pages: 0 };
       
-      console.log(`✅ Fetched ${paymentsData.length} payments`);
+      console.log(`✅ Fetched ${paymentsData.length} payments (total available: ${paginationData.total || paymentsData.length})`);
       
       // Transform payment data to match UI format
       const transformedPayments = paymentsData.map(payment => {
         const paymentAmount = Number(payment.installment_amount || payment.paid_amount || 0);
-        const totalAmount = Number(payment.total_quotation_amount || 0);
-        const paidAmount = Number(payment.paid_amount || 0);
-        const remainingAmount = Number(payment.remaining_amount || 0);
+        // Use quotation-level totals for status calculation
+        const quotationTotal = Number(payment.quotation_total_amount || payment.total_quotation_amount || 0);
+        const quotationTotalPaid = Number(payment.quotation_total_paid || 0);
+        const quotationRemainingDue = Number(payment.quotation_remaining_due || 0);
         
-        // Determine payment status
+        // Check approval status first - if rejected, show Rejected
+        const approvalStatus = (payment.approval_status || '').toLowerCase();
         let displayStatus = 'Due';
-        if (totalAmount > 0) {
-          if (paidAmount >= totalAmount) {
-            displayStatus = 'Paid';
-          } else if (paidAmount > 0) {
+        
+        if (approvalStatus === 'rejected') {
+          displayStatus = 'Rejected';
+        } else {
+          // Determine payment status based on quotation-level cumulative payments
+          if (quotationTotal > 0) {
+            if (quotationTotalPaid >= quotationTotal) {
+              displayStatus = 'Paid';
+            } else if (quotationTotalPaid > 0) {
+              displayStatus = 'Advance';
+            }
+          } else if (quotationTotalPaid > 0) {
             displayStatus = 'Advance';
           }
-        } else if (paidAmount > 0) {
-          displayStatus = 'Advance';
         }
+        
+        // Format payment date
+        const paymentDateObj = payment.payment_date ? new Date(payment.payment_date) : (payment.created_at ? new Date(payment.created_at) : null);
+        const formattedPaymentDate = paymentDateObj ? paymentDateObj.toLocaleDateString('en-GB') : 'N/A';
         
         return {
           id: payment.id,
@@ -77,17 +90,24 @@ const PaymentsDashboard = () => {
             email: payment.lead_email || 'N/A',
             phone: payment.lead_phone || 'N/A'
           },
-          productName: payment.product_name || 'N/A',
+          productName: payment.product_name_from_quotation || payment.product_name || 'N/A',
           address: payment.address || 'N/A',
-          amount: paymentAmount,
-          totalAmount: totalAmount,
-          paidAmount: paidAmount,
-          dueAmount: remainingAmount,
+          salespersonName: payment.salesperson_name || payment.salespersonName || 'N/A',
+          amount: paymentAmount, // Individual payment amount
+          // Quotation-level totals (for display)
+          quotationTotal: quotationTotal,
+          quotationTotalPaid: quotationTotalPaid,
+          quotationRemainingDue: quotationRemainingDue,
+          // Legacy fields for backward compatibility
+          totalAmount: quotationTotal,
+          paidAmount: quotationTotalPaid,
+          dueAmount: quotationRemainingDue,
           status: displayStatus,
           paymentStatus: payment.payment_status || 'pending',
           approvalStatus: payment.approval_status || 'pending',
           created: payment.payment_date ? new Date(payment.payment_date).toLocaleString() : (payment.created_at ? new Date(payment.created_at).toLocaleString() : ''),
           paymentDate: payment.payment_date || payment.created_at,
+          formattedPaymentDate: formattedPaymentDate,
           paymentLink: payment.payment_receipt_url || '',
           quotationId: payment.quotation_number || `QT-${String(payment.quotation_id || '').slice(-4)}`,
           piId: payment.pi_number || `PI-${String(payment.pi_id || '').slice(-4)}`,
@@ -100,7 +120,8 @@ const PaymentsDashboard = () => {
       
       setAllPaymentsData(transformedPayments);
       setPayments(transformedPayments);
-      setPagination(paginationData);
+      // Don't update pagination from API, we'll use client-side pagination
+      // Keep the current pagination state for client-side pagination
       
       console.log('✅ Payment data loaded successfully');
     } catch (e) {
@@ -116,7 +137,13 @@ const PaymentsDashboard = () => {
   // Load all payments on component mount
   useEffect(() => {
     fetchAllPayments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, [searchTerm, statusFilter, dateRange.startDate, dateRange.endDate]);
 
   // Client-side filtering based on search, status, and date range
   const filteredPayments = allPaymentsData.filter(payment => {
@@ -162,13 +189,45 @@ const PaymentsDashboard = () => {
     return matchesSearch && matchesStatus && matchesDateRange;
   });
 
+  // Calculate pagination for filtered results
+  const totalFiltered = filteredPayments.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pagination.limit));
+  
+  // Validate and adjust current page if needed
+  useEffect(() => {
+    if (totalPages > 0 && pagination.page > totalPages) {
+      setPagination(prev => ({ ...prev, page: totalPages }));
+    }
+  }, [totalPages, pagination.page]);
+  
+  const currentPage = Math.min(Math.max(1, pagination.page), totalPages);
+  const startIndex = (currentPage - 1) * pagination.limit;
+  const endIndex = Math.min(startIndex + pagination.limit, totalFiltered);
+  const paginatedPayments = filteredPayments.slice(startIndex, endIndex);
+
+  // Pagination handlers
+  const goToPage = (page) => {
+    const validPage = Math.max(1, Math.min(page, totalPages));
+    if (validPage >= 1 && validPage <= totalPages && validPage !== pagination.page) {
+      setPagination(prev => ({ ...prev, page: validPage }));
+      // Scroll to top of table when page changes
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const goToFirstPage = () => goToPage(1);
+  const goToLastPage = () => goToPage(totalPages);
+  const goToPreviousPage = () => goToPage(pagination.page - 1);
+  const goToNextPage = () => goToPage(pagination.page + 1);
+
   // Calculate stats based on filtered payments
   const stats = {
     allPayments: filteredPayments.length,
     totalValue: filteredPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0),
     paid: filteredPayments.filter(p => p.status === 'Paid').length,
     advance: filteredPayments.filter(p => p.status === 'Advance').length,
-    due: filteredPayments.filter(p => p.status === 'Due').length
+    due: filteredPayments.filter(p => p.status === 'Due').length,
+    rejected: filteredPayments.filter(p => p.status === 'Rejected').length
   };
 
   const getStatusColor = (status) => {
@@ -629,6 +688,12 @@ const PaymentsDashboard = () => {
                     >
                       Due
                     </button>
+                    <button 
+                      onClick={() => { setStatusFilter('Rejected'); setShowFilterDropdown(false); }}
+                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${statusFilter === 'Rejected' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
+                    >
+                      Rejected
+                    </button>
                   </div>
                 </div>
               )}
@@ -643,6 +708,7 @@ const PaymentsDashboard = () => {
               <option value="Paid">Paid</option>
               <option value="Advance">Advance</option>
               <option value="Due">Due</option>
+              <option value="Rejected">Rejected</option>
             </select>
             
             <button 
@@ -669,6 +735,9 @@ const PaymentsDashboard = () => {
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Customer Name</span>
                   </th>
                   <th className="px-6 py-4 text-left">
+                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Salesperson</span>
+                  </th>
+                  <th className="px-6 py-4 text-left">
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Product Name</span>
                   </th>
                   <th className="px-6 py-4 text-left">
@@ -679,6 +748,9 @@ const PaymentsDashboard = () => {
                   </th>
                   <th className="px-6 py-4 text-left">
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Payment Status</span>
+                  </th>
+                  <th className="px-6 py-4 text-left">
+                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Payment Date</span>
                   </th>
                   <th className="px-6 py-4 text-left">
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Purchase Order</span>
@@ -703,7 +775,7 @@ const PaymentsDashboard = () => {
                   </tr>
                 ) : filteredPayments.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="px-6 py-8 text-center">
+                    <td colSpan="11" className="px-6 py-8 text-center">
                       <div className="flex flex-col items-center justify-center text-gray-500">
                         <AlertCircle className="w-12 h-12 mb-3 text-gray-400" />
                         <p className="text-lg font-medium mb-1">No Payments Found</p>
@@ -716,7 +788,7 @@ const PaymentsDashboard = () => {
                       </div>
                     </td>
                   </tr>
-                ) : filteredPayments.map((payment, index) => (
+                ) : paginatedPayments.map((payment, index) => (
                   <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-900 font-medium">
@@ -732,24 +804,49 @@ const PaymentsDashboard = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
+                      <span className="text-sm text-gray-900 font-medium">{payment.salespersonName || 'N/A'}</span>
+                    </td>
+                    <td className="px-6 py-4">
                       <span className="text-sm text-gray-900">{payment.productName || 'N/A'}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-700">{payment.address || 'N/A'}</span>
+                      <div className="flex flex-col gap-0.5">
+                        {(() => {
+                          const address = payment.address || 'N/A';
+                          if (!address || address === 'N/A') return <span className="text-sm text-gray-700">N/A</span>;
+                          const parts = address.split(',').map(part => part.trim()).filter(part => part);
+                          return parts.length > 0 ? parts.map((part, idx) => (
+                            <span key={idx} className="text-sm text-gray-700">{part}</span>
+                          )) : <span className="text-sm text-gray-700">N/A</span>;
+                        })()}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-900 font-mono">{payment.quotationId || 'N/A'}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(payment.status)}`}>
-                          {getStatusIcon(payment.status)}
-                          {payment.status}
-                        </span>
-                        {payment.amount > 0 && (
-                          <span className="text-sm text-gray-600">₹{payment.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(payment.status)}`}>
+                            {getStatusIcon(payment.status)}
+                            {payment.status}
+                          </span>
+                          {payment.amount > 0 && (
+                            <span className="text-sm text-gray-600">₹{payment.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                          )}
+                        </div>
+                        {/* Show quotation-level summary for clarity */}
+                        {payment.quotationTotal > 0 && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            <span className="font-medium">Order:</span> ₹{payment.quotationTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })} | 
+                            <span className="text-green-600 font-medium"> Paid:</span> ₹{payment.quotationTotalPaid.toLocaleString('en-IN', { maximumFractionDigits: 2 })} | 
+                            <span className="text-red-600 font-medium"> Due:</span> ₹{payment.quotationRemainingDue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                          </div>
                         )}
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-900">{payment.formattedPaymentDate || 'N/A'}</span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-gray-900">{payment.purchaseOrderId || 'N/A'}</span>
@@ -798,16 +895,117 @@ const PaymentsDashboard = () => {
           </div>
         )}
 
-        {/* Table Footer */}
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
-          <div className="text-sm text-gray-500">
-            Showing {filteredPayments.length} of {allPaymentsData.length} payments
-            {(dateRange.startDate || dateRange.endDate) && (
-              <span className="ml-2 text-blue-600">
-                (Filtered by date range)
-              </span>
-            )}
+        {/* Table Footer with Pagination */}
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-6 pt-4 border-t border-gray-200 gap-4">
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-500">
+              Showing {startIndex + 1} to {Math.min(endIndex, totalFiltered)} of {totalFiltered} payments
+              {totalFiltered !== allPaymentsData.length && (
+                <span className="ml-2 text-blue-600">
+                  (filtered from {allPaymentsData.length} total)
+                </span>
+              )}
+            </div>
+            
+            {/* Rows per page selector */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Rows per page:</label>
+              <select
+                value={pagination.limit}
+                onChange={(e) => {
+                  const newLimit = Number(e.target.value);
+                  setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
+                }}
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700 cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
+              </select>
+            </div>
           </div>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && totalFiltered > 0 && (
+            <div className="flex items-center gap-2">
+              {/* First page */}
+              <button
+                onClick={goToFirstPage}
+                disabled={currentPage === 1}
+                className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="First page"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </button>
+
+              {/* Previous page */}
+              <button
+                onClick={goToPreviousPage}
+                disabled={currentPage === 1}
+                className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Previous page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {/* Page numbers */}
+              <div className="flex items-center gap-1">
+                {totalPages > 0 && Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => goToPage(pageNum)}
+                      className={`px-3 py-1 text-sm rounded-md border transition-colors cursor-pointer ${
+                        currentPage === pageNum
+                          ? 'bg-blue-600 text-white border-blue-600 font-semibold'
+                          : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {/* Page info */}
+              <span className="text-sm text-gray-600 px-2 whitespace-nowrap">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              {/* Next page */}
+              <button
+                onClick={goToNextPage}
+                disabled={currentPage >= totalPages}
+                className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Next page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+
+              {/* Last page */}
+              <button
+                onClick={goToLastPage}
+                disabled={currentPage >= totalPages}
+                className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Last page"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1013,17 +1211,22 @@ const PaymentsDashboard = () => {
                     Payment Information
                   </h3>
                   <div className="grid grid-cols-1 gap-3">
-                    <div>
-                      <label className="text-xs font-medium text-gray-500">Amount Paid</label>
+                    <div className="bg-blue-50 p-2 rounded border border-blue-200">
+                      <label className="text-xs font-medium text-gray-700">This Payment Amount</label>
                       <p className="text-green-600 font-semibold text-base">{formatCurrency(viewingPayment.amount)}</p>
                     </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-500">Total Amount</label>
-                      <p className="text-gray-900 font-semibold text-base">{formatCurrency(viewingPayment.totalAmount)}</p>
+                    <div className="bg-gray-50 p-2 rounded border">
+                      <label className="text-xs font-medium text-gray-700">Quotation Total (Order Amount)</label>
+                      <p className="text-gray-900 font-semibold text-base">{formatCurrency(viewingPayment.quotationTotal || viewingPayment.totalAmount)}</p>
                     </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-500">Due Amount</label>
-                      <p className="text-red-600 font-semibold text-base">{formatCurrency(viewingPayment.dueAmount)}</p>
+                    <div className="bg-green-50 p-2 rounded border border-green-200">
+                      <label className="text-xs font-medium text-gray-700">Total Paid (All Approved Payments)</label>
+                      <p className="text-green-600 font-semibold text-base">{formatCurrency(viewingPayment.quotationTotalPaid || viewingPayment.paidAmount)}</p>
+                      <p className="text-xs text-gray-500 mt-1">Only payments approved by accounts department</p>
+                    </div>
+                    <div className="bg-red-50 p-2 rounded border border-red-200">
+                      <label className="text-xs font-medium text-gray-700">Remaining Due</label>
+                      <p className="text-red-600 font-semibold text-base">{formatCurrency(viewingPayment.quotationRemainingDue || viewingPayment.dueAmount)}</p>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-gray-500">Payment Status</label>
