@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, X, LayoutDashboard, Users, Package, Box, Wrench, LogOut, Monitor, Bell, User, ChevronDown, ChevronRight, Clock, Calendar, Camera } from 'lucide-react';
 import MobileDashboard from './MobileDashboard';
 import MobileLeads from './MobileLeads';
@@ -10,12 +10,26 @@ import MobileAssignedMeetings from './MobileAssignedMeetings';
 import MobileCheckInHistory from './MobileCheckInHistory';
 import { useAuth } from '../../../hooks/useAuth';
 import AshvayChat from '../../../components/AshvayChat';
+import FunctionUpcoming from '../../../components/FunctionUpcoming';
 
 const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => {
   const { user } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [followUpOpen, setFollowUpOpen] = useState(false);
+
+  // Listen for navigation events from child components
+  useEffect(() => {
+    const handleNavigateToDashboard = () => {
+      setCurrentPage('dashboard');
+    };
+    
+    window.addEventListener('navigateToDashboard', handleNavigateToDashboard);
+    
+    return () => {
+      window.removeEventListener('navigateToDashboard', handleNavigateToDashboard);
+    };
+  }, []);
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-blue-600' },
@@ -45,7 +59,7 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
       case 'dashboard':
         return <MobileDashboard />;
       case 'customers':
-        return <MobileLeads />;
+        return <FunctionUpcoming />;
       case 'meetings':
         return <MobileAssignedMeetings />;
       case 'checkin-history':
@@ -55,7 +69,7 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
       case 'products':
         return <MobileProducts />;
       case 'toolbox':
-        return <MobileToolbox />;
+        return <FunctionUpcoming />;
       case 'followup-connected':
       case 'followup-not-connected':
       case 'followup-next-meeting':

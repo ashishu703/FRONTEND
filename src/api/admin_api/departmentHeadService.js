@@ -108,6 +108,10 @@ class DepartmentHeadService {
     return apiClient.put(API_ENDPOINTS.LEADS_BATCH_UPDATE(), { ids, updateData: payload });
   }
 
+  async deleteLead(id) {
+    return apiClient.request(API_ENDPOINTS.LEAD_BY_ID(id), { method: 'DELETE' });
+  }
+
   // Proforma Invoices
   async getAllPendingPIs() {
     return apiClient.get('/api/proforma-invoices/pending');

@@ -13,6 +13,16 @@ export default function MobileAssignedMeetings() {
 
   useEffect(() => {
     fetchMeetings();
+    
+    // Listen for meeting updates
+    const handleMeetingUpdate = () => {
+      fetchMeetings();
+    };
+    
+    window.addEventListener('marketingMeetingsUpdated', handleMeetingUpdate);
+    return () => {
+      window.removeEventListener('marketingMeetingsUpdated', handleMeetingUpdate);
+    };
   }, []);
 
   const fetchMeetings = async () => {
@@ -21,14 +31,28 @@ export default function MobileAssignedMeetings() {
       setError(null);
       const response = await apiClient.get(API_ENDPOINTS.MARKETING_MEETINGS_ASSIGNED());
       
-      if (response.data.success) {
-        setMeetings(response.data.data || []);
+      // apiClient.get() returns data directly, not wrapped in response.data
+      if (response && response.success) {
+        const meetingsData = response.data || [];
+        // Enrich meetings with check-in status
+        const enrichedMeetings = meetingsData.map(meeting => ({
+          ...meeting,
+          customer_name: meeting.customer_name || meeting.customer || meeting.lead_customer || 'N/A',
+          address: meeting.address || meeting.lead_address || 'Address not provided',
+          customer_phone: meeting.customer_phone || meeting.phone || meeting.lead_phone || null,
+          customer_email: meeting.customer_email || meeting.email || meeting.lead_email || null,
+          // Check-in status: check if meeting has check-in or status is Completed
+          is_checked_in: meeting.is_checked_in || meeting.has_checkin || meeting.status === 'Completed' || false,
+        }));
+        setMeetings(enrichedMeetings);
       } else {
-        setError(response.data.message || 'Failed to fetch meetings');
+        setError(response?.message || 'Failed to fetch meetings');
       }
     } catch (err) {
       console.error('Error fetching meetings:', err);
-      setError(err.response?.data?.message || 'Failed to fetch meetings');
+      // apiClient throws errors with err.data or err.message
+      const errorMessage = err.data?.message || err.message || err.response?.data?.message || 'Failed to fetch meetings';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -75,9 +99,14 @@ export default function MobileAssignedMeetings() {
   };
 
   const handleCheckInComplete = () => {
+    console.log('Check-in completed, refreshing meetings...');
     setShowCheckIn(false);
     setSelectedMeeting(null);
-    fetchMeetings(); // Refresh meetings
+    // Refresh meetings to show updated status (stays on assigned meetings page)
+    // Small delay to ensure backend has processed the check-in
+    setTimeout(() => {
+      fetchMeetings();
+    }, 500);
   };
 
   if (showCheckIn && selectedMeeting) {
@@ -97,7 +126,7 @@ export default function MobileAssignedMeetings() {
     <div className="p-4 pb-24">
       <div className="mb-4">
         <h1 className="text-xl font-bold text-gray-900">Assigned Meetings</h1>
-        <p className="text-sm text-gray-500 mt-1">Your scheduled customer meetings</p>
+        <p className="text-sm text-gray-500 mt-1">View and check in to your assigned or imported customer leads</p>
       </div>
 
       {loading ? (
@@ -178,7 +207,7 @@ export default function MobileAssignedMeetings() {
                 </div>
               )}
 
-              {meeting.status !== 'Completed' && meeting.status !== 'Cancelled' && (
+              {!meeting.is_checked_in && meeting.status !== 'Completed' && meeting.status !== 'Cancelled' && (
                 <button
                   onClick={() => handleCheckIn(meeting)}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
@@ -188,10 +217,10 @@ export default function MobileAssignedMeetings() {
                 </button>
               )}
 
-              {meeting.status === 'Completed' && (
+              {(meeting.is_checked_in || meeting.status === 'Completed') && (
                 <div className="flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium">
                   <CheckCircle className="h-4 w-4" />
-                  <span>Check-in Completed</span>
+                  <span>Checked In</span>
                 </div>
               )}
             </div>

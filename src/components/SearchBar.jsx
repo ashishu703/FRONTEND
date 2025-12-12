@@ -1,12 +1,13 @@
 import React from 'react';
-import { Search, Plus, Upload, RefreshCw, Download } from 'lucide-react';
+import { Search, Plus, Upload, RefreshCw, Download, Trash2 } from 'lucide-react';
 
 const SearchBar = ({ 
   searchTerm, 
   onSearchChange, 
   onImportClick, 
   onAddCustomer, 
-  onAssignSelected, 
+  onAssignSelected,
+  onDeleteSelected,
   selectedCount,
   onRefresh 
 }) => {
@@ -49,6 +50,18 @@ const SearchBar = ({
         >
           <span>{selectedCount > 0 ? 'Reassign' : 'Assign'} Selected{selectedCount ? ` (${selectedCount})` : ''}</span>
         </button>
+        
+        {onDeleteSelected && (
+          <button
+            onClick={onDeleteSelected}
+            disabled={selectedCount === 0}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${selectedCount === 0 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}
+            title={selectedCount > 0 ? `Delete ${selectedCount} selected lead(s)` : 'Select leads to delete'}
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>Delete Selected{selectedCount ? ` (${selectedCount})` : ''}</span>
+          </button>
+        )}
           
         <button
           onClick={onRefresh}

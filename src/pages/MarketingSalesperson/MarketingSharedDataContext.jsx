@@ -409,12 +409,27 @@ export const MarketingSharedDataProvider = ({ children }) => {
     );
   };
 
+  // Add customer
+  const addCustomer = (customer) => {
+    setCustomers(prevCustomers => [...prevCustomers, customer]);
+  };
+
+  // Delete customer
+  const deleteCustomer = (customerId) => {
+    setCustomers(prevCustomers => 
+      prevCustomers.filter(customer => customer.id !== customerId)
+    );
+  };
+
   const value = {
     customers,
+    setCustomers,
     loading,
     getCustomersByStatus,
     getStatusCounts,
-    updateCustomer
+    updateCustomer,
+    addCustomer,
+    deleteCustomer
   };
 
   return (

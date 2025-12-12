@@ -1,2924 +1,1196 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { Search, Filter, Upload, RefreshCw, User, Mail, Building, Shield, Tag, Clock, Calendar, Phone, CheckCircle, XCircle, Hash, MapPin, Info, Plus, TrendingUp, Target, Users, BarChart3, ChevronDown, Download, UserPlus, X, Package, CreditCard, PhoneCall, FileText, Calendar as CalendarIcon, Edit, Eye, Navigation, Printer, DollarSign, Map, Globe, Settings } from 'lucide-react';
-import departmentUsersService, { apiToUiDepartment } from '../../api/admin_api/departmentUsersService';
-import { API_ENDPOINTS } from '../../api/admin_api/api';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import AddCustomerModal from '../SalesDepartmentHead/AddCustomerModal';
+import QuotationPreviewModal from '../../components/QuotationPreviewModal';
+import PIPreviewModal from '../salesperson/PIPreviewModal';
+import CustomerTimeline from '../../components/CustomerTimeline';
+import FilterBadges from '../../components/FilterBadges';
+import SearchBar from '../../components/SearchBar';
+import LeadTable from '../../components/LeadTable';
+import ColumnFilterModal from '../../components/ColumnFilterModal';
+import EditLeadModal from '../../components/EditLeadModal';
+import AssignLeadModal from '../../components/AssignLeadModal';
+import ImportCSVModal from '../../components/ImportCSVModal';
+import ImportPreviewModal from '../../components/ImportPreviewModal';
+import LeadPreviewDrawer from '../../components/LeadPreviewDrawer';
+import apiErrorHandler from '../../utils/ApiErrorHandler';
+import toastManager from '../../utils/ToastManager';
 import apiClient from '../../utils/apiClient';
-import AddCustomerForm from '../salesperson/salespersonaddcustomer.jsx';
-import MarketingQuotation from '../MarketingSalesperson/MarketingQuotation';
-import { MarketingCorporateStandardInvoice } from '../MarketingSalesperson/MarketingProformaInvoice';
+import { API_ENDPOINTS } from '../../api/admin_api/api';
+import { LeadsFilterService } from '../../services/LeadsFilterService';
+import LeadService from '../../services/LeadService';
+import UserService from '../../services/UserService';
+import PIService from '../../services/PIService';
+import QuotationService from '../../services/QuotationService';
+import { generateQuotationPDF } from '../../utils/pdfUtils';
+import { downloadCSVTemplate, parseCSV, formatDate as formatDateUtil } from '../../utils/csvUtils';
+import { getStatusBadge as getStatusBadgeUtil } from '../../utils/statusUtils';
+import { calculateAssignedCounts, getUnassignedLeadIds, filterLeads } from '../../utils/leadFilters';
+import { COMPANY_BRANCHES, DEFAULT_USER, DEFAULT_BRANCH } from '../../config/appConfig';
 
 const MarketingLeads = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedLeads, setSelectedLeads] = useState([]);
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewLead, setPreviewLead] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
-  const fileInputRef = useRef(null);
-  const [leadsData, setLeadsData] = useState(null);
-  const [showColumnFilters, setShowColumnFilters] = useState(false);
+  const [leadsData, setLeadsData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
-  const [showImportDropdown, setShowImportDropdown] = useState(false);
-  // Close lightweight popups on outside click
-  useEffect(() => {
-    const handleGlobalClick = () => {
-      setShowImportDropdown(false);
-    };
-    document.addEventListener('click', handleGlobalClick);
-    return () => document.removeEventListener('click', handleGlobalClick);
-  }, []);
-  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
-  const [selectedLeadForAssignment, setSelectedLeadForAssignment] = useState(null);
-  const [selectedSalesperson, setSelectedSalesperson] = useState('');
-  const [assignmentDate, setAssignmentDate] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showImportPopup, setShowImportPopup] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [importFile, setImportFile] = useState(null);
+  const [importPreview, setImportPreview] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewLead, setPreviewLead] = useState(null);
+  const [showCustomerTimeline, setShowCustomerTimeline] = useState(false);
+  const [timelineLead, setTimelineLead] = useState(null);
+  const [quotationCounts, setQuotationCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
+  const [piCounts, setPiCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
+  const [loadingCounts, setLoadingCounts] = useState(false);
+  const [statusFilter, setStatusFilter] = useState({ type: null, status: null });
+  const [assignmentFilter, setAssignmentFilter] = useState(null);
+  const [filteredCustomerIds, setFilteredCustomerIds] = useState(new Set());
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedLeadForEdit, setSelectedLeadForEdit] = useState(null);
-  const [selectedLeadForView, setSelectedLeadForView] = useState(null);
-  const [activeViewTab, setActiveViewTab] = useState('overview');
-  const [showQuotationModal, setShowQuotationModal] = useState(false);
-  const [quotationData, setQuotationData] = useState(null);
-  const [showProformaModal, setShowProformaModal] = useState(false);
-  const [proformaData, setProformaData] = useState(null);
-  const [showStatusUpdateModal, setShowStatusUpdateModal] = useState(false);
-  const [showBulkAssignmentModal, setShowBulkAssignmentModal] = useState(false);
-  const [selectedLeadsForBulk, setSelectedLeadsForBulk] = useState([]);
-  const [bulkAssignmentUser, setBulkAssignmentUser] = useState('');
-  const [bulkAssignmentDate, setBulkAssignmentDate] = useState('');
-  const [bulkAssignmentNotes, setBulkAssignmentNotes] = useState('');
-  const [showCheckboxes, setShowCheckboxes] = useState(false);
-  const [showLeadImportModal, setShowLeadImportModal] = useState(false);
-  const [salespersons, setSalespersons] = useState([]);
-  const [salespersonsLoading, setSalespersonsLoading] = useState(false);
-  const [salespersonsError, setSalespersonsError] = useState('');
-  const [leadImportData, setLeadImportData] = useState({
-    customerName: '',
-    mobileNumber: '',
-    whatsappNumber: '',
-    email: '',
-    productName: '',
-    gstNumber: '',
-    address: '',
-    state: '',
-    productType: '',
-    customerType: '',
-    leadSource: '',
-    date: new Date().toISOString().split('T')[0]
+  const [editingLead, setEditingLead] = useState(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assigningLead, setAssigningLead] = useState(null);
+  const [assignForm, setAssignForm] = useState({ salesperson: '', telecaller: '' });
+  const [selectedLeadIds, setSelectedLeadIds] = useState([]);
+  const [isAllSelected, setIsAllSelected] = useState(false);
+  const [showColumnFilter, setShowColumnFilter] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState({
+    customerId: false,
+    customer: true,
+    business: true,
+    address: true,
+    state: true,
+    followUpStatus: true,
+    salesStatus: true,
+    assignedSalesperson: true,
+    assignedTelecaller: true,
+    gstNo: false,
+    leadSource: false,
+    productNames: false,
+    category: false,
+    createdAt: false,
+    telecallerStatus: false,
+    paymentStatus: false,
+    updatedAt: false
   });
-  const [importMode, setImportMode] = useState('csv'); // CSV import only
-  const [csvFile, setCsvFile] = useState(null);
-  const [csvData, setCsvData] = useState([]);
-  const [csvPreview, setCsvPreview] = useState([]);
-  const [columnFilters, setColumnFilters] = useState({
-    customerId: '',
+  const [editFormData, setEditFormData] = useState({
     customer: '',
     email: '',
     business: '',
+    address: '',
+    state: '',
     leadSource: '',
-    productName: '',
     category: '',
     salesStatus: '',
-    createdAt: '',
-    assigned: '',
-    telecaller: '',
-    telecallerStatus: '',
-    paymentStatus: '',
-    visitingStatus: '',
+    phone: '',
     gstNo: '',
-    area: '',
-    division: '',
-    state: '',
-    customerType: '',
-    productType: '',
-    address: ''
+    productNames: '',
+    assignedSalesperson: '',
+    assignedTelecaller: '',
+    telecallerStatus: '',
+    paymentStatus: ''
   });
+  const [usernames, setUsernames] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [usersError, setUsersError] = useState('');
+  const [quotations, setQuotations] = useState([]);
+  const [loadingQuotations, setLoadingQuotations] = useState(false);
+  const [showQuotationModal, setShowQuotationModal] = useState(false);
+  const [selectedQuotation, setSelectedQuotation] = useState(null);
+  const [proformaInvoices, setProformaInvoices] = useState([]);
+  const [loadingPIs, setLoadingPIs] = useState(false);
+  const [allLeadsData, setAllLeadsData] = useState([]);
+  const [loadingAllLeads, setLoadingAllLeads] = useState(false);
+  const [allLeadsRefreshKey, setAllLeadsRefreshKey] = useState(0);
+  const allLeadsFetchPromiseRef = useRef(null);
+  const allLeadsDataRef = useRef([]);
+  const [showPIPreview, setShowPIPreview] = useState(false);
+  const [piPreviewData, setPiPreviewData] = useState(null);
+  const [selectedPIBranch, setSelectedPIBranch] = useState(DEFAULT_BRANCH);
 
-  // Column visibility chooser
-  const defaultVisibleColumns = {
-    leadId: true,
-    namePhone: true,
-    address: true,
-    area: true,
-    division: true,
-    gstNo: true,
-    productType: true,
-    phone: false,
-    email: false,
-    state: false,
-    customerType: false,
-    leadSource: false,
-    assignedSalesperson: false,
-    followUpStatus: false,
-    salesStatus: false,
-    connectedStatus: false,
-    finalStatus: false,
-    expectedValue: false,
-    createdAt: false,
-    updatedAt: false,
-    notes: false
-  };
-  const [showColumnChooser, setShowColumnChooser] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState(defaultVisibleColumns);
+  const importFileInputRef = useRef(null);
 
-  // Fetch real department users for assignment
-  useEffect(() => {
-    const fetchSalespersons = async () => {
-      try {
-        setSalespersonsLoading(true);
-        setSalespersonsError('');
-        const res = await departmentUsersService.listUsers({ limit: 100, page: 1 });
-        const payload = res.data || res;
-        const users = (payload.users || []).map(u => ({
-          id: u.id,
-          name: u.username || u.name || u.email?.split('@')[0] || 'User',
-          email: u.email,
-          department: apiToUiDepartment ? apiToUiDepartment(u.departmentType || u.department_type) : (u.departmentType || u.department_type || '')
-        }));
-        setSalespersons(users);
-      } catch (e) {
-        setSalespersonsError('Failed to load users');
-      } finally {
-        setSalespersonsLoading(false);
-      }
-    };
-    fetchSalespersons();
-  }, []);
+  const leadService = useMemo(() => new LeadService(), []);
+  const userService = useMemo(() => new UserService(), []);
+  const piService = useMemo(() => new PIService(), []);
+  const quotationServiceInstance = useMemo(() => new QuotationService(), []);
+  const leadsFilterService = useMemo(() => new LeadsFilterService(apiClient), []);
 
-  // Available options for dropdowns
-  const areas = ['Indore', 'Bhopal', 'Jabalpur', 'Gwalior', 'Ujjain', 'Sagar', 'Rewa', 'Satna'];
-  const divisions = ['Dewas', 'Raisen', 'Narsinghpur', 'Morena', 'Shajapur', 'Damoh', 'Sidhi', 'Panna'];
-  const states = ['Madhya Pradesh', 'Maharashtra', 'Gujarat', 'Rajasthan', 'Uttar Pradesh', 'Chhattisgarh'];
-  const leadSources = ['Website Inquiry', 'Social Media', 'Referral', 'Email Campaign', 'Trade Show', 'Cold Call', 'Advertisement'];
-  const customerTypes = ['Individual', 'Business', 'Enterprise', 'Startup', 'Government', 'Non-Profit'];
-  const productTypes = ['Digital Marketing Package', 'SEO Services', 'Content Marketing', 'PPC Advertising', 'Social Media Marketing', 'Email Marketing'];
-  const categories = ['Hot Lead', 'Warm Lead', 'Cold Lead', 'Qualified Lead', 'Unqualified Lead'];
-  const salesStatuses = ['PENDING', 'FOLLOW_UP', 'MEETING_SCHEDULED', 'QUOTATION_SENT', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'];
-  const paymentStatuses = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'PARTIAL', 'OVERDUE'];
-  const visitingStatuses = ['NOT_SCHEDULED', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
-  const telecallerStatuses = ['ACTIVE', 'INACTIVE', 'BUSY', 'NOT_AVAILABLE'];
-
-  // Sample data for marketing leads - 10 new unassigned demo leads
-  const leads = [
-    {
-      id: 1,
-      customerId: 'MKT-0001',
-      customer: 'Rajesh Kumar',
-      email: 'rajesh.kumar@industries.com',
-      phone: '+91 98765 43210',
-      business: 'Kumar Industries',
-      address: '123 Industrial Area, Indore, MP',
-      area: 'Indore',
-      division: 'Dewas',
-      leadSource: 'Website Inquiry',
-      productName: 'XLPE Cable 1.5mm',
-      productType: 'XLPE Cable 1.5mm',
-      category: 'Hot Lead',
-      salesStatus: 'PENDING',
-      createdAt: '2024-01-15',
-      assigned: null,
-      assignedTo: null,
-      telecaller: null,
-      telecallerStatus: 'INACTIVE',
-      paymentStatus: 'PENDING',
-      visitingStatus: 'NOT_SCHEDULED',
-      gstNo: '23ABCDE1234F1Z5',
-      state: 'Madhya Pradesh',
-      customerType: 'Business',
-      pincode: '452001',
-      city: 'Indore'
-    },
-    {
-      id: 2,
-      customerId: 'MKT-0002',
-      customer: 'Priya Sharma',
-      email: 'priya.sharma@electricals.com',
-      phone: '+91 87654 32109',
-      business: 'Sharma Electricals',
-      address: '456 Commercial Street, Bhopal, MP',
-      area: 'Bhopal',
-      division: 'Raisen',
-      leadSource: 'Social Media',
-      productName: 'Copper Wire 2.5mm',
-      productType: 'Copper Wire 2.5mm',
-      category: 'Warm Lead',
-      salesStatus: 'PENDING',
-      createdAt: '2024-01-16',
-      assigned: null,
-      assignedTo: null,
-      telecaller: null,
-      telecallerStatus: 'INACTIVE',
-      paymentStatus: 'PENDING',
-      visitingStatus: 'NOT_SCHEDULED',
-      gstNo: '23FGHIJ5678K2L6',
-      state: 'Madhya Pradesh',
-      customerType: 'Business',
-      pincode: '462001',
-      city: 'Bhopal'
-    },
-    {
-      id: 3,
-      customerId: 'MKT-0003',
-      customer: 'Amit Patel',
-      email: 'amit.patel@enterprises.com',
-      phone: '+91 76543 21098',
-      business: 'Patel Enterprises',
-      address: '789 Business Park, Jabalpur, MP',
-      area: 'Jabalpur',
-      division: 'Narsinghpur',
-      leadSource: 'Referral',
-      productName: 'AAAC Conductor',
-      productType: 'AAAC Conductor',
-      category: 'Cold Lead',
-      salesStatus: 'PENDING',
-      createdAt: '2024-01-17',
-      assigned: null,
-      assignedTo: null,
-      telecaller: null,
-      telecallerStatus: 'INACTIVE',
-      paymentStatus: 'PENDING',
-      visitingStatus: 'NOT_SCHEDULED',
-      gstNo: '23MNOPQ9012R3S7',
-      state: 'Madhya Pradesh',
-      customerType: 'Corporate',
-      pincode: '482001',
-      city: 'Jabalpur'
-    },
-    {
-      id: 4,
-      customerId: 'MKT-0004',
-      customer: 'Sunita Singh',
-      email: 'sunita.singh@electrical.com',
-      phone: '+91 65432 10987',
-      business: 'Singh Electrical Works',
-      address: '321 Industrial Zone, Gwalior, MP',
-      area: 'Gwalior',
-      division: 'Morena',
-      leadSource: 'Email Campaign',
-      productName: 'PVC Cable 4mm',
-      productType: 'PVC Cable 4mm',
-      category: 'Hot Lead',
-      salesStatus: 'PENDING',
-      createdAt: '2024-01-18',
-      assigned: null,
-      assignedTo: null,
-      telecaller: null,
-      telecallerStatus: 'INACTIVE',
-      paymentStatus: 'PENDING',
-      visitingStatus: 'NOT_SCHEDULED',
-      gstNo: '23TUVWX3456Y8Z9',
-      state: 'Madhya Pradesh',
-      customerType: 'Business',
-      pincode: '474001',
-      city: 'Gwalior'
-    },
-    {
-      id: 5,
-      customerId: 'MKT-0005',
-      customer: 'Vikram Jain',
-      email: 'vikram.jain@power.com',
-      phone: '+91 54321 09876',
-      business: 'Jain Power Solutions',
-      address: '654 Power Sector, Ujjain, MP',
-      area: 'Ujjain',
-      division: 'Shajapur',
-      leadSource: 'Trade Show',
-      productName: 'Aluminium Wire 6mm',
-      productType: 'Aluminium Wire 6mm',
-      category: 'Warm Lead',
-      salesStatus: 'PENDING',
-      createdAt: '2024-01-19',
-      assigned: null,
-      assignedTo: null,
-      telecaller: null,
-      telecallerStatus: 'INACTIVE',
-      paymentStatus: 'PENDING',
-      visitingStatus: 'NOT_SCHEDULED',
-      gstNo: '23ABCD1234E1F2',
-      state: 'Madhya Pradesh',
-      customerType: 'Corporate',
-      pincode: '456001',
-      city: 'Ujjain'
-    },
-    {
-      id: 6,
-      customerId: 'MKT-0006',
-      customer: 'Meera Gupta',
-      email: 'meera.gupta@electricals.com',
-      phone: '+91 43210 98765',
-      business: 'Gupta Electricals',
-      address: '987 Electronics Hub, Sagar, MP',
-      area: 'Sagar',
-      division: 'Damoh',
-      leadSource: 'Website',
-      productName: 'XLPE Cable 2.5mm',
-      productType: 'XLPE Cable 2.5mm',
-      category: 'Warm Lead',
-      salesStatus: 'PENDING',
-      createdAt: '2024-01-20',
-      assigned: null,
-      assignedTo: null,
-      telecaller: null,
-      telecallerStatus: 'INACTIVE',
-      paymentStatus: 'PENDING',
-      visitingStatus: 'NOT_SCHEDULED',
-      gstNo: '23EFGH5678I9J0',
-      state: 'Madhya Pradesh',
-      customerType: 'Business',
-      pincode: '470001',
-      city: 'Sagar'
-    },
-    {
-      id: 7,
-      customerId: 'MKT-0007',
-      customer: 'Ravi Kumar',
-      email: 'ravi.kumar@power.com',
-      phone: '+91 32109 87654',
-      business: 'Kumar Power Systems',
-      address: '147 Energy Park, Rewa, MP',
-      area: 'Rewa',
-      division: 'Sidhi',
-      leadSource: 'Referral',
-      productName: 'AAAC Conductor 150mm',
-      productType: 'AAAC Conductor 150mm',
-      category: 'Hot Lead',
-      salesStatus: 'PENDING',
-      createdAt: '2024-01-21',
-      assigned: null,
-      assignedTo: null,
-      telecaller: null,
-      telecallerStatus: 'INACTIVE',
-      paymentStatus: 'PENDING',
-      visitingStatus: 'NOT_SCHEDULED',
-      gstNo: '23KLMN9012O4P5',
-      state: 'Madhya Pradesh',
-      customerType: 'Corporate',
-      pincode: '486001',
-      city: 'Rewa'
-    },
-    {
-      id: 8,
-      customerId: 'MKT-0008',
-      customer: 'Anita Desai',
-      email: 'anita.desai@industries.com',
-      phone: '+91 21098 76543',
-      business: 'Desai Industries',
-      address: '258 Manufacturing Unit, Satna, MP',
-      area: 'Satna',
-      division: 'Panna',
-      leadSource: 'Social Media',
-      productName: 'Copper Wire 4mm',
-      productType: 'Copper Wire 4mm',
-      category: 'Warm Lead',
-      salesStatus: 'PENDING',
-      createdAt: '2024-01-22',
-      assigned: null,
-      assignedTo: null,
-      telecaller: null,
-      telecallerStatus: 'INACTIVE',
-      paymentStatus: 'PENDING',
-      visitingStatus: 'NOT_SCHEDULED',
-      gstNo: '23QRST3456U7V8',
-      state: 'Madhya Pradesh',
-      customerType: 'Business',
-      pincode: '485001',
-      city: 'Satna'
-    },
-    {
-      id: 9,
-      customerId: 'MKT-0009',
-      customer: 'Suresh Reddy',
-      email: 'suresh.reddy@electricals.com',
-      phone: '+91 10987 65432',
-      business: 'Reddy Electricals',
-      address: '369 Industrial Area, Dhar, MP',
-      area: 'Dhar',
-      division: 'Dhar',
-      leadSource: 'Trade Show',
-      productName: 'PVC Cable 6mm',
-      productType: 'PVC Cable 6mm',
-      category: 'Cold Lead',
-      salesStatus: 'PENDING',
-      createdAt: '2024-01-23',
-      assigned: null,
-      assignedTo: null,
-      telecaller: null,
-      telecallerStatus: 'INACTIVE',
-      paymentStatus: 'PENDING',
-      visitingStatus: 'NOT_SCHEDULED',
-      gstNo: '23WXYZ7890A1B2',
-      state: 'Madhya Pradesh',
-      customerType: 'Business',
-      pincode: '454001',
-      city: 'Dhar'
-    },
-    {
-      id: 10,
-      customerId: 'MKT-0010',
-      customer: 'Kavita Joshi',
-      email: 'kavita.joshi@power.com',
-      phone: '+91 09876 54321',
-      business: 'Joshi Power Works',
-      address: '741 Power Zone, Ratlam, MP',
-      area: 'Ratlam',
-      division: 'Ratlam',
-      leadSource: 'Website',
-      productName: 'Aluminium Wire 8mm',
-      productType: 'Aluminium Wire 8mm',
-      category: 'Hot Lead',
-      salesStatus: 'PENDING',
-      createdAt: '2024-01-24',
-      assigned: null,
-      assignedTo: null,
-      telecaller: null,
-      telecallerStatus: 'INACTIVE',
-      paymentStatus: 'PENDING',
-      visitingStatus: 'NOT_SCHEDULED',
-      gstNo: '23CDEF1234G5H6',
-      state: 'Madhya Pradesh',
-      customerType: 'Corporate',
-      pincode: '457001',
-      city: 'Ratlam'
-    }
-  ];
-
-  // Removed sample quotation/proforma constants to avoid hardcoded UI data
-
-  const handleSelectAll = () => {
-    if (selectedLeads.length === leads.length) {
-      setSelectedLeads([]);
-    } else {
-      setSelectedLeads(leads.map(lead => lead.id));
-    }
-  };
-
-  const handleSelectLead = (leadId) => {
-    if (selectedLeads.includes(leadId)) {
-      setSelectedLeads(selectedLeads.filter(id => id !== leadId));
-    } else {
-      setSelectedLeads([...selectedLeads, leadId]);
-    }
-  };
-
-  const openPreview = (lead) => {
-    setPreviewLead(lead);
-    setShowPreview(true);
-  };
-
-  const openAssignmentModal = (lead) => {
-    setSelectedLeadForAssignment(lead);
-    setShowAssignmentModal(true);
-  };
-
-  const handleAssignLead = async () => {
-    if (selectedSalesperson && selectedLeadForAssignment) {
-      const salespersonMeta = salespersons.find(u => u.name === selectedSalesperson || u.email === selectedSalesperson) || {};
-      const salespersonEmail = salespersonMeta.email || selectedSalesperson;
-      
-      // Update the lead's assigned salesperson
-      const updatedLead = {
-        ...selectedLeadForAssignment,
-        assigned: selectedSalesperson,
-        assignedTo: salespersonEmail,
-        assignmentDate: assignmentDate || new Date().toISOString().split('T')[0]
-      };
-      
-      const updatedLeads = (leadsData || leads).map(lead => 
-        lead.id === selectedLeadForAssignment.id 
-          ? updatedLead
-          : lead
-      );
-      
-      setLeadsData(updatedLeads);
-      
-      // Also update the local leads array if leadsData is not set
-      if (!leadsData) {
-        // This will trigger a re-render with the updated lead
-      }
-      
-      // In a real app, you would update the database here
-      console.log(`Assigned lead ${selectedLeadForAssignment.customerId} to ${selectedSalesperson} on ${assignmentDate}`);
-
-      // Store assigned lead for Marketing Salesperson to access
-      try {
-        const assignedLeadsKey = `marketingAssignedLeads_${salespersonEmail}`;
-        const existingAssigned = JSON.parse(localStorage.getItem(assignedLeadsKey) || '[]');
-        
-        // Convert lead to format expected by Marketing Salesperson
-        const assignedLeadForSalesperson = {
-          id: selectedLeadForAssignment.id,
-          leadId: selectedLeadForAssignment.customerId,
-          customerId: selectedLeadForAssignment.customerId,
-          name: selectedLeadForAssignment.customer,
-          customer: selectedLeadForAssignment.customer,
-          business: selectedLeadForAssignment.business || '',
-          phone: selectedLeadForAssignment.phone || '',
-          email: selectedLeadForAssignment.email || '',
-          address: selectedLeadForAssignment.address || '',
-          area: selectedLeadForAssignment.area || '',
-          division: selectedLeadForAssignment.division || '',
-          city: selectedLeadForAssignment.city || '',
-          pincode: selectedLeadForAssignment.pincode || '',
-          gstNo: selectedLeadForAssignment.gstNo || '',
-          productType: selectedLeadForAssignment.productType || selectedLeadForAssignment.productName || '',
-          state: selectedLeadForAssignment.state || '',
-          leadSource: selectedLeadForAssignment.leadSource || '',
-          customerType: selectedLeadForAssignment.customerType || '',
-          date: selectedLeadForAssignment.createdAt || new Date().toISOString().split('T')[0],
-          visitingStatus: 'Not Visited',
-          visitingStatusUpdated: new Date().toISOString(),
-          transferredLeads: 0,
-          transferredTo: null,
-          paymentStatus: 'Not Started',
-          meetings: [],
-          assignedTo: salespersonEmail,
-          assignedDate: assignmentDate || new Date().toISOString().split('T')[0]
-        };
-        
-        // Check if lead already exists (avoid duplicates)
-        const existingIndex = existingAssigned.findIndex(l => l.id === selectedLeadForAssignment.id);
-        if (existingIndex >= 0) {
-          existingAssigned[existingIndex] = assignedLeadForSalesperson;
-        } else {
-          existingAssigned.push(assignedLeadForSalesperson);
-        }
-        
-        localStorage.setItem(assignedLeadsKey, JSON.stringify(existingAssigned));
-      } catch (error) {
-        console.error('Error storing assigned lead:', error);
-      }
-
-      // Persist assignment event for calendar consumption (localStorage)
-      try {
-        const existing = JSON.parse(localStorage.getItem('marketingAssignments') || '[]');
-        const event = {
-          id: `${selectedLeadForAssignment.id}-${Date.now()}`,
-          leadId: selectedLeadForAssignment.id,
-          customerId: selectedLeadForAssignment.customerId,
-          name: selectedLeadForAssignment.customer,
-          phone: selectedLeadForAssignment.phone || '',
-          address: selectedLeadForAssignment.address || '',
-          productType: selectedLeadForAssignment.productType || selectedLeadForAssignment.productName || '',
-          assignedDate: assignmentDate || new Date().toISOString().split('T')[0],
-          assignedToName: selectedSalesperson,
-          assignedToEmail: salespersonEmail,
-          visitingStatus: 'Scheduled',
-          finalStatus: 'Pending'
-        };
-        const next = Array.isArray(existing) ? [...existing, event] : [event];
-        localStorage.setItem('marketingAssignments', JSON.stringify(next));
-      } catch {}
-
-      // Create a meeting for this assignment
-      try {
-        const meetingDate = assignmentDate || new Date().toISOString().split('T')[0];
-        const meetingData = {
-          customer_name: selectedLeadForAssignment.customer || selectedLeadForAssignment.name || 'N/A',
-          customer_phone: selectedLeadForAssignment.phone || '',
-          customer_email: selectedLeadForAssignment.email || '',
-          address: selectedLeadForAssignment.address || '',
-          city: selectedLeadForAssignment.city || '',
-          state: selectedLeadForAssignment.state || '',
-          pincode: selectedLeadForAssignment.pincode || '',
-          assigned_to: salespersonEmail,
-          meeting_date: meetingDate,
-          meeting_time: '', // No specific time set from Leads assignment
-          scheduled_date: meetingDate,
-          status: 'Scheduled',
-          notes: `Assigned from lead: ${selectedLeadForAssignment.customerId || selectedLeadForAssignment.id}`,
-          customer_id: selectedLeadForAssignment.id,
-          lead_id: selectedLeadForAssignment.id
-        };
-
-        const meetingResponse = await apiClient.post(API_ENDPOINTS.MARKETING_MEETINGS_CREATE(), meetingData);
-        
-        if (meetingResponse.data.success) {
-          console.log('Meeting created successfully for assigned lead:', meetingResponse.data.data);
-          
-          // Notify Meeting Assignment component to refresh
-          try { window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); } catch {}
-        } else {
-          console.warn('Meeting creation failed but lead was assigned:', meetingResponse.data.message);
-        }
-      } catch (meetingError) {
-        console.error('Error creating meeting for assigned lead:', meetingError);
-        // Don't block the assignment if meeting creation fails
-      }
-
-      // Notify other tabs/components
-      try { window.dispatchEvent(new CustomEvent('marketingAssignmentsUpdated')); } catch {}
-      try { window.dispatchEvent(new CustomEvent('marketingLeadsAssigned')); } catch {}
-      
-      // Close modal and reset state
-      setShowAssignmentModal(false);
-      setSelectedLeadForAssignment(null);
-      setSelectedSalesperson('');
-      setAssignmentDate('');
-      
-      // Show success message
-      alert(`Lead ${selectedLeadForAssignment.customerId} has been assigned to ${selectedSalesperson}${assignmentDate ? ` on ${assignmentDate}` : ''}. Meeting has been created.`);
-    }
-  };
-
-  const handleSaveLeadDate = () => {
-    if (!selectedLeadForAssignment || !assignmentDate) {
-      alert('Please choose a date to save.');
-      return;
-    }
-
-    const updatedLeads = (leadsData || leads).map(lead =>
-      lead.id === selectedLeadForAssignment.id
-        ? { ...lead, assignmentDate }
-        : lead
-    );
-
-    setLeadsData(updatedLeads);
-
-    console.log(`Saved assignment date ${assignmentDate} for lead ${selectedLeadForAssignment.customerId}`);
-    setShowAssignmentModal(false);
-    setSelectedLeadForAssignment(null);
-    setAssignmentDate('');
-    setSelectedSalesperson('');
-    alert(`Saved date ${assignmentDate} for ${selectedLeadForAssignment.customerId}`);
-  };
-
-  const handleDeleteLead = (leadId) => {
-    // Update the leads data by removing the deleted lead
-    setLeadsData(prevData => {
-      const currentData = Array.isArray(prevData) ? prevData : leads;
-      return currentData.filter(lead => lead.id !== leadId);
-    });
-    
-    // In a real app, you would delete from the database here
-    console.log(`Deleted lead with ID: ${leadId}`);
-    
-    // Show success message
-    alert('Lead has been deleted successfully');
-  };
-
-  const handleStatusUpdate = (leadId, newStatus, statusType) => {
-    // Update the leads data with new status
-    setLeadsData(prevData => {
-      const currentData = Array.isArray(prevData) ? prevData : leads;
-      return currentData.map(lead => 
-        lead.id === leadId 
-          ? { ...lead, [statusType]: newStatus }
-          : lead
-      );
-    });
-    
-    // In a real app, you would update the database here
-    console.log(`Updated ${statusType} status for lead ${leadId} to ${newStatus}`);
-    
-    // Close modal
-    setShowStatusUpdateModal(false);
-    setSelectedLeadForEdit(null);
-    
-    // Show success message
-    alert(`Lead status updated successfully to ${newStatus}`);
-  };
-
-  const handleRefresh = () => {
-    // Force a re-render by updating the data
-    console.log('Marketing Leads refreshed');
-    
-    // In a real app, you would refetch data from API here
-    // For now, we'll just log the refresh action
-    alert('Leads data refreshed successfully!');
-  };
-
-  // Clear all filters
-  const clearAllFilters = () => {
-    setColumnFilters({
-      customerId: '',
-      customer: '',
-      email: '',
-      business: '',
-      leadSource: '',
-      productName: '',
-      category: '',
-      salesStatus: '',
-      createdAt: '',
-      assigned: '',
-      telecaller: '',
-      telecallerStatus: '',
-      paymentStatus: '',
-      visitingStatus: '',
-      gstNo: '',
-      area: '',
-      division: '',
-      state: '',
-      customerType: '',
-      productType: '',
-      address: ''
-    });
-    setSearchTerm('');
-    setShowColumnFilters(false);
-  };
-
-  // Bulk assignment functions
-  const toggleBulkAssignment = () => {
-    setShowCheckboxes(!showCheckboxes);
-    if (showCheckboxes) {
-      setSelectedLeadsForBulk([]);
-    }
-  };
-
-  const handleBulkSelectLead = (leadId) => {
-    if (selectedLeadsForBulk.includes(leadId)) {
-      setSelectedLeadsForBulk(selectedLeadsForBulk.filter(id => id !== leadId));
-    } else {
-      setSelectedLeadsForBulk([...selectedLeadsForBulk, leadId]);
-    }
-  };
-
-  const handleSelectAllLeads = () => {
-    const currentLeads = leadsData || leads;
-    if (selectedLeadsForBulk.length === currentLeads.length) {
-      setSelectedLeadsForBulk([]);
-    } else {
-      setSelectedLeadsForBulk(currentLeads.map(lead => lead.id));
-    }
-  };
-
-  const openBulkAssignmentModal = () => {
-    if (selectedLeadsForBulk.length === 0) {
-      alert('Please select at least one lead to assign.');
-      return;
-    }
-    setShowBulkAssignmentModal(true);
-  };
-
-  const handleBulkAssignLeads = async () => {
-    if (!bulkAssignmentUser) {
-      alert('Please select a user to assign leads to.');
-      return;
-    }
-
-    const salespersonMeta = salespersons.find(u => u.name === bulkAssignmentUser || u.email === bulkAssignmentUser) || {};
-    const salespersonEmail = salespersonMeta.email || bulkAssignmentUser;
-    const baseLeads = leadsData || leads;
-    const leadsToAssign = baseLeads.filter(l => selectedLeadsForBulk.includes(l.id));
-
-    // Update the leads with bulk assignment
-    const updatedLeads = baseLeads.map(lead => {
-      if (selectedLeadsForBulk.includes(lead.id)) {
-        return {
-          ...lead,
-          assigned: bulkAssignmentUser,
-          assignedTo: salespersonEmail,
-          assignmentDate: lead.assignmentDate || bulkAssignmentDate || new Date().toISOString().split('T')[0],
-          assignmentNotes: bulkAssignmentNotes,
-          salesStatus: 'ASSIGNED'
-        };
-      }
-      return lead;
-    });
-
-    setLeadsData(updatedLeads);
-
-    // Store assigned leads for Marketing Salesperson to access
+  const fetchQuotations = async (leadId) => {
+    setLoadingQuotations(true);
     try {
-      const assignedLeadsKey = `marketingAssignedLeads_${salespersonEmail}`;
-      const existingAssigned = JSON.parse(localStorage.getItem(assignedLeadsKey) || '[]');
-      
-      leadsToAssign.forEach(lead => {
-        const assignedLeadForSalesperson = {
-          id: lead.id,
-          leadId: lead.customerId,
-          customerId: lead.customerId,
-          name: lead.customer,
-          customer: lead.customer,
-          business: lead.business || '',
-          phone: lead.phone || '',
-          email: lead.email || '',
-          address: lead.address || '',
-          area: lead.area || '',
-          division: lead.division || '',
-          city: lead.city || '',
-          pincode: lead.pincode || '',
-          gstNo: lead.gstNo || '',
-          productType: lead.productType || lead.productName || '',
-          state: lead.state || '',
-          leadSource: lead.leadSource || '',
-          customerType: lead.customerType || '',
-          date: lead.createdAt || new Date().toISOString().split('T')[0],
-          visitingStatus: 'Not Visited',
-          visitingStatusUpdated: new Date().toISOString(),
-          transferredLeads: 0,
-          transferredTo: null,
-          paymentStatus: 'Not Started',
-          meetings: [],
-          assignedTo: salespersonEmail,
-          assignedDate: lead.assignmentDate || bulkAssignmentDate || new Date().toISOString().split('T')[0]
-        };
-        
-        // Check if lead already exists (avoid duplicates)
-        const existingIndex = existingAssigned.findIndex(l => l.id === lead.id);
-        if (existingIndex >= 0) {
-          existingAssigned[existingIndex] = assignedLeadForSalesperson;
-        } else {
-          existingAssigned.push(assignedLeadForSalesperson);
+      const quotations = await quotationServiceInstance.fetchQuotationsByCustomer(leadId);
+      setQuotations(quotations);
+      } finally {
+      setLoadingQuotations(false);
+    }
+  };
+
+  const handleApproveQuotation = async (quotationId) => {
+    const previewLeadId = previewLead?.id || null;
+    const updatedQuotations = await quotationServiceInstance.approveQuotation(quotationId, previewLeadId);
+    if (updatedQuotations.length > 0) {
+      setQuotations(updatedQuotations);
+    }
+  };
+
+  const handleRejectQuotation = async (quotationId) => {
+    const previewLeadId = previewLead?.id || null;
+    const updatedQuotations = await quotationServiceInstance.rejectQuotation(quotationId, previewLeadId);
+    if (updatedQuotations.length > 0) {
+      setQuotations(updatedQuotations);
+    }
+  };
+
+  const handleViewQuotation = async (quotationId) => {
+    const quotation = await quotationServiceInstance.getQuotation(quotationId);
+    if (quotation) {
+      setSelectedQuotation(quotation);
+      setShowQuotationModal(true);
+    }
+  };
+
+  const handleDownloadPDF = async (quotationId) => {
+    const quotation = await quotationServiceInstance.getQuotation(quotationId);
+    if (quotation) {
+      await generateQuotationPDF(quotation);
+    }
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'text/csv') {
+      setImportFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const csvText = e.target.result;
+        const parsedData = parseCSV(csvText);
+        setImportPreview(parsedData);
+        setShowImportModal(true);
+        if (importFileInputRef.current) {
+          importFileInputRef.current.value = '';
         }
+      };
+      reader.readAsText(file);
+        } else {
+      toastManager.error('Please select a valid CSV file');
+    }
+  };
+
+  const handleImportLeads = async () => {
+    if (importPreview.length === 0) {
+      toastManager.error('No data to import');
+      return;
+    }
+
+    setImporting(true);
+
+    try {
+      const validationErrors = [];
+      const leadsPayload = importPreview.map((row, index) => {
+        const payload = leadService.buildCSVLeadPayload(row, index, validationErrors);
+        // Date is already handled in buildCSVLeadPayload, but ensure it's formatted correctly
+        const dateField = row['Date (DD/MM/YYYY or YYYY-MM-DD)'] || row['Date (YYYY-MM-DD)'] || '';
+        if (dateField) {
+          payload.date = formatDateUtil(dateField);
+        }
+        return payload;
       });
       
-      localStorage.setItem(assignedLeadsKey, JSON.stringify(existingAssigned));
-    } catch (error) {
-      console.error('Error storing bulk assigned leads:', error);
-    }
+      if (validationErrors.length > 0) {
+        console.warn('CSV Import Validation Warnings:', validationErrors);
+        const errorMsg = validationErrors.slice(0, 3).join('; ') + 
+          (validationErrors.length > 3 ? ` and ${validationErrors.length - 3} more...` : '');
+        toastManager.error(`Validation issues found: ${errorMsg}`);
+      }
 
-    // Persist assignment events for calendar (localStorage)
-    try {
-      const existing = JSON.parse(localStorage.getItem('marketingAssignments') || '[]');
-      const eventsToAdd = leadsToAssign.map(l => ({
-        id: `${l.id}-${Date.now()}`,
-        leadId: l.id,
-        customerId: l.customerId,
-        name: l.customer,
-        phone: l.phone || '',
-        address: l.address || '',
-        productType: l.productType || l.productName || '',
-        assignedDate: l.assignmentDate || bulkAssignmentDate || new Date().toISOString().split('T')[0],
-        assignedToName: bulkAssignmentUser,
-        assignedToEmail: salespersonEmail,
-        visitingStatus: 'Scheduled',
-        finalStatus: 'Pending'
-      }));
-      const next = Array.isArray(existing) ? [...existing, ...eventsToAdd] : eventsToAdd;
-      localStorage.setItem('marketingAssignments', JSON.stringify(next));
-    } catch {}
+      await leadService.importLeads(leadsPayload);
 
-    // Create meetings for all assigned leads
-    try {
-      const meetingDate = bulkAssignmentDate || new Date().toISOString().split('T')[0];
-      let meetingsCreated = 0;
-      let meetingsFailed = 0;
-
-      for (const lead of leadsToAssign) {
-        try {
-          const meetingData = {
-            customer_name: lead.customer || lead.name || 'N/A',
-            customer_phone: lead.phone || '',
-            customer_email: lead.email || '',
-            address: lead.address || '',
-            city: lead.city || '',
-            state: lead.state || '',
-            pincode: lead.pincode || '',
-            assigned_to: salespersonEmail,
-            meeting_date: lead.assignmentDate || meetingDate,
-            meeting_time: '',
-            scheduled_date: lead.assignmentDate || meetingDate,
-            status: 'Scheduled',
-            notes: `Bulk assigned from lead: ${lead.customerId || lead.id}`,
-            customer_id: lead.id,
-            lead_id: lead.id
-          };
-
-          const meetingResponse = await apiClient.post(API_ENDPOINTS.MARKETING_MEETINGS_CREATE(), meetingData);
-          
-          if (meetingResponse.data.success) {
-            meetingsCreated++;
-          } else {
-            meetingsFailed++;
-          }
-        } catch (err) {
-          console.error(`Error creating meeting for lead ${lead.id}:`, err);
-          meetingsFailed++;
+      const response = await leadService.fetchLeads({ page, limit });
+      if (response.data) {
+        setLeadsData(response.data);
+        if (response.pagination) {
+          setTotal(Number(response.pagination.total) || 0);
         }
+        requestAllLeadsRefresh();
       }
-
-      console.log(`Bulk assignment: ${meetingsCreated} meetings created, ${meetingsFailed} failed`);
       
-      // Notify Meeting Assignment component to refresh
-      if (meetingsCreated > 0) {
-        try { window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); } catch {}
+      setShowImportModal(false);
+      setImportPreview([]);
+      setImportFile(null);
+      if (importFileInputRef.current) {
+        importFileInputRef.current.value = '';
       }
-    } catch (bulkMeetingError) {
-      console.error('Error creating bulk meetings:', bulkMeetingError);
-      // Don't block the assignment if meeting creation fails
+      } catch (error) {
+      apiErrorHandler.handleError(error, 'import leads');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const requestAllLeadsRefresh = () => {
+    setAllLeadsRefreshKey((prev) => prev + 1);
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedLeadIds.length === 0) {
+      toastManager.error('Please select leads to delete');
+      return;
     }
 
-    // Notify other tabs/components
-    try { window.dispatchEvent(new CustomEvent('marketingAssignmentsUpdated')); } catch {}
-    try { window.dispatchEvent(new CustomEvent('marketingLeadsAssigned')); } catch {}
+    const confirmMessage = `Are you sure you want to delete ${selectedLeadIds.length} lead(s)? This action cannot be undone and will also remove these leads from salesperson's lead lists.`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
 
-    // Log the bulk assignment
-    console.log(`Bulk assigned ${selectedLeadsForBulk.length} leads to ${bulkAssignmentUser} for ${bulkAssignmentDate}`);
+    try {
+      setLoading(true);
+      
+      // Delete leads one by one to ensure proper cleanup
+      const deletePromises = selectedLeadIds.map(id => leadService.deleteLead(id));
+      await Promise.all(deletePromises);
 
-    // Close modal and reset state
-    setShowBulkAssignmentModal(false);
-    setSelectedLeadsForBulk([]);
-    setBulkAssignmentUser('');
-    setBulkAssignmentDate('');
-    setBulkAssignmentNotes('');
-    setShowCheckboxes(false);
-
-    // Show success message
-    alert(`Successfully assigned ${selectedLeadsForBulk.length} leads to ${bulkAssignmentUser}. Meetings have been created.`);
+      // Remove deleted leads from local state
+      const deletedSet = new Set(selectedLeadIds);
+      setLeadsData(prev => prev.filter(lead => !deletedSet.has(lead.id)));
+      setAllLeadsData(prev => prev.filter(lead => !deletedSet.has(lead.id)));
+      
+      // Clear selection
+      const deletedCount = selectedLeadIds.length;
+      setSelectedLeadIds([]);
+      setIsAllSelected(false);
+      
+      // Refresh the leads list
+      await fetchLeads();
+      requestAllLeadsRefresh();
+      
+      toastManager.success(`Successfully deleted ${deletedCount} lead(s)`);
+    } catch (error) {
+      apiErrorHandler.handleError(error, 'delete leads');
+      toastManager.error('Failed to delete some leads. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const closeBulkAssignmentModal = () => {
-    setShowBulkAssignmentModal(false);
-    setBulkAssignmentUser('');
-    setBulkAssignmentDate('');
-    setBulkAssignmentNotes('');
+  const buildLeadFetchParams = () => {
+    const params = { page, limit };
+    const trimmedSearch = searchTerm.trim();
+    if (trimmedSearch) {
+      params.search = trimmedSearch;
+    }
+    return params;
   };
 
-  const closeAssignmentModal = () => {
-    setShowAssignmentModal(false);
-    setSelectedLeadForAssignment(null);
-    setSelectedSalesperson('');
-    setAssignmentDate('');
+  const applyLeadResponse = (response, { refreshAll = false } = {}) => {
+    if (!response?.data) return;
+    setLeadsData(response.data);
+    if (response.pagination) {
+      setTotal(Number(response.pagination.total) || 0);
+    }
+    if (refreshAll) {
+      requestAllLeadsRefresh();
+    }
   };
 
-  const openEditModal = (lead) => {
-    setSelectedLeadForEdit(lead);
-    setShowEditModal(true);
+  const loadAllLeadsForFilters = async (force = false) => {
+    if (!force) {
+      if (allLeadsFetchPromiseRef.current) {
+        await allLeadsFetchPromiseRef.current;
+        return allLeadsData;
+      }
+      if (allLeadsData.length > 0) {
+        return allLeadsData;
+      }
+    }
+
+    const fetchPromise = (async () => {
+      setLoadingAllLeads(true);
+      try {
+        const transformed = await leadService.fetchAllLeads();
+        setAllLeadsData(transformed);
+        allLeadsDataRef.current = transformed;
+        return transformed;
+      } catch (error) {
+        throw error;
+      } finally {
+        setLoadingAllLeads(false);
+        allLeadsFetchPromiseRef.current = null;
+      }
+    })();
+
+    allLeadsFetchPromiseRef.current = fetchPromise;
+    return fetchPromise;
   };
 
-  const closeEditModal = () => {
-    setShowEditModal(false);
-    setSelectedLeadForEdit(null);
+  const fetchLeads = async () => {
+    try {
+      setLoading(true);
+      const response = await leadService.fetchLeads(buildLeadFetchParams());
+      applyLeadResponse(response);
+    } catch (error) {
+      apiErrorHandler.handleError(error, 'fetch leads');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const openViewModal = (lead) => {
-    setSelectedLeadForView(lead);
-    setShowViewModal(true);
-    setActiveViewTab('overview');
+  const handleManualRefresh = () => {
+    fetchLeads();
+    requestAllLeadsRefresh();
   };
 
-  const closeViewModal = () => {
-    setShowViewModal(false);
-    setSelectedLeadForView(null);
-    setActiveViewTab('overview');
+  const fetchQuotationAndPICounts = async () => {
+    try {
+      setLoadingCounts(true);
+      const result = await leadsFilterService.fetchQuotationAndPICounts();
+      setQuotationCounts(result.quotationCounts);
+      setPiCounts(result.piCounts);
+      return result;
+    } catch (error) {
+      return null;
+    } finally {
+      setLoadingCounts(false);
+    }
   };
 
-  const openLeadImportModal = () => {
-    setShowLeadImportModal(true);
+  useEffect(() => {
+    fetchLeads();
+    fetchQuotationAndPICounts();
+  }, [page, limit, searchTerm]);
+
+  useEffect(() => {
+    loadAllLeadsForFilters(true).catch(() => {});
+  }, [allLeadsRefreshKey]);
+
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    setUsersError('');
+    const result = await userService.fetchUsers();
+    setUsernames(result.usernames);
+    setUsersError(result.error);
+    setLoadingUsers(false);
   };
 
-  const closeLeadImportModal = () => {
-    setShowLeadImportModal(false);
-    setCsvFile(null);
-    setCsvData([]);
-    setCsvPreview([]);
-    setLeadImportData({
-      customerName: '',
-      mobileNumber: '',
-      whatsappNumber: '',
-      email: '',
-      productName: '',
-      gstNumber: '',
-      address: '',
-      state: '',
-      productType: '',
-      customerType: '',
-      leadSource: '',
-      date: new Date().toISOString().split('T')[0]
+  useEffect(() => {
+    if (showEditModal || showAssignModal) {
+      fetchUsers();
+    }
+  }, [showEditModal, showAssignModal]);
+
+  useEffect(() => {
+    if (showPreviewModal && previewLead && previewLead.id) {
+      fetchQuotations(previewLead.id);
+    }
+  }, [showPreviewModal, previewLead]);
+
+  const openAssignModal = (lead) => {
+    setAssigningLead(lead);
+    setAssignForm({
+      salesperson: lead.assignedSalesperson || '',
+      telecaller: lead.assignedTelecaller || ''
     });
+    setShowAssignModal(true);
   };
 
-  const handleLeadImportInputChange = (field, value) => {
-    setLeadImportData(prev => ({
+  const toggleColumn = (columnKey) => {
+    setVisibleColumns(prev => ({
       ...prev,
-      [field]: value
+      [columnKey]: !prev[columnKey]
     }));
   };
 
-  const handleLeadImportSubmit = (e) => {
-    e.preventDefault();
-    // Generate new customer ID
-    const newId = Math.max(...leads.map(lead => parseInt(lead.customerId.split('-')[1]))) + 1;
-    const newCustomerId = `MKT-${newId.toString().padStart(4, '0')}`;
-    
-    // Create new lead object
-    const newLead = {
-      id: leads.length + 1,
-      customerId: newCustomerId,
-      customer: leadImportData.customerName,
-      email: leadImportData.email,
-      business: leadImportData.customerType,
-      leadSource: leadImportData.leadSource,
-      productName: leadImportData.productName,
-      category: 'Imported Lead',
-      salesStatus: 'PENDING',
-      createdAt: leadImportData.date,
-      assigned: 'Unassigned',
-      telecaller: 'Unassigned',
-      telecallerStatus: 'INACTIVE',
-      paymentStatus: 'PENDING',
-      visitingStatus: 'PENDING',
-      gstNo: leadImportData.gstNumber
-    };
-    
-    // Add to leads array (in real app, this would be saved to database)
-    console.log('New lead imported:', newLead);
-    
-    alert(`Lead imported successfully! Customer ID: ${newCustomerId}`);
-    closeLeadImportModal();
+  const isValueAssigned = (val) => {
+    if (!val) return false;
+    const s = String(val).trim().toLowerCase();
+    // Return false for any value that indicates unassigned
+    return s !== 'unassigned' && s !== 'n/a' && s !== 'na' && s !== '-' && s !== 'assigned' && s !== '';
   };
 
-  const handleCsvFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file && file.type === 'text/csv') {
-      setCsvFile(file);
-      parseCsvFile(file);
-    } else {
-      alert('Please select a valid CSV file');
+  const isLeadAssigned = (lead) =>
+    isValueAssigned(lead.assignedSalesperson) || isValueAssigned(lead.assignedTelecaller);
+
+  const resetColumns = () => {
+    setVisibleColumns({
+      customerId: false,
+      customer: true,
+      business: true,
+      address: true,
+      state: true,
+      followUpStatus: true,
+      salesStatus: true,
+      assignedSalesperson: true,
+      assignedTelecaller: true,
+      gstNo: false,
+      leadSource: false,
+      productNames: false,
+      category: false,
+      createdAt: false,
+      telecallerStatus: false,
+      paymentStatus: false,
+      updatedAt: false
+    });
+  };
+
+  const showAllColumns = () => {
+    setVisibleColumns(prev => {
+      const allTrue = {};
+      for (const key in prev) {
+        if (prev.hasOwnProperty(key)) {
+          allTrue[key] = true;
+        }
+      }
+      return allTrue;
+    });
+  };
+
+  const hasStatusFilter = Boolean(statusFilter.type && statusFilter.status);
+  const activeLeadPool = hasStatusFilter 
+    ? (allLeadsDataRef.current.length > 0 ? allLeadsDataRef.current : allLeadsData.length > 0 ? allLeadsData : []) 
+    : leadsData;
+
+  const filteredLeads = useMemo(
+    () =>
+      filterLeads(
+        activeLeadPool,
+        searchTerm,
+        assignmentFilter,
+        statusFilter,
+        filteredCustomerIds,
+        isLeadAssigned
+      ),
+    [activeLeadPool, searchTerm, assignmentFilter, statusFilter, filteredCustomerIds, isLeadAssigned]
+  );
+
+  const uniqueFilteredLeads = useMemo(() => {
+    const seen = new Set();
+    const result = [];
+
+    for (let i = 0; i < filteredLeads.length; i++) {
+      const lead = filteredLeads[i];
+      const key = lead?.id ?? lead?.customerId;
+      if (key == null) continue;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(lead);
     }
+
+    return result;
+  }, [filteredLeads]);
+
+  const unassignedLeadIds = useMemo(() => 
+    getUnassignedLeadIds(uniqueFilteredLeads, isLeadAssigned), 
+    [uniqueFilteredLeads, isLeadAssigned]
+  );
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedLeadIds([]);
+      setIsAllSelected(false);
+      return;
+    }
+    const allVisibleLeadIds = uniqueFilteredLeads.map(l => l.id).filter(id => id != null);
+    setSelectedLeadIds([...allVisibleLeadIds]);
+    setIsAllSelected(allVisibleLeadIds.length > 0);
   };
 
-  const parseCsvFile = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target.result;
-      const lines = text.split('\n');
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
-      const data = lines.slice(1).filter(line => line.trim()).map(line => {
-        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        return row;
-      });
-      
-      setCsvData(data);
-      setCsvPreview(data.slice(0, 5)); // Show first 5 rows as preview
-    };
-    reader.readAsText(file);
+  const toggleSelectOne = (id) => {
+    setSelectedLeadIds((prev) => {
+      const prevSet = new Set(prev);
+      if (prevSet.has(id)) {
+        prevSet.delete(id);
+        } else {
+        prevSet.add(id);
+      }
+      const next = Array.from(prevSet);
+      setIsAllSelected(next.length > 0 && next.length === uniqueFilteredLeads.length);
+      return next;
+    });
   };
 
-  const handleCsvImport = () => {
-    if (csvData.length === 0) {
-      alert('No data to import');
+  const tableLoading = loading || (hasStatusFilter && loadingAllLeads && allLeadsData.length === 0);
+  const paginationDisabled = hasStatusFilter;
+  const totalPages = Math.max(1, Math.ceil(total / limit) || 1);
+  const pageStart = total === 0 ? 0 : (page - 1) * limit + 1;
+  const pageEnd = total === 0 ? 0 : Math.min(page * limit, total);
+  const paginationSummary = paginationDisabled
+    ? `${uniqueFilteredLeads.length} matching lead${uniqueFilteredLeads.length === 1 ? '' : 's'}`
+    : `${pageStart} - ${pageEnd} of ${total}`;
+  
+  const { assignedCount, unassignedCount } = useMemo(
+    () => calculateAssignedCounts(leadsData, isLeadAssigned),
+    [leadsData, isLeadAssigned]
+  );
+
+  const handleBadgeClick = async (type, status) => {
+    if (statusFilter.type === type && statusFilter.status === status) {
+      setStatusFilter({ type: null, status: null });
+      setFilteredCustomerIds(new Set());
       return;
     }
 
-    const importedLeads = csvData.map((row, index) => {
-      const newId = Math.max(...leads.map(lead => parseInt(lead.customerId.split('-')[1]))) + index + 1;
-      const newCustomerId = `MKT-${newId.toString().padStart(4, '0')}`;
+    try {
+      setStatusFilter({ type, status });
       
-      return {
-        id: leads.length + index + 1,
-        customerId: newCustomerId,
-        customer: row.customerName || row.customer_name || '',
-        email: row.email || '',
-        business: row.customerType || row.customer_type || row.business || '',
-        leadSource: row.leadSource || row.lead_source || row.enquiryBy || '',
-        productName: row.productName || row.product_name || '',
-        category: 'Imported Lead',
-        salesStatus: 'PENDING',
-        createdAt: row.date || new Date().toISOString().split('T')[0],
-        assigned: 'Unassigned',
-        telecaller: 'Unassigned',
-        telecallerStatus: 'INACTIVE',
-        paymentStatus: 'PENDING',
-        visitingStatus: 'PENDING',
-        gstNo: row.gstNumber || row.gst_number || ''
-      };
-    });
-
-    console.log('CSV leads imported:', importedLeads);
-    alert(`${importedLeads.length} leads imported successfully!`);
-    closeLeadImportModal();
-  };
-
-  const downloadCsvTemplate = () => {
-    const headers = [
-      'customerName',
-      'mobileNumber', 
-      'whatsappNumber',
-      'email',
-      'productName',
-      'gstNumber',
-      'address',
-      'state',
-      'productType',
-      'customerType',
-      'leadSource',
-      'date'
-    ];
-    
-    const csvContent = headers.join(',') + '\n' +
-      'John Doe,9876543210,9876543210,john@example.com,Digital Marketing,29ABCDE1234F1Z5,123 Main St,Madhya Pradesh,Conductor,Individual,Website,2024-01-20';
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'lead_import_template.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
-  useEffect(() => {
-    if (!showPreview) return;
-    const onKey = (e) => {
-      if (e.key === 'Escape') setShowPreview(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showPreview]);
-
-  const getStatusBadge = (status, type) => {
-    const baseClasses = "inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium min-w-[120px]";
-    
-    const formatStatus = (status) => {
-      return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    };
-    
-    switch (type) {
-      case 'sales':
-        return (
-          <span className={`${baseClasses} ${
-            status === 'PENDING' 
-              ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-              : status === 'FOLLOW_UP'
-              ? 'bg-blue-100 text-blue-800 border border-blue-200'
-              : status === 'MEETING_SCHEDULED'
-              ? 'bg-purple-100 text-purple-800 border border-purple-200'
-              : 'bg-green-100 text-green-800 border border-green-200'
-          }`}>
-            {formatStatus(status)}
-          </span>
-        );
-      case 'telecaller':
-        return (
-          <span className={`${baseClasses} ${
-            status === 'ACTIVE' 
-              ? 'bg-green-100 text-green-800 border border-green-200' 
-              : 'bg-red-100 text-red-800 border border-red-200'
-          }`}>
-            {formatStatus(status)}
-          </span>
-        );
-      case 'payment':
-        return (
-          <span className={`${baseClasses} text-[10px] px-2 py-0.5 min-w-[90px] ${
-            status === 'COMPLETED' 
-              ? 'bg-green-100 text-green-800 border border-green-200'
-              : status === 'IN_PROGRESS'
-              ? 'bg-blue-100 text-blue-800 border border-blue-200'
-              : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-          }`}>
-            {formatStatus(status)}
-          </span>
-        );
-      case 'visiting':
-        return (
-          <span className={`${baseClasses} ${
-            status === 'COMPLETED' 
-              ? 'bg-green-100 text-green-800 border border-green-200'
-              : status === 'IN_PROGRESS'
-              ? 'bg-blue-100 text-blue-800 border border-blue-200'
-              : status === 'SCHEDULED'
-              ? 'bg-purple-100 text-purple-800 border border-purple-200'
-              : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-          }`}>
-            {formatStatus(status)}
-          </span>
-        );
-      default:
-        return <span className={baseClasses}>{formatStatus(status)}</span>;
+      const [loadedLeads, countsResult] = await Promise.all([
+        loadAllLeadsForFilters(true),
+        fetchQuotationAndPICounts()
+      ]);
+      
+      let customerIds = new Set();
+      if (type === 'pi') {
+        const relevantPIs = countsResult?.filteredPIs[status] || [];
+        if (relevantPIs.length > 0) {
+          customerIds = await leadsFilterService.extractCustomerIdsFromPIs(relevantPIs);
+        }
+      } else if (type === 'quotation') {
+        const relevantQuotations = countsResult?.filteredQuotations[status] || [];
+        if (relevantQuotations.length > 0) {
+          customerIds = await leadsFilterService.extractCustomerIdsFromQuotations(relevantQuotations);
+        }
+      }
+      
+      setFilteredCustomerIds(customerIds);
+    } catch (err) {
+      toastManager.error('Failed to load leads for filtering');
+      setStatusFilter({ type: null, status: null });
     }
   };
 
-  const importedLeads = Array.isArray(leadsData) && leadsData.length > 0 ? leadsData : leads;
-
-  const matchesGlobal = (lead) => {
-    if (!searchTerm) return true;
-    const t = searchTerm.toLowerCase();
-    return (
-      (lead.customer || '').toLowerCase().includes(t) ||
-      (lead.email || '').toLowerCase().includes(t) ||
-      (lead.business || '').toLowerCase().includes(t) ||
-      (lead.phone || '').toLowerCase().includes(t) ||
-      (lead.address || '').toLowerCase().includes(t) ||
-      (lead.area || '').toLowerCase().includes(t) ||
-      (lead.division || '').toLowerCase().includes(t) ||
-      (lead.customerId || '').toLowerCase().includes(t)
-    );
+  const handleCustomerSave = async (customerData) => {
+    try {
+      setLoading(true);
+      
+      // Validate required fields
+      if (!customerData.customerName || !customerData.mobileNumber) {
+        toastManager.error('Customer Name and Mobile Number are required');
+        throw new Error('Customer Name and Mobile Number are required');
+      }
+      
+      // Validate phone number format (10 digits, starting with 6-9)
+      const phoneDigits = String(customerData.mobileNumber).replace(/\D/g, '');
+      const cleanPhone = phoneDigits.slice(-10);
+      if (cleanPhone.length !== 10 || !/^[6-9]/.test(cleanPhone)) {
+        toastManager.error('Please provide a valid 10-digit Indian mobile number (starting with 6-9)');
+        throw new Error('Invalid mobile number format');
+      }
+      
+      // Validate whatsapp if provided
+      if (customerData.whatsappNumber) {
+        const whatsappDigits = String(customerData.whatsappNumber).replace(/\D/g, '');
+        const cleanWhatsapp = whatsappDigits.slice(-10);
+        if (cleanWhatsapp.length !== 10 || !/^[6-9]/.test(cleanWhatsapp)) {
+          toastManager.error('Please provide a valid 10-digit Indian WhatsApp number (starting with 6-9)');
+          throw new Error('Invalid WhatsApp number format');
+        }
+      }
+      
+      const newCustomer = leadService.buildLeadPayload(customerData);
+      console.log('Creating lead with payload:', newCustomer);
+      
+      const transformedLead = await leadService.createLead(newCustomer);
+      console.log('Lead creation response:', transformedLead);
+      
+      if (transformedLead) {
+        setLeadsData(prevLeads => {
+          if (prevLeads && prevLeads.length > 0) {
+            return [...prevLeads, transformedLead];
+          } else {
+            return [transformedLead];
+          }
+        });
+        requestAllLeadsRefresh();
+        toastManager.success('Customer created successfully');
+        setShowAddCustomer(false);
+        
+        setTimeout(async () => {
+          try {
+            const response = await leadService.fetchLeads(buildLeadFetchParams());
+            applyLeadResponse(response, { refreshAll: true });
+          } catch (error) {
+            console.error('Error refreshing leads:', error);
+          }
+        }, 100);
+    } else {
+        const errorMsg = 'Failed to create customer. Server returned no data.';
+        toastManager.error(errorMsg);
+        throw new Error(errorMsg);
+      }
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      // Don't show error again if we already showed a specific validation error
+      if (!error.message.includes('Invalid') && !error.message.includes('required')) {
+        // Check if it's a validation error from backend
+        if (error.data?.errors && Array.isArray(error.data.errors)) {
+          const validationErrors = error.data.errors.map(e => e.msg || e.message).join(', ');
+          toastManager.error(`Validation failed: ${validationErrors}`);
+        } else {
+          const errorMessage = error.data?.message || error.data?.error || error.message || 'Failed to create customer. Please check the console for details.';
+          toastManager.error(`Failed to add lead: ${errorMessage}`);
+        }
+        console.error('Full error details:', {
+          message: error.message,
+          data: error.data,
+          status: error.status
+        });
+      }
+      apiErrorHandler.handleError(error, 'create customer');
+      // Re-throw error so modal stays open
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const matchesColumnFilters = (lead) => {
-    const cf = columnFilters;
-    const includes = (val, q) => String(val || '').toLowerCase().includes(String(q || '').toLowerCase());
-    return (
-      (!cf.customerId || includes(lead.customerId, cf.customerId)) &&
-      (!cf.customer || includes(lead.customer, cf.customer)) &&
-      (!cf.email || includes(lead.email, cf.email)) &&
-      (!cf.business || includes(lead.business, cf.business)) &&
-      (!cf.leadSource || includes(lead.leadSource, cf.leadSource)) &&
-      (!cf.productName || includes(lead.productName, cf.productName)) &&
-      (!cf.category || includes(lead.category, cf.category)) &&
-      (!cf.salesStatus || includes(lead.salesStatus, cf.salesStatus)) &&
-      (!cf.createdAt || includes(lead.createdAt, cf.createdAt)) &&
-      (!cf.assigned || includes(lead.assigned, cf.assigned)) &&
-      (!cf.telecaller || includes(lead.telecaller, cf.telecaller)) &&
-      (!cf.telecallerStatus || includes(lead.telecallerStatus, cf.telecallerStatus)) &&
-      (!cf.paymentStatus || includes(lead.paymentStatus, cf.paymentStatus)) &&
-      (!cf.visitingStatus || includes(lead.visitingStatus, cf.visitingStatus)) &&
-      (!cf.gstNo || includes(lead.gstNo, cf.gstNo)) &&
-      (!cf.area || includes(lead.area, cf.area)) &&
-      (!cf.division || includes(lead.division, cf.division)) &&
-      (!cf.state || includes(lead.state, cf.state)) &&
-      (!cf.customerType || includes(lead.customerType, cf.customerType)) &&
-      (!cf.productType || includes(lead.productType, cf.productType)) &&
-      (!cf.address || includes(lead.address, cf.address))
-    );
+  const fetchPIsForLead = async () => {
+    try {
+      setLoadingPIs(true);
+      const pis = await piService.fetchAllPIs();
+      setProformaInvoices(pis);
+    } catch (error) {
+      console.error('Error fetching PIs:', error);
+      setProformaInvoices([]);
+    } finally {
+      setLoadingPIs(false);
+    }
   };
 
-  const filteredLeads = importedLeads.filter(lead => matchesGlobal(lead) && matchesColumnFilters(lead));
+  const handleApprovePI = async (piId) => {
+    const success = await piService.approvePI(piId);
+    if (success && previewLead) {
+      await fetchPIsForLead();
+    }
+  };
+
+  const handleRejectPI = async (piId) => {
+    const reason = prompt('Please enter rejection reason:');
+    const success = await piService.rejectPI(piId, reason);
+    if (success && previewLead) {
+      await fetchPIsForLead();
+    }
+  };
+
+  const handleViewPI = async (piId) => {
+    try {
+      const result = await piService.fetchPIWithQuotation(piId);
+      if (!result) return;
+
+      const { pi, completeQuotation, quotationItems } = result;
+      const mappedItems = piService.buildPIItems(quotationItems);
+      const totals = piService.calculatePITotals(mappedItems, completeQuotation, pi);
+      const { advancePayment, originalQuotationTotal } = await piService.calculateAdvancePayment(
+        pi.quotation_id, 
+        totals.piTotal, 
+        totals.quotationTotal
+      );
+      const finalTotal = piService.calculateFinalTotal(
+        totals.piTotal, 
+        totals.quotationTotal, 
+        advancePayment, 
+        originalQuotationTotal
+      );
+      const billTo = piService.buildBillTo(completeQuotation, pi);
+      const previewData = piService.buildPIPreviewData(
+        pi, 
+        completeQuotation, 
+        mappedItems, 
+        totals, 
+        finalTotal, 
+        advancePayment, 
+        originalQuotationTotal, 
+        billTo
+      );
+
+      setPiPreviewData({
+        data: previewData,
+        selectedBranch: completeQuotation.branch || DEFAULT_BRANCH
+      });
+      setSelectedPIBranch(completeQuotation.branch || DEFAULT_BRANCH);
+      setShowPIPreview(true);
+    } catch (error) {
+      console.error('Error viewing PI:', error);
+      toastManager.error('Failed to load PI details');
+    }
+  };
+
+  const handleEdit = (lead) => {
+    setEditingLead(lead);
+    setEditFormData({
+      customer: lead.customer || '',
+      email: lead.email || '',
+      business: lead.business || '',
+      address: lead.address || '',
+      state: lead.state || '',
+      leadSource: lead.leadSource || '',
+      category: lead.category || '',
+      salesStatus: lead.salesStatus || '',
+      phone: lead.phone || '',
+      gstNo: lead.gstNo || '',
+      productNames: lead.productNamesText || '',
+      assignedSalesperson: lead.assignedSalesperson || '',
+      assignedTelecaller: lead.assignedTelecaller || '',
+      telecallerStatus: lead.telecallerStatus || '',
+      paymentStatus: lead.paymentStatus || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      if (editingLead && editingLead.id) {
+        await leadService.updateLead(editingLead.id, editFormData);
+
+        const updatedLeads = [];
+        for (let i = 0; i < leadsData.length; i++) {
+          const lead = leadsData[i];
+          updatedLeads.push(lead.id === editingLead.id ? { ...lead, ...editFormData } : lead);
+        }
+        setLeadsData(updatedLeads);
+        requestAllLeadsRefresh();
+
+        toastManager.success('Lead updated successfully');
+        setShowEditModal(false);
+        setEditingLead(null);
+      }
+    } catch (error) {
+      apiErrorHandler.handleError(error, 'update lead');
+    }
+  };
+
+  const getStatusBadge = getStatusBadgeUtil;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className={`space-y-6 transition-all duration-300 ${showCustomerTimeline ? 'pl-6' : 'p-6'}`}
+      style={{
+        width: showCustomerTimeline ? 'calc(98% - 200px)' : '100%',
+        marginRight: 0,
+        paddingRight: showCustomerTimeline ? 0 : '1.5rem',
+        paddingLeft: '1.5rem',
+        boxSizing: 'border-box',
+        overflow: 'visible',
+        position: 'relative',
+        marginLeft: 0,
+        maxWidth: showCustomerTimeline ? 'calc(98% - 200px)' : '100%',
+        flexShrink: 0
+      }}
+    >
+      <SearchBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        onImportClick={() => setShowImportPopup(true)}
+        onAddCustomer={() => setShowAddCustomer(true)}
+        onAssignSelected={() => {
+          setAssigningLead(null);
+          setAssignForm({ salesperson: '', telecaller: '' });
+          setShowAssignModal(true);
+        }}
+        onDeleteSelected={handleDeleteSelected}
+        selectedCount={selectedLeadIds.length}
+        onRefresh={handleManualRefresh}
+      />
 
+      <FilterBadges
+        quotationCounts={quotationCounts}
+        piCounts={piCounts}
+        loadingCounts={loadingCounts}
+        statusFilter={statusFilter}
+        assignmentFilter={assignmentFilter}
+        assignedCount={assignedCount}
+        unassignedCount={unassignedCount}
+        onBadgeClick={handleBadgeClick}
+        onAssignmentFilter={setAssignmentFilter}
+        onClearFilter={() => {
+          setStatusFilter({ type: null, status: null });
+          setAssignmentFilter(null);
+          setFilteredCustomerIds(new Set());
+        }}
+      />
 
-      {/* Search and Action Bar */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-        <div className="flex items-center justify-between">
-          {/* Left: Search */}
-          <div className="flex items-center gap-3 w-full max-w-xl">
-            <div className="relative w-1/2">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search by name, phone, address, area, division, or lead ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-1.5 rounded-full bg-gray-100 border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white shadow-inner"
-              />
-            </div>
-          </div>
+      <LeadTable
+        filteredLeads={uniqueFilteredLeads}
+        tableLoading={tableLoading}
+        hasStatusFilter={hasStatusFilter}
+        visibleColumns={visibleColumns}
+        isAllSelected={isAllSelected}
+        selectedLeadIds={selectedLeadIds}
+        isLeadAssigned={isLeadAssigned}
+        isValueAssigned={isValueAssigned}
+        getStatusBadge={getStatusBadge}
+        toggleSelectAll={toggleSelectAll}
+        toggleSelectOne={toggleSelectOne}
+        onEdit={handleEdit}
+        onViewTimeline={(lead) => {
+          setTimelineLead(lead);
+          setShowCustomerTimeline(true);
+        }}
+        onAssign={openAssignModal}
+        showCustomerTimeline={showCustomerTimeline}
+        setShowColumnFilter={setShowColumnFilter}
+      />
 
-          {/* Right: Actions */}
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2">
-              <button
-                className={`p-2 rounded-lg transition-colors ${
-                  showColumnFilters 
-                    ? 'bg-blue-100 text-blue-700 border border-blue-300' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                onClick={() => setShowColumnFilters(!showColumnFilters)}
-                title="Toggle Filters"
-              >
-                <Filter className="w-4 h-4" />
-              </button>
-              {showColumnFilters && (
+      <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="flex items-center space-x-2 text-sm text-gray-600">
+          <span>Rows per page:</span>
+                <select
+            value={limit}
+            onChange={(e) => {
+              setPage(1);
+              setLimit(Number(e.target.value));
+            }}
+            disabled={paginationDisabled}
+            className={`border border-gray-300 rounded px-2 py-1 text-sm ${paginationDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+                </select>
+          <span>{paginationSummary}</span>
+              </div>
+        <div className="flex items-center space-x-2">
                 <button
-                  className="px-3 py-2 text-xs bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
-                  onClick={clearAllFilters}
-                  title="Clear All Filters"
-                >
-                  Clear All
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={paginationDisabled || page === 1}
+            className={`px-3 py-1 border rounded ${
+              paginationDisabled || page === 1
+                ? 'text-gray-300 border-gray-200 cursor-not-allowed'
+                : 'text-gray-700 border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Prev
                 </button>
-              )}
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  showCheckboxes 
-                    ? 'bg-purple-600 text-white hover:bg-purple-700' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                onClick={toggleBulkAssignment}
-                title="Toggle Bulk Assignment"
-              >
-                Assign Leads
-              </button>
-              {showCheckboxes && selectedLeadsForBulk.length > 0 && (
+          <span className="text-sm text-gray-600">
+            {paginationDisabled ? 'Filtered view' : `Page ${page} of ${totalPages}`}
+          </span>
                 <button
-                  className="px-3 py-2 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                  onClick={openBulkAssignmentModal}
-                  title="Assign Selected Leads"
-                >
-                  Assign ({selectedLeadsForBulk.length})
+            onClick={() => setPage((p) => (p < totalPages ? p + 1 : p))}
+            disabled={paginationDisabled || page >= totalPages || total === 0}
+            className={`px-3 py-1 border rounded ${
+              paginationDisabled || page >= totalPages || total === 0
+                ? 'text-gray-300 border-gray-200 cursor-not-allowed'
+                : 'text-gray-700 border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Next
                 </button>
-              )}
-            </div>
-            <button
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-              onClick={() => setShowAddCustomer(true)}
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add leads</span>
-            </button>
-            <button
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
-              onClick={openLeadImportModal}
-            >
-              <Upload className="w-4 h-4" />
-              <span>Lead Import</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-white border-b border-gray-200">
-              {showColumnFilters && (
-                <tr className="bg-blue-50">
-                  <th className="px-6 py-2">
-                    {showCheckboxes ? (
-                      <input
-                        type="checkbox"
-                        checked={selectedLeadsForBulk.length === (leadsData || leads).length && (leadsData || leads).length > 0}
-                        onChange={handleSelectAllLeads}
-                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        placeholder="Filter by ID..."
-                        value={columnFilters.customerId}
-                        onChange={(e) => setColumnFilters(prev => ({ ...prev, customerId: e.target.value }))}
-                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    )}
-                  </th>
-                  <th className="px-6 py-2">
-                    <input
-                      type="text"
-                      placeholder="Filter customer"
-                      value={columnFilters.customer}
-                      onChange={(e) => setColumnFilters(prev => ({ ...prev, customer: e.target.value }))}
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </th>
-                  <th className="px-6 py-2">
-                    <input
-                      type="text"
-                      placeholder="Filter address"
-                      value={columnFilters.address}
-                      onChange={(e) => setColumnFilters(prev => ({ ...prev, address: e.target.value }))}
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </th>
-                  <th className="px-6 py-2">
-                    <select
-                      value={columnFilters.area}
-                      onChange={(e) => setColumnFilters(prev => ({ ...prev, area: e.target.value }))}
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="">All Areas</option>
-                      {areas.map(area => (
-                        <option key={area} value={area}>{area}</option>
-                      ))}
-                    </select>
-                  </th>
-                  <th className="px-6 py-2">
-                    <select
-                      value={columnFilters.division}
-                      onChange={(e) => setColumnFilters(prev => ({ ...prev, division: e.target.value }))}
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="">All Divisions</option>
-                      {divisions.map(division => (
-                        <option key={division} value={division}>{division}</option>
-                      ))}
-                    </select>
-                  </th>
-                  <th className="px-6 py-2">
-                    <input
-                      type="text"
-                      placeholder="Filter GST"
-                      value={columnFilters.gstNo}
-                      onChange={(e) => setColumnFilters(prev => ({ ...prev, gstNo: e.target.value }))}
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </th>
-                  <th className="px-6 py-2">
-                    <select
-                      value={columnFilters.productType}
-                      onChange={(e) => setColumnFilters(prev => ({ ...prev, productType: e.target.value }))}
-                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="">All Products</option>
-                      {productTypes.map(productType => (
-                        <option key={productType} value={productType}>{productType}</option>
-                      ))}
-                    </select>
-                  </th>
-                  <th className="px-6 py-2">
-                    {/* Action - No filter */}
-                  </th>
-                </tr>
-              )}
-              
-              {/* Header Row */}
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: showCheckboxes ? '50px' : '100px', minWidth: showCheckboxes ? '50px' : '100px', display: visibleColumns.leadId ? '' : 'none'}}>
-                  {showCheckboxes ? (
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedLeadsForBulk.length === (leadsData || leads).length && (leadsData || leads).length > 0}
-                        onChange={handleSelectAllLeads}
-                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-2">
-                      <Hash className="w-4 h-4 text-purple-600" />
-                      <span>LEAD ID</span>
-                    </div>
-                  )}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '200px', minWidth: '200px', display: visibleColumns.namePhone ? '' : 'none'}}>
-                  <div className="flex items-center space-x-2">
-                    <User className="w-4 h-4 text-blue-600" />
-                    <span>NAME & PHONE</span>
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '250px', minWidth: '250px', display: visibleColumns.address ? '' : 'none'}}>
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="w-4 h-4 text-green-600" />
-                    <span>ADDRESS</span>
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '140px', minWidth: '140px', display: visibleColumns.area ? '' : 'none'}}>
-                  <div className="flex items-center space-x-2">
-                    <Map className="w-4 h-4 text-green-600" />
-                    <span>AREA</span>
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '140px', minWidth: '140px', display: visibleColumns.division ? '' : 'none'}}>
-                  <div className="flex items-center space-x-2">
-                    <Globe className="w-4 h-4 text-green-600" />
-                    <span>DIVISION</span>
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '150px', minWidth: '150px', display: visibleColumns.gstNo ? '' : 'none'}}>
-                  <div className="flex items-center space-x-2">
-                    <FileText className="w-4 h-4 text-purple-600" />
-                    <span>GST NO.</span>
-                  </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '150px', minWidth: '150px', display: visibleColumns.productType ? '' : 'none'}}>
-                  <div className="flex items-center space-x-2">
-                    <Package className="w-4 h-4 text-purple-600" />
-                    <span>PRODUCT TYPE</span>
-                  </div>
-                </th>
-                {/* Extra selectable columns */}
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.phone ? '' : 'none'}}>
-                  <span>PHONE</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.email ? '' : 'none'}}>
-                  <span>EMAIL</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.state ? '' : 'none'}}>
-                  <span>STATE</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.customerType ? '' : 'none'}}>
-                  <span>CUSTOMER TYPE</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.leadSource ? '' : 'none'}}>
-                  <span>LEAD SOURCE</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.assignedSalesperson ? '' : 'none'}}>
-                  <span>ASSIGNED SALESPERSON</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.followUpStatus ? '' : 'none'}}>
-                  <span>FOLLOW UP STATUS</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.salesStatus ? '' : 'none'}}>
-                  <span>SALES STATUS</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.connectedStatus ? '' : 'none'}}>
-                  <span>CONNECTED STATUS</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.finalStatus ? '' : 'none'}}>
-                  <span>FINAL STATUS</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.expectedValue ? '' : 'none'}}>
-                  <span>EXPECTED VALUE</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.createdAt ? '' : 'none'}}>
-                  <span>CREATED AT</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.updatedAt ? '' : 'none'}}>
-                  <span>UPDATED AT</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{display: visibleColumns.notes ? '' : 'none'}}>
-                  <span>NOTES</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '120px', minWidth: '120px'}}>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowColumnChooser(true)}
-                      className="ml-2 p-1 rounded hover:bg-gray-100"
-                      title="Column Filter"
-                    >
-                      <Settings className="w-4 h-4 text-gray-600" />
-                    </button>
-                    <span>ACTION</span>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-            {filteredLeads.length > 0 ? (
-              filteredLeads.map((lead) => (
-                <tr key={lead.id} className="hover:bg-gray-50" 
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}>
-                  <td className="px-6 py-4 whitespace-nowrap" style={{display: visibleColumns.leadId ? '' : 'none'}}>
-                    {showCheckboxes ? (
-                      <input
-                        type="checkbox"
-                        checked={selectedLeadsForBulk.includes(lead.id)}
-                        onChange={() => handleBulkSelectLead(lead.id)}
-                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                    ) : (
-                      <span className="text-sm font-medium text-gray-900">{lead.customerId}</span>
-                    )}
-                  </td>
-                    <td className="px-6 py-4 whitespace-nowrap" style={{display: visibleColumns.namePhone ? '' : 'none'}}>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{lead.customer}</div>
-                        <div className="text-sm text-gray-500">{lead.phone}</div>
-                        <div className="flex space-x-3 mt-1">
-                          <span 
-                            className="text-xs text-green-600 cursor-pointer hover:text-green-800 transition-colors"
-                            onClick={() => {
-                              const phoneNumber = lead.phone.replace(/\D/g, '');
-                              window.open(`https://wa.me/${phoneNumber}`, '_blank');
-                            }}
-                            title="Click to open WhatsApp"
-                          >
-                            WhatsApp
-                          </span>
-                          <span 
-                            className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 transition-colors"
-                            onClick={() => {
-                              window.open(`mailto:${lead.email || 'contact@example.com'}`, '_blank');
-                            }}
-                            title="Click to open Email"
-                          >
-                            Email
-                          </span>
-                        </div>
+              </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs" style={{display: visibleColumns.address ? '' : 'none'}}>
-                      <div className="truncate">{lead.address}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.area ? '' : 'none'}}>
-                      {lead.area || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.division ? '' : 'none'}}>
-                      {lead.division || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.gstNo ? '' : 'none'}}>
-                      {lead.gstNo}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.productType ? '' : 'none'}}>
-                      {lead.productType}
-                    </td>
-                    {/* Extra selectable cells */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.phone ? '' : 'none'}}>
-                      {lead.phone || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.email ? '' : 'none'}}>
-                      {lead.email || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.state ? '' : 'none'}}>
-                      {lead.state || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.customerType ? '' : 'none'}}>
-                      {lead.customerType || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.leadSource ? '' : 'none'}}>
-                      {lead.leadSource || lead.source || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.assignedSalesperson ? '' : 'none'}}>
-                      {lead.assignedSalesperson || lead.assignedTo || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.followUpStatus ? '' : 'none'}}>
-                      {lead.followUpStatus || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.salesStatus ? '' : 'none'}}>
-                      {lead.salesStatus || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.connectedStatus ? '' : 'none'}}>
-                      {lead.connectedStatus || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.finalStatus ? '' : 'none'}}>
-                      {lead.finalStatus || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.expectedValue ? '' : 'none'}}>
-                      {lead.expectedValue != null ? lead.expectedValue : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.createdAt ? '' : 'none'}}>
-                      {lead.createdAt ? new Date(lead.createdAt).toLocaleString() : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.updatedAt ? '' : 'none'}}>
-                      {lead.updatedAt ? new Date(lead.updatedAt).toLocaleString() : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" style={{display: visibleColumns.notes ? '' : 'none'}}>
-                      {lead.notes || lead.remark || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex items-center space-x-2">
-                        {lead.assigned && lead.assigned !== 'Unassigned' ? (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200" title={`Assigned to ${lead.assigned}`}>
-                            Assigned
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200" title="Not Assigned">
-                            Unassigned
-                          </span>
-                        )}
-                        <button 
-                          onClick={() => {
-                            console.log('Opening view modal for lead:', lead);
-                            setSelectedLeadForView(lead);
-                            setShowViewModal(true);
-                            setActiveViewTab('overview');
-                          }}
-                          className="w-8 h-8 rounded-full border-2 border-blue-500 bg-white hover:bg-blue-50 transition-colors flex items-center justify-center"
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4 text-blue-500" />
-                        </button>
-                        <button 
-                          onClick={() => {
-                            console.log('Opening edit modal for lead:', lead);
-                            setSelectedLeadForEdit(lead);
-                            setShowEditModal(true);
-                          }}
-                          className="w-8 h-8 rounded-full border-2 border-orange-500 bg-white hover:bg-orange-50 transition-colors flex items-center justify-center"
-                          title="Edit Lead"
-                        >
-                          <Edit className="w-4 h-4 text-orange-500" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
-                    No leads found matching your criteria
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
-    {/* Column Chooser Modal */}
-    {showColumnChooser && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/30" onClick={() => setShowColumnChooser(false)}></div>
-        <div className="relative bg-white w-full max-w-sm mx-4 rounded-lg shadow-xl p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-gray-900">Column Filter</h3>
-            <button className="p-1 rounded hover:bg-gray-100" onClick={() => setShowColumnChooser(false)} title="Close">
-              <X className="w-5 h-5 text-gray-600" />
-            </button>
-          </div>
-          <p className="text-xs text-gray-500 mb-3">Show/Hide Columns</p>
-          <div className="max-h-72 overflow-y-auto pr-1">
-            {[
-              { key: 'leadId', label: 'Customer ID' },
-              { key: 'namePhone', label: 'Customer' },
-              { key: 'address', label: 'Address' },
-              { key: 'area', label: 'Area' },
-              { key: 'division', label: 'Division' },
-              { key: 'gstNo', label: 'GST No.' },
-              { key: 'productType', label: 'Product Type' },
-              { key: 'phone', label: 'Phone' },
-              { key: 'email', label: 'Email' },
-              { key: 'state', label: 'State' },
-              { key: 'customerType', label: 'Customer Type' },
-              { key: 'leadSource', label: 'Lead Source' },
-              { key: 'assignedSalesperson', label: 'Assigned Salesperson' },
-              { key: 'followUpStatus', label: 'Follow Up Status' },
-              { key: 'salesStatus', label: 'Sales Status' },
-              { key: 'connectedStatus', label: 'Connected Status' },
-              { key: 'finalStatus', label: 'Final Status' },
-              { key: 'expectedValue', label: 'Expected Value' },
-              { key: 'createdAt', label: 'Created At' },
-              { key: 'updatedAt', label: 'Updated At' },
-              { key: 'notes', label: 'Notes' }
-            ].map(({ key, label }) => (
-              <label key={key} className="flex items-center justify-between py-2 text-sm">
-                <span className="text-gray-800">{label}</span>
-                <input
-                  type="checkbox"
-                  checked={!!visibleColumns[key]}
-                  onChange={(e) => setVisibleColumns(prev => ({ ...prev, [key]: e.target.checked }))}
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                />
-              </label>
-            ))}
-          </div>
-          <div className="flex items-center justify-between mt-3">
-            <div className="space-x-2">
-              <button
-                className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-                onClick={() => setVisibleColumns(defaultVisibleColumns)}
-              >
-                Reset
-              </button>
-              <button
-                className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-                onClick={() => setVisibleColumns(Object.keys(defaultVisibleColumns).reduce((a,k)=>({ ...a, [k]: true}), {}))}
-              >
-                Show All
-              </button>
-            </div>
-            <button
-              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-              onClick={() => setShowColumnChooser(false)}
-            >
-              Apply
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
+      <ColumnFilterModal
+        isOpen={showColumnFilter}
+        onClose={() => setShowColumnFilter(false)}
+        visibleColumns={visibleColumns}
+        onToggleColumn={toggleColumn}
+        onResetColumns={resetColumns}
+        onShowAllColumns={showAllColumns}
+      />
 
-      {/* Add leads Modal */}
+                      <input
+        ref={importFileInputRef}
+        type="file"
+        accept=".csv"
+        onChange={handleFileUpload}
+        style={{ display: 'none' }}
+      />
+
+      <ImportCSVModal
+        isOpen={showImportPopup}
+        onClose={() => setShowImportPopup(false)}
+        onDownloadTemplate={downloadCSVTemplate}
+        onFileSelect={handleFileUpload}
+        fileInputRef={importFileInputRef}
+      />
+
+      <LeadPreviewDrawer
+        isOpen={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        previewLead={previewLead}
+        loadingQuotations={loadingQuotations}
+        quotations={quotations}
+        proformaInvoices={proformaInvoices}
+        isValueAssigned={isValueAssigned}
+        onViewQuotation={handleViewQuotation}
+        onDownloadPDF={handleDownloadPDF}
+        onApproveQuotation={handleApproveQuotation}
+        onRejectQuotation={handleRejectQuotation}
+        onViewPI={handleViewPI}
+        onApprovePI={handleApprovePI}
+        onRejectPI={handleRejectPI}
+      />
+
+      <ImportPreviewModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        importPreview={importPreview}
+        importing={importing}
+        onImport={handleImportLeads}
+      />
+
       {showAddCustomer && (
-        <AddCustomerForm 
-          onClose={() => setShowAddCustomer(false)} 
-          onSave={(formData) => {
-            // Create new lead object with proper structure
-            const newLead = {
-              id: Date.now(), // Generate unique ID
-              customerId: `MKT-${String(Date.now()).slice(-4)}`,
-              customer: formData.customerName,
-              email: formData.email || 'N/A',
-              business: formData.customerName, // Using customer name as business
-              leadSource: formData.leadSource,
-              productName: formData.productName,
-              category: 'New Lead',
-              salesStatus: 'PENDING',
-              createdAt: formData.date,
-              assigned: 'Unassigned',
-              telecaller: 'Unassigned',
-              telecallerStatus: 'PENDING',
-              paymentStatus: 'PENDING',
-              visitingStatus: 'NOT_SCHEDULED',
-              gstNo: formData.gstNumber || 'N/A',
-              phone: formData.mobileNumber,
-              whatsapp: formData.whatsappNumber ? `+91${formData.whatsappNumber}` : 'N/A',
-              address: formData.address,
-              state: formData.state,
-              productType: formData.productType,
-              customerType: formData.customerType,
-              assignedSalesperson: formData.assignedSalesperson || 'Unassigned'
-            };
-            
-            // Update leads data
-            setLeadsData(prevData => {
-              const currentData = Array.isArray(prevData) ? prevData : leads;
-              return [...currentData, newLead];
-            });
-            
-            setShowAddCustomer(false);
-          }}
+        <AddCustomerModal
+          onClose={() => setShowAddCustomer(false)}
+          onSave={handleCustomerSave}
         />
       )}
 
-      {/* Assignment Modal */}
-      {showAssignmentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={closeAssignmentModal}>
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Assign Lead to Salesperson</h3>
-                <button
-                  onClick={closeAssignmentModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+      <EditLeadModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        editFormData={editFormData}
+        onFormChange={setEditFormData}
+        onSave={handleSaveEdit}
+        usernames={usernames}
+        loadingUsers={loadingUsers}
+        usersError={usersError}
+      />
+
+      <AssignLeadModal
+        isOpen={showAssignModal && (assigningLead || selectedLeadIds.length > 0)}
+        onClose={() => setShowAssignModal(false)}
+        assigningLead={assigningLead}
+        selectedLeadIds={selectedLeadIds}
+        assignForm={assignForm}
+        onFormChange={setAssignForm}
+        onAssign={async () => {
+          try {
+            if (assigningLead) {
+              const leadId = assigningLead.id;
+              const payload = {
+                assignedSalesperson: assignForm.salesperson || null,
+                assignedTelecaller: assignForm.telecaller || null,
+                salesStatus: assigningLead.salesStatus || assigningLead.sales_status || '',
+                followUpStatus: assigningLead.followUpStatus || assigningLead.follow_up_status || '',
+                salesStatusRemark: assigningLead.salesStatusRemark || assigningLead.sales_status_remark || '',
+                followUpRemark: assigningLead.followUpRemark || assigningLead.follow_up_remark || '',
+              };
+              await leadService.updateLead(leadId, payload);
               
-              {selectedLeadForAssignment && (
-                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600">Lead Details:</p>
-                  <p className="font-medium text-gray-900">{selectedLeadForAssignment.customerId} - {selectedLeadForAssignment.customer}</p>
-                  <p className="text-sm text-gray-600">{selectedLeadForAssignment.business}</p>
-                </div>
-              )}
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Salesperson (optional)
-                </label>
-                <select
-                  value={selectedSalesperson}
-                  onChange={(e) => setSelectedSalesperson(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">{salespersonsLoading ? 'Loading users...' : 'Skip for now'}</option>
-                  {salespersonsError && <option value="" disabled>{salespersonsError}</option>}
-                  {salespersons.map((salesperson) => (
-                    <option key={salesperson.id} value={salesperson.name}>
-                      {salesperson.name} {salesperson.department ? `- ${salesperson.department}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assignment Date
-                </label>
-                <input
-                  type="date"
-                  value={assignmentDate}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => setAssignmentDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={closeAssignmentModal}
-                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveLeadDate}
-                  disabled={!assignmentDate}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                >
-                  Save Date
-                </button>
-                <button
-                  onClick={handleAssignLead}
-                  disabled={!selectedSalesperson}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                >
-                  Assign Now
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View Drawer (Right Sidebar) */}
-      {showViewModal && selectedLeadForView && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40" onClick={closeViewModal}></div>
-          <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-xl border-l border-gray-200 flex flex-col">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Lead Details - {selectedLeadForView.customerId || selectedLeadForView.id}</h3>
-              <button onClick={closeViewModal} className="text-gray-400 hover:text-gray-600 transition-colors" title="Close">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto">
-              {/* Tab Navigation */}
-              <div className="grid grid-cols-4 gap-1 mb-6 bg-gray-100 p-1 rounded-lg">
-                <button
-                  onClick={() => setActiveViewTab('overview')}
-                  className={`w-full text-center px-3 py-1.5 text-xs whitespace-nowrap font-medium rounded-md transition-colors ${
-                    activeViewTab === 'overview'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Overview
-                </button>
-                <button
-                  onClick={() => setActiveViewTab('payment')}
-                  className={`w-full text-center px-3 py-1.5 text-xs whitespace-nowrap font-medium rounded-md transition-colors ${
-                    activeViewTab === 'payment'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Payment Status
-                </button>
-                <button
-                  onClick={() => setActiveViewTab('docs')}
-                  className={`w-full text-center px-3 py-1.5 text-xs whitespace-nowrap font-medium rounded-md transition-colors ${
-                    activeViewTab === 'docs'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Quotation & PI
-                </button>
-                <button
-                  onClick={() => setActiveViewTab('meetings')}
-                  className={`w-full text-center px-3 py-1.5 text-xs whitespace-nowrap font-medium rounded-md transition-colors ${
-                    activeViewTab === 'meetings'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Visits/Meetings
-                </button>
-              </div>
-
-              {/* Tab Content */}
-              {activeViewTab === 'overview' && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h4 className="font-semibold text-gray-900 mb-3">Customer Information</h4>
-                      <div className="space-y-2">
-                        <p><span className="font-medium">Name:</span> {selectedLeadForView.customer}</p>
-                        <p><span className="font-medium">Email:</span> {selectedLeadForView.email}</p>
-                        <p><span className="font-medium">Business:</span> {selectedLeadForView.business}</p>
-                        <p><span className="font-medium">GST No:</span> {selectedLeadForView.gstNo}</p>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h4 className="font-semibold text-gray-900 mb-3">Lead Information</h4>
-                      <div className="space-y-2">
-                        <p><span className="font-medium">Lead Source:</span> {selectedLeadForView.leadSource}</p>
-                        <p><span className="font-medium">Product:</span> {selectedLeadForView.productName}</p>
-                        <p><span className="font-medium">Category:</span> {selectedLeadForView.category}</p>
-                        <p><span className="font-medium">Created:</span> {selectedLeadForView.createdAt}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h4 className="font-semibold text-gray-900 mb-3">Assignment</h4>
-                      <p><span className="font-medium">Assigned to:</span> {selectedLeadForView.assigned}</p>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h4 className="font-semibold text-gray-900 mb-3">Status</h4>
-                      <div className="space-y-2">
-                        <p><span className="font-medium">Sales Status:</span> {getStatusBadge(selectedLeadForView.salesStatus, 'sales')}</p>
-                        <p><span className="font-medium">Visiting Status:</span> {getStatusBadge(selectedLeadForView.visitingStatus, 'visiting')}</p>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h4 className="font-semibold text-gray-900 mb-3">Telecaller</h4>
-                      <p><span className="font-medium">Telecaller:</span> {selectedLeadForView.telecaller}</p>
-                      <p><span className="font-medium">Status:</span> {getStatusBadge(selectedLeadForView.telecallerStatus, 'telecaller')}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeViewTab === 'payment' && (
-                <div className="space-y-6">
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h4 className="font-semibold text-gray-900 mb-6">Payment Overview</h4>
-
-                    {/* Payment Summary Cards - stacked with wrapping */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                       <div className="text-xs text-gray-600">Total Amount</div>
-                         <div className="text-lg font-semibold text-gray-900 mt-1">₹{(selectedLeadForView?.paymentTotal || selectedLeadForView?.totalAmount || 0).toLocaleString?.() || (selectedLeadForView?.paymentTotal || selectedLeadForView?.totalAmount || 0)}</div>
-                        <div className="text-xs text-gray-600 mt-2 flex items-center gap-2">
-                          <span>Status</span>
-                          <span className="text-[10px] leading-none">{getStatusBadge(selectedLeadForView.paymentStatus, 'payment')}</span>
-                        </div>
-                      </div>
-
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                         <div className="text-xs text-gray-600">Paid Amount</div>
-                         <div className="text-lg font-semibold text-green-600 mt-1">₹{(selectedLeadForView?.paidAmount || 0).toLocaleString?.() || (selectedLeadForView?.paidAmount || 0)}</div>
-                        <div className="text-xs text-gray-600 mt-2">
-                           Method <span className="text-gray-900">{selectedLeadForView?.paymentMethod || '—'}</span>
-                        </div>
-                      </div>
-
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                         <div className="text-xs text-gray-600">Pending Amount</div>
-                         <div className="text-lg font-semibold text-orange-600 mt-1">₹{(() => {
-                           const total = selectedLeadForView?.paymentTotal ?? selectedLeadForView?.totalAmount ?? 0;
-                           const paid = selectedLeadForView?.paidAmount ?? 0;
-                           const pending = selectedLeadForView?.pendingAmount ?? Math.max(total - paid, 0);
-                           return pending.toLocaleString?.() || pending;
-                         })()}</div>
-                        <div className="text-xs text-gray-600 mt-2">
-                           Due Date <span className="text-gray-900">{selectedLeadForView?.paymentDueDate || '—'}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Payment History */}
-                    <div>
-                      <h5 className="font-semibold text-gray-900 mb-4">Payment History</h5>
-                      <div className="space-y-3">
-                        {(selectedLeadForView?.paymentHistory || []).length === 0 ? (
-                          <div className="text-sm text-gray-600">No payment history available</div>
-                        ) : (
-                          (selectedLeadForView.paymentHistory).map((row, idx) => (
-                            <div key={idx} className={`flex items-center justify-between p-3 border rounded-lg ${row.status === 'completed' ? 'bg-green-50 border-green-200' : row.status === 'pending' ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200'}`}>
-                              <div className="flex items-center gap-3">
-                                <div className={`w-3 h-3 rounded-full ${row.status === 'completed' ? 'bg-green-500' : row.status === 'pending' ? 'bg-yellow-500' : 'bg-gray-400'}`}></div>
-                                <div>
-                                  <p className="font-medium text-gray-900">{row.title || 'Payment'}</p>
-                                  <p className="text-sm text-gray-600">{row.note || row.date || ''}</p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className={`font-semibold ${row.status === 'completed' ? 'text-green-600' : row.status === 'pending' ? 'text-orange-600' : 'text-gray-700'}`}>₹{(row.amount || 0).toLocaleString?.() || (row.amount || 0)}</p>
-                                <p className="text-sm text-gray-600">{row.method || '—'}</p>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Quotation & PI removed from Payment tab; now shown under Docs tab only */}
-                </div>
-              )}
-
-              {activeViewTab === 'docs' && (
-                <div className="space-y-6">
-                   {/* Active Quotation Section */}
-                   <div className="bg-white border border-gray-200 rounded-lg p-4">
-                     <h5 className="font-semibold text-gray-900 mb-3">Active Quotation</h5>
-                     {selectedLeadForView?.quotation ? (
-                       <div className="space-y-3">
-                         <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                           <div>
-                             <span className="text-sm font-medium text-gray-900">Quotation #{selectedLeadForView.quotation.quotationNumber || selectedLeadForView.quotation.number}</span>
-                             <p className="text-sm text-gray-600">{selectedLeadForView.quotation.title || '—'}</p>
-                           </div>
-                           <span className="text-sm font-medium text-green-600">₹{(selectedLeadForView.quotation.total || 0).toLocaleString?.() || (selectedLeadForView.quotation.total || 0)}{selectedLeadForView.quotation.status ? ` - ${selectedLeadForView.quotation.status}` : ''}</span>
-                         </div>
-                         <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                           <div>
-                             <span className="text-sm text-gray-600">Valid Until: {selectedLeadForView.quotation.validUpto || '—'}</span>
-                             <p className="text-sm text-gray-600">Prepared by: {selectedLeadForView.quotation.preparedBy || '—'}</p>
-                           </div>
-                           <div className="flex gap-2">
-                             <button
-                               onClick={() => { setQuotationData(selectedLeadForView.quotation); setShowQuotationModal(true); }}
-                               className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
-                             >
-                               View Quotation
-                             </button>
-                           </div>
-                         </div>
-                       </div>
-                     ) : (
-                       <div className="text-sm text-gray-600">No quotation available</div>
-                     )}
-                   </div>
-
-                   {/* Proforma Invoice Section */}
-                   <div className="bg-white border border-gray-200 rounded-lg p-4">
-                     <h5 className="font-semibold text-gray-900 mb-3">Proforma Invoice</h5>
-                     {selectedLeadForView?.proforma ? (
-                       <div className="space-y-3">
-                         <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                           <div>
-                             <span className="text-sm font-medium text-gray-900">Invoice #{selectedLeadForView.proforma.invoiceNumber || selectedLeadForView.proforma.number}</span>
-                             <p className="text-sm text-gray-600">{selectedLeadForView.proforma.title || '—'}</p>
-                           </div>
-                           <span className="text-sm font-medium text-blue-600">₹{(selectedLeadForView.proforma.total || 0).toLocaleString?.() || (selectedLeadForView.proforma.total || 0)}{selectedLeadForView.proforma.status ? ` - ${selectedLeadForView.proforma.status}` : ''}</span>
-                         </div>
-                         <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                           <div>
-                             <span className="text-sm text-gray-600">Invoice Date: {selectedLeadForView.proforma.invoiceDate || '—'}</span>
-                             <p className="text-sm text-gray-600">Generated by: {selectedLeadForView.proforma.generatedBy || '—'}</p>
-                           </div>
-                           <div className="flex gap-2">
-                             <button
-                               onClick={() => { setProformaData(selectedLeadForView.proforma); setShowProformaModal(true); }}
-                               className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
-                             >
-                               View PI
-                             </button>
-                           </div>
-                         </div>
-                       </div>
-                     ) : (
-                       <div className="text-sm text-gray-600">No proforma invoice available</div>
-                     )}
-                   </div>
-                </div>
-              )}
-
-              {activeViewTab === 'meetings' && (
-                <div className="space-y-6">
-                  {/* Site Visit Summary and Lead Performance - Side by Side */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Site Visit Summary */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <h4 className="font-semibold text-gray-900 mb-4">Site Visit Summary</h4>
-                      
-                      {/* Next Visit - Simplified */}
-                      <div className="bg-blue-50 p-3 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-gray-900">Next Visit</p>
-                            <p className="text-sm text-gray-600">25 Jan 2024, 2:00 PM</p>
-                          </div>
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                            Scheduled
-                          </span>
-                        </div>
-                        <div className="mt-2 text-sm text-gray-600">
-                          <span className="font-medium">{selectedLeadForView?.assigned || 'Unassigned'}</span> • Follow-up
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Lead-Specific Performance */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <h4 className="text-lg font-semibold text-gray-900">Lead Performance</h4>
-                          <p className="text-sm text-gray-600">Performance metrics for this specific lead</p>
-                        </div>
-                        <TrendingUp className="w-6 h-6 text-blue-600" />
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div className="bg-gray-50 rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <h5 className="font-semibold text-gray-900">{selectedLeadForView?.assigned || 'No Assigned Salesperson'}</h5>
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              active
-                            </span>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 gap-3 text-sm">
-                            <div>
-                              <span className="text-gray-600">Lead Status:</span>
-                              <span className="ml-2 font-medium text-gray-900">{selectedLeadForView?.salesStatus || 'Pending'}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Visit Status:</span>
-                              <span className="ml-2 font-medium text-gray-900">{selectedLeadForView?.visitingStatus || 'Not Scheduled'}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Payment Status:</span>
-                              <span className="ml-2 font-medium text-gray-900">{selectedLeadForView?.paymentStatus || 'Pending'}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Lead Category:</span>
-                              <span className="ml-2 font-medium text-gray-900">{selectedLeadForView?.category || 'Uncategorized'}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Visit Tracking Map */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-900">Visit Tracking Map</h4>
-                        <p className="text-sm text-gray-600">Track salesperson locations and routes</p>
-                      </div>
-                      <Navigation className="w-6 h-6 text-green-600" />
-                    </div>
-                    
-                    <div className="relative">
-                      <div className="w-full h-80 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <div className="text-center">
-                          <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                          <p className="text-gray-600 mb-2">Interactive map will be displayed here</p>
-                          <p className="text-sm text-gray-500">Integration with Google Maps API required</p>
-                        </div>
-                      </div>
-                      
-                      {/* Live tracking indicator */}
-                      <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-2">
-                        <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                        Live Tracking
-                      </div>
-                    </div>
-                    
-                    {/* Salesperson list with live status */}
-                    <div className="mt-4 space-y-2">
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                          <span className="font-medium text-gray-900">{selectedLeadForView?.assigned || 'No assigned salesperson'}</span>
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Distance: 0 KM
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Meeting History */}
-                  <div className="bg-white border border-gray-200 rounded-lg p-4">
-                    <h5 className="font-semibold text-gray-900 mb-3">Meeting History</h5>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <div>
-                          <span className="text-sm font-medium text-gray-900">Initial Discussion</span>
-                          <p className="text-xs text-gray-600">2024-01-15 at 10:00 AM</p>
-                        </div>
-                        <span className="text-sm font-medium text-green-600">Completed</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <div>
-                          <span className="text-sm font-medium text-gray-900">Product Demo</span>
-                          <p className="text-xs text-gray-600">2024-01-20 at 3:00 PM</p>
-                        </div>
-                        <span className="text-sm font-medium text-green-600">Completed</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <div>
-                          <span className="text-sm font-medium text-gray-900">Follow-up Meeting</span>
-                          <p className="text-xs text-gray-600">2024-01-25 at 2:00 PM</p>
-                        </div>
-                        <span className="text-sm font-medium text-blue-600">Scheduled</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Modal */}
-      {showEditModal && selectedLeadForEdit && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={closeEditModal}>
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Edit Lead - {selectedLeadForEdit.customerId || selectedLeadForEdit.id}</h3>
-                <button
-                  onClick={closeEditModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="space-y-6">
-                {/* Customer Information Section */}
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Customer ID</label>
-                      <input
-                        type="text"
-                        defaultValue={selectedLeadForEdit.customerId}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        readOnly
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
-                      <input
-                        type="text"
-                        defaultValue={selectedLeadForEdit.customer}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                      <input
-                        type="email"
-                        defaultValue={selectedLeadForEdit.email}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Business</label>
-                      <input
-                        type="text"
-                        defaultValue={selectedLeadForEdit.business}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">GST No</label>
-                      <input
-                        type="text"
-                        defaultValue={selectedLeadForEdit.gstNo}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Created Date</label>
-                      <input
-                        type="date"
-                        defaultValue={selectedLeadForEdit.createdAt}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Lead Information Section */}
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Lead Information</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Lead Source</label>
-                      <select
-                        defaultValue={selectedLeadForEdit.leadSource}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="Website Inquiry">Website Inquiry</option>
-                        <option value="Social Media">Social Media</option>
-                        <option value="Referral">Referral</option>
-                        <option value="Email Campaign">Email Campaign</option>
-                        <option value="Trade Show">Trade Show</option>
-                        <option value="Cold Call">Cold Call</option>
-                        <option value="Advertisement">Advertisement</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
-                      <input
-                        type="text"
-                        defaultValue={selectedLeadForEdit.productName}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                      <select
-                        defaultValue={selectedLeadForEdit.category}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="Hot Lead">Hot Lead</option>
-                        <option value="Warm Lead">Warm Lead</option>
-                        <option value="Cold Lead">Cold Lead</option>
-                        <option value="Qualified Lead">Qualified Lead</option>
-                        <option value="Unqualified Lead">Unqualified Lead</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Sales Status</label>
-                      <select
-                        defaultValue={selectedLeadForEdit.salesStatus}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="PENDING">Pending</option>
-                        <option value="FOLLOW_UP">Follow Up</option>
-                        <option value="MEETING_SCHEDULED">Meeting Scheduled</option>
-                        <option value="QUOTATION_SENT">Quotation Sent</option>
-                        <option value="NEGOTIATION">Negotiation</option>
-                        <option value="COMPLETED">Completed</option>
-                        <option value="LOST">Lost</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Assignment Information Section */}
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Assignment Information</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Salesperson</label>
-                      <select
-                        defaultValue={selectedLeadForEdit.assigned}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="Sarah Johnson">Sarah Johnson</option>
-                        <option value="David Lee">David Lee</option>
-                        <option value="Anna Garcia">Anna Garcia</option>
-                        <option value="Chris Miller">Chris Miller</option>
-                        <option value="Alex Johnson">Alex Johnson</option>
-                        <option value="Lisa Chen">Lisa Chen</option>
-                        <option value="Mike Wilson">Mike Wilson</option>
-                        <option value="Emma Taylor">Emma Taylor</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Telecaller</label>
-                      <select
-                        defaultValue={selectedLeadForEdit.telecaller}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="Mike Wilson">Mike Wilson</option>
-                        <option value="Lisa Chen">Lisa Chen</option>
-                        <option value="Tom Davis">Tom Davis</option>
-                        <option value="Emma Taylor">Emma Taylor</option>
-                        <option value="Sarah Smith">Sarah Smith</option>
-                        <option value="John Doe">John Doe</option>
-                        <option value="Jane Smith">Jane Smith</option>
-                        <option value="Bob Johnson">Bob Johnson</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status Information Section */}
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Status Information</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Visiting Status</label>
-                      <select
-                        defaultValue={selectedLeadForEdit.visitingStatus}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="PENDING">Pending</option>
-                        <option value="SCHEDULED">Scheduled</option>
-                        <option value="IN_PROGRESS">In Progress</option>
-                        <option value="COMPLETED">Completed</option>
-                        <option value="CANCELLED">Cancelled</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
-                      <select
-                        defaultValue={selectedLeadForEdit.paymentStatus}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="PENDING">Pending</option>
-                        <option value="IN_PROGRESS">In Progress</option>
-                        <option value="COMPLETED">Completed</option>
-                        <option value="PARTIAL">Partial</option>
-                        <option value="OVERDUE">Overdue</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Telecaller Status</label>
-                      <select
-                        defaultValue={selectedLeadForEdit.telecallerStatus}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="ACTIVE">Active</option>
-                        <option value="INACTIVE">Inactive</option>
-                        <option value="BUSY">Busy</option>
-                        <option value="NOT_AVAILABLE">Not Available</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  onClick={closeEditModal}
-                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    alert('Lead updated successfully!');
-                    closeEditModal();
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Status Update Modal */}
-      {showStatusUpdateModal && selectedLeadForEdit && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Update Lead Status - {selectedLeadForEdit.customerId || selectedLeadForEdit.id}</h3>
-                <button
-                  onClick={() => {
-                    setShowStatusUpdateModal(false);
-                    setSelectedLeadForEdit(null);
-                  }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Sales Status</label>
-                  <select
-                    defaultValue={selectedLeadForEdit.salesStatus}
-                    onChange={(e) => handleStatusUpdate(selectedLeadForEdit.id, e.target.value, 'salesStatus')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="PENDING">Pending</option>
-                    <option value="FOLLOW_UP">Follow Up</option>
-                    <option value="MEETING_SCHEDULED">Meeting Scheduled</option>
-                    <option value="QUOTATION_SENT">Quotation Sent</option>
-                    <option value="NEGOTIATION">Negotiation</option>
-                    <option value="CLOSED_WON">Closed Won</option>
-                    <option value="CLOSED_LOST">Closed Lost</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Visiting Status</label>
-                  <select
-                    defaultValue={selectedLeadForEdit.visitingStatus}
-                    onChange={(e) => handleStatusUpdate(selectedLeadForEdit.id, e.target.value, 'visitingStatus')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="NOT_SCHEDULED">Not Scheduled</option>
-                    <option value="SCHEDULED">Scheduled</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="CANCELLED">Cancelled</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
-                  <select
-                    defaultValue={selectedLeadForEdit.paymentStatus}
-                    onChange={(e) => handleStatusUpdate(selectedLeadForEdit.id, e.target.value, 'paymentStatus')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="PENDING">Pending</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="PARTIAL">Partial</option>
-                    <option value="OVERDUE">Overdue</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Telecaller Status</label>
-                  <select
-                    defaultValue={selectedLeadForEdit.telecallerStatus}
-                    onChange={(e) => handleStatusUpdate(selectedLeadForEdit.id, e.target.value, 'telecallerStatus')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                    <option value="BUSY">Busy</option>
-                    <option value="NOT_AVAILABLE">Not Available</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  onClick={() => {
-                    setShowStatusUpdateModal(false);
-                    setSelectedLeadForEdit(null);
-                  }}
-                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Lead Import Modal */}
-      {showLeadImportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Import New Lead</h3>
-                <button
-                  onClick={closeLeadImportModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              
-              {/* CSV Import Section */}
-              <div className="space-y-6">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-2">CSV Import Instructions</h4>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Upload a CSV file with the same fields as the Add leads form. Download the template below for the correct format.
-                  </p>
-                  <button
-                    onClick={downloadCsvTemplate}
-                    className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download CSV Template
-                  </button>
-                </div>
-
-                {/* CSV File Upload */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Select CSV File</label>
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCsvFileChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-                {/* CSV Preview */}
-                {csvPreview.length > 0 && (
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Data Preview ({csvData.length} records)</h4>
-                    <div className="bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-gray-200">
-                            {Object.keys(csvPreview[0] || {}).map((key, index) => (
-                              <th key={index} className="text-left py-2 px-2 font-medium text-gray-700">
-                                {key}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {csvPreview.map((row, index) => (
-                            <tr key={index} className="border-b border-gray-100">
-                              {Object.values(row).map((value, cellIndex) => (
-                                <td key={cellIndex} className="py-2 px-2 text-gray-600">
-                                  {value}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {/* CSV Import Actions */}
-                <div className="flex justify-end space-x-3">
-                  <button
-                    onClick={closeLeadImportModal}
-                    className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCsvImport}
-                    disabled={csvData.length === 0}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Import {csvData.length} Leads
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quotation Modal */}
-      {showQuotationModal && quotationData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowQuotationModal(false)}>
-          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Quotation - {quotationData.quotationNumber}</h3>
-                <button
-                  onClick={() => setShowQuotationModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              
-              <MarketingQuotation 
-                selectedBranch="ANODE"
-                companyBranches={{
-                  ANODE: {
-                    name: 'ANODE ELECTRIC PRIVATE LIMITED',
-                    gstNumber: '(23AANCA7455R1ZX)',
-                    description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
-                    address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
-                    tel: '6262002116, 6262002113',
-                    web: 'www.anocab.com',
-                    email: 'info@anocab.com'
-                  }
-                }}
-              />
-              
-              {/* Accept/Reject Actions */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">Status:</span>
-                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                        Active
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Valid Until: {quotationData?.validUpto || 'N/A'}
-                    </div>
-                  </div>
+              // Create meeting if assigned to a salesperson
+              if (assignForm.salesperson) {
+                try {
+                  const leadAddress = assigningLead.address || assigningLead.location || 'Address not provided';
+                  const meetingDate = new Date().toISOString().split('T')[0]; // Default to today
                   
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => {
-                        alert('Quotation rejected successfully!');
-                        setShowQuotationModal(false);
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                      Reject Quotation
-                    </button>
-                    <button
-                      onClick={() => {
-                        alert('Quotation accepted successfully!');
-                        setShowQuotationModal(false);
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      Accept Quotation
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Proforma Invoice Modal */}
-      {showProformaModal && proformaData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Proforma Invoice - {proformaData.invoiceNumber}</h3>
-                <button
-                  onClick={() => setShowProformaModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-              
-              <MarketingCorporateStandardInvoice 
-                selectedBranch="ANODE"
-                companyBranches={{
-                  ANODE: {
-                    name: 'ANODE ELECTRIC PRIVATE LIMITED',
-                    gstNumber: '(23AANCA7455R1ZX)',
-                    description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
-                    address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
-                    tel: '6262002116, 6262002113',
-                    web: 'www.anocab.com',
-                    email: 'info@anocab.com'
-                  }
-                }}
-              />
-              
-              {/* Accept/Reject Actions */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">Status:</span>
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                        Generated
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Invoice Date: {proformaData?.invoiceDate || 'N/A'}
-                    </div>
-                  </div>
+                  const meetingData = {
+                    customer_name: assigningLead.customer || assigningLead.name || 'N/A',
+                    customer_phone: assigningLead.phone || assigningLead.phone_number || '',
+                    customer_email: assigningLead.email || '',
+                    address: leadAddress,
+                    city: assigningLead.city || '',
+                    state: assigningLead.state || '',
+                    pincode: assigningLead.pincode || '',
+                    assigned_to: assignForm.salesperson,
+                    meeting_date: meetingDate,
+                    meeting_time: '',
+                    scheduled_date: meetingDate,
+                    status: 'Scheduled',
+                    notes: `Assigned from lead: ${leadId}`,
+                    customer_id: leadId,
+                    lead_id: leadId
+                  };
                   
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => {
-                        alert('Proforma Invoice rejected successfully!');
-                        setShowProformaModal(false);
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                      Reject Invoice
-                    </button>
-                    <button
-                      onClick={() => {
-                        alert('Proforma Invoice accepted successfully!');
-                        setShowProformaModal(false);
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      Accept Invoice
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+                  await apiClient.post(API_ENDPOINTS.MARKETING_MEETINGS_CREATE(), meetingData);
+                  // Notify other components to refresh
+                  try { window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); } catch {}
+                } catch (meetingError) {
+                  console.error('Error creating meeting for assigned lead:', meetingError);
+                  // Don't block assignment if meeting creation fails
+                }
+              }
+              
+              setLeadsData(prev => {
+                const updated = [];
+                for (let i = 0; i < prev.length; i++) {
+                  const l = prev[i];
+                  if (l.id === leadId) {
+                    updated.push({
+                      ...l,
+                      assignedSalesperson: payload.assignedSalesperson || '',
+                      assignedTelecaller: payload.assignedTelecaller || '',
+                      salesStatus: payload.salesStatus,
+                      followUpStatus: payload.followUpStatus,
+                    });
+                  } else {
+                    updated.push(l);
+                  }
+                }
+                return updated;
+              });
+              toastManager.success('Lead reassigned successfully');
+              setAssigningLead(null);
+            } else {
+              const selectedLeads = leadsData.filter(l => selectedLeadIds.includes(l.id));
+              const basePayload = {
+                assignedSalesperson: assignForm.salesperson || null,
+                assignedTelecaller: assignForm.telecaller || null,
+              };
+              
+              const updatePromises = selectedLeads.map(lead => {
+                const payload = {
+                  ...basePayload,
+                  salesStatus: lead.salesStatus || lead.sales_status || '',
+                  followUpStatus: lead.followUpStatus || lead.follow_up_status || '',
+                  salesStatusRemark: lead.salesStatusRemark || lead.sales_status_remark || '',
+                  followUpRemark: lead.followUpRemark || lead.follow_up_remark || '',
+                };
+                return leadService.updateLead(lead.id, payload);
+              });
+              
+              await Promise.all(updatePromises);
+              
+              // Create meetings for all leads assigned to salesperson
+              if (assignForm.salesperson) {
+                const meetingDate = new Date().toISOString().split('T')[0]; // Default to today
+                const meetingPromises = selectedLeads.map(async (lead) => {
+                  try {
+                    const leadAddress = lead.address || lead.location || 'Address not provided';
+                    const meetingData = {
+                      customer_name: lead.customer || lead.name || 'N/A',
+                      customer_phone: lead.phone || lead.phone_number || '',
+                      customer_email: lead.email || '',
+                      address: leadAddress,
+                      city: lead.city || '',
+                      state: lead.state || '',
+                      pincode: lead.pincode || '',
+                      assigned_to: assignForm.salesperson,
+                      meeting_date: meetingDate,
+                      meeting_time: '',
+                      scheduled_date: meetingDate,
+                      status: 'Scheduled',
+                      notes: `Assigned from lead: ${lead.id}`,
+                      customer_id: lead.id,
+                      lead_id: lead.id
+                    };
+                    await apiClient.post(API_ENDPOINTS.MARKETING_MEETINGS_CREATE(), meetingData);
+                  } catch (meetingError) {
+                    console.error(`Error creating meeting for lead ${lead.id}:`, meetingError);
+                    // Don't block assignment if meeting creation fails
+                  }
+                });
+                await Promise.all(meetingPromises);
+                // Notify other components to refresh
+                try { window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); } catch {}
+              }
+              
+              const selectedSet = new Set(selectedLeadIds);
+              setLeadsData(prev => {
+                return prev.map(l => {
+                  if (selectedSet.has(l.id)) {
+                    const lead = selectedLeads.find(sl => sl.id === l.id);
+                    return {
+                      ...l,
+                      assignedSalesperson: basePayload.assignedSalesperson || '',
+                      assignedTelecaller: basePayload.assignedTelecaller || '',
+                      salesStatus: lead?.salesStatus || lead?.sales_status || l.salesStatus || l.sales_status || '',
+                      followUpStatus: lead?.followUpStatus || lead?.follow_up_status || l.followUpStatus || l.follow_up_status || '',
+                    };
+                  }
+                  return l;
+                });
+              });
+              toastManager.success(`Reassigned ${selectedLeadIds.length} leads successfully`);
+              setSelectedLeadIds([]);
+              setIsAllSelected(false);
+            }
+            try {
+              const response = await leadService.fetchLeads(buildLeadFetchParams());
+              applyLeadResponse(response, { refreshAll: true });
+            } catch (e) {}
+            setShowAssignModal(false);
+          } catch (err) {
+            apiErrorHandler.handleError(err, 'assign lead');
+          }
+        }}
+        usernames={usernames}
+        loadingUsers={loadingUsers}
+        usersError={usersError}
+      />
+
+      <QuotationPreviewModal
+        isOpen={showQuotationModal}
+        onClose={() => setShowQuotationModal(false)}
+        quotationData={selectedQuotation ? {
+          quotationNumber: selectedQuotation.quotation_number,
+          quotationDate: selectedQuotation.quotation_date,
+          validUpto: selectedQuotation.valid_until,
+          voucherNumber: `VOUCH-${Math.floor(1000 + Math.random() * 9000)}`,
+          billTo: {
+            business: selectedQuotation.customer_name,
+            address: selectedQuotation.customer_address,
+            phone: selectedQuotation.customer_phone,
+            gstNo: selectedQuotation.customer_gst_no,
+            state: selectedQuotation.customer_state
+          },
+          items: selectedQuotation.items?.map(item => ({
+            productName: item.product_name,
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit || 'Nos',
+            buyerRate: item.unit_price,
+            unitPrice: item.unit_price,
+            amount: item.taxable_amount,
+            total: item.total_amount,
+            hsn: item.hsn_code,
+            gstRate: item.gst_rate
+          })),
+          subtotal: parseFloat(selectedQuotation.subtotal),
+          taxAmount: parseFloat(selectedQuotation.tax_amount),
+          total: parseFloat(selectedQuotation.total_amount),
+          selectedBranch: DEFAULT_BRANCH
+        } : null}
+        companyBranches={COMPANY_BRANCHES}
+        user={DEFAULT_USER}
+        onDownloadPDF={selectedQuotation ? () => handleDownloadPDF(selectedQuotation.id) : null}
+      />
+
+      <PIPreviewModal
+        open={showPIPreview}
+        onClose={() => {
+          setShowPIPreview(false);
+          setPiPreviewData(null);
+        }}
+        piPreviewData={piPreviewData}
+        selectedBranch={selectedPIBranch}
+        companyBranches={COMPANY_BRANCHES}
+        approvedQuotationId={null}
+        viewingCustomerId={null}
+        onPICreated={null}
+      />
+
+      {showCustomerTimeline && timelineLead && (
+        <div style={{ position: 'fixed', top: 0, right: 0, width: 'fit-content', maxWidth: '349px', minWidth: '244px', height: '100vh', zIndex: 50, marginLeft: 0, marginRight: 0, paddingLeft: 0, paddingRight: 0, borderLeft: '1px solid #e5e7eb' }}>
+          <CustomerTimeline
+            lead={timelineLead}
+            onClose={() => {
+              setShowCustomerTimeline(false);
+              setTimelineLead(null);
+            }}
+            onReassign={(lead) => {
+              openAssignModal(lead);
+            }}
+            onQuotationView={(quotation) => {
+              if (quotation) {
+                setSelectedQuotation(quotation);
+                setShowQuotationModal(true);
+              } else {
+                toastManager.error('Quotation data is missing');
+              }
+            }}
+            onPIView={(pi) => {
+              setPiPreviewData(pi);
+              setShowPIPreview(true);
+            }}
+            setSelectedQuotation={setSelectedQuotation}
+            setShowQuotationModal={setShowQuotationModal}
+            toastManager={toastManager}
+          />
         </div>
       )}
 
-      {/* Pagination or Empty State */}
-      {filteredLeads.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-gray-500 text-lg">No leads found</div>
-          <div className="text-gray-400 text-sm mt-2">Try adjusting your search criteria</div>
-        </div>
-      )}
-      {/* Bulk Assignment Modal */}
-      {showBulkAssignmentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={closeBulkAssignmentModal}>
-          <div className="bg-white rounded-lg p-4 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Assign Leads ({selectedLeadsForBulk.length})
-              </h3>
-              <button
-                onClick={closeBulkAssignmentModal}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {/* User Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Assign to Salesperson *
-                </label>
-                <select
-                  value={bulkAssignmentUser}
-                  onChange={(e) => setBulkAssignmentUser(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">{salespersonsLoading ? 'Loading users...' : 'Select Salesperson'}</option>
-                  {salespersonsError && <option value="" disabled>{salespersonsError}</option>}
-                  {salespersons.map(salesperson => (
-                    <option key={salesperson.id} value={salesperson.name}>
-                      {salesperson.name} {salesperson.department ? `- ${salesperson.department}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Assignment Date (optional) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Assignment Date (optional)
-                </label>
-                <input
-                  type="date"
-                  value={bulkAssignmentDate}
-                  onChange={(e) => setBulkAssignmentDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Assignment Notes */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes (Optional)
-                </label>
-                <textarea
-                  value={bulkAssignmentNotes}
-                  onChange={(e) => setBulkAssignmentNotes(e.target.value)}
-                  placeholder="Add instructions for the salesperson..."
-                  rows={2}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            
-            <div className="flex justify-end space-x-3 mt-4">
-              <button
-                onClick={closeBulkAssignmentModal}
-                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleBulkAssignLeads}
-                disabled={!bulkAssignmentUser}
-                className="px-3 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Assign {selectedLeadsForBulk.length} Leads
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

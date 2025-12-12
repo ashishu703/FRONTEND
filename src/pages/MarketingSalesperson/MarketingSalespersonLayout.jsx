@@ -21,6 +21,22 @@ const MarketingSalespersonLayout = ({ onLogout }) => {
     return () => window.removeEventListener('resize', updateIsMobile);
   }, []);
 
+  // Listen for navigation events from child components
+  useEffect(() => {
+    const handleNavigateToDashboard = () => {
+      setActiveView('dashboard');
+    };
+    
+    window.addEventListener('navigateToDashboard', handleNavigateToDashboard);
+    // Also expose setActiveView globally for child components
+    window.setActiveView = setActiveView;
+    
+    return () => {
+      window.removeEventListener('navigateToDashboard', handleNavigateToDashboard);
+      delete window.setActiveView;
+    };
+  }, []);
+
   // If mobile view is active, render mobile layout
   if (isMobileView) {
     return (

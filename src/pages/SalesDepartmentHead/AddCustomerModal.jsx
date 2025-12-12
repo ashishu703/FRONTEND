@@ -89,10 +89,16 @@ export default function AddCustomerModal({ onClose, onSave, editingCustomer }) {
     handleChange('productNames', next);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave(formData);
-    onClose();
+    try {
+      await onSave(formData);
+      // Only close if save was successful (no error thrown)
+      onClose();
+    } catch (error) {
+      // Keep modal open on error so user can see the error and retry
+      console.error('Error saving customer:', error);
+    }
   };
 
   return (

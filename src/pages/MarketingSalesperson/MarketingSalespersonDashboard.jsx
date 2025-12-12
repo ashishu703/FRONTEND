@@ -51,6 +51,7 @@ import MarketingSalespersonCalendar from './MarketingSalespersonCalendar';
 import AssignedMeetings from './AssignedMeetings';
 import CheckInHistory from './CheckInHistory';
 import { useMarketingFollowUpData } from './FollowUp/MarketingFollowUpDataContext';
+import FunctionUpcoming from '../../components/FunctionUpcoming';
 
 const MarketingSalespersonDashboard = ({ activeView, setActiveView }) => {
   const { getLeadsByStatus, loading, leadsData, getStatusCounts } = useMarketingFollowUpData();
@@ -84,7 +85,7 @@ const MarketingSalespersonDashboard = ({ activeView, setActiveView }) => {
       case 'follow-up-closed':
         return <MarketingFollowUpBase status="closed" customData={getLeadsByStatus('closed')} />;
       case 'visits':
-        return <Visits />;
+        return <FunctionUpcoming />;
       case 'orders':
         return <Orders />;
       case 'calendar':
@@ -92,7 +93,7 @@ const MarketingSalespersonDashboard = ({ activeView, setActiveView }) => {
       case 'profile':
         return <MarketingSalespersonProfile />;
       case 'assigned-meetings':
-        return <AssignedMeetings />;
+        return <AssignedMeetings setActiveView={setActiveView} />;
       case 'checkin-history':
         return <CheckInHistory />;
       default:

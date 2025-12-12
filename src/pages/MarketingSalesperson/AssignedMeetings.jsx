@@ -4,7 +4,7 @@ import { API_ENDPOINTS } from '../../api/admin_api/api';
 import apiClient from '../../utils/apiClient';
 import CheckInInterface from './CheckInInterface';
 
-export default function AssignedMeetings() {
+export default function AssignedMeetings({ setActiveView }) {
   const [meetings, setMeetings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,22 +15,75 @@ export default function AssignedMeetings() {
 
   useEffect(() => {
     fetchMeetings();
+    
+    // Listen for meeting updates
+    const handleMeetingUpdate = () => {
+      fetchMeetings();
+    };
+    
+    window.addEventListener('marketingMeetingsUpdated', handleMeetingUpdate);
+    return () => {
+      window.removeEventListener('marketingMeetingsUpdated', handleMeetingUpdate);
+    };
   }, []);
 
   const fetchMeetings = async () => {
     try {
       setLoading(true);
       setError(null);
+      console.log('Fetching assigned meetings from:', API_ENDPOINTS.MARKETING_MEETINGS_ASSIGNED());
       const response = await apiClient.get(API_ENDPOINTS.MARKETING_MEETINGS_ASSIGNED());
+      console.log('Assigned meetings API response:', response);
       
-      if (response.data.success) {
-        setMeetings(response.data.data || []);
+      // apiClient.get() returns data directly, not wrapped in response.data
+      if (response && response.success) {
+        const meetingsData = response.data || [];
+        console.log('Setting meetings data:', meetingsData);
+        console.log('Sample meeting data:', meetingsData[0]);
+        // Ensure all meetings have required fields
+        const enrichedMeetings = meetingsData.map(meeting => {
+          // Log each meeting to debug
+          console.log('Processing meeting:', {
+            id: meeting.id,
+            customer_name: meeting.customer_name,
+            address: meeting.address,
+            lead_customer: meeting.lead_customer,
+            lead_address: meeting.lead_address,
+            customer: meeting.customer,
+            allKeys: Object.keys(meeting)
+          });
+          
+          return {
+            ...meeting,
+            // Use multiple fallbacks to ensure we get the name
+            customer_name: meeting.customer_name || meeting.customer || meeting.lead_customer || 'N/A',
+            // Use multiple fallbacks to ensure we get the address
+            address: meeting.address || meeting.lead_address || 'Address not provided',
+            customer_phone: meeting.customer_phone || meeting.phone || meeting.lead_phone || null,
+            customer_email: meeting.customer_email || meeting.email || meeting.lead_email || null,
+            // Check-in status: check if meeting has check-in or status is Completed
+            is_checked_in: meeting.is_checked_in || meeting.has_checkin || meeting.status === 'Completed' || false,
+          };
+        });
+        console.log('Final enriched meetings:', enrichedMeetings);
+        setMeetings(enrichedMeetings);
       } else {
-        setError(response.data.message || 'Failed to fetch meetings');
+        console.warn('API response indicates failure:', response);
+        setError(response?.message || 'Failed to fetch meetings');
+        setMeetings([]); // Ensure empty array on error
       }
     } catch (err) {
       console.error('Error fetching meetings:', err);
-      setError(err.response?.data?.message || 'Failed to fetch meetings');
+      console.error('Full error object:', {
+        message: err.message,
+        data: err.data,
+        status: err.status,
+        response: err.response
+      });
+      // apiClient throws errors with err.data or err.message
+      const errorMessage = err.data?.message || err.message || err.response?.data?.message || 'Failed to fetch meetings';
+      setError(errorMessage);
+      setMeetings([]); // Ensure empty array on error
     } finally {
       setLoading(false);
     }
@@ -77,9 +130,14 @@ export default function AssignedMeetings() {
   };
 
   const handleCheckInComplete = () => {
+    console.log('Check-in completed, refreshing meetings...');
     setShowCheckIn(false);
     setSelectedMeeting(null);
-    fetchMeetings();
+    // Refresh meetings to show updated status (stays on assigned meetings page)
+    // Small delay to ensure backend has processed the check-in
+    setTimeout(() => {
+      fetchMeetings();
+    }, 500);
   };
 
   const filteredMeetings = meetings.filter(meeting => {
@@ -106,7 +164,7 @@ export default function AssignedMeetings() {
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Assigned Meetings</h1>
-        <p className="text-gray-600">View and check in to your scheduled customer meetings</p>
+        <p className="text-gray-600">View and check in to your assigned or imported customer leads</p>
       </div>
 
       {/* Search and Filter */}
@@ -175,7 +233,9 @@ export default function AssignedMeetings() {
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{meeting.customer_name}</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {meeting.customer_name || meeting.customer || 'N/A'}
+                  </h3>
                   <div className="flex items-center gap-4 text-sm text-gray-500">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
@@ -195,10 +255,10 @@ export default function AssignedMeetings() {
                 </div>
               </div>
 
-              {meeting.address && (
+              {(meeting.address || meeting.lead_address) && (
                 <div className="flex items-start gap-2 mb-4 text-sm text-gray-600">
                   <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <span className="flex-1">{meeting.address}</span>
+                  <span className="flex-1">{meeting.address || meeting.lead_address || 'Address not provided'}</span>
                 </div>
               )}
 
@@ -225,7 +285,7 @@ export default function AssignedMeetings() {
                 </div>
               )}
 
-              {meeting.status !== 'Completed' && meeting.status !== 'Cancelled' && (
+              {!meeting.is_checked_in && meeting.status !== 'Completed' && meeting.status !== 'Cancelled' && (
                 <button
                   onClick={() => handleCheckIn(meeting)}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
@@ -235,10 +295,10 @@ export default function AssignedMeetings() {
                 </button>
               )}
 
-              {meeting.status === 'Completed' && (
+              {(meeting.is_checked_in || meeting.status === 'Completed') && (
                 <div className="flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium">
                   <CheckCircle className="h-5 w-5" />
-                  <span>Check-in Completed</span>
+                  <span>Checked In</span>
                 </div>
               )}
             </div>

@@ -19,9 +19,19 @@ export default function MobileCheckIn({ meeting, onComplete, onCancel }) {
   const photoFileRef = useRef(null);
 
   useEffect(() => {
+    // Automatically fetch location when component mounts
+    if (!location && !locationLoading) {
+      getCurrentLocation();
+    }
+  }, []);
+
+  useEffect(() => {
     if (cameraOpen) {
       startCamera();
-      getCurrentLocation();
+      // Ensure location is being fetched
+      if (!location && !locationLoading) {
+        getCurrentLocation();
+      }
     } else {
       stopCamera();
     }
@@ -174,18 +184,19 @@ export default function MobileCheckIn({ meeting, onComplete, onCancel }) {
         formData.append('state', meeting.state);
       }
 
-      const response = await apiClient.post(
+      const response = await apiClient.postFormData(
         API_ENDPOINTS.MARKETING_CHECK_INS_CREATE(),
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
+        formData
       );
 
-      if (response.data.success) {
+      // postFormData returns data directly, not wrapped in response.data
+      if (response && response.success) {
         setShowSuccess(true);
+        // Dispatch event to refresh meetings
+        try { 
+          window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); 
+        } catch {}
+        
         // Show success message for 2 seconds before redirecting
         setTimeout(() => {
           if (capturedPhoto) {
@@ -194,7 +205,7 @@ export default function MobileCheckIn({ meeting, onComplete, onCancel }) {
           onComplete();
         }, 2000);
       } else {
-        setError(response.data.message || 'Failed to submit check-in');
+        setError(response?.message || response?.data?.message || 'Failed to submit check-in');
       }
     } catch (err) {
       console.error('Error submitting check-in:', err);

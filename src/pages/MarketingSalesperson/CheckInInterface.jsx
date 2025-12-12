@@ -21,9 +21,19 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
+    // Automatically fetch location when component mounts
+    if (!location && !locationLoading) {
+      getCurrentLocation();
+    }
+  }, []);
+
+  useEffect(() => {
     if (cameraOpen && !useFileInput) {
       startCamera();
-      getCurrentLocation();
+      // Ensure location is being fetched
+      if (!location && !locationLoading) {
+        getCurrentLocation();
+      }
     } else if (!cameraOpen) {
       stopCamera();
     }
@@ -192,32 +202,39 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
         formData.append('state', meeting.state);
       }
 
-      const response = await apiClient.post(
+      const response = await apiClient.postFormData(
         API_ENDPOINTS.MARKETING_CHECK_INS_CREATE(),
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
+        formData
       );
 
-      if (response.data.success) {
+      // postFormData returns data directly, not wrapped in response.data
+      if (response && response.success) {
         setShowSuccess(true);
-        // Show success message for 2 seconds before redirecting
+        // Dispatch event to refresh meetings
+        try { 
+          window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); 
+        } catch {}
+        
+        // Show success message for 2 seconds before redirecting to dashboard
         setTimeout(() => {
           if (capturedPhoto) {
             URL.revokeObjectURL(capturedPhoto);
           }
+          // Call onComplete which will redirect to dashboard
           onComplete();
         }, 2000);
       } else {
-        setError(response.data.message || 'Failed to submit check-in');
+        setError(response?.message || response?.data?.message || 'Failed to submit check-in');
       }
     } catch (err) {
       console.error('Error submitting check-in:', err);
-      setError(err.response?.data?.message || 'Failed to submit check-in. Please try again.');
-    } finally {
+      // Check if it's an authentication error
+      if (err.status === 401 || err.data?.message?.toLowerCase().includes('not authorized')) {
+        setError('Authentication failed. Please try logging in again.');
+        // Don't logout automatically - let user retry
+      } else {
+        setError(err.data?.message || err.message || 'Failed to submit check-in. Please try again.');
+      }
       setSubmitting(false);
     }
   };
@@ -523,13 +540,17 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
             <div className="space-y-3">
               <button
                 onClick={() => {
+                  // Automatically fetch location when camera button is clicked
+                  if (!location && !locationLoading) {
+                    getCurrentLocation();
+                  }
                   setCameraOpen(true);
                   setUseFileInput(false);
                 }}
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
               >
                 <Camera className="h-5 w-5" />
-                <span>Use Camera</span>
+                <span>Take Selfie</span>
               </button>
 
               <div className="relative">

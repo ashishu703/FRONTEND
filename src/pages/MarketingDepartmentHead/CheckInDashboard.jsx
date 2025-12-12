@@ -24,14 +24,17 @@ export default function CheckInDashboard() {
       setError(null);
       const response = await apiClient.get(API_ENDPOINTS.MARKETING_CHECK_INS_GET_ALL());
       
-      if (response.data.success) {
-        setCheckIns(response.data.data || []);
+      // apiClient.get() returns data directly, not wrapped in response.data
+      if (response && response.success) {
+        setCheckIns(response.data || []);
       } else {
-        setError(response.data.message || 'Failed to fetch check-ins');
+        setError(response?.message || 'Failed to fetch check-ins');
       }
     } catch (err) {
       console.error('Error fetching check-ins:', err);
-      setError(err.response?.data?.message || 'Failed to fetch check-ins');
+      // apiClient throws errors with err.data or err.message
+      const errorMessage = err.data?.message || err.message || err.response?.data?.message || 'Failed to fetch check-ins';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

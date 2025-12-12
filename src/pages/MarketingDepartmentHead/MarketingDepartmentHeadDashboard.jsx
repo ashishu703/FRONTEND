@@ -11,6 +11,7 @@ import CheckInDashboard from './CheckInDashboard';
 import MarketingSalespersonDashboard from '../SuperAdmin/MarketingSalespersonDashboard';
 import TeleSalesDashboard from '../SuperAdmin/TeleSalesDashboard';
 import OfficeSalesPersonDashboard from '../SuperAdmin/OfficeSalesPersonDashboard';
+import FunctionUpcoming from '../../components/FunctionUpcoming';
 
 const MarketingDepartmentHeadDashboard = ({ activeView, setActiveView }) => {
   // Set default view to marketing-dashboard if not set
