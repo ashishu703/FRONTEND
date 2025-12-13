@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4500';
+// Use relative URLs in development to leverage Vite proxy, full URLs in production
+const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (isDevelopment ? '' : 'http://localhost:4500');
 
 const ADMIN_BASE = `${API_BASE_URL}/api/admin`;
 const DEPT_HEADS_BASE = `${ADMIN_BASE}/department-heads`;

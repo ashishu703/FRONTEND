@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, MapPin, X, CheckCircle, AlertCircle, Loader, ArrowLeft, Upload, Video, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { Camera, MapPin, X, CheckCircle, AlertCircle, Loader, ArrowLeft, Upload, Video, ExternalLink } from 'lucide-react';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import apiClient from '../../utils/apiClient';
 
@@ -11,14 +11,12 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
   const [locationError, setLocationError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [useFileInput, setUseFileInput] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const photoFileRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     // Automatically fetch location when component mounts
@@ -28,7 +26,7 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
   }, []);
 
   useEffect(() => {
-    if (cameraOpen && !useFileInput) {
+    if (cameraOpen) {
       startCamera();
       // Ensure location is being fetched
       if (!location && !locationLoading) {
@@ -40,7 +38,7 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
     return () => {
       stopCamera();
     };
-  }, [cameraOpen, useFileInput]);
+  }, [cameraOpen]);
 
   const startCamera = async () => {
     try {
@@ -60,8 +58,7 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
       }
     } catch (err) {
       console.error('Error accessing camera:', err);
-      setError('Unable to access camera. You can upload a photo instead.');
-      setUseFileInput(true);
+      setError('Unable to access camera. Please allow camera permissions and try again.');
       setCameraOpen(false);
     }
   };
@@ -96,17 +93,6 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
     }, 'image/jpeg', 0.92);
   };
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file);
-      photoFileRef.current = file;
-      setCapturedPhoto(url);
-      getCurrentLocation();
-    } else {
-      setError('Please select a valid image file');
-    }
-  };
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -164,13 +150,12 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
     if (capturedPhoto) {
       URL.revokeObjectURL(capturedPhoto);
     }
-    setUseFileInput(false);
     setCameraOpen(true);
   };
 
   const handleSubmit = async () => {
     if (!capturedPhoto || !photoFileRef.current) {
-      setError('Please capture or upload a photo first');
+      setError('Please capture a photo first');
       return;
     }
 
@@ -185,6 +170,13 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
     try {
       setSubmitting(true);
       setError(null);
+
+      // Validate photo file exists
+      if (!photoFileRef.current) {
+        setError('Photo file is missing. Please capture a photo again.');
+        setSubmitting(false);
+        return;
+      }
 
       const formData = new FormData();
       formData.append('photo', photoFileRef.current);
@@ -202,25 +194,36 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
         formData.append('state', meeting.state);
       }
 
+      console.log('Submitting check-in:', {
+        meeting_id: meeting.id,
+        photo_file: photoFileRef.current.name,
+        photo_size: photoFileRef.current.size,
+        location: { lat: location.latitude, lng: location.longitude }
+      });
+
       const response = await apiClient.postFormData(
         API_ENDPOINTS.MARKETING_CHECK_INS_CREATE(),
         formData
       );
 
+      console.log('Check-in submission response:', response);
+
       // postFormData returns data directly, not wrapped in response.data
       if (response && response.success) {
         setShowSuccess(true);
-        // Dispatch event to refresh meetings
+        
+        // Dispatch event to refresh meetings list
         try { 
           window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); 
         } catch {}
         
-        // Show success message for 2 seconds before redirecting to dashboard
+        // Show success message for 2 seconds before calling onComplete
+        // onComplete will update the meeting status and refresh the list
         setTimeout(() => {
           if (capturedPhoto) {
             URL.revokeObjectURL(capturedPhoto);
           }
-          // Call onComplete which will redirect to dashboard
+          // Call onComplete which will update meeting status and refresh
           onComplete();
         }, 2000);
       } else {
@@ -244,7 +247,7 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
   }
 
   // Camera view
-  if (cameraOpen && !useFileInput) {
+  if (cameraOpen) {
     return (
       <div className="p-6">
         <div className="mb-4 flex items-center justify-between">
@@ -339,61 +342,64 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
               <h3 className="font-semibold text-gray-900 mb-4">Meeting Details</h3>
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm text-gray-500">Customer Name</p>
-                  <p className="font-medium text-gray-900">{meeting.customer_name}</p>
+                  <p className="text-sm text-gray-500">Name</p>
+                  <p className="font-medium text-gray-900">{meeting.customer_name || meeting.customer || meeting.lead_customer || 'N/A'}</p>
                 </div>
-                {meeting.address && (
+                {(meeting.customer_phone || meeting.phone || meeting.lead_phone) && (
+                  <div>
+                    <p className="text-sm text-gray-500">Number</p>
+                    <p className="text-gray-900">{meeting.customer_phone || meeting.phone || meeting.lead_phone}</p>
+                  </div>
+                )}
+                {(meeting.address || meeting.lead_address) && (
                   <div>
                     <p className="text-sm text-gray-500">Address</p>
-                    <p className="text-gray-900">{meeting.address}</p>
+                    <p className="text-gray-900">{meeting.address || meeting.lead_address}</p>
+                  </div>
+                )}
+                {(meeting.customer_email || meeting.email || meeting.lead_email) && (
+                  <div>
+                    <p className="text-sm text-gray-500">Email</p>
+                    <p className="text-gray-900">{meeting.customer_email || meeting.email || meeting.lead_email}</p>
+                  </div>
+                )}
+                {(meeting.customer_type || meeting.customerType) && (
+                  <div>
+                    <p className="text-sm text-gray-500">Customer Type</p>
+                    <p className="text-gray-900">{meeting.customer_type || meeting.customerType}</p>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Location on Map */}
+            {/* Location Details */}
             {location && (
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-5 w-5 text-blue-600" />
-                      <h3 className="font-semibold text-gray-900">Location on Map</h3>
-                    </div>
-                    <button
-                      onClick={() => window.open(`https://www.google.com/maps?q=${location.latitude},${location.longitude}`, '_blank')}
-                      className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      <span>Open in Maps</span>
-                    </button>
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-blue-600" />
+                    <h3 className="font-semibold text-gray-900">Location Captured</h3>
                   </div>
+                  <button
+                    onClick={() => window.open(`https://www.google.com/maps?q=${location.latitude},${location.longitude}`, '_blank')}
+                    className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    <span>Open in Maps</span>
+                  </button>
                 </div>
-                <div className="h-64 bg-gray-100 relative">
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    loading="lazy"
-                    allowFullScreen
-                    referrerPolicy="no-referrer-when-downgrade"
-                    src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6d-s6U4iYWEzq8E&q=${location.latitude},${location.longitude}&zoom=15`}
-                  />
-                </div>
-                <div className="p-4 bg-gray-50 border-t border-gray-200">
-                  <div className="text-xs text-gray-600 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span>Latitude:</span>
-                      <span className="font-mono">{location.latitude.toFixed(6)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Longitude:</span>
-                      <span className="font-mono">{location.longitude.toFixed(6)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Accuracy:</span>
-                      <span>±{Math.round(location.accuracy)}m</span>
-                    </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                    <span className="text-gray-500">Latitude:</span>
+                    <span className="font-mono text-gray-900">{location.latitude.toFixed(6)}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                    <span className="text-gray-500">Longitude:</span>
+                    <span className="font-mono text-gray-900">{location.longitude.toFixed(6)}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-gray-500">Accuracy:</span>
+                    <span className="text-gray-900">±{Math.round(location.accuracy)}m</span>
                   </div>
                 </div>
               </div>
@@ -509,13 +515,31 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
             <h3 className="font-semibold text-gray-900 mb-4">Meeting Details</h3>
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500">Customer Name</p>
-                <p className="font-medium text-gray-900">{meeting.customer_name}</p>
+                <p className="text-sm text-gray-500">Name</p>
+                <p className="font-medium text-gray-900">{meeting.customer_name || meeting.customer || meeting.lead_customer || 'N/A'}</p>
               </div>
-              {meeting.address && (
+              {(meeting.customer_phone || meeting.phone || meeting.lead_phone) && (
+                <div>
+                  <p className="text-sm text-gray-500">Number</p>
+                  <p className="text-gray-900">{meeting.customer_phone || meeting.phone || meeting.lead_phone}</p>
+                </div>
+              )}
+              {(meeting.address || meeting.lead_address) && (
                 <div>
                   <p className="text-sm text-gray-500">Address</p>
-                  <p className="text-gray-900">{meeting.address}</p>
+                  <p className="text-gray-900">{meeting.address || meeting.lead_address}</p>
+                </div>
+              )}
+              {(meeting.customer_email || meeting.email || meeting.lead_email) && (
+                <div>
+                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="text-gray-900">{meeting.customer_email || meeting.email || meeting.lead_email}</p>
+                </div>
+              )}
+              {(meeting.customer_type || meeting.customerType) && (
+                <div>
+                  <p className="text-sm text-gray-500">Customer Type</p>
+                  <p className="text-gray-900">{meeting.customer_type || meeting.customerType}</p>
                 </div>
               )}
             </div>
@@ -545,41 +569,12 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
                     getCurrentLocation();
                   }
                   setCameraOpen(true);
-                  setUseFileInput(false);
                 }}
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
               >
                 <Camera className="h-5 w-5" />
                 <span>Take Selfie</span>
               </button>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">OR</span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  setUseFileInput(true);
-                  fileInputRef.current?.click();
-                }}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-              >
-                <ImageIcon className="h-5 w-5" />
-                <span>Upload Photo</span>
-              </button>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
             </div>
           </div>
         </div>

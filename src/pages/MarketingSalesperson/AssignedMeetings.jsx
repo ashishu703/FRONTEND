@@ -130,14 +130,27 @@ export default function AssignedMeetings({ setActiveView }) {
   };
 
   const handleCheckInComplete = () => {
-    console.log('Check-in completed, refreshing meetings...');
+    console.log('Check-in completed, updating meeting status...');
+    
+    // Immediately update the local state to mark meeting as checked in
+    if (selectedMeeting) {
+      setMeetings(prevMeetings => 
+        prevMeetings.map(meeting => 
+          meeting.id === selectedMeeting.id
+            ? { ...meeting, is_checked_in: true, status: 'Completed' }
+            : meeting
+        )
+      );
+    }
+    
     setShowCheckIn(false);
     setSelectedMeeting(null);
-    // Refresh meetings to show updated status (stays on assigned meetings page)
+    
+    // Refresh meetings to get latest data from backend
     // Small delay to ensure backend has processed the check-in
     setTimeout(() => {
       fetchMeetings();
-    }, 500);
+    }, 1000);
   };
 
   const filteredMeetings = meetings.filter(meeting => {
@@ -285,7 +298,7 @@ export default function AssignedMeetings({ setActiveView }) {
                 </div>
               )}
 
-              {!meeting.is_checked_in && meeting.status !== 'Completed' && meeting.status !== 'Cancelled' && (
+              {!meeting.is_checked_in && meeting.status !== 'Completed' && meeting.status !== 'Cancelled' ? (
                 <button
                   onClick={() => handleCheckIn(meeting)}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
@@ -293,10 +306,8 @@ export default function AssignedMeetings({ setActiveView }) {
                   <Camera className="h-5 w-5" />
                   <span>Check In</span>
                 </button>
-              )}
-
-              {(meeting.is_checked_in || meeting.status === 'Completed') && (
-                <div className="flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium">
+              ) : (
+                <div className="flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200">
                   <CheckCircle className="h-5 w-5" />
                   <span>Checked In</span>
                 </div>
