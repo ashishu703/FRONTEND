@@ -1,38 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, MapPin, CheckCircle, XCircle, AlertCircle, Loader, Calendar, User, Image as ImageIcon, X, Search, Filter } from 'lucide-react';
+import { Clock, MapPin, CheckCircle, XCircle, AlertCircle, Loader, Calendar, User, Image as ImageIcon, X, Search, Filter, RefreshCw } from 'lucide-react';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import apiClient from '../../utils/apiClient';
 
 export default function CheckInHistory() {
   const [checkIns, setCheckIns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingRefresh, setLoadingRefresh] = useState(false);
   const [error, setError] = useState(null);
   const [selectedCheckIn, setSelectedCheckIn] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  useEffect(() => {
-    fetchCheckIns();
-  }, []);
-
-  const fetchCheckIns = async () => {
+  const fetchCheckIns = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setLoadingRefresh(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       const response = await apiClient.get(API_ENDPOINTS.MARKETING_CHECK_INS_MY_CHECKINS());
       
-      if (response.data.success) {
-        setCheckIns(response.data.data || []);
+      // apiClient.get() returns data directly, not wrapped in response.data
+      if (response && response.success) {
+        setCheckIns(response.data || []);
       } else {
-        setError(response.data.message || 'Failed to fetch check-ins');
+        setError(response?.message || 'Failed to fetch check-ins');
       }
     } catch (err) {
       console.error('Error fetching check-ins:', err);
-      setError(err.response?.data?.message || 'Failed to fetch check-ins');
+      const errorMessage = err.data?.message || err.message || err.response?.data?.message || 'Failed to fetch check-ins';
+      setError(errorMessage);
     } finally {
-      setLoading(false);
+      if (isRefresh) {
+        setLoadingRefresh(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
+
+  useEffect(() => {
+    fetchCheckIns();
+    
+    // Listen for check-in rejection events
+    const handleCheckInRejected = () => {
+      console.log('Check-in rejected, refreshing history...');
+      setTimeout(() => {
+        fetchCheckIns();
+      }, 1000);
+    };
+    
+    window.addEventListener('checkInRejected', handleCheckInRejected);
+    return () => {
+      window.removeEventListener('checkInRejected', handleCheckInRejected);
+    };
+  }, []);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -104,9 +128,23 @@ export default function CheckInHistory() {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Check-In History</h1>
-        <p className="text-gray-600">View all your submitted check-ins</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Check-In History</h1>
+          <p className="text-gray-600">View all your submitted check-ins</p>
+        </div>
+        <button
+          onClick={() => fetchCheckIns(true)}
+          disabled={loadingRefresh}
+          className="p-3 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors flex items-center justify-center"
+          title="Refresh Check-Ins"
+        >
+          {loadingRefresh ? (
+            <Loader className="w-5 h-5 text-blue-600 animate-spin" />
+          ) : (
+            <RefreshCw className="w-5 h-5 text-gray-600" />
+          )}
+        </button>
       </div>
 
       {/* Search and Filter */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   RefreshCw, 
@@ -27,22 +27,25 @@ import {
   XCircle,
   AlertCircle,
   DollarSign,
-  Phone
+  Phone,
+  Loader
 } from 'lucide-react';
+import { useMarketingSharedData } from './MarketingSharedDataContext';
+import { API_ENDPOINTS } from '../../api/admin_api/api';
+import apiClient from '../../utils/apiClient';
 
 // Add Order Modal Component
 const AddOrderModal = ({ onSave, onClose }) => {
-  // Sample customer data from visits/leads
-  const customerData = [
-    { name: 'Rajesh Kumar', phone: '+91 98765 43210', address: '123 MG Road, Indore, MP', gst: '23ABCDE1234F1Z5' },
-    { name: 'Priya Sharma', phone: '+91 87654 32109', address: '456 Business Park, Bhopal, MP', gst: '23FGHIJ5678K2L6' },
-    { name: 'Amit Patel', phone: '+91 76543 21098', address: '789 Industrial Area, Jabalpur, MP', gst: '23KLMNO9012P3M7' },
-    { name: 'Sneha Gupta', phone: '+91 65432 10987', address: '321 Tech Hub, Gwalior, MP', gst: '23PQRST3456U4V8' },
-    { name: 'Vikram Singh', phone: '+91 54321 09876', address: '654 Corporate Plaza, Ujjain, MP', gst: '23WXYZ7890A5B9' },
-    { name: 'Anita Verma', phone: '+91 43210 98765', address: '987 Commercial Complex, Sagar, MP', gst: '23DEFGH1234I5J6' },
-    { name: 'Rohit Agarwal', phone: '+91 32109 87654', address: '147 Industrial Zone, Dewas, MP', gst: '23KLMNOP7890Q1R2' },
-    { name: 'Meera Joshi', phone: '+91 21098 76543', address: '258 Business Center, Ratlam, MP', gst: '23STUVWX4567Y8Z9' }
-  ];
+  // Get customers from All Leads section
+  const { customers } = useMarketingSharedData();
+  
+  // Map customers to the format needed for dropdown
+  const customerData = customers.map(customer => ({
+    name: customer.name || 'N/A',
+    phone: customer.phone || 'N/A',
+    address: customer.address || 'N/A',
+    gst: (customer.gstNo && customer.gstNo !== 'N/A') ? customer.gstNo : (customer.gst_no && customer.gst_no !== 'N/A' ? customer.gst_no : 'NA')
+  })).filter(customer => customer.name !== 'N/A' && customer.name); // Filter out invalid customers
 
   const [formData, setFormData] = useState({
     customerName: '',
@@ -134,12 +137,16 @@ const AddOrderModal = ({ onSave, onClose }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="">Select Customer from Visits</option>
-                {customerData.map((customer, index) => (
+                <option value="">Select Customer</option>
+                {customerData.length > 0 ? (
+                  customerData.map((customer, index) => (
                   <option key={index} value={customer.name}>
                     {customer.name} - {customer.phone}
                   </option>
-                ))}
+                  ))
+                ) : (
+                  <option value="" disabled>No customers available</option>
+                )}
               </select>
             </div>
             
@@ -172,7 +179,7 @@ const AddOrderModal = ({ onSave, onClose }) => {
               <input
                 type="text"
                 name="customerGst"
-                value={formData.customerGst}
+                value={formData.customerGst || 'NA'}
                 readOnly
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
               />
@@ -181,82 +188,6 @@ const AddOrderModal = ({ onSave, onClose }) => {
             {/* Product Information */}
             <div className="md:col-span-2 mt-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Product Information</h3>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
-              <select
-                name="productName"
-                value={formData.productName}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-                <option value="">Select Product</option>
-                {formData.productType === 'Industrial Equipment' && (
-                  <>
-                    <option value="Industrial Motor 5HP">Industrial Motor 5HP</option>
-                    <option value="Industrial Motor 10HP">Industrial Motor 10HP</option>
-                    <option value="Industrial Motor 15HP">Industrial Motor 15HP</option>
-                    <option value="Industrial Motor 20HP">Industrial Motor 20HP</option>
-                    <option value="Industrial Motor 25HP">Industrial Motor 25HP</option>
-                  </>
-                )}
-                {formData.productType === 'LED Lighting' && (
-                  <>
-                    <option value="Office LED Panels">Office LED Panels</option>
-                    <option value="Street LED Lights">Street LED Lights</option>
-                    <option value="Industrial LED Lights">Industrial LED Lights</option>
-                    <option value="Commercial LED Strips">Commercial LED Strips</option>
-                    <option value="Emergency LED Lights">Emergency LED Lights</option>
-                  </>
-                )}
-                {formData.productType === 'Control Systems' && (
-                  <>
-                    <option value="Electrical Control Cabinet">Electrical Control Cabinet</option>
-                    <option value="PLC Control Panel">PLC Control Panel</option>
-                    <option value="Motor Control Center">Motor Control Center</option>
-                    <option value="Distribution Panel">Distribution Panel</option>
-                    <option value="Control Panel Enclosure">Control Panel Enclosure</option>
-                  </>
-                )}
-                {formData.productType === 'Power Panels' && (
-                  <>
-                    <option value="Main Distribution Board">Main Distribution Board</option>
-                    <option value="Sub Distribution Board">Sub Distribution Board</option>
-                    <option value="Power Factor Panel">Power Factor Panel</option>
-                    <option value="ATS Panel">ATS Panel</option>
-                    <option value="Capacitor Bank Panel">Capacitor Bank Panel</option>
-                  </>
-                )}
-                {formData.productType === 'Automation' && (
-                  <>
-                    <option value="SCADA System">SCADA System</option>
-                    <option value="HMI Panel">HMI Panel</option>
-                    <option value="VFD Drive">VFD Drive</option>
-                    <option value="Sensors & Actuators">Sensors & Actuators</option>
-                    <option value="PLC Programming">PLC Programming</option>
-                  </>
-                )}
-                {formData.productType === 'Electrical Components' && (
-                  <>
-                    <option value="Circuit Breakers">Circuit Breakers</option>
-                    <option value="Contactors & Relays">Contactors & Relays</option>
-                    <option value="Cables & Wires">Cables & Wires</option>
-                    <option value="Switches & Sockets">Switches & Sockets</option>
-                    <option value="Fuses & MCBs">Fuses & MCBs</option>
-                  </>
-                )}
-                {formData.productType === 'Safety Equipment' && (
-                  <>
-                    <option value="Fire Alarm System">Fire Alarm System</option>
-                    <option value="Emergency Lighting">Emergency Lighting</option>
-                    <option value="Safety Switches">Safety Switches</option>
-                    <option value="Ground Fault Protection">Ground Fault Protection</option>
-                    <option value="Safety Relays">Safety Relays</option>
-                  </>
-                )}
-              </select>
             </div>
             
             <div>
@@ -269,13 +200,48 @@ const AddOrderModal = ({ onSave, onClose }) => {
                 required
               >
                 <option value="">Select Product Type</option>
-                <option value="Industrial Equipment">Industrial Equipment</option>
-                <option value="LED Lighting">LED Lighting</option>
-                <option value="Control Systems">Control Systems</option>
-                <option value="Power Panels">Power Panels</option>
-                <option value="Automation">Automation</option>
-                <option value="Electrical Components">Electrical Components</option>
-                <option value="Safety Equipment">Safety Equipment</option>
+                <option value="Cable">Cable</option>
+                <option value="Conductor">Conductor</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
+              <select
+                name="productName"
+                value={formData.productName}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="">Select Product</option>
+                {/* All 26 products from toolbox interface */}
+                <option value="Aerial Bunch Cable">Aerial Bunch Cable</option>
+                <option value="Aluminium Conductor Galvanized Steel Reinforced">Aluminium Conductor Galvanized Steel Reinforced</option>
+                <option value="All Aluminium Alloy Conductor">All Aluminium Alloy Conductor</option>
+                <option value="PVC Insulated Submersible Cable">PVC Insulated Submersible Cable</option>
+                <option value="Multi Core XLPE Insulated Aluminium Unarmoured Cable">Multi Core XLPE Insulated Aluminium Unarmoured Cable</option>
+                <option value="Paper Cover Aluminium Conductor">Paper Cover Aluminium Conductor</option>
+                <option value="Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable">Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable</option>
+                <option value="Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable">Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable</option>
+                <option value="Multi Core PVC Insulated Aluminium Armoured Cable">Multi Core PVC Insulated Aluminium Armoured Cable</option>
+                <option value="Multi Core XLPE Insulated Aluminium Armoured Cable">Multi Core XLPE Insulated Aluminium Armoured Cable</option>
+                <option value="Multi Core PVC Insulated Aluminium Unarmoured Cable">Multi Core PVC Insulated Aluminium Unarmoured Cable</option>
+                <option value="Multistrand Single Core Copper Cable">Multistrand Single Core Copper Cable</option>
+                <option value="Multi Core Copper Cable">Multi Core Copper Cable</option>
+                <option value="PVC Insulated Single Core Aluminium Cable">PVC Insulated Single Core Aluminium Cable</option>
+                <option value="PVC Insulated Multicore Aluminium Cable">PVC Insulated Multicore Aluminium Cable</option>
+                <option value="Submersible Winding Wire">Submersible Winding Wire</option>
+                <option value="Twin Twisted Copper Wire">Twin Twisted Copper Wire</option>
+                <option value="Speaker Cable">Speaker Cable</option>
+                <option value="CCTV Cable">CCTV Cable</option>
+                <option value="LAN Cable">LAN Cable</option>
+                <option value="Automobile Cable">Automobile Cable</option>
+                <option value="PV Solar Cable">PV Solar Cable</option>
+                <option value="Co Axial Cable">Co Axial Cable</option>
+                <option value="Uni-tube Unarmoured Optical Fibre Cable">Uni-tube Unarmoured Optical Fibre Cable</option>
+                <option value="Armoured Unarmoured PVC Insulated Copper Control Cable">Armoured Unarmoured PVC Insulated Copper Control Cable</option>
+                <option value="Telecom Switch Board Cables">Telecom Switch Board Cables</option>
               </select>
             </div>
             
@@ -338,7 +304,7 @@ const AddOrderModal = ({ onSave, onClose }) => {
               <input
                 type="date"
                 name="expectedDeliveryDate"
-                value={formData.expectedDeliveryDate}
+                value={formData.expectedDeliveryDate && formData.expectedDeliveryDate !== 'ND' ? formData.expectedDeliveryDate : ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -349,7 +315,7 @@ const AddOrderModal = ({ onSave, onClose }) => {
               <input
                 type="date"
                 name="deliveredDate"
-                value={formData.deliveredDate}
+                value={formData.deliveredDate && formData.deliveredDate !== 'ND' ? formData.deliveredDate : ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -490,17 +456,16 @@ const AddOrderModal = ({ onSave, onClose }) => {
 
 // Edit Order Modal Component
 const EditOrderModal = ({ order, onSave, onClose }) => {
-  // Sample customer data from visits/leads
-  const customerData = [
-    { name: 'Rajesh Kumar', phone: '+91 98765 43210', address: '123 MG Road, Indore, MP', gst: '23ABCDE1234F1Z5' },
-    { name: 'Priya Sharma', phone: '+91 87654 32109', address: '456 Business Park, Bhopal, MP', gst: '23FGHIJ5678K2L6' },
-    { name: 'Amit Patel', phone: '+91 76543 21098', address: '789 Industrial Area, Jabalpur, MP', gst: '23KLMNO9012P3M7' },
-    { name: 'Sneha Gupta', phone: '+91 65432 10987', address: '321 Tech Hub, Gwalior, MP', gst: '23PQRST3456U4V8' },
-    { name: 'Vikram Singh', phone: '+91 54321 09876', address: '654 Corporate Plaza, Ujjain, MP', gst: '23WXYZ7890A5B9' },
-    { name: 'Anita Verma', phone: '+91 43210 98765', address: '987 Commercial Complex, Sagar, MP', gst: '23DEFGH1234I5J6' },
-    { name: 'Rohit Agarwal', phone: '+91 32109 87654', address: '147 Industrial Zone, Dewas, MP', gst: '23KLMNOP7890Q1R2' },
-    { name: 'Meera Joshi', phone: '+91 21098 76543', address: '258 Business Center, Ratlam, MP', gst: '23STUVWX4567Y8Z9' }
-  ];
+  // Get customers from All Leads section
+  const { customers } = useMarketingSharedData();
+  
+  // Map customers to the format needed for dropdown
+  const customerData = customers.map(customer => ({
+    name: customer.name || 'N/A',
+    phone: customer.phone || 'N/A',
+    address: customer.address || 'N/A',
+    gst: (customer.gstNo && customer.gstNo !== 'N/A') ? customer.gstNo : (customer.gst_no && customer.gst_no !== 'N/A' ? customer.gst_no : 'NA')
+  })).filter(customer => customer.name !== 'N/A' && customer.name); // Filter out invalid customers
 
   const [formData, setFormData] = useState({
     customerName: order.customerName,
@@ -512,9 +477,9 @@ const EditOrderModal = ({ order, onSave, onClose }) => {
     quantity: order.quantity,
     unitPrice: order.unitPrice,
     totalAmount: order.totalAmount,
-    orderDate: order.orderDate,
-    expectedDeliveryDate: order.expectedDeliveryDate,
-    deliveredDate: order.deliveredDate,
+    orderDate: order.orderDate || '',
+    expectedDeliveryDate: order.expectedDeliveryDate || '',
+    deliveredDate: (order.deliveredDate && order.deliveredDate !== 'ND') ? order.deliveredDate : '',
     orderStatus: order.orderStatus,
     dispatchFrom: order.dispatchFrom || 'Plant',
     paymentStatus: order.paymentStatus,
@@ -526,10 +491,22 @@ const EditOrderModal = ({ order, onSave, onClose }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // Normalize date values before submitting - convert 'ND' and empty strings to null
+    const normalizeDateForSubmit = (dateValue) => {
+      if (!dateValue || dateValue === '' || dateValue === 'ND') {
+        return null;
+      }
+      return dateValue;
+    };
+
     const updatedOrder = {
       ...order,
       ...formData,
-      totalAmount: (formData.quantity * formData.unitPrice).toFixed(2)
+      totalAmount: (formData.quantity * formData.unitPrice).toFixed(2),
+      // Ensure date fields are properly normalized before sending to API
+      expectedDeliveryDate: normalizeDateForSubmit(formData.expectedDeliveryDate),
+      deliveredDate: normalizeDateForSubmit(formData.deliveredDate),
+      orderDate: normalizeDateForSubmit(formData.orderDate) || formData.orderDate // Keep orderDate as-is if valid, default to current value
     };
     onSave(updatedOrder);
   };
@@ -559,7 +536,7 @@ const EditOrderModal = ({ order, onSave, onClose }) => {
         customerName: selectedCustomer.name,
         customerPhone: selectedCustomer.phone,
         customerAddress: selectedCustomer.address,
-        customerGst: selectedCustomer.gst
+        customerGst: selectedCustomer.gst || 'NA' // Show 'NA' if GST is empty
       }));
     }
   };
@@ -579,7 +556,11 @@ const EditOrderModal = ({ order, onSave, onClose }) => {
         
         <form onSubmit={handleSubmit} className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Similar form fields as AddOrderModal but with edit functionality */}
+            {/* Customer Information */}
+            <div className="md:col-span-2">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Customer Information</h3>
+            </div>
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
               <select
@@ -589,12 +570,16 @@ const EditOrderModal = ({ order, onSave, onClose }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="">Select Customer from Visits</option>
-                {customerData.map((customer, index) => (
+                <option value="">Select Customer</option>
+                {customerData.length > 0 ? (
+                  customerData.map((customer, index) => (
                   <option key={index} value={customer.name}>
                     {customer.name} - {customer.phone}
                   </option>
-                ))}
+                  ))
+                ) : (
+                  <option value="" disabled>No customers available</option>
+                )}
               </select>
             </div>
             
@@ -627,10 +612,70 @@ const EditOrderModal = ({ order, onSave, onClose }) => {
               <input
                 type="text"
                 name="customerGst"
-                value={formData.customerGst}
+                value={formData.customerGst || 'NA'}
                 readOnly
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
               />
+            </div>
+
+            {/* Product Information */}
+            <div className="md:col-span-2 mt-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Product Information</h3>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Product Type *</label>
+              <select
+                name="productType"
+                value={formData.productType}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="">Select Product Type</option>
+                <option value="Cable">Cable</option>
+                <option value="Conductor">Conductor</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
+              <select
+                name="productName"
+                value={formData.productName}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="">Select Product</option>
+                {/* All 26 products from toolbox interface */}
+                <option value="Aerial Bunch Cable">Aerial Bunch Cable</option>
+                <option value="Aluminium Conductor Galvanized Steel Reinforced">Aluminium Conductor Galvanized Steel Reinforced</option>
+                <option value="All Aluminium Alloy Conductor">All Aluminium Alloy Conductor</option>
+                <option value="PVC Insulated Submersible Cable">PVC Insulated Submersible Cable</option>
+                <option value="Multi Core XLPE Insulated Aluminium Unarmoured Cable">Multi Core XLPE Insulated Aluminium Unarmoured Cable</option>
+                <option value="Paper Cover Aluminium Conductor">Paper Cover Aluminium Conductor</option>
+                <option value="Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable">Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable</option>
+                <option value="Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable">Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable</option>
+                <option value="Multi Core PVC Insulated Aluminium Armoured Cable">Multi Core PVC Insulated Aluminium Armoured Cable</option>
+                <option value="Multi Core XLPE Insulated Aluminium Armoured Cable">Multi Core XLPE Insulated Aluminium Armoured Cable</option>
+                <option value="Multi Core PVC Insulated Aluminium Unarmoured Cable">Multi Core PVC Insulated Aluminium Unarmoured Cable</option>
+                <option value="Multistrand Single Core Copper Cable">Multistrand Single Core Copper Cable</option>
+                <option value="Multi Core Copper Cable">Multi Core Copper Cable</option>
+                <option value="PVC Insulated Single Core Aluminium Cable">PVC Insulated Single Core Aluminium Cable</option>
+                <option value="PVC Insulated Multicore Aluminium Cable">PVC Insulated Multicore Aluminium Cable</option>
+                <option value="Submersible Winding Wire">Submersible Winding Wire</option>
+                <option value="Twin Twisted Copper Wire">Twin Twisted Copper Wire</option>
+                <option value="Speaker Cable">Speaker Cable</option>
+                <option value="CCTV Cable">CCTV Cable</option>
+                <option value="LAN Cable">LAN Cable</option>
+                <option value="Automobile Cable">Automobile Cable</option>
+                <option value="PV Solar Cable">PV Solar Cable</option>
+                <option value="Co Axial Cable">Co Axial Cable</option>
+                <option value="Uni-tube Unarmoured Optical Fibre Cable">Uni-tube Unarmoured Optical Fibre Cable</option>
+                <option value="Armoured Unarmoured PVC Insulated Copper Control Cable">Armoured Unarmoured PVC Insulated Copper Control Cable</option>
+                <option value="Telecom Switch Board Cables">Telecom Switch Board Cables</option>
+              </select>
             </div>
             
             <div>
@@ -750,6 +795,8 @@ const Orders = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [activeTab, setActiveTab] = useState('Overview');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     customerName: '',
     productType: '',
@@ -761,148 +808,56 @@ const Orders = () => {
     workOrder: ''
   });
 
-  const [orders, setOrders] = useState([
-    {
-      id: 1,
-      leadNumber: 'LD-2025-001',
-      customerName: 'Rajesh Kumar',
-      customerPhone: '+91 98765 43210',
-      customerAddress: '123 MG Road, Indore, MP',
-      customerGst: '23ABCDE1234F1Z5',
-      dispatchFrom: 'Plant',
-      productName: 'Industrial Motor 5HP',
-      productType: 'Industrial Equipment',
-      quantity: 2,
-      unitPrice: 25000,
-      totalAmount: 50000,
-      orderDate: '2025-01-15',
-      expectedDeliveryDate: '2025-01-25',
-      deliveredDate: '',
-      orderStatus: 'Confirmed',
-      paymentStatus: 'Advance',
-      paidAmount: 20000,
-      pendingAmount: 30000,
-      workOrder: 'WO-2025-001',
-      notes: 'Urgent delivery required',
-      orderHistory: [
-        { date: '2025-01-15', status: 'Order Placed', description: 'Order created by marketing team' },
-        { date: '2025-01-16', status: 'Confirmed', description: 'Order confirmed by sales team' },
-        { date: '2025-01-17', status: 'Advance Payment', description: 'Advance payment of ₹25,000 received' }
-      ]
-    },
-    {
-      id: 2,
-      leadNumber: 'LD-2025-002',
-      customerName: 'Priya Sharma',
-      customerPhone: '+91 87654 32109',
-      customerAddress: '456 Business Park, Bhopal, MP',
-      customerGst: '23FGHIJ5678K2L6',
-      dispatchFrom: 'CNF',
-      productName: 'LED Street Light 100W',
-      productType: 'Commercial Lighting',
-      quantity: 50,
-      unitPrice: 3500,
-      totalAmount: 175000,
-      orderDate: '2025-01-14',
-      expectedDeliveryDate: '2025-01-30',
-      deliveredDate: '2025-01-28',
-      orderStatus: 'Confirmed',
-      paymentStatus: 'Paid',
-      paidAmount: 175000,
-      pendingAmount: 0,
-      workOrder: 'WO-2025-002',
-      notes: 'Installation support required',
-      orderHistory: [
-        { date: '2025-01-14', status: 'Order Placed', description: 'Bulk order for street lighting project' },
-        { date: '2025-01-15', status: 'Payment Received', description: 'Full payment of ₹1,75,000 received' },
-        { date: '2025-01-16', status: 'Confirmed', description: 'Order confirmed and processing started' }
-      ]
-    },
-    {
-      id: 3,
-      leadNumber: 'LD-2025-003',
-      customerName: 'Amit Patel',
-      customerPhone: '+91 76543 21098',
-      customerAddress: '789 Industrial Area, Jabalpur, MP',
-      customerGst: '23KLMNO9012P3M7',
-      dispatchFrom: 'Dealer',
-      productName: 'Power Distribution Panel',
-      productType: 'Power Solutions',
-      quantity: 1,
-      unitPrice: 85000,
-      totalAmount: 85000,
-      orderDate: '2025-01-13',
-      expectedDeliveryDate: '2025-01-28',
-      deliveredDate: '',
-      orderStatus: 'Confirmed',
-      paymentStatus: 'Advance',
-      paidAmount: 42500,
-      pendingAmount: 42500,
-      workOrder: 'WO-2025-003',
-      notes: 'Custom specifications provided',
-      orderHistory: [
-        { date: '2025-01-13', status: 'Order Placed', description: 'Custom power panel order' },
-        { date: '2025-01-14', status: 'Advance Payment', description: 'Advance payment of ₹42,500 received' },
-        { date: '2025-01-15', status: 'Confirmed', description: 'Order confirmed and production started' }
-      ]
-    },
-    {
-      id: 4,
-      leadNumber: 'LD-2025-004',
-      customerName: 'Sneha Gupta',
-      customerPhone: '+91 65432 10987',
-      customerAddress: '321 Tech Hub, Gwalior, MP',
-      customerGst: '23PQRST3456U4V8',
-      dispatchFrom: 'Plant',
-      productName: 'Electrical Control Cabinet',
-      productType: 'Industrial Equipment',
-      quantity: 3,
-      unitPrice: 45000,
-      totalAmount: 135000,
-      orderDate: '2025-01-12',
-      expectedDeliveryDate: '2025-01-22',
-      deliveredDate: '2025-01-20',
-      orderStatus: 'Confirmed',
-      paymentStatus: 'Partial',
-      paidAmount: 67500,
-      pendingAmount: 67500,
-      workOrder: 'WO-2025-004',
-      notes: 'Installation support required',
-      orderHistory: [
-        { date: '2025-01-12', status: 'Order Placed', description: 'Control cabinet order for automation project' },
-        { date: '2025-01-13', status: 'Partial Payment', description: 'Partial payment of ₹67,500 received' },
-        { date: '2025-01-14', status: 'Confirmed', description: 'Order confirmed and manufacturing started' }
-      ]
-    },
-    {
-      id: 5,
-      leadNumber: 'LD-2025-005',
-      customerName: 'Vikram Singh',
-      customerPhone: '+91 54321 09876',
-      customerAddress: '654 Corporate Plaza, Ujjain, MP',
-      customerGst: '23WXYZ7890A5B9',
-      dispatchFrom: 'CNF',
-      productName: 'Office LED Panels',
-      productType: 'Commercial Lighting',
-      quantity: 25,
-      unitPrice: 2500,
-      totalAmount: 62500,
-      orderDate: '2025-01-10',
-      expectedDeliveryDate: '2025-01-20',
-      deliveredDate: '',
-      orderStatus: 'Confirmed',
-      paymentStatus: 'Pending',
-      paidAmount: 0,
-      pendingAmount: 62500,
-      workOrder: 'WO-2025-005',
-      notes: 'Awaiting payment confirmation',
-      orderHistory: [
-        { date: '2025-01-10', status: 'Order Placed', description: 'Office lighting upgrade order' },
-        { date: '2025-01-11', status: 'Confirmed', description: 'Order confirmed, awaiting payment' },
-        { date: '2025-01-12', status: 'Payment Pending', description: 'Awaiting customer payment confirmation' }
-      ]
+  const [orders, setOrders] = useState([]);
+
+  // Fetch orders from API
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await apiClient.get(API_ENDPOINTS.MARKETING_ORDERS_GET_ALL());
+      
+      if (response && response.success) {
+        // Transform API response to match frontend format
+        const transformedOrders = (response.data || []).map(order => ({
+          id: order.id,
+          leadNumber: order.lead_number,
+          customerName: order.customer_name,
+          customerPhone: order.customer_phone || '',
+          customerAddress: order.customer_address || '',
+          customerGst: order.customer_gst || 'NA',
+          productName: order.product_name,
+          productType: order.product_type,
+          quantity: order.quantity,
+          unitPrice: parseFloat(order.unit_price) || 0,
+          totalAmount: parseFloat(order.total_amount) || 0,
+          orderDate: order.order_date,
+          expectedDeliveryDate: order.expected_delivery_date || '',
+          deliveredDate: order.delivered_date || order.delivered_date_display || 'ND',
+          orderStatus: order.order_status,
+          dispatchFrom: order.dispatch_from || 'Plant',
+          workOrder: order.work_order || '',
+          paymentStatus: order.payment_status,
+          paidAmount: parseFloat(order.paid_amount) || 0,
+          pendingAmount: parseFloat(order.pending_amount) || 0,
+          notes: order.notes || '',
+          orderHistory: order.order_history || []
+        }));
+        setOrders(transformedOrders);
+      } else {
+        setError(response?.message || 'Failed to fetch orders');
+      }
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+      setError(err.data?.message || err.message || 'Failed to fetch orders');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = searchTerm === '' || 
@@ -973,19 +928,66 @@ const Orders = () => {
     setShowEditModal(true);
   };
 
-  const handleSaveOrder = (updatedOrder) => {
-    setOrders(orders.map(order => 
-      order.id === updatedOrder.id ? updatedOrder : order
-    ));
-    setShowEditModal(false);
-    setSelectedOrder(null);
+  const generateLeadNumber = () => {
+    const currentYear = new Date().getFullYear();
+    const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+    
+    // Find the highest lead number for this year/month
+    const existingLeadNumbers = orders
+      .filter(order => order.leadNumber && order.leadNumber.startsWith(`LD-${currentYear}-${currentMonth}`))
+      .map(order => {
+        const match = order.leadNumber.match(/LD-\d{4}-\d{2}-(\d+)/);
+        return match ? parseInt(match[1]) : 0;
+      });
+    
+    const nextSequence = existingLeadNumbers.length > 0 
+      ? Math.max(...existingLeadNumbers) + 1 
+      : 1;
+    
+    return `LD-${currentYear}-${currentMonth}-${String(nextSequence).padStart(3, '0')}`;
   };
 
-  const handleAddOrder = (newOrder) => {
-    const orderWithId = {
-      ...newOrder,
-      id: Math.max(...orders.map(o => o.id)) + 1,
-      orderHistory: [
+  const handleAddOrder = async (newOrder) => {
+    try {
+      const leadNumber = generateLeadNumber();
+      
+      // Helper function to normalize date values - always returns null for empty/invalid dates
+      const normalizeDate = (dateValue) => {
+        // Handle null, undefined, empty string, 'ND', or whitespace-only strings
+        if (!dateValue || 
+            dateValue === '' || 
+            dateValue === 'ND' || 
+            dateValue === 'null' ||
+            dateValue === 'undefined' ||
+            (typeof dateValue === 'string' && dateValue.trim() === '')) {
+          return null;
+        }
+        // Return the date value as-is if it's valid
+        return dateValue;
+      };
+
+      // Prepare order data for API
+      const orderData = {
+        lead_number: leadNumber,
+        customer_name: newOrder.customerName,
+        customer_phone: newOrder.customerPhone || null,
+        customer_address: newOrder.customerAddress || null,
+        customer_gst: newOrder.customerGst === 'NA' ? null : newOrder.customerGst,
+        product_name: newOrder.productName,
+        product_type: newOrder.productType,
+        quantity: parseInt(newOrder.quantity) || 1,
+        unit_price: parseFloat(newOrder.unitPrice) || 0,
+        total_amount: parseFloat(newOrder.totalAmount) || 0,
+        order_date: normalizeDate(newOrder.orderDate) || new Date().toISOString().split('T')[0], // Default to today if empty
+        expected_delivery_date: normalizeDate(newOrder.expectedDeliveryDate) || null,
+        delivered_date: normalizeDate(newOrder.deliveredDate) || null,
+        order_status: newOrder.orderStatus || 'Pending',
+        dispatch_from: newOrder.dispatchFrom || 'Plant',
+        work_order: newOrder.workOrder || null,
+        payment_status: newOrder.paymentStatus || 'Not Started',
+        paid_amount: parseFloat(newOrder.paidAmount) || 0,
+        notes: newOrder.notes || null,
+        order_history: [
         { 
           date: newOrder.orderDate, 
           status: 'Order Placed', 
@@ -993,12 +995,175 @@ const Orders = () => {
         }
       ]
     };
-    setOrders([...orders, orderWithId]);
+
+      const response = await apiClient.post(API_ENDPOINTS.MARKETING_ORDERS_CREATE(), orderData);
+      
+      if (response && response.success) {
+        // Transform API response to match frontend format
+        const savedOrder = {
+          id: response.data.id,
+          leadNumber: response.data.lead_number,
+          customerName: response.data.customer_name,
+          customerPhone: response.data.customer_phone || '',
+          customerAddress: response.data.customer_address || '',
+          customerGst: response.data.customer_gst || 'NA',
+          productName: response.data.product_name,
+          productType: response.data.product_type,
+          quantity: response.data.quantity,
+          unitPrice: parseFloat(response.data.unit_price) || 0,
+          totalAmount: parseFloat(response.data.total_amount) || 0,
+          orderDate: response.data.order_date,
+          expectedDeliveryDate: response.data.expected_delivery_date || '',
+          deliveredDate: response.data.delivered_date || 'ND',
+          orderStatus: response.data.order_status,
+          dispatchFrom: response.data.dispatch_from || 'Plant',
+          workOrder: response.data.work_order || '',
+          paymentStatus: response.data.payment_status,
+          paidAmount: parseFloat(response.data.paid_amount) || 0,
+          pendingAmount: parseFloat(response.data.pending_amount) || 0,
+          notes: response.data.notes || '',
+          orderHistory: response.data.order_history || []
+        };
+        setOrders([...orders, savedOrder]);
     setShowAddModal(false);
+      } else {
+        setError(response?.message || 'Failed to create order');
+      }
+    } catch (err) {
+      console.error('Error creating order:', err);
+      setError(err.data?.message || err.message || 'Failed to create order');
+    }
   };
+
+  const handleSaveOrder = async (updatedOrder) => {
+    try {
+      // Helper function to normalize date values - always returns null for empty/invalid dates
+      const normalizeDate = (dateValue) => {
+        // Handle all possible empty/invalid date values (explicit checks first)
+        if (dateValue === null || 
+            dateValue === undefined || 
+            dateValue === '' || 
+            dateValue === 'ND' || 
+            dateValue === 'null' ||
+            dateValue === 'undefined' ||
+            (typeof dateValue === 'string' && dateValue.trim() === '')) {
+          return null;
+        }
+        // Return the date value as-is if it's valid
+        return dateValue;
+      };
+
+      // Prepare update data for API - ensure all date fields are properly normalized
+      // Only include fields that have values (don't send empty strings)
+      const updateData = {};
+      
+      // Always include required fields
+      updateData.customer_name = updatedOrder.customerName;
+      updateData.customer_phone = updatedOrder.customerPhone || null;
+      updateData.customer_address = updatedOrder.customerAddress || null;
+      updateData.customer_gst = updatedOrder.customerGst === 'NA' ? null : updatedOrder.customerGst;
+      updateData.product_name = updatedOrder.productName;
+      updateData.product_type = updatedOrder.productType;
+      updateData.quantity = parseInt(updatedOrder.quantity) || 1;
+      updateData.unit_price = parseFloat(updatedOrder.unitPrice) || 0;
+      updateData.total_amount = parseFloat(updatedOrder.totalAmount) || 0;
+      
+      // Normalize and set date fields - only set if not null
+      const normalizedOrderDate = normalizeDate(updatedOrder.orderDate);
+      updateData.order_date = normalizedOrderDate || new Date().toISOString().split('T')[0]; // Default to today if empty
+      
+      const normalizedExpectedDate = normalizeDate(updatedOrder.expectedDeliveryDate);
+      if (normalizedExpectedDate !== null) {
+        updateData.expected_delivery_date = normalizedExpectedDate;
+      } else {
+        updateData.expected_delivery_date = null; // Explicitly set to null
+      }
+      
+      const normalizedDeliveredDate = normalizeDate(updatedOrder.deliveredDate);
+      if (normalizedDeliveredDate !== null) {
+        updateData.delivered_date = normalizedDeliveredDate;
+      } else {
+        updateData.delivered_date = null; // Explicitly set to null
+      }
+      
+      updateData.order_status = updatedOrder.orderStatus;
+      updateData.dispatch_from = updatedOrder.dispatchFrom || 'Plant';
+      updateData.work_order = updatedOrder.workOrder || null;
+      updateData.payment_status = updatedOrder.paymentStatus;
+      updateData.paid_amount = parseFloat(updatedOrder.paidAmount) || 0;
+      updateData.notes = updatedOrder.notes || null;
+
+      const response = await apiClient.put(API_ENDPOINTS.MARKETING_ORDER_UPDATE(updatedOrder.id), updateData);
+      
+      if (response && response.success) {
+        // Transform API response to match frontend format
+        const savedOrder = {
+          id: response.data.id,
+          leadNumber: response.data.lead_number,
+          customerName: response.data.customer_name,
+          customerPhone: response.data.customer_phone || '',
+          customerAddress: response.data.customer_address || '',
+          customerGst: response.data.customer_gst || 'NA',
+          productName: response.data.product_name,
+          productType: response.data.product_type,
+          quantity: response.data.quantity,
+          unitPrice: parseFloat(response.data.unit_price) || 0,
+          totalAmount: parseFloat(response.data.total_amount) || 0,
+          orderDate: response.data.order_date,
+          expectedDeliveryDate: response.data.expected_delivery_date || '',
+          deliveredDate: response.data.delivered_date || response.data.delivered_date_display || 'ND',
+          orderStatus: response.data.order_status,
+          dispatchFrom: response.data.dispatch_from || 'Plant',
+          workOrder: response.data.work_order || '',
+          paymentStatus: response.data.payment_status,
+          paidAmount: parseFloat(response.data.paid_amount) || 0,
+          pendingAmount: parseFloat(response.data.pending_amount) || 0,
+          notes: response.data.notes || '',
+          orderHistory: response.data.order_history || []
+        };
+        setOrders(orders.map(order => 
+          order.id === updatedOrder.id ? savedOrder : order
+        ));
+        setShowEditModal(false);
+        setSelectedOrder(null);
+      } else {
+        setError(response?.message || 'Failed to update order');
+      }
+    } catch (err) {
+      console.error('Error updating order:', err);
+      setError(err.data?.message || err.message || 'Failed to update order');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen pb-16 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading orders...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen pb-16">
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-r-lg flex items-center justify-between">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 mr-2" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className="text-red-700 hover:text-red-900"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+      
       {/* Top Section - Search and Actions */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <div className="flex items-center justify-between">
@@ -1037,8 +1202,13 @@ const Orders = () => {
 
 
             {/* Refresh Button */}
-            <button className="p-3 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors">
-              <RefreshCw className="w-5 h-5 text-gray-600" />
+            <button 
+              onClick={fetchOrders}
+              disabled={loading}
+              className="p-3 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors disabled:opacity-50"
+              title="Refresh Orders"
+            >
+              <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
@@ -1256,7 +1426,7 @@ const Orders = () => {
                       {order.expectedDeliveryDate || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order.deliveredDate || '-'}
+                      {order.deliveredDate || 'ND'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex space-x-2">
@@ -1296,8 +1466,8 @@ const Orders = () => {
       {/* View Order Details Modal */}
       {showViewModal && selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 flex flex-col" style={{ height: '700px' }}>
+            <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
               <h2 className="text-xl font-semibold text-gray-900">Order Details - {selectedOrder.leadNumber} (ORD-{selectedOrder.id.toString().padStart(4, '0')})</h2>
               <button 
                 onClick={() => setShowViewModal(false)}
@@ -1308,7 +1478,7 @@ const Orders = () => {
             </div>
             
             {/* Tab Navigation */}
-            <div className="border-b border-gray-200">
+            <div className="border-b border-gray-200 flex-shrink-0">
               <nav className="flex space-x-8 px-6">
                 <button
                   onClick={() => setActiveTab('Overview')}
@@ -1343,7 +1513,7 @@ const Orders = () => {
               </nav>
             </div>
             
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1" style={{ minHeight: 0 }}>
               {/* Overview Tab */}
               {activeTab === 'Overview' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1408,7 +1578,7 @@ const Orders = () => {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Delivered Date</label>
-                      <p className="text-gray-900 mt-1">{selectedOrder.deliveredDate || 'Not delivered'}</p>
+                      <p className="text-gray-900 mt-1">{selectedOrder.deliveredDate || 'ND'}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>

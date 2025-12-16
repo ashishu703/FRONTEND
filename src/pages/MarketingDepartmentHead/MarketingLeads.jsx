@@ -208,7 +208,17 @@ const MarketingLeads = () => {
         toastManager.error(`Validation issues found: ${errorMsg}`);
       }
 
-      await leadService.importLeads(leadsPayload);
+      const importResponse = await leadService.importLeads(leadsPayload);
+      console.log('Import response:', importResponse);
+
+      // Notify that meetings may have been created during import
+      try { 
+        window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); 
+        // Also dispatch after a delay to ensure backend has processed
+        setTimeout(() => window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')), 1000);
+      } catch (e) {
+        console.error('Error dispatching meeting update event:', e);
+      }
 
       const response = await leadService.fetchLeads({ page, limit });
       if (response.data) {
@@ -993,12 +1003,39 @@ const MarketingLeads = () => {
                     lead_id: leadId
                   };
                   
-                  await apiClient.post(API_ENDPOINTS.MARKETING_MEETINGS_CREATE(), meetingData);
+                  console.log('Creating meeting with data:', {
+                    customer_name: meetingData.customer_name,
+                    assigned_to: meetingData.assigned_to,
+                    lead_id: meetingData.lead_id,
+                    customer_id: meetingData.customer_id
+                  });
+                  
+                  const meetingResponse = await apiClient.post(API_ENDPOINTS.MARKETING_MEETINGS_CREATE(), meetingData);
+                  console.log('Meeting created successfully:', meetingResponse);
+                  
+                  if (!meetingResponse || !meetingResponse.success) {
+                    console.error('Meeting creation failed:', meetingResponse);
+                    toastManager.error(`Failed to create meeting: ${meetingResponse?.message || 'Unknown error'}`);
+                  }
+                  
                   // Notify other components to refresh
-                  try { window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); } catch {}
+                  try { 
+                    window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); 
+                    // Also dispatch after delays to ensure backend has processed
+                    setTimeout(() => window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')), 500);
+                    setTimeout(() => window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')), 2000);
+                  } catch (e) {
+                    console.error('Error dispatching meeting update event:', e);
+                  }
                 } catch (meetingError) {
                   console.error('Error creating meeting for assigned lead:', meetingError);
-                  // Don't block assignment if meeting creation fails
+                  console.error('Meeting error details:', {
+                    message: meetingError.message,
+                    data: meetingError.data,
+                    status: meetingError.status
+                  });
+                  // Show error to user but don't block assignment
+                  toastManager.error(`Meeting creation failed: ${meetingError.message || 'Unknown error'}`);
                 }
               }
               
@@ -1065,15 +1102,28 @@ const MarketingLeads = () => {
                       customer_id: lead.id,
                       lead_id: lead.id
                     };
-                    await apiClient.post(API_ENDPOINTS.MARKETING_MEETINGS_CREATE(), meetingData);
+                    const meetingResponse = await apiClient.post(API_ENDPOINTS.MARKETING_MEETINGS_CREATE(), meetingData);
+                    console.log(`Meeting created for lead ${lead.id}:`, meetingResponse);
                   } catch (meetingError) {
                     console.error(`Error creating meeting for lead ${lead.id}:`, meetingError);
-                    // Don't block assignment if meeting creation fails
+                    console.error('Meeting error details:', {
+                      leadId: lead.id,
+                      message: meetingError.message,
+                      data: meetingError.data,
+                      status: meetingError.status
+                    });
+                    // Don't block assignment if meeting creation fails, but log it
                   }
                 });
                 await Promise.all(meetingPromises);
                 // Notify other components to refresh
-                try { window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); } catch {}
+                try { 
+                  window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); 
+                  // Also dispatch after a delay to ensure backend has processed
+                  setTimeout(() => window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')), 500);
+                } catch (e) {
+                  console.error('Error dispatching meeting update event:', e);
+                }
               }
               
               const selectedSet = new Set(selectedLeadIds);

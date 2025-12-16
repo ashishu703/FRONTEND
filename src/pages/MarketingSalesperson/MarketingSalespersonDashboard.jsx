@@ -43,17 +43,18 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import AllLeads from './MarketingSalespersonLeads';
-import Visits from './MarketingSalespersonVisits';
 import Orders from './MarketingSalespersonOrders';
-import MarketingFollowUpBase from './FollowUp/MarketingFollowUpBase';
 import MarketingSalespersonProfile from './MarketingSalespersonProfile';
 import MarketingSalespersonCalendar from './MarketingSalespersonCalendar';
 import AssignedMeetings from './AssignedMeetings';
 import CheckInHistory from './CheckInHistory';
+import PaymentStatusView from './PaymentStatusView';
+import MarketingSalespersonToolbox from './MarketingSalespersonToolbox';
 import { useMarketingFollowUpData } from './FollowUp/MarketingFollowUpDataContext';
-import FunctionUpcoming from '../../components/FunctionUpcoming';
 
 const MarketingSalespersonDashboard = ({ activeView, setActiveView }) => {
+  // Use the hook - must be called unconditionally (React hook rules)
+  // The hook will throw an error if used outside the provider, which is expected behavior
   const { getLeadsByStatus, loading, leadsData, getStatusCounts } = useMarketingFollowUpData();
   
   // Add error handling
@@ -72,20 +73,12 @@ const MarketingSalespersonDashboard = ({ activeView, setActiveView }) => {
         return <MarketingDashboardContent customers={leadsData} getStatusCounts={getStatusCounts} />;
       case 'all-leads':
         return <AllLeads />;
-      case 'follow-up':
-        return <MarketingFollowUpBase status="all" customData={getLeadsByStatus('all')} />;
-      case 'follow-up-connected':
-        return <MarketingFollowUpBase status="connected" customData={getLeadsByStatus('connected')} />;
-      case 'follow-up-not-connected':
-        return <MarketingFollowUpBase status="not-connected" customData={getLeadsByStatus('not-connected')} />;
-      case 'follow-up-todays-meeting':
-        return <MarketingFollowUpBase status="todays-meeting" customData={getLeadsByStatus('todays-meeting')} />;
-      case 'follow-up-converted':
-        return <MarketingFollowUpBase status="converted" customData={getLeadsByStatus('converted')} />;
-      case 'follow-up-closed':
-        return <MarketingFollowUpBase status="closed" customData={getLeadsByStatus('closed')} />;
-      case 'visits':
-        return <FunctionUpcoming />;
+      case 'payment-status-due':
+        return <PaymentStatusView type="due" />;
+      case 'payment-status-advance':
+        return <PaymentStatusView type="advance" />;
+      case 'payment-status-completed':
+        return <PaymentStatusView type="completed" />;
       case 'orders':
         return <Orders />;
       case 'calendar':
@@ -96,6 +89,8 @@ const MarketingSalespersonDashboard = ({ activeView, setActiveView }) => {
         return <AssignedMeetings setActiveView={setActiveView} />;
       case 'checkin-history':
         return <CheckInHistory />;
+      case 'toolbox':
+        return <MarketingSalespersonToolbox />;
       default:
         return <MarketingDashboardContent customers={leadsData} getStatusCounts={getStatusCounts} />;
     }

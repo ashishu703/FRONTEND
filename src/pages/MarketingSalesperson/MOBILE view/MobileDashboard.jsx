@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   Users, 
   TrendingUp, 
@@ -120,6 +120,7 @@ function CustomPieChart({ data, size = 200 }) {
 export default function MobileDashboard() {
   const { leadsData } = useMarketingFollowUpData();
   const customers = leadsData || [];
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Demo data for Section 1 - High-Level Business Overview
   const overviewMetrics = useMemo(() => {
@@ -336,6 +337,34 @@ export default function MobileDashboard() {
 
   return (
     <div className="p-4 space-y-4">
+      {/* Tab Navigation */}
+      <div className="flex items-center gap-4 mb-4 border-b border-gray-200">
+        <button 
+          onClick={() => setActiveTab('overview')}
+          className={`flex-1 flex items-center justify-center gap-2 pb-3 border-b-2 ${
+            activeTab === 'overview' 
+              ? 'text-blue-600 border-blue-600' 
+              : 'text-gray-500 border-transparent'
+          }`}
+        >
+          <TrendingUp className="h-4 w-4" />
+          <span className="text-sm font-medium">Overview</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('performance')}
+          className={`flex-1 flex items-center justify-center gap-2 pb-3 border-b-2 ${
+            activeTab === 'performance' 
+              ? 'text-blue-600 border-blue-600' 
+              : 'text-gray-500 border-transparent'
+          }`}
+        >
+          <BarChart3 className="h-4 w-4" />
+          <span className="text-sm font-medium">Performance</span>
+        </button>
+      </div>
+
+      {activeTab === 'overview' && (
+        <>
       {/* SECTION 1 — High-Level Business Overview */}
       <div className="space-y-4 mb-6">
 
@@ -632,6 +661,42 @@ export default function MobileDashboard() {
           </div>
         </div>
       </div>
+        </>
+      )}
+
+      {activeTab === 'performance' && (
+        <div className="flex items-center justify-center min-h-[60vh] py-8">
+          <div className="bg-white border-2 border-gray-200 rounded-lg shadow-sm w-full p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-blue-100">
+              <Target className="h-8 w-8 text-blue-600" />
+            </div>
+            
+            <h2 className="text-2xl font-bold mb-3 text-gray-900">
+              Feature Upcoming
+            </h2>
+            
+            <p className="text-base mb-4 text-gray-600">
+              This feature will be available soon
+            </p>
+            
+            <div className="space-y-3 mb-6 text-gray-700">
+              <div className="flex items-center justify-center gap-2">
+                <Calendar className="h-5 w-5 text-blue-600" />
+                <span className="text-sm font-medium">Performance Tracking</span>
+              </div>
+              
+              <div className="flex items-center justify-center gap-2">
+                <Award className="h-5 w-5 text-yellow-600" />
+                <span className="text-sm font-medium">Performance Reports</span>
+              </div>
+            </div>
+            
+            <p className="text-xs text-gray-500">
+              You will be able to view your performance metrics and detailed reports here.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

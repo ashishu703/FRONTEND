@@ -9,13 +9,15 @@ import {
   MapPin, 
   Tag,
   Eye,
-  Edit,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { useMarketingSharedData } from './MarketingSharedDataContext';
 import { useAuth } from '../../hooks/useAuth';
+import apiClient from '../../utils/apiClient';
+import { API_ENDPOINTS } from '../../api/admin_api/api';
 
 const MarketingSalespersonCalendar = () => {
   const { customers: leads, loading, updateCustomer } = useMarketingSharedData();
@@ -25,97 +27,11 @@ const MarketingSalespersonCalendar = () => {
   const [viewMode, setViewMode] = useState('week'); // 'month' or 'week'
   const [showLeadPanel, setShowLeadPanel] = useState(false);
   const [selectedLeadDetails, setSelectedLeadDetails] = useState(null);
-  const [assignmentsTick, setAssignmentsTick] = useState(0);
-  const [showEditPanel, setShowEditPanel] = useState(false);
-  const [editLead, setEditLead] = useState(null);
-  const [editForm, setEditForm] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    address: '',
-    productType: '',
-    visitingStatus: 'Scheduled',
-    finalStatus: 'Pending',
-    remark: ''
-  });
-
-  const openEdit = (lead) => {
-    setEditLead(lead);
-    setEditForm({
-      name: lead.name || '',
-      phone: lead.phone || '',
-      email: lead.email || '',
-      address: lead.address || '',
-      productType: lead.productType || '',
-      visitingStatus: lead.visitingStatus || 'Scheduled',
-      finalStatus: lead.finalStatus || 'Pending',
-      remark: lead.notes || lead.remark || lead.finalStatusRemark || lead.connectedStatusRemark || ''
-    });
-    setShowEditPanel(true);
-  };
-
-  const saveEdit = () => {
-    if (!editLead) return;
-    try {
-      // Update shared context (for in-memory list)
-      updateCustomer(editLead.id, {
-        name: editForm.name,
-        phone: editForm.phone,
-        email: editForm.email,
-        address: editForm.address,
-        productType: editForm.productType,
-        visitingStatus: editForm.visitingStatus,
-        finalStatus: editForm.finalStatus,
-        notes: editForm.remark,
-        finalStatusRemark: editForm.remark
-      });
-
-      // Update localStorage assignments if this lead exists there
-      try {
-        const allAssignments = JSON.parse(localStorage.getItem('marketingAssignments') || '[]');
-        const updated = Array.isArray(allAssignments)
-          ? allAssignments.map(e => {
-              const same = String(e.leadId || e.id) === String(editLead.leadId || editLead.id);
-              if (!same) return e;
-              return {
-                ...e,
-                name: editForm.name,
-                phone: editForm.phone,
-                address: editForm.address,
-                productType: editForm.productType,
-                visitingStatus: editForm.visitingStatus,
-                finalStatus: editForm.finalStatus,
-                remark: editForm.remark,
-                notes: editForm.remark
-              };
-            })
-          : allAssignments;
-        localStorage.setItem('marketingAssignments', JSON.stringify(updated));
-        try { window.dispatchEvent(new CustomEvent('marketingAssignmentsUpdated')); } catch {}
-      } catch {}
-
-      // Keep any currently selected details in sync
-      const updatedLead = {
-        ...editLead,
-        name: editForm.name,
-        phone: editForm.phone,
-        email: editForm.email,
-        address: editForm.address,
-        productType: editForm.productType,
-        visitingStatus: editForm.visitingStatus,
-        finalStatus: editForm.finalStatus,
-        notes: editForm.remark,
-        finalStatusRemark: editForm.remark,
-        remark: editForm.remark
-      };
-      if (selectedLeadDetails && String(selectedLeadDetails.id) === String(editLead.id)) {
-        setSelectedLeadDetails(updatedLead);
-      }
-
-      setShowEditPanel(false);
-      setEditLead(null);
-    } catch (e) { console.error('saveEdit error', e); }
-  };
+  const [checkIns, setCheckIns] = useState([]);
+  const [checkInsLoading, setCheckInsLoading] = useState(true);
+  const [assignedMeetings, setAssignedMeetings] = useState([]);
+  const [meetingsLoading, setMeetingsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Get current month and year
   const currentMonth = currentDate.getMonth();
@@ -140,85 +56,267 @@ const MarketingSalespersonCalendar = () => {
     calendarDays.push(date);
   }
 
-  // Sample demo leads if none available
-  const demoLeads = React.useMemo(() => {
-    const today = new Date();
-    const day = today.getDay();
-    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - day);
-    const d = (offset) => {
-      const x = new Date(start);
-      x.setDate(start.getDate() + offset);
-      return x.toISOString().split('T')[0];
-    };
-    return [
-      { id: 101, name: 'Akash Verma', phone: '9876500012', email: 'akash@example.com', address: 'Andheri, Mumbai', state: 'Maharashtra', productType: 'Cable', visitingStatus: 'Scheduled', finalStatus: 'Pending', assignedDate: d(0) },
-      { id: 102, name: 'Priya Singh', phone: '9876500013', email: 'priya@example.com', address: 'Borivali, Mumbai', state: 'Maharashtra', productType: 'Wire', visitingStatus: 'Visited', finalStatus: 'Interested', assignedDate: d(1) },
-      { id: 103, name: 'Rohit Sharma', phone: '9876500014', email: 'rohit@example.com', address: 'Thane, Mumbai', state: 'Maharashtra', productType: 'Conductor', visitingStatus: 'Not Visited', finalStatus: 'Pending', assignedDate: d(2) },
-      { id: 104, name: 'Neha Gupta', phone: '9876500015', email: 'neha@example.com', address: 'Vashi, Navi Mumbai', state: 'Maharashtra', productType: 'Cable', visitingStatus: 'Scheduled', finalStatus: 'Pending', assignedDate: d(3) },
-      { id: 105, name: 'Manish Jain', phone: '9876500016', email: 'manish@example.com', address: 'Powai, Mumbai', state: 'Maharashtra', productType: 'Wire', visitingStatus: 'Visited', finalStatus: 'Interested', assignedDate: d(4) }
-    ];
-  }, []);
-
-  // Merge assigned events from localStorage for current salesperson
-  const assignedEvents = React.useMemo(() => {
+  // Fetch check-ins from API
+  const fetchCheckIns = async () => {
     try {
-      const raw = JSON.parse(localStorage.getItem('marketingAssignments') || '[]');
-      const salespersonId = (localStorage.getItem('currentMarketingSalesperson') || user?.email || user?.username || '').toLowerCase();
-      if (!Array.isArray(raw)) return [];
-
-      const mapped = raw.map(e => ({
-        id: e.leadId || e.id,
-        name: e.name,
-        phone: e.phone,
-        email: e.email || '',
-        address: e.address,
-        productType: e.productType,
-        visitingStatus: e.visitingStatus || 'Scheduled',
-        finalStatus: e.finalStatus || 'Pending',
-        // surface remarks into the event so preview/edit shows latest
-        notes: e.notes || e.remark || e.finalStatusRemark || e.connectedStatusRemark || '',
-        remark: e.remark || e.notes || '',
-        finalStatusRemark: e.finalStatusRemark || '',
-        connectedStatusRemark: e.connectedStatusRemark || '',
-        assignedDate: (typeof e.assignedDate === 'string' ? e.assignedDate : (e.assignedDate ? new Date(e.assignedDate) : null)) ? (typeof e.assignedDate === 'string' ? e.assignedDate : (()=>{ const y=e.assignedDate.getFullYear?.(); return y?`${y}-${String(e.assignedDate.getMonth()+1).padStart(2,'0')}-${String(e.assignedDate.getDate()).padStart(2,'0')}`:e.assignedDate; })()) : e.assignedDate,
-        assignedToName: e.assignedToName || '',
-        assignedToEmail: e.assignedToEmail || '',
-      }));
-
-      // Deduplicate by (leadId + assignedDate + assignee)
-      const seen = new Set();
-      const uniqueMapped = mapped.filter(e => {
-        const k = `${String(e.id)}|${e.assignedDate}|${(e.assignedToEmail||e.assignedToName||'').toLowerCase()}`;
-        if (seen.has(k)) return false;
-        seen.add(k);
-        return true;
-      });
-
-      if (!salespersonId) {
-        return uniqueMapped; // no context, show all
+      setCheckInsLoading(true);
+      const response = await apiClient.get(API_ENDPOINTS.MARKETING_CHECK_INS_MY_CHECKINS());
+      
+      if (response && response.success) {
+        const checkInsData = response.data || [];
+        setCheckIns(checkInsData);
+      } else {
+        console.error('Failed to fetch check-ins:', response?.message);
+        setCheckIns([]);
       }
+    } catch (err) {
+      console.error('Error fetching check-ins:', err);
+      setCheckIns([]);
+    } finally {
+      setCheckInsLoading(false);
+    }
+  };
 
-      const filtered = uniqueMapped.filter(e => {
-        const byName = (e.assignedToName || '').toLowerCase();
-        const byEmail = (e.assignedToEmail || '').toLowerCase();
-        return (byEmail.includes(salespersonId) || byName.includes(salespersonId));
-      });
+  // Fetch assigned meetings from API
+  const fetchAssignedMeetings = async () => {
+    try {
+      setMeetingsLoading(true);
+      const response = await apiClient.get(API_ENDPOINTS.MARKETING_MEETINGS_ASSIGNED());
+      
+      if (response && response.success) {
+        const meetingsData = response.data || [];
+        setAssignedMeetings(meetingsData);
+      } else {
+        console.error('Failed to fetch assigned meetings:', response?.message);
+        setAssignedMeetings([]);
+      }
+    } catch (err) {
+      console.error('Error fetching assigned meetings:', err);
+      setAssignedMeetings([]);
+    } finally {
+      setMeetingsLoading(false);
+    }
+  };
 
-      return filtered.length ? filtered : uniqueMapped; // fallback to all if no match
-    } catch { return []; }
-  }, [user, assignmentsTick]);
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await Promise.all([fetchCheckIns(), fetchAssignedMeetings()]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
-  // Listen for assignment updates
+  // Fetch check-ins and meetings on component mount and listen for updates
   useEffect(() => {
-    const onUpdate = () => setAssignmentsTick(t => t + 1);
-    window.addEventListener('marketingAssignmentsUpdated', onUpdate);
-    return () => window.removeEventListener('marketingAssignmentsUpdated', onUpdate);
+    fetchCheckIns();
+    fetchAssignedMeetings();
+    
+    const handleCheckInSubmitted = () => {
+      setTimeout(() => {
+        fetchCheckIns();
+        fetchAssignedMeetings();
+      }, 1000);
+    };
+    
+    const handleCheckInRejected = () => {
+      setTimeout(() => {
+        fetchCheckIns();
+        fetchAssignedMeetings();
+      }, 1000);
+    };
+    
+    const handleMeetingsUpdated = () => {
+      setTimeout(() => {
+        fetchCheckIns();
+        fetchAssignedMeetings();
+      }, 1000);
+    };
+    
+    window.addEventListener('checkInSubmitted', handleCheckInSubmitted);
+    window.addEventListener('checkInRejected', handleCheckInRejected);
+    window.addEventListener('marketingMeetingsUpdated', handleMeetingsUpdated);
+    
+    return () => {
+      window.removeEventListener('checkInSubmitted', handleCheckInSubmitted);
+      window.removeEventListener('checkInRejected', handleCheckInRejected);
+      window.removeEventListener('marketingMeetingsUpdated', handleMeetingsUpdated);
+    };
   }, []);
 
+  // Transform check-ins to calendar events
+  const checkInEvents = React.useMemo(() => {
+    return checkIns.map((checkIn) => {
+      // Extract date from check_in_time
+      const checkInDate = checkIn.check_in_time 
+        ? new Date(checkIn.check_in_time)
+        : (checkIn.meeting_date ? new Date(checkIn.meeting_date) : new Date());
+      
+      // Format date as YYYY-MM-DD
+      const year = checkInDate.getFullYear();
+      const month = String(checkInDate.getMonth() + 1).padStart(2, '0');
+      const day = String(checkInDate.getDate()).padStart(2, '0');
+      const assignedDate = `${year}-${month}-${day}`;
+      
+      // Map check-in status to visiting status
+      let visitingStatus = 'Scheduled';
+      if (checkIn.status === 'Verified') {
+        visitingStatus = 'Visited';
+      } else if (checkIn.status === 'Rejected') {
+        visitingStatus = 'Not Visited';
+      }
+      
+      // Map check-in status to final status
+      let finalStatus = 'Pending';
+      if (checkIn.status === 'Verified') {
+        finalStatus = 'Interested';
+      } else if (checkIn.status === 'Rejected') {
+        finalStatus = 'Not Interested';
+      }
+      
+      // Check if lead is deleted
+      const isDeleted = checkIn.lead_is_deleted === true || checkIn.lead_is_deleted === 'true' || checkIn.lead_is_deleted === 1;
+      
+      // Prefer meeting_id as the unique key so we don't duplicate with the meeting record
+      const meetingId = checkIn.meeting_id || checkIn.meetingId || checkIn.meetingid;
+
+      return {
+        id: meetingId || checkIn.id,
+        meetingId: meetingId || null,
+        name: checkIn.customer_name || 'Unknown Customer',
+        phone: checkIn.customer_phone || checkIn.phone || '',
+        email: checkIn.customer_email || checkIn.email || '',
+        address: checkIn.address || checkIn.meeting_address || '',
+        productType: checkIn.product_type || '',
+        visitingStatus: visitingStatus,
+        finalStatus: finalStatus,
+        notes: checkIn.notes || '',
+        remark: checkIn.notes || '',
+        assignedDate: assignedDate,
+        checkInTime: checkIn.check_in_time,
+        checkInStatus: checkIn.status,
+        photoUrl: checkIn.photo_url,
+        latitude: checkIn.latitude,
+        longitude: checkIn.longitude,
+        isDeleted: isDeleted,
+        deletedAt: checkIn.lead_deleted_at,
+        isCheckIn: true // Mark as check-in
+      };
+    });
+  }, [checkIns]);
+
+  // Transform assigned meetings to calendar events
+  const meetingEvents = React.useMemo(() => {
+    // Build a set of meetingIds that already have check-ins
+    const checkInMeetingIds = new Set();
+    const checkInKeys = new Set(); // For matching by customer name + date
+    
+    checkInEvents.forEach(ci => {
+      if (ci.meetingId) {
+        checkInMeetingIds.add(ci.meetingId);
+      }
+      if (ci.id) {
+        checkInMeetingIds.add(ci.id);
+      }
+      // Also add a composite key for matching: customer name + date
+      if (ci.name && ci.assignedDate) {
+        const key = `${ci.name.toLowerCase().trim()}_${ci.assignedDate}`;
+        checkInKeys.add(key);
+      }
+    });
+
+    return assignedMeetings.map((meeting) => {
+      // Use meeting_date or scheduled_date, fallback to created_at
+      const meetingDate = meeting.meeting_date 
+        ? new Date(meeting.meeting_date)
+        : (meeting.scheduled_date 
+          ? new Date(meeting.scheduled_date)
+          : (meeting.created_at ? new Date(meeting.created_at) : new Date()));
+      
+      // Format date as YYYY-MM-DD
+      const year = meetingDate.getFullYear();
+      const month = String(meetingDate.getMonth() + 1).padStart(2, '0');
+      const day = String(meetingDate.getDate()).padStart(2, '0');
+      const assignedDate = `${year}-${month}-${day}`;
+      
+      // Determine visiting status based on meeting status and check-in
+      let visitingStatus = 'Scheduled';
+      if (meeting.status === 'Completed' || meeting.has_checkin) {
+        visitingStatus = 'Visited';
+      } else if (meeting.status === 'Cancelled') {
+        visitingStatus = 'Cancelled';
+      }
+      
+      // Determine final status
+      let finalStatus = 'Pending';
+      if (meeting.checkin_status === 'Verified') {
+        finalStatus = 'Interested';
+      } else if (meeting.checkin_status === 'Rejected') {
+        finalStatus = 'Not Interested';
+      }
+      
+      // Check if lead is deleted
+      const isDeleted = meeting.lead_is_deleted === true || meeting.lead_is_deleted === 'true' || meeting.lead_is_deleted === 1;
+      
+      // Prefer meeting_id for consistency with check-ins
+      const meetingId = meeting.meeting_id || meeting.id;
+      const customerName = meeting.customer_name || meeting.customer || meeting.lead_customer || 'Unknown Customer';
+
+      return {
+        id: meetingId,
+        meetingId: meetingId,
+        name: customerName,
+        phone: meeting.customer_phone || meeting.phone || meeting.lead_phone || '',
+        email: meeting.customer_email || meeting.email || meeting.lead_email || '',
+        address: meeting.address || meeting.lead_address || 'Address not provided',
+        productType: meeting.product_type || '',
+        visitingStatus: visitingStatus,
+        finalStatus: finalStatus,
+        notes: meeting.notes || '',
+        remark: meeting.notes || '',
+        assignedDate: assignedDate,
+        checkInTime: null, // No check-in yet
+        checkInStatus: meeting.checkin_status || null,
+        photoUrl: meeting.checkin_photo_url || null,
+        latitude: meeting.checkin_latitude || null,
+        longitude: meeting.checkin_longitude || null,
+        isDeleted: isDeleted,
+        deletedAt: meeting.lead_deleted_at || null,
+        isCheckIn: false, // Mark as meeting (not check-in)
+        meetingStatus: meeting.status,
+        meetingDate: meeting.meeting_date,
+        scheduledDate: meeting.scheduled_date
+      };
+    }).filter(meeting => {
+      // Skip meetings that have check-ins
+      // Check by meeting ID first
+      if (meeting.id && checkInMeetingIds.has(meeting.id)) {
+        return false;
+      }
+      if (meeting.meetingId && checkInMeetingIds.has(meeting.meetingId)) {
+        return false;
+      }
+      // Also check by customer name + date as fallback
+      if (meeting.name && meeting.assignedDate) {
+        const key = `${meeting.name.toLowerCase().trim()}_${meeting.assignedDate}`;
+        if (checkInKeys.has(key)) {
+          return false;
+        }
+      }
+      // Only show meetings that don't have check-ins
+      // Also filter out meetings that are already completed with check-ins
+      if (meeting.meetingStatus === 'Completed' && meeting.checkInStatus) {
+        return false; // Don't show completed meetings that have check-ins
+      }
+      return true;
+    });
+  }, [assignedMeetings, checkInEvents]);
+
+  // Combine check-ins and meetings, removing duplicates (prefer check-ins over meetings)
   const effectiveLeads = React.useMemo(() => {
-    const base = Array.isArray(leads) && leads.length > 0 ? leads : demoLeads;
-    return [...base, ...assignedEvents];
-  }, [leads, demoLeads, assignedEvents]);
+    // meetingEvents are already filtered to exclude ones with check-ins
+    return [...checkInEvents, ...meetingEvents];
+  }, [checkInEvents, meetingEvents]);
 
   // Local date helpers to avoid timezone shifting issues
   const toLocalYMD = (input) => {
@@ -328,42 +426,8 @@ const MarketingSalespersonCalendar = () => {
     }
   };
 
-  // Move a lead from calendar to Visits page
-  const moveToVisits = (lead) => {
-    try {
-      // 1) Add to visits storage
-      const visitItem = {
-        id: lead.id,
-        leadId: lead.leadId || lead.id,
-        name: lead.name,
-        phone: lead.phone || '',
-        address: lead.address || '',
-        gstNo: lead.gstNo || '',
-        productType: lead.productType || '',
-        state: lead.state || '',
-        leadSource: lead.leadSource || '',
-        visitingStatus: 'scheduled',
-        visitDate: toLocalYMD(selectedDate)
-      };
-      const existing = JSON.parse(localStorage.getItem('marketingVisits') || '[]');
-      const isDup = Array.isArray(existing) && existing.some(v => String(v.leadId || v.id) === String(visitItem.leadId) && (v.visitDate || '') === (visitItem.visitDate || ''));
-      const next = isDup ? existing : (Array.isArray(existing) ? [...existing, visitItem] : [visitItem]);
-      localStorage.setItem('marketingVisits', JSON.stringify(next));
 
-      // 2) Remove from assignments so it disappears from calendar
-      const allAssignments = JSON.parse(localStorage.getItem('marketingAssignments') || '[]');
-      const dayStr = toLocalYMD(selectedDate);
-      const filtered = Array.isArray(allAssignments)
-        ? allAssignments.filter(e => String(e.leadId || e.id) !== String(lead.id) || (e.assignedDate && e.assignedDate !== dayStr))
-        : [];
-      localStorage.setItem('marketingAssignments', JSON.stringify(filtered));
-
-      // 3) Refresh calendar consumers
-      try { window.dispatchEvent(new CustomEvent('marketingAssignmentsUpdated')); } catch {}
-    } catch (e) { console.error('moveToVisits error', e); }
-  };
-
-  if (loading) {
+  if (loading || checkInsLoading) {
     return (
       <div className="p-6 text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -380,9 +444,17 @@ const MarketingSalespersonCalendar = () => {
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold text-gray-900 flex items-center">
               <Calendar className="w-6 h-6 mr-2 text-blue-600" />
-              Lead Calendar
+              Check-In Calendar
             </h1>
             <div className="flex items-center space-x-2">
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="p-2 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                title="Refresh calendar data"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-600' : 'text-gray-600'}`} />
+              </button>
               <button
                 onClick={() => setViewMode('month')}
                 className={`px-3 py-1 rounded-md text-sm font-medium ${
@@ -412,63 +484,132 @@ const MarketingSalespersonCalendar = () => {
           <div className="flex-1 bg-black bg-opacity-30" onClick={() => setShowLeadPanel(false)}></div>
           <aside className="w-full max-w-md bg-white h-full shadow-xl overflow-y-auto">
             <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Lead Details</h3>
+              <h3 className="text-lg font-semibold">Check-In Details</h3>
               <button onClick={() => setShowLeadPanel(false)} className="text-gray-500 hover:text-gray-700">✕</button>
             </div>
             <div className="p-6 space-y-4 text-sm">
+              {/* Deleted Lead Banner */}
+              {selectedLeadDetails.isDeleted && (
+                <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 rounded-r-lg flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5" />
+                  <span className="text-sm font-medium">This lead has been deleted by the marketing head</span>
+                </div>
+              )}
+              
+              {/* Check-in Photo */}
+              {selectedLeadDetails.photoUrl && (
               <div>
-                <div className="text-xs text-gray-500">Name</div>
-                <div className="text-gray-900 font-medium">{selectedLeadDetails.name}</div>
+                  <div className="text-xs text-gray-500 mb-2">Check-In Photo</div>
+                  <img 
+                    src={selectedLeadDetails.photoUrl} 
+                    alt="Check-in" 
+                    className={`w-full rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 ${
+                      selectedLeadDetails.isDeleted ? 'opacity-50' : ''
+                    }`}
+                    onClick={() => window.open(selectedLeadDetails.photoUrl, '_blank')}
+                  />
+                </div>
+              )}
+              
+              <div>
+                <div className="text-xs text-gray-500">Customer Name</div>
+                <div className={`font-medium flex items-center gap-2 ${
+                  selectedLeadDetails.isDeleted ? 'text-gray-400 line-through' : 'text-gray-900'
+                }`}>
+                  {selectedLeadDetails.name}
+                  {selectedLeadDetails.isDeleted && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600 border border-red-200">
+                      Deleted Lead
+                    </span>
+                  )}
+                </div>
               </div>
               <div>
                 <div className="text-xs text-gray-500">Phone</div>
-                <div className="text-gray-900">{selectedLeadDetails.phone}</div>
+                <div className={selectedLeadDetails.isDeleted ? 'text-gray-400' : 'text-gray-900'}>{selectedLeadDetails.phone}</div>
               </div>
               {selectedLeadDetails.email && (
                 <div>
                   <div className="text-xs text-gray-500">Email</div>
-                  <div className="text-gray-900">{selectedLeadDetails.email}</div>
+                  <div className={selectedLeadDetails.isDeleted ? 'text-gray-400' : 'text-gray-900'}>{selectedLeadDetails.email}</div>
                 </div>
               )}
               <div>
                 <div className="text-xs text-gray-500">Address</div>
-                <div className="text-gray-900">{selectedLeadDetails.address || '-'}</div>
+                <div className={selectedLeadDetails.isDeleted ? 'text-gray-400' : 'text-gray-900'}>{selectedLeadDetails.address || '-'}</div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              
+              {/* Location Coordinates */}
+              {(selectedLeadDetails.latitude && selectedLeadDetails.longitude) && (
                 <div>
+                  <div className="text-xs text-gray-500">Location</div>
+                  <div className="text-gray-900">
+                    {selectedLeadDetails.latitude}, {selectedLeadDetails.longitude}
+                    <a 
+                      href={`https://www.google.com/maps?q=${selectedLeadDetails.latitude},${selectedLeadDetails.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-2 text-blue-600 hover:underline"
+                    >
+                      (Open in Maps)
+                    </a>
+              </div>
+        </div>
+      )}
+
+              <div className="grid grid-cols-2 gap-3">
+              <div>
+                  <div className="text-xs text-gray-500">Check-In Status</div>
+                  <div className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-medium ${
+                    selectedLeadDetails.checkInStatus === 'Verified' 
+                      ? 'bg-green-100 text-green-800'
+                      : selectedLeadDetails.checkInStatus === 'Rejected'
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {selectedLeadDetails.checkInStatus || 'Pending'}
+              </div>
+              </div>
+              <div>
                   <div className="text-xs text-gray-500">Visiting Status</div>
                   <div className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-medium ${getVisitingStatusColor(selectedLeadDetails.visitingStatus)}`}>
                     {selectedLeadDetails.visitingStatus}
-                  </div>
-                </div>
+              </div>
+              </div>
+              </div>
+              
+              {selectedLeadDetails.productType && (
                 <div>
-                  <div className="text-xs text-gray-500">Final Status</div>
-                  <div className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedLeadDetails.finalStatus)}`}>
-                    {selectedLeadDetails.finalStatus}
-                  </div>
+                  <div className="text-xs text-gray-500">Product Type</div>
+                  <div className="text-gray-900">{selectedLeadDetails.productType}</div>
+                </div>
+              )}
+              
+              {selectedLeadDetails.notes && (
+                <div>
+                  <div className="text-xs text-gray-500">Notes</div>
+                  <div className="text-gray-900 whitespace-pre-wrap break-words">
+                    {selectedLeadDetails.notes}
                 </div>
               </div>
+              )}
+              
               <div>
-                <div className="text-xs text-gray-500">Product Type</div>
-                <div className="text-gray-900">{selectedLeadDetails.productType || '-'}</div>
+                <div className="text-xs text-gray-500">Check-In Date</div>
+                <div className="text-gray-900">
+                  {selectedLeadDetails.checkInTime 
+                    ? new Date(selectedLeadDetails.checkInTime).toLocaleString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : (selectedLeadDetails.assignedDate || 'N/A')}
               </div>
-              <div>
-                <div className="text-xs text-gray-500">Remark</div>
-                <div className="text-gray-900 whitespace-pre-wrap break-words">
-                  {selectedLeadDetails.notes || selectedLeadDetails.remark || selectedLeadDetails.finalStatusRemark || selectedLeadDetails.connectedStatusRemark || '-'}
-                </div>
               </div>
-              <div>
-                <div className="text-xs text-gray-500">Assigned Date</div>
-                <div className="text-gray-900">{(selectedLeadDetails.assignedDate || selectedLeadDetails.followUpDate || selectedLeadDetails.date || '').toString()}</div>
-              </div>
+              
               <div className="pt-2 flex gap-2">
-                <button
-                  onClick={() => { moveToVisits(selectedLeadDetails); setShowLeadPanel(false); }}
-                  className="px-3 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700"
-                >
-                  Move to Visits
-                </button>
                 <button onClick={() => setShowLeadPanel(false)} className="px-3 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200">Close</button>
               </div>
             </div>
@@ -476,66 +617,6 @@ const MarketingSalespersonCalendar = () => {
         </div>
       )}
 
-      {/* Edit Lead slide-over */}
-      {showEditPanel && (
-        <div className="fixed inset-0 z-50 flex">
-          <div className="flex-1 bg-black bg-opacity-30" onClick={() => setShowEditPanel(false)}></div>
-          <aside className="w-full max-w-md bg-white h-full shadow-xl overflow-y-auto">
-            <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Edit Lead</h3>
-              <button onClick={() => setShowEditPanel(false)} className="text-gray-500 hover:text-gray-700">✕</button>
-            </div>
-            <div className="p-6 space-y-4 text-sm">
-              <div>
-                <label className="text-xs text-gray-500">Name</label>
-                <input value={editForm.name} onChange={(e)=>setEditForm(f=>({...f,name:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500">Phone</label>
-                <input value={editForm.phone} onChange={(e)=>setEditForm(f=>({...f,phone:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500">Email</label>
-                <input value={editForm.email} onChange={(e)=>setEditForm(f=>({...f,email:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500">Address</label>
-                <textarea value={editForm.address} onChange={(e)=>setEditForm(f=>({...f,address:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1" rows={2} />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500">Product Type</label>
-                <input value={editForm.productType} onChange={(e)=>setEditForm(f=>({...f,productType:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-500">Visiting Status</label>
-                  <select value={editForm.visitingStatus} onChange={(e)=>setEditForm(f=>({...f,visitingStatus:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1">
-                    <option>Scheduled</option>
-                    <option>Visited</option>
-                    <option>Not Visited</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500">Final Status</label>
-                  <select value={editForm.finalStatus} onChange={(e)=>setEditForm(f=>({...f,finalStatus:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1">
-                    <option>Pending</option>
-                    <option>Interested</option>
-                    <option>Not Interested</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-gray-500">Remark</label>
-                <textarea value={editForm.remark} onChange={(e)=>setEditForm(f=>({...f,remark:e.target.value}))} className="mt-1 w-full border rounded px-2 py-1" rows={3} />
-              </div>
-              <div className="pt-2 flex gap-2">
-                <button onClick={saveEdit} className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">Save</button>
-                <button onClick={() => setShowEditPanel(false)} className="px-3 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200">Cancel</button>
-              </div>
-            </div>
-          </aside>
-        </div>
-      )}
           {/* Calendar Navigation */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -629,8 +710,20 @@ const MarketingSalespersonCalendar = () => {
                           </div>
                           <div className="space-y-1">
                             {dayLeads.slice(0, 2).map((lead, leadIndex) => (
-                              <div key={leadIndex} className="text-xs p-1 bg-gray-100 rounded truncate" title={lead.name}>
+                              <div 
+                                key={leadIndex} 
+                                className={`text-xs p-1 rounded truncate ${
+                                  lead.isCheckIn 
+                                    ? 'bg-green-50 text-green-800' 
+                                    : 'bg-blue-50 text-blue-800'
+                                } ${
+                                  lead.isDeleted ? 'opacity-50 line-through' : ''
+                                }`} 
+                                title={lead.name + (lead.isDeleted ? ' (Deleted)' : '') + (lead.isCheckIn ? ' (Checked In)' : ' (Assigned)')}
+                              >
                                 {lead.name}
+                                {lead.isDeleted && <span className="ml-1 text-[9px] text-red-500">[D]</span>}
+                                {!lead.isCheckIn && !lead.isDeleted && <span className="ml-1 text-[9px] text-blue-600">[A]</span>}
                               </div>
                             ))}
                             {dayLeads.length > 2 && (
@@ -666,26 +759,57 @@ const MarketingSalespersonCalendar = () => {
                         </div>
                             <div className="p-2 space-y-2 max-h-[400px] overflow-auto">
                           {dayLeads.length === 0 ? (
-                            <div className="text-xs text-gray-400 text-center py-6">No leads</div>
+                            <div className="text-xs text-gray-400 text-center py-6">No meetings or check-ins</div>
                           ) : (
                             dayLeads.map((lead) => (
                               <div 
                                 key={lead.id} 
-                                className="bg-white border rounded-md p-2 shadow-sm hover:border-blue-300"
+                                className={`bg-white border rounded-md p-2 shadow-sm hover:border-blue-300 transition-opacity ${
+                                  lead.isDeleted ? 'opacity-50' : ''
+                                } ${lead.isCheckIn ? 'border-green-200' : 'border-blue-200'}`}
                                 onClick={() => { setSelectedLeadDetails(lead); setShowLeadPanel(true); }}
                               >
-                                <div className="text-xs font-medium text-gray-900 truncate">{lead.name}</div>
-                                <div className="text-[11px] text-gray-600 truncate">{lead.phone}</div>
+                                <div className="flex items-start justify-between mb-1">
+                                  <div className="flex-1">
+                                    <div className={`text-xs font-medium truncate ${
+                                      lead.isDeleted ? 'text-gray-400 line-through' : 'text-gray-900'
+                                    }`}>
+                                      {lead.name}
+                                    </div>
+                                    <div className={`text-[11px] truncate ${
+                                      lead.isDeleted ? 'text-gray-300' : 'text-gray-600'
+                                    }`}>
+                                      {lead.phone}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {!lead.isCheckIn && !lead.isDeleted && (
+                                      <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-blue-100 text-blue-600 border border-blue-200">
+                                        Assigned
+                                      </span>
+                                    )}
+                                    {lead.isDeleted && (
+                                      <span className="ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-red-100 text-red-600 border border-red-200">
+                                        Deleted
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
                                 <div className="flex items-center justify-between mt-1">
                                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getVisitingStatusColor(lead.visitingStatus)}`}>
                                     {lead.visitingStatus}
                                   </span>
-                                  <button
-                                    onClick={() => moveToVisits(lead)}
-                                    className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                                  >
-                                    Move to Visits
-                                  </button>
+                                  {lead.checkInStatus && (
+                                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                                      lead.checkInStatus === 'Verified' 
+                                        ? 'bg-green-100 text-green-800'
+                                        : lead.checkInStatus === 'Rejected'
+                                        ? 'bg-red-100 text-red-800'
+                                        : 'bg-yellow-100 text-yellow-800'
+                                    }`}>
+                                      {lead.checkInStatus}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             ))
@@ -704,7 +828,7 @@ const MarketingSalespersonCalendar = () => {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <Clock className="w-5 h-5 mr-2 text-blue-600" />
-                Leads for {selectedDate.toLocaleDateString('en-US', { 
+                Check-Ins for {selectedDate.toLocaleDateString('en-US', { 
                   weekday: 'long', 
                   month: 'long', 
                   day: 'numeric' 
@@ -714,34 +838,55 @@ const MarketingSalespersonCalendar = () => {
               {selectedDateLeads.length === 0 ? (
                 <div className="text-center py-8">
                   <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">No leads assigned for this date</p>
+                  <p className="text-gray-500">No meetings or check-ins for this date</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {selectedDateLeads.map((lead) => (
-                    <div key={lead.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div 
+                      key={lead.id} 
+                      className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
+                        lead.isDeleted ? 'opacity-50 bg-gray-50 border-gray-200' : ''
+                      } ${lead.isCheckIn ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-blue-50'}`}
+                    >
                       <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-medium text-gray-900 truncate">{lead.name}</h4>
+                        <div className="flex-1">
+                          <h4 className={`font-medium truncate ${
+                            lead.isDeleted ? 'text-gray-400 line-through' : 'text-gray-900'
+                          }`}>
+                            {lead.name}
+                          </h4>
+                          <div className="flex items-center gap-2 mt-1">
+                            {!lead.isCheckIn && !lead.isDeleted && (
+                              <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-600 border border-blue-200">
+                                Assigned Meeting
+                              </span>
+                            )}
+                            {lead.isDeleted && (
+                              <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600 border border-red-200">
+                                Deleted Lead
+                              </span>
+                            )}
+                          </div>
+                        </div>
                         <div className="flex space-x-1">
                           <button
                             className="p-1 text-gray-400 hover:text-blue-600"
                             onClick={() => { setSelectedLeadDetails(lead); setShowLeadPanel(true); }}
+                            title="View Details"
                           >
                             <Eye className="w-4 h-4" />
-                          </button>
-                          <button className="p-1 text-gray-400 hover:text-green-600">
-                            <Edit className="w-4 h-4" onClick={() => openEdit(lead)} />
                           </button>
                         </div>
                       </div>
                       
                       <div className="space-y-2 text-sm">
-                        <div className="flex items-center text-gray-600">
+                        <div className={`flex items-center ${lead.isDeleted ? 'text-gray-400' : 'text-gray-600'}`}>
                           <Phone className="w-4 h-4 mr-2" />
                           <span>{lead.phone}</span>
                         </div>
                         
-                        <div className="flex items-center text-gray-600">
+                        <div className={`flex items-center ${lead.isDeleted ? 'text-gray-400' : 'text-gray-600'}`}>
                           <MapPin className="w-4 h-4 mr-2" />
                           <span className="truncate">{lead.address}</span>
                         </div>
@@ -762,14 +907,19 @@ const MarketingSalespersonCalendar = () => {
                           </div>
                         )}
 
-                        <div className="pt-2 flex justify-end">
-                          <button
-                            onClick={() => moveToVisits(lead)}
-                            className="px-2 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 inline-flex items-center gap-1"
-                          >
-                            Move to Visits
-                          </button>
+                        {lead.checkInStatus && (
+                          <div className="pt-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              lead.checkInStatus === 'Verified' 
+                                ? 'bg-green-100 text-green-800'
+                                : lead.checkInStatus === 'Rejected'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              Check-In: {lead.checkInStatus}
+                            </span>
                         </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -784,3 +934,4 @@ const MarketingSalespersonCalendar = () => {
 };
 
 export default MarketingSalespersonCalendar;
+

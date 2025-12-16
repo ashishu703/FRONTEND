@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, CheckCircle, X, AlertCircle, Loader, Search, Filter, XCircle } from 'lucide-react';
+import { Calendar, MapPin, CheckCircle, X, AlertCircle, Loader, Search, Filter, XCircle, Edit2, Trash2, Camera } from 'lucide-react';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import apiClient from '../../utils/apiClient';
 
@@ -9,20 +9,36 @@ export default function MeetingAssignment() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [editingMeeting, setEditingMeeting] = useState(null);
+  const [newDate, setNewDate] = useState('');
+  const [newTime, setNewTime] = useState('');
+  const [updating, setUpdating] = useState(false);
+  const [deletingMeetingId, setDeletingMeetingId] = useState(null);
 
   useEffect(() => {
     fetchMeetings();
   }, []);
 
-  // Listen for meeting updates from other components (e.g., Leads component)
+  // Listen for meeting updates and check-in submissions
   useEffect(() => {
     const handleMeetingUpdate = () => {
+      console.log('Meeting update event received, refreshing...');
       fetchMeetings();
     };
 
+    const handleCheckInSubmitted = () => {
+      console.log('Check-in submitted event received, refreshing meetings...');
+      // Refresh after a short delay to ensure backend has processed
+      setTimeout(() => {
+        fetchMeetings();
+      }, 1000);
+    };
+
     window.addEventListener('marketingMeetingsUpdated', handleMeetingUpdate);
+    window.addEventListener('checkInSubmitted', handleCheckInSubmitted);
     return () => {
       window.removeEventListener('marketingMeetingsUpdated', handleMeetingUpdate);
+      window.removeEventListener('checkInSubmitted', handleCheckInSubmitted);
     };
   }, []);
 
@@ -91,6 +107,81 @@ export default function MeetingAssignment() {
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const handleUpdateDate = async () => {
+    if (!editingMeeting || !newDate) {
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      const updateData = {
+        meeting_date: newDate,
+        ...(newTime && { meeting_time: newTime })
+      };
+
+      const response = await apiClient.put(
+        API_ENDPOINTS.MARKETING_MEETING_UPDATE(editingMeeting.id),
+        updateData
+      );
+
+      if (response && response.success) {
+        // Refresh meetings list
+        await fetchMeetings();
+        // Dispatch event to refresh salesperson's assigned meetings
+        try {
+          window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated'));
+        } catch {}
+        
+        setEditingMeeting(null);
+        setNewDate('');
+        setNewTime('');
+      } else {
+        setError(response?.message || 'Failed to update meeting date');
+      }
+    } catch (err) {
+      console.error('Error updating meeting date:', err);
+      setError(err.data?.message || err.message || 'Failed to update meeting date');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDeleteMeeting = async (meetingId) => {
+    if (!window.confirm('Are you sure you want to delete this meeting? This will remove it from the salesperson\'s assigned meetings as well.')) {
+      return;
+    }
+
+    try {
+      setDeletingMeetingId(meetingId);
+      const response = await apiClient.delete(API_ENDPOINTS.MARKETING_MEETING_DELETE(meetingId));
+
+      if (response && response.success) {
+        // Refresh meetings list
+        await fetchMeetings();
+        // Dispatch event to refresh salesperson's assigned meetings
+        try {
+          window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated'));
+        } catch {}
+      } else {
+        setError(response?.message || 'Failed to delete meeting');
+      }
+    } catch (err) {
+      console.error('Error deleting meeting:', err);
+      setError(err.data?.message || err.message || 'Failed to delete meeting');
+    } finally {
+      setDeletingMeetingId(null);
+    }
+  };
+
+  const openDateEditor = (meeting) => {
+    setEditingMeeting(meeting);
+    // Set current date and time as defaults
+    const currentDate = meeting.meeting_date ? meeting.meeting_date.split('T')[0] : new Date().toISOString().split('T')[0];
+    const currentTime = meeting.meeting_time || '';
+    setNewDate(currentDate);
+    setNewTime(currentTime);
   };
 
   const filteredMeetings = meetings.filter(meeting => {
@@ -198,6 +289,8 @@ export default function MeetingAssignment() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-In Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-In Photo</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -228,7 +321,7 @@ export default function MeetingAssignment() {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {meeting.is_checked_in || meeting.status === 'Completed' ? (
+                          {meeting.is_checked_in || meeting.has_checkin || meeting.status === 'Completed' ? (
                             <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200 flex items-center gap-1 w-fit">
                               <CheckCircle className="h-4 w-4" />
                               <span>Checked In</span>
@@ -240,6 +333,44 @@ export default function MeetingAssignment() {
                             </span>
                           )}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {meeting.checkin_photo_url ? (
+                            <img
+                              src={meeting.checkin_photo_url}
+                              alt="Check-in photo"
+                              className="h-16 w-16 object-cover rounded-lg cursor-pointer hover:opacity-80 border border-gray-200"
+                              onClick={() => window.open(meeting.checkin_photo_url, '_blank')}
+                              title="Click to view full size"
+                            />
+                          ) : (
+                            <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
+                              <Camera className="h-6 w-6 text-gray-400" />
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openDateEditor(meeting)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Update Date"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMeeting(meeting.id)}
+                              disabled={deletingMeetingId === meeting.id}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Delete Meeting"
+                            >
+                              {deletingMeetingId === meeting.id ? (
+                                <Loader className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -247,6 +378,99 @@ export default function MeetingAssignment() {
               </div>
             </div>
           )}
+
+      {/* Date Update Modal */}
+      {editingMeeting && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Update Meeting Date</h3>
+              <button
+                onClick={() => {
+                  setEditingMeeting(null);
+                  setNewDate('');
+                  setNewTime('');
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Customer Name
+                </label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                  {editingMeeting.customer_name || editingMeeting.lead_customer || 'N/A'}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Assigned To
+                </label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                  {editingMeeting.assigned_to}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  New Meeting Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  New Meeting Time (Optional)
+                </label>
+                <input
+                  type="time"
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleUpdateDate}
+                  disabled={updating || !newDate}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {updating ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader className="h-4 w-4 animate-spin" />
+                      Updating...
+                    </span>
+                  ) : (
+                    'Update Date'
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingMeeting(null);
+                    setNewDate('');
+                    setNewTime('');
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -210,21 +210,50 @@ export default function CheckInInterface({ meeting, onComplete, onCancel }) {
 
       // postFormData returns data directly, not wrapped in response.data
       if (response && response.success) {
+        const checkInData = response.data || {};
+        console.log('Check-in submitted successfully!', {
+          check_in_id: checkInData.id,
+          meeting_id: checkInData.meeting_id,
+          photo_url: checkInData.photo_url ? 'present' : 'missing',
+          latitude: checkInData.latitude,
+          longitude: checkInData.longitude
+        });
+        
         setShowSuccess(true);
         
-        // Dispatch event to refresh meetings list
-        try { 
-          window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); 
-        } catch {}
+        // Force refresh by dispatching events multiple times
+        const refreshDashboard = () => {
+          try {
+            window.dispatchEvent(new CustomEvent('checkInSubmitted', { 
+              detail: { checkInId: checkInData.id } 
+            }));
+            window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated'));
+          } catch (err) {
+            console.error('Error dispatching events:', err);
+          }
+        };
+        
+        // Dispatch immediately
+        refreshDashboard();
+        
+        // Dispatch again after a delay
+        setTimeout(refreshDashboard, 1000);
+        setTimeout(refreshDashboard, 3000);
         
         // Show success message for 2 seconds before calling onComplete
-        // onComplete will update the meeting status and refresh the list
+        // onComplete will close the check-in interface and stay in AssignedMeetings (NO REDIRECT)
         setTimeout(() => {
           if (capturedPhoto) {
             URL.revokeObjectURL(capturedPhoto);
           }
-          // Call onComplete which will update meeting status and refresh
-          onComplete();
+          // Call onComplete which will:
+          // 1. Close the check-in interface (setShowCheckIn = false)
+          // 2. Update local state to show "Checked In"
+          // 3. Refresh meetings from backend
+          // This should NOT redirect anywhere - user stays in AssignedMeetings view
+          if (onComplete) {
+            onComplete();
+          }
         }, 2000);
       } else {
         setError(response?.message || response?.data?.message || 'Failed to submit check-in');

@@ -1,123 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Mail, Clock, Phone, CheckCircle, XCircle, UserX, Calendar, Edit, Trash2, ArrowRight, Search, RefreshCw, BarChart3, Users, DollarSign, Eye, Megaphone, Target } from 'lucide-react';
+import departmentUsersService, { apiToUiDepartment, apiToUiRole, DepartmentType } from '../../api/admin_api/departmentUsersService';
+import { useAuth } from '../../hooks/useAuth';
+import apiClient from '../../utils/apiClient';
+import { API_ENDPOINTS } from '../../api/admin_api/api';
 
 const MarketingUserPerformance = () => {
-  const userData = [
-    {
-      id: 1,
-      username: 'sarah_marketing',
-      email: 'sarah@mbgcard.com',
-      department: 'Marketing Department',
-      role: 'Marketing Specialist',
-      associatedEmail: 'marketing@mbg.com',
-      date: 'Thu, May 15, 2025',
-      pending: { count: 28, total: 55 },
-      followUp: { count: 15, total: 35 },
-      done: { count: 12, total: 25 },
-      notConnected: { count: 8, total: 20 },
-      notInterested: { count: 5, total: 15 },
-      meetingScheduled: { count: 4, total: 12 },
-      totalAmount: 145000,
-      dueAmount: 35000,
-      campaignLeads: 45,
-      socialMediaLeads: 32
-    },
-    {
-      id: 2,
-      username: 'mike_digital',
-      email: 'mike@gmail.com',
-      department: 'Marketing Department',
-      role: 'Digital Marketing Specialist',
-      associatedEmail: 'sarah@mbgcard.com',
-      date: 'Thu, May 15, 2025',
-      pending: { count: 22, total: 45 },
-      followUp: { count: 10, total: 28 },
-      done: { count: 18, total: 38 },
-      notConnected: { count: 6, total: 18 },
-      notInterested: { count: 3, total: 12 },
-      meetingScheduled: { count: 5, total: 15 },
-      totalAmount: 125000,
-      dueAmount: 28000,
-      campaignLeads: 38,
-      socialMediaLeads: 25
-    },
-    {
-      id: 3,
-      username: 'emma_content',
-      email: 'emma@mbg.com',
-      department: 'Marketing Department',
-      role: 'Content Marketing Manager',
-      associatedEmail: 'marketing@mbg.com',
-      date: 'Thu, May 15, 2025',
-      pending: { count: 15, total: 35 },
-      followUp: { count: 8, total: 22 },
-      done: { count: 25, total: 42 },
-      notConnected: { count: 4, total: 15 },
-      notInterested: { count: 2, total: 8 },
-      meetingScheduled: { count: 3, total: 10 },
-      totalAmount: 95000,
-      dueAmount: 18000,
-      campaignLeads: 28,
-      socialMediaLeads: 18
-    },
-    {
-      id: 4,
-      username: 'alex_social',
-      email: 'alex@gmail.com',
-      department: 'Marketing Department',
-      role: 'Social Media Manager',
-      associatedEmail: 'sarah@mbgcard.com',
-      date: 'Tue, May 20, 2025',
-      pending: { count: 35, total: 65 },
-      followUp: { count: 18, total: 40 },
-      done: { count: 8, total: 28 },
-      notConnected: { count: 15, total: 35 },
-      notInterested: { count: 9, total: 22 },
-      meetingScheduled: { count: 6, total: 18 },
-      totalAmount: 105000,
-      dueAmount: 25000,
-      campaignLeads: 52,
-      socialMediaLeads: 42
-    },
-    {
-      id: 5,
-      username: 'lisa_brand',
-      email: 'lisa@gmail.com',
-      department: 'Marketing Department',
-      role: 'Brand Manager',
-      associatedEmail: 'sarah@mbgcard.com',
-      date: 'Tue, May 20, 2025',
-      pending: { count: 20, total: 42 },
-      followUp: { count: 12, total: 30 },
-      done: { count: 15, total: 32 },
-      notConnected: { count: 8, total: 22 },
-      notInterested: { count: 4, total: 15 },
-      meetingScheduled: { count: 5, total: 14 },
-      totalAmount: 88000,
-      dueAmount: 22000,
-      campaignLeads: 35,
-      socialMediaLeads: 28
-    },
-    {
-      id: 6,
-      username: 'david_email',
-      email: 'david@gmail.com',
-      department: 'Marketing Department',
-      role: 'Email Marketing Specialist',
-      associatedEmail: 'sarah@mbgcard.com',
-      date: 'Wed, May 21, 2025',
-      pending: { count: 18, total: 38 },
-      followUp: { count: 9, total: 25 },
-      done: { count: 22, total: 45 },
-      notConnected: { count: 5, total: 18 },
-      notInterested: { count: 3, total: 12 },
-      meetingScheduled: { count: 4, total: 11 },
-      totalAmount: 115000,
-      dueAmount: 30000,
-      campaignLeads: 40,
-      socialMediaLeads: 15
-    }
-  ];
+  const { user: currentUser } = useAuth();
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -131,6 +23,276 @@ const MarketingUserPerformance = () => {
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
   const datePickerRef = useRef(null);
+
+  // Fetch marketing department users and calculate their performance
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('Fetching marketing salespersons with params:', {
+        departmentType: DepartmentType.MARKETING_SALES,
+        page: 1,
+        limit: 100
+      });
+      
+      const response = await departmentUsersService.listUsers({
+        departmentType: DepartmentType.MARKETING_SALES,
+        page: 1,
+        limit: 100
+      });
+
+      console.log('Full API Response:', JSON.stringify(response, null, 2));
+      
+      // Handle different response structures
+      // Response can be: { success: true, data: { users: [...], pagination: {...} } }
+      // Or: { users: [...], pagination: {...} }
+      // Or: { data: { users: [...], pagination: {...} } }
+      let usersArray = [];
+      
+      if (response?.success && response?.data) {
+        // Structure: { success: true, data: { users: [...], pagination: {...} } }
+        usersArray = Array.isArray(response.data.users) ? response.data.users : (Array.isArray(response.data) ? response.data : []);
+      } else if (response?.data) {
+        // Structure: { data: { users: [...], pagination: {...} } }
+        usersArray = Array.isArray(response.data.users) ? response.data.users : (Array.isArray(response.data) ? response.data : []);
+      } else if (response?.users) {
+        // Structure: { users: [...], pagination: {...} }
+        usersArray = Array.isArray(response.users) ? response.users : [];
+      } else if (Array.isArray(response)) {
+        // Direct array response
+        usersArray = response;
+      } else if (Array.isArray(response?.data)) {
+        // Structure: { data: [...] }
+        usersArray = response.data;
+      }
+      
+      console.log(`Found ${usersArray.length} marketing salespersons:`, usersArray.map(u => ({ 
+        id: u.id,
+        username: u.username, 
+        email: u.email, 
+        departmentType: u.departmentType || u.department_type,
+        isActive: u.isActive || u.is_active
+      })));
+      
+      if (usersArray.length === 0) {
+        console.warn('No marketing salespersons found. Please ensure users are created with departmentType: marketing_sales');
+        setError('No marketing salespersons found. Please add marketing salespersons in the system with department type "marketing_sales".');
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
+        
+        // Fetch performance data for each user in parallel
+        const userPerformanceData = await Promise.all(usersArray.map(async (u, idx) => {
+          try {
+            const userEmail = u.email || '';
+            const username = u.username || '';
+            
+            console.log(`Fetching performance data for ${username} (${userEmail})...`);
+            
+            // Fetch leads assigned to this user (try both username and email)
+            let leads = [];
+            try {
+              if (username) {
+                const leadsRes = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_BY_USERNAME(username));
+                leads = Array.isArray(leadsRes?.data) ? leadsRes.data : (Array.isArray(leadsRes?.rows) ? leadsRes.rows : []);
+              }
+            } catch (e) {
+              console.warn(`Failed to fetch leads for ${username}:`, e);
+            }
+            
+            // Fetch meetings assigned to this user (try both email and username)
+            let meetings = [];
+            try {
+              // Try with email first
+              if (userEmail) {
+                const meetingsResEmail = await apiClient.get(`${API_ENDPOINTS.MARKETING_MEETINGS_GET_ALL()}?assigned_to=${encodeURIComponent(userEmail)}`);
+                const meetingsFromEmail = Array.isArray(meetingsResEmail?.data) ? meetingsResEmail.data : [];
+                meetings.push(...meetingsFromEmail);
+              }
+              // Also try with username
+              if (username && username !== userEmail) {
+                const meetingsResUsername = await apiClient.get(`${API_ENDPOINTS.MARKETING_MEETINGS_GET_ALL()}?assigned_to=${encodeURIComponent(username)}`);
+                const meetingsFromUsername = Array.isArray(meetingsResUsername?.data) ? meetingsResUsername.data : [];
+                meetings.push(...meetingsFromUsername);
+              }
+              // Remove duplicates based on meeting id
+              meetings = meetings.filter((m, index, self) => 
+                index === self.findIndex((t) => t.id === m.id)
+              );
+            } catch (e) {
+              console.warn(`Failed to fetch meetings for ${username}:`, e);
+            }
+            
+            // Fetch check-ins by this user (try both email and username)
+            let checkIns = [];
+            try {
+              // Try with email first
+              if (userEmail) {
+                const checkInsResEmail = await apiClient.get(`${API_ENDPOINTS.MARKETING_CHECK_INS_GET_ALL()}?salesperson_email=${encodeURIComponent(userEmail)}`);
+                const checkInsFromEmail = Array.isArray(checkInsResEmail?.data) ? checkInsResEmail.data : [];
+                checkIns.push(...checkInsFromEmail);
+              }
+              // Also try with username
+              if (username && username !== userEmail) {
+                const checkInsResUsername = await apiClient.get(`${API_ENDPOINTS.MARKETING_CHECK_INS_GET_ALL()}?salesperson_email=${encodeURIComponent(username)}`);
+                const checkInsFromUsername = Array.isArray(checkInsResUsername?.data) ? checkInsResUsername.data : [];
+                checkIns.push(...checkInsFromUsername);
+              }
+              // Remove duplicates based on check-in id
+              checkIns = checkIns.filter((c, index, self) => 
+                index === self.findIndex((t) => t.id === c.id)
+              );
+            } catch (e) {
+              console.warn(`Failed to fetch check-ins for ${username}:`, e);
+            }
+            
+            // Fetch orders created by this user (try both email and username)
+            let orders = [];
+            try {
+              // Try with email first
+              if (userEmail) {
+                const ordersResEmail = await apiClient.get(`${API_ENDPOINTS.MARKETING_ORDERS_GET_ALL()}?created_by=${encodeURIComponent(userEmail)}`);
+                const ordersFromEmail = Array.isArray(ordersResEmail?.data) ? ordersResEmail.data : [];
+                orders.push(...ordersFromEmail);
+              }
+              // Also try with username
+              if (username && username !== userEmail) {
+                const ordersResUsername = await apiClient.get(`${API_ENDPOINTS.MARKETING_ORDERS_GET_ALL()}?created_by=${encodeURIComponent(username)}`);
+                const ordersFromUsername = Array.isArray(ordersResUsername?.data) ? ordersResUsername.data : [];
+                orders.push(...ordersFromUsername);
+              }
+              // Remove duplicates based on order id
+              orders = orders.filter((o, index, self) => 
+                index === self.findIndex((t) => t.id === o.id)
+              );
+            } catch (e) {
+              console.warn(`Failed to fetch orders for ${username}:`, e);
+            }
+            
+            console.log(`Performance data for ${username}:`, {
+              leads: leads.length,
+              meetings: meetings.length,
+              checkIns: checkIns.length,
+              orders: orders.length
+            });
+            
+            // Calculate metrics from actual data
+            const totalLeads = leads.length;
+            const pendingLeads = leads.filter(l => {
+              const status = String(l.sales_status || '').toLowerCase();
+              return status === 'pending' || status === '';
+            }).length;
+            
+            const followUpLeads = leads.filter(l => {
+              const status = String(l.follow_up_status || '').toLowerCase();
+              return status === 'follow up' || status === 'follow-up' || status === 'appointment scheduled';
+            }).length;
+            
+            const doneLeads = leads.filter(l => {
+              const status = String(l.sales_status || '').toLowerCase();
+              return status === 'interested' || status === 'converted' || status === 'win/closed' || status === 'win' || status === 'closed';
+            }).length;
+            
+            const notConnectedLeads = leads.filter(l => {
+              const status = String(l.sales_status || '').toLowerCase();
+              return status === 'not connected' || status === 'not_connected';
+            }).length;
+            
+            const notInterestedLeads = leads.filter(l => {
+              const status = String(l.sales_status || '').toLowerCase();
+              return status === 'not interested' || status === 'not_interested' || status === 'lost';
+            }).length;
+            
+            const scheduledMeetings = meetings.filter(m => {
+              const status = String(m.status || '').toLowerCase();
+              return status === 'scheduled' || status === 'pending';
+            }).length;
+            
+            const completedMeetings = meetings.filter(m => {
+              const status = String(m.status || '').toLowerCase();
+              return status === 'completed';
+            }).length;
+            
+            // Calculate order amounts
+            const totalAmount = orders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
+            const paidAmount = orders.reduce((sum, o) => sum + (parseFloat(o.paid_amount) || 0), 0);
+            const dueAmount = orders.reduce((sum, o) => sum + (parseFloat(o.pending_amount) || 0), 0);
+            
+            // Count verified check-ins
+            const verifiedCheckIns = checkIns.filter(c => c.status === 'Verified').length;
+            
+            return {
+              id: u.id || idx,
+              username: u.username || u.name || 'Unknown',
+              email: u.email || '',
+              department: apiToUiDepartment(u.department) || 'Marketing Department',
+              role: apiToUiRole(u.role) || 'Department User',
+              associatedEmail: u.assigned_email || u.email || '',
+              date: u.createdAt || u.created_at ? new Date(u.createdAt || u.created_at).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '',
+              pending: { count: pendingLeads, total: totalLeads },
+              followUp: { count: followUpLeads, total: totalLeads },
+              done: { count: doneLeads, total: totalLeads },
+              notConnected: { count: notConnectedLeads, total: totalLeads },
+              notInterested: { count: notInterestedLeads, total: totalLeads },
+              meetingScheduled: { count: scheduledMeetings, total: meetings.length },
+              totalAmount: totalAmount,
+              dueAmount: dueAmount,
+              campaignLeads: totalLeads, // Using total leads as campaign leads
+              socialMediaLeads: 0, // This would need to be tracked separately if needed
+              verifiedCheckIns: verifiedCheckIns,
+              totalMeetings: meetings.length,
+              totalOrders: orders.length
+            };
+          } catch (err) {
+            console.error(`Error calculating performance for user ${u.username}:`, err);
+            // Return default values if calculation fails
+            return {
+              id: u.id || idx,
+              username: u.username || u.name || 'Unknown',
+              email: u.email || '',
+              department: apiToUiDepartment(u.department) || 'Marketing Department',
+              role: apiToUiRole(u.role) || 'Department User',
+              associatedEmail: u.assigned_email || u.email || '',
+              date: u.createdAt || u.created_at ? new Date(u.createdAt || u.created_at).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '',
+              pending: { count: 0, total: 0 },
+              followUp: { count: 0, total: 0 },
+              done: { count: 0, total: 0 },
+              notConnected: { count: 0, total: 0 },
+              notInterested: { count: 0, total: 0 },
+              meetingScheduled: { count: 0, total: 0 },
+              totalAmount: 0,
+              dueAmount: 0,
+              campaignLeads: 0,
+              socialMediaLeads: 0,
+              verifiedCheckIns: 0,
+              totalMeetings: 0,
+              totalOrders: 0
+            };
+          }
+        }));
+        
+        console.log(`Successfully loaded performance data for ${userPerformanceData.length} marketing salespersons`);
+        setUsers(userPerformanceData);
+    } catch (err) {
+      const errorMsg = err?.message || 'Failed to load marketing users';
+      console.error('Error fetching marketing users:', err);
+      setError(errorMsg);
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch users on component mount
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // Refresh function
+  const handleRefresh = () => {
+    fetchUsers();
+  };
 
   // Close date picker when clicking outside
   useEffect(() => {
@@ -194,17 +356,7 @@ const MarketingUserPerformance = () => {
 
   const handleSaveEdit = () => {
     if (editingUser) {
-      const userIndex = userData.findIndex(user => user.id === editingUser.id);
-      
-      if (userIndex !== -1) {
-        const updatedUser = {
-          ...userData[userIndex],
-          ...editFormData
-        };
-        
-        console.log('Updated user:', updatedUser);
-        alert(`User ${editFormData.username} updated successfully!`);
-      }
+      setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...editFormData } : u));
     }
     closeEditModal();
   };
@@ -253,13 +405,46 @@ const MarketingUserPerformance = () => {
   };
 
   const getFilteredUsers = () => {
-    return filterUsers(userData);
+    return filterUsers(users);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Marketing User Performance</h1>
+            <p className="text-gray-600">
+              Performance metrics for all marketing salespersons
+              {users.length > 0 && (
+                <span className="ml-2 text-blue-600 font-medium">
+                  ({users.length} {users.length === 1 ? 'salesperson' : 'salespersons'})
+                </span>
+              )}
+            </p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span className="text-sm font-medium">Refresh</span>
+          </button>
+        </div>
+
+        {loading && (
+          <div className="p-4 mb-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg">
+            Loading marketing users...
+          </div>
+        )}
+
+        {error && (
+          <div className="p-4 mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
 
         {/* Search and Filters */}
         <div className="mb-6 flex items-center justify-between">
@@ -340,7 +525,7 @@ const MarketingUserPerformance = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-purple-700">
-                  Showing {getFilteredUsers().length} of {userData.length} users
+                  Showing {getFilteredUsers().length} of {users.length} users
                 </span>
                 {(searchTerm || dateRange.startDate || dateRange.endDate) && (
                   <span className="text-xs text-purple-600">
@@ -423,11 +608,33 @@ const MarketingUserPerformance = () => {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
+        {getFilteredUsers().length === 0 && !loading ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <UserX className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              {users.length === 0 ? 'No Marketing Salespersons Found' : 'No Users Match Your Filters'}
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {users.length === 0 
+                ? 'Please add marketing salespersons to the system. They will appear here once created with department type "marketing_sales".'
+                : 'Try adjusting your search or date range filters to see more results.'
+              }
+            </p>
+            {users.length === 0 && (
+              <button
+                onClick={handleRefresh}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Refresh
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
                   <th className="px-6 py-4 text-left">
                     <span className="text-sm font-medium text-gray-700 uppercase tracking-wider">#</span>
                   </th>
@@ -548,6 +755,7 @@ const MarketingUserPerformance = () => {
             </table>
           </div>
         </div>
+        )}
       </div>
       
       {/* User Details Drawer */}

@@ -105,6 +105,13 @@ export const API_ENDPOINTS = {
   MARKETING_CHECK_INS_BY_MEETING: (meetingId) => `${API_BASE_URL}/api/marketing/check-ins/meeting/${meetingId}`,
   MARKETING_CHECK_IN_BY_ID: (id) => `${API_BASE_URL}/api/marketing/check-ins/${id}`,
   MARKETING_CHECK_IN_UPDATE: (id) => `${API_BASE_URL}/api/marketing/check-ins/${id}`,
+  
+  // Marketing Orders
+  MARKETING_ORDERS_GET_ALL: (query = '') => `${API_BASE_URL}/api/marketing/orders${query ? `?${query}` : ''}`,
+  MARKETING_ORDERS_CREATE: () => `${API_BASE_URL}/api/marketing/orders`,
+  MARKETING_ORDER_BY_ID: (id) => `${API_BASE_URL}/api/marketing/orders/${id}`,
+  MARKETING_ORDER_UPDATE: (id) => `${API_BASE_URL}/api/marketing/orders/${id}`,
+  MARKETING_ORDER_DELETE: (id) => `${API_BASE_URL}/api/marketing/orders/${id}`,
 
   // Organizations
   ORGANIZATIONS_BASE: ORG_BASE,

@@ -16,25 +16,89 @@ export default function CheckInDashboard() {
 
   useEffect(() => {
     fetchCheckIns();
+    
+    // Listen for check-in submissions to refresh the dashboard
+    const handleCheckInSubmitted = (event) => {
+      console.log('Check-in submitted event received, refreshing dashboard...', event.detail);
+      // Refresh immediately and then again after a delay
+      fetchCheckIns();
+      setTimeout(() => fetchCheckIns(), 1000);
+    };
+    
+    // Also listen for general meeting updates
+    const handleMeetingUpdate = () => {
+      console.log('Meeting update event received, refreshing check-ins...');
+      fetchCheckIns();
+    };
+    
+    window.addEventListener('checkInSubmitted', handleCheckInSubmitted);
+    window.addEventListener('marketingMeetingsUpdated', handleMeetingUpdate);
+    
+    return () => {
+      window.removeEventListener('checkInSubmitted', handleCheckInSubmitted);
+      window.removeEventListener('marketingMeetingsUpdated', handleMeetingUpdate);
+    };
   }, []);
 
   const fetchCheckIns = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get(API_ENDPOINTS.MARKETING_CHECK_INS_GET_ALL());
+      const apiUrl = API_ENDPOINTS.MARKETING_CHECK_INS_GET_ALL();
+      console.log('=== FETCHING CHECK-INS ===');
+      console.log('API URL:', apiUrl);
+      
+      const response = await apiClient.get(apiUrl);
+      
+      console.log('=== API RESPONSE ===');
+      console.log('Full response:', JSON.stringify(response, null, 2));
+      console.log('Response success:', response?.success);
+      console.log('Response data type:', typeof response?.data);
+      console.log('Response data is array:', Array.isArray(response?.data));
       
       // apiClient.get() returns data directly, not wrapped in response.data
-      if (response && response.success) {
-        setCheckIns(response.data || []);
+      if (response && response.success !== false) {
+        // Handle both response.data and direct array
+        const checkInsData = Array.isArray(response.data) 
+          ? response.data 
+          : (Array.isArray(response) ? response : []);
+        
+        console.log('=== PROCESSED CHECK-INS ===');
+        console.log('Check-ins count:', checkInsData.length);
+        
+        if (checkInsData.length > 0) {
+          console.log('First check-in sample:', {
+            id: checkInsData[0].id,
+            meeting_id: checkInsData[0].meeting_id,
+            photo_url: checkInsData[0].photo_url ? checkInsData[0].photo_url.substring(0, 50) + '...' : 'MISSING',
+            latitude: checkInsData[0].latitude,
+            longitude: checkInsData[0].longitude,
+            customer_name: checkInsData[0].customer_name,
+            salesperson_email: checkInsData[0].salesperson_email,
+            status: checkInsData[0].status
+          });
+        } else {
+          console.warn('No check-ins in response data');
+        }
+        
+        setCheckIns(checkInsData);
+        setError(null);
       } else {
-        setError(response?.message || 'Failed to fetch check-ins');
+        const errorMsg = response?.message || 'Failed to fetch check-ins';
+        console.error('API response indicates failure:', response);
+        setError(errorMsg);
+        setCheckIns([]);
       }
     } catch (err) {
-      console.error('Error fetching check-ins:', err);
-      // apiClient throws errors with err.data or err.message
+      console.error('=== ERROR FETCHING CHECK-INS ===');
+      console.error('Error message:', err.message);
+      console.error('Error data:', err.data);
+      console.error('Error status:', err.status);
+      console.error('Full error:', err);
+      
       const errorMessage = err.data?.message || err.message || err.response?.data?.message || 'Failed to fetch check-ins';
       setError(errorMessage);
+      setCheckIns([]);
     } finally {
       setLoading(false);
     }
@@ -91,7 +155,15 @@ export default function CheckInDashboard() {
         { status: newStatus }
       );
 
-      if (response.data.success) {
+      if (response && response.success) {
+        // Dispatch event to notify salesperson if rejected
+        if (newStatus === 'Rejected') {
+          window.dispatchEvent(new CustomEvent('checkInRejected', { 
+            detail: { checkInId, status: newStatus } 
+          }));
+          window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated'));
+        }
+        
         fetchCheckIns();
         if (selectedCheckIn && selectedCheckIn.id === checkInId) {
           setSelectedCheckIn({
@@ -119,9 +191,19 @@ export default function CheckInDashboard() {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Check-In Dashboard</h1>
         <p className="text-gray-600">View all check-ins with photos and locations</p>
+        </div>
+        <button
+          onClick={fetchCheckIns}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Loader className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          <span>Refresh</span>
+        </button>
       </div>
 
       {/* Stats Cards */}

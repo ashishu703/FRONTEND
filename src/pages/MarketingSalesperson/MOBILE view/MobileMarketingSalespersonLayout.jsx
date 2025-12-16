@@ -1,22 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, LayoutDashboard, Users, Package, Box, Wrench, LogOut, Monitor, Bell, User, ChevronDown, ChevronRight, Clock, Calendar, Camera } from 'lucide-react';
+import { Menu, X, LayoutDashboard, Users, Wrench, LogOut, Bell, User, Calendar, Camera, ShoppingCart, IndianRupee, ChevronDown, ChevronRight } from 'lucide-react';
 import MobileDashboard from './MobileDashboard';
 import MobileLeads from './MobileLeads';
-import MobileStock from './MobileStock';
-import MobileProducts from './MobileProducts';
 import MobileToolbox from './MobileToolbox';
-import MobileFollowUps from './MobileFollowUps';
 import MobileAssignedMeetings from './MobileAssignedMeetings';
 import MobileCheckInHistory from './MobileCheckInHistory';
+import MobileOrders from './MobileOrders';
+import PaymentStatusView from '../PaymentStatusView';
+import MarketingSalespersonCalendar from '../MarketingSalespersonCalendar';
 import { useAuth } from '../../../hooks/useAuth';
 import AshvayChat from '../../../components/AshvayChat';
-import FunctionUpcoming from '../../../components/FunctionUpcoming';
 
 const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => {
   const { user } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [paymentsOpen, setPaymentsOpen] = useState(false);
 
   // Listen for navigation events from child components
   useEffect(() => {
@@ -33,49 +32,65 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-blue-600' },
-    { id: 'customers', label: 'Leads', icon: Users, color: 'text-green-600' },
-    { id: 'meetings', label: 'Assigned Meetings', icon: Calendar, color: 'text-indigo-600' },
+    { id: 'all-leads', label: 'All Leads', icon: Users, color: 'text-green-600' },
+    { id: 'assigned-meetings', label: 'Assigned Meetings', icon: Calendar, color: 'text-indigo-600' },
     { id: 'checkin-history', label: 'Check-In History', icon: Camera, color: 'text-pink-600' },
-    { id: 'stock', label: 'Available Stock', icon: Package, color: 'text-purple-600' },
-    { id: 'products', label: 'Toolbar', icon: Box, color: 'text-orange-600' },
-    { id: 'toolbox', label: 'Toolbox Interface', icon: Wrench, color: 'text-red-600' },
-  ];
-
-  const followUpStatuses = [
-    { id: 'followup-connected', label: 'Connected', color: 'text-green-500' },
-    { id: 'followup-not-connected', label: 'Not Connected', color: 'text-red-500' },
-    { id: 'followup-next-meeting', label: "Today's Meeting", color: 'text-blue-500' },
-    { id: 'followup-converted', label: 'Converted', color: 'text-purple-500' },
-    { id: 'followup-closed', label: 'Closed', color: 'text-gray-500' },
+    { id: 'orders', label: 'Orders', icon: ShoppingCart, color: 'text-orange-600' },
+    { id: 'payments', label: 'Payments', icon: IndianRupee, color: 'text-purple-600', hasDropdown: true },
+    { id: 'calendar', label: 'Calendar', icon: Calendar, color: 'text-blue-600' },
+    { id: 'toolbox', label: 'Toolbox', icon: Wrench, color: 'text-red-600' },
   ];
 
   const handleNavigation = (page) => {
     setCurrentPage(page);
     setSidebarOpen(false);
+    setPaymentsOpen(false);
+  };
+
+  const handlePaymentStatusClick = (status) => {
+    setCurrentPage(`payment-status-${status}`);
+    setSidebarOpen(false);
+    setPaymentsOpen(false);
   };
 
   const renderCurrentPage = () => {
     switch (currentPage) {
       case 'dashboard':
         return <MobileDashboard />;
-      case 'customers':
-        return <FunctionUpcoming />;
-      case 'meetings':
+      case 'all-leads':
+        return <MobileLeads />;
+      case 'assigned-meetings':
         return <MobileAssignedMeetings />;
       case 'checkin-history':
         return <MobileCheckInHistory />;
-      case 'stock':
-        return <MobileStock />;
-      case 'products':
-        return <MobileProducts />;
+      case 'orders':
+        return <MobileOrders />;
+      case 'payment-status-due':
+        return (
+          <div className="p-4">
+            <PaymentStatusView type="due" />
+          </div>
+        );
+      case 'payment-status-advance':
+        return (
+          <div className="p-4">
+            <PaymentStatusView type="advance" />
+          </div>
+        );
+      case 'payment-status-completed':
+        return (
+          <div className="p-4">
+            <PaymentStatusView type="completed" />
+          </div>
+        );
+      case 'calendar':
+        return (
+          <div className="p-4">
+            <MarketingSalespersonCalendar />
+          </div>
+        );
       case 'toolbox':
-        return <FunctionUpcoming />;
-      case 'followup-connected':
-      case 'followup-not-connected':
-      case 'followup-next-meeting':
-      case 'followup-converted':
-      case 'followup-closed':
-        return <MobileFollowUps status={currentPage} />;
+        return <MobileToolbox />;
       default:
         return <MobileDashboard />;
     }
@@ -98,15 +113,6 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            {onToggleDesktopView && (
-              <button
-                onClick={onToggleDesktopView}
-                className="p-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
-                title="Switch to Desktop View"
-              >
-                <Monitor className="h-5 w-5" />
-              </button>
-            )}
             <button className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
               <Bell className="h-5 w-5 text-gray-700" />
             </button>
@@ -134,6 +140,52 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
               <div className="space-y-1">
                 {navigationItems.map((item) => {
                   const Icon = item.icon;
+                  if (item.hasDropdown) {
+                    return (
+                      <div key={item.id}>
+                        <button
+                          onClick={() => setPaymentsOpen(!paymentsOpen)}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
+                            currentPage.startsWith('payment-status-') ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-700'
+                          }`}
+                        >
+                          <span className="flex items-center space-x-3">
+                            <Icon className={`h-5 w-5 ${currentPage.startsWith('payment-status-') ? 'text-blue-600' : 'text-gray-500'}`} />
+                            <span className="text-sm font-medium">{item.label}</span>
+                          </span>
+                          {paymentsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </button>
+                        {paymentsOpen && (
+                          <div className="pl-10 space-y-1 mt-1">
+                            <button
+                              onClick={() => handlePaymentStatusClick('due')}
+                              className={`w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
+                                currentPage === 'payment-status-due' ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                              }`}
+                            >
+                              Due Payments
+                            </button>
+                            <button
+                              onClick={() => handlePaymentStatusClick('advance')}
+                              className={`w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
+                                currentPage === 'payment-status-advance' ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                              }`}
+                            >
+                              Advance Payments
+                            </button>
+                            <button
+                              onClick={() => handlePaymentStatusClick('completed')}
+                              className={`w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
+                                currentPage === 'payment-status-completed' ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                              }`}
+                            >
+                              Completed Payments
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
                   return (
                     <button
                       key={item.id}
@@ -149,37 +201,6 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
                     </button>
                   );
                 })}
-
-                <div className="space-y-1">
-                  <button
-                    onClick={() => setFollowUpOpen(!followUpOpen)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
-                      currentPage.startsWith('followup-') ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-700'
-                    }`}
-                  >
-                    <span className="flex items-center space-x-3">
-                      <Clock className={`h-5 w-5 ${currentPage.startsWith('followup-') ? 'text-blue-600' : 'text-gray-500'}`} />
-                      <span className="text-sm font-medium">Follow Up</span>
-                    </span>
-                    {followUpOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                  </button>
-                  {followUpOpen && (
-                    <div className="pl-10 space-y-1">
-                      {followUpStatuses.map((status) => (
-                        <button
-                          key={status.id}
-                          onClick={() => handleNavigation(status.id)}
-                          className={`w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
-                            currentPage === status.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-50'
-                          }`}
-                        >
-                          <span className={`w-2 h-2 rounded-full mr-2 ${status.color}`}></span>
-                          {status.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </div>
 
               <div className="mt-8 pt-4 border-t border-gray-200">
@@ -204,10 +225,12 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
         <div className="flex overflow-x-auto">
           {[
             { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-            { id: 'customers', label: 'Leads', icon: Users },
-            { id: 'meetings', label: 'Meetings', icon: Calendar },
+            { id: 'all-leads', label: 'Leads', icon: Users },
+            { id: 'assigned-meetings', label: 'Meetings', icon: Calendar },
             { id: 'checkin-history', label: 'Check-Ins', icon: Camera },
-            { id: 'stock', label: 'Stock', icon: Package },
+            { id: 'orders', label: 'Orders', icon: ShoppingCart },
+            { id: 'calendar', label: 'Calendar', icon: Calendar },
+            { id: 'toolbox', label: 'Toolbox', icon: Wrench },
           ].map((item) => {
             const Icon = item.icon;
             return (

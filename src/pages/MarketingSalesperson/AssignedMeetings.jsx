@@ -16,14 +16,36 @@ export default function AssignedMeetings({ setActiveView }) {
   useEffect(() => {
     fetchMeetings();
     
-    // Listen for meeting updates
+    // Listen for meeting updates, check-in submissions, and rejections
     const handleMeetingUpdate = () => {
+      console.log('Meeting update event received, refreshing...');
       fetchMeetings();
     };
     
+    const handleCheckInSubmitted = () => {
+      console.log('Check-in submitted event received, refreshing...');
+      // Refresh after a short delay to ensure backend has processed
+      setTimeout(() => {
+        fetchMeetings();
+      }, 1000);
+    };
+    
+    const handleCheckInRejected = (event) => {
+      console.log('Check-in rejected event received, refreshing...', event.detail);
+      // Refresh immediately to show rejection status
+      fetchMeetings();
+      setTimeout(() => {
+        fetchMeetings();
+      }, 1000);
+    };
+    
     window.addEventListener('marketingMeetingsUpdated', handleMeetingUpdate);
+    window.addEventListener('checkInSubmitted', handleCheckInSubmitted);
+    window.addEventListener('checkInRejected', handleCheckInRejected);
     return () => {
       window.removeEventListener('marketingMeetingsUpdated', handleMeetingUpdate);
+      window.removeEventListener('checkInSubmitted', handleCheckInSubmitted);
+      window.removeEventListener('checkInRejected', handleCheckInRejected);
     };
   }, []);
 
@@ -62,7 +84,10 @@ export default function AssignedMeetings({ setActiveView }) {
             customer_phone: meeting.customer_phone || meeting.phone || meeting.lead_phone || null,
             customer_email: meeting.customer_email || meeting.email || meeting.lead_email || null,
             // Check-in status: check if meeting has check-in or status is Completed
-            is_checked_in: meeting.is_checked_in || meeting.has_checkin || meeting.status === 'Completed' || false,
+            // Also check if there's a check-in record (has_checkin flag from backend)
+            // But exclude rejected check-ins - allow re-check-in if rejected
+            checkin_status: meeting.checkin_status || null, // Store check-in status if available
+            is_checked_in: (meeting.is_checked_in || meeting.has_checkin === true || meeting.status === 'Completed') && meeting.checkin_status !== 'Rejected' || false,
           };
         });
         console.log('Final enriched meetings:', enrichedMeetings);
@@ -132,25 +157,32 @@ export default function AssignedMeetings({ setActiveView }) {
   const handleCheckInComplete = () => {
     console.log('Check-in completed, updating meeting status...');
     
+    // Close the check-in interface first (stays in AssignedMeetings view)
+    setShowCheckIn(false);
+    const completedMeetingId = selectedMeeting?.id;
+    setSelectedMeeting(null);
+    
     // Immediately update the local state to mark meeting as checked in
-    if (selectedMeeting) {
+    if (completedMeetingId) {
       setMeetings(prevMeetings => 
         prevMeetings.map(meeting => 
-          meeting.id === selectedMeeting.id
-            ? { ...meeting, is_checked_in: true, status: 'Completed' }
+          meeting.id === completedMeetingId
+            ? { ...meeting, is_checked_in: true, status: 'Completed', has_checkin: true }
             : meeting
         )
       );
     }
     
-    setShowCheckIn(false);
-    setSelectedMeeting(null);
-    
     // Refresh meetings to get latest data from backend
-    // Small delay to ensure backend has processed the check-in
+    // Multiple refreshes to ensure we get the updated status
     setTimeout(() => {
       fetchMeetings();
-    }, 1000);
+    }, 500);
+    
+    // Second refresh after backend has more time to process
+    setTimeout(() => {
+      fetchMeetings();
+    }, 2000);
   };
 
   const filteredMeetings = meetings.filter(meeting => {
@@ -175,9 +207,19 @@ export default function AssignedMeetings({ setActiveView }) {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Assigned Meetings</h1>
-        <p className="text-gray-600">View and check in to your assigned or imported customer leads</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Assigned Meetings</h1>
+          <p className="text-gray-600">View and check in to your assigned or imported customer leads</p>
+        </div>
+        <button
+          onClick={fetchMeetings}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Loader className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          <span>Refresh</span>
+        </button>
       </div>
 
       {/* Search and Filter */}
@@ -298,16 +340,27 @@ export default function AssignedMeetings({ setActiveView }) {
                 </div>
               )}
 
-              {!meeting.is_checked_in && meeting.status !== 'Completed' && meeting.status !== 'Cancelled' ? (
-                <button
-                  onClick={() => handleCheckIn(meeting)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                  <Camera className="h-5 w-5" />
-                  <span>Check In</span>
-                </button>
+              {(!meeting.is_checked_in && !meeting.has_checkin && meeting.status !== 'Completed' && meeting.status !== 'Cancelled') || meeting.checkin_status === 'Rejected' ? (
+                <div className="w-full">
+                  {meeting.checkin_status === 'Rejected' && (
+                    <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-red-700 text-xs font-medium mb-1">
+                        <XCircle className="h-4 w-4" />
+                        <span>Check-in Rejected</span>
+                      </div>
+                      <p className="text-xs text-red-600">Please check in again</p>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => handleCheckIn(meeting)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer"
+                  >
+                    <Camera className="h-5 w-5" />
+                    <span>{meeting.checkin_status === 'Rejected' ? 'Re-Check In' : 'Check In'}</span>
+                  </button>
+                </div>
               ) : (
-                <div className="flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200">
+                <div className="flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200 cursor-not-allowed opacity-75">
                   <CheckCircle className="h-5 w-5" />
                   <span>Checked In</span>
                 </div>

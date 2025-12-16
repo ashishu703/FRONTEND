@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, MapPin, X, CheckCircle, AlertCircle, Loader, ArrowLeft, Upload, ExternalLink } from 'lucide-react';
+import { Camera, MapPin, X, CheckCircle, AlertCircle, Loader, ArrowLeft, Upload } from 'lucide-react';
 import { API_ENDPOINTS } from '../../../api/admin_api/api';
 import apiClient from '../../../utils/apiClient';
 
@@ -192,9 +192,10 @@ export default function MobileCheckIn({ meeting, onComplete, onCancel }) {
       // postFormData returns data directly, not wrapped in response.data
       if (response && response.success) {
         setShowSuccess(true);
-        // Dispatch event to refresh meetings
+        // Dispatch events to refresh meetings (matching desktop workflow)
         try { 
           window.dispatchEvent(new CustomEvent('marketingMeetingsUpdated')); 
+          window.dispatchEvent(new CustomEvent('checkInSubmitted')); 
         } catch {}
         
         // Show success message for 2 seconds before redirecting
@@ -312,50 +313,6 @@ export default function MobileCheckIn({ meeting, onComplete, onCancel }) {
             )}
           </div>
         </div>
-
-        {/* Location on Map */}
-        {location && (
-          <div className="bg-white rounded-lg overflow-hidden mb-4 shadow-sm">
-            <div className="p-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium text-gray-900">Location on Map</span>
-                </div>
-                <button
-                  onClick={() => window.open(`https://www.google.com/maps?q=${location.latitude},${location.longitude}`, '_blank')}
-                  className="flex items-center gap-1 text-xs text-blue-600"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  <span>Open</span>
-                </button>
-              </div>
-            </div>
-            <div className="h-48 bg-gray-100 relative">
-              <iframe
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                loading="lazy"
-                allowFullScreen
-                referrerPolicy="no-referrer-when-downgrade"
-                src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6d-s6U4iYWEzq8E&q=${location.latitude},${location.longitude}&zoom=15`}
-              />
-            </div>
-            <div className="p-3 bg-gray-50 border-t border-gray-200">
-              <div className="text-xs text-gray-600 space-y-1">
-                <div className="flex justify-between">
-                  <span>Lat:</span>
-                  <span className="font-mono">{location.latitude.toFixed(6)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Lng:</span>
-                  <span className="font-mono">{location.longitude.toFixed(6)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Location Status */}
         <div className="bg-white rounded-lg p-4 mb-4 shadow-sm">
@@ -480,45 +437,14 @@ export default function MobileCheckIn({ meeting, onComplete, onCancel }) {
         </ul>
       </div>
 
-      {/* Mobile Camera Input with capture attribute */}
-      <div className="space-y-3">
-        <input
-          type="file"
-          accept="image/*"
-          capture="user"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file && file.type.startsWith('image/')) {
-              const url = URL.createObjectURL(file);
-              photoFileRef.current = file;
-              setCapturedPhoto(url);
-              getCurrentLocation();
-            } else if (file) {
-              setError('Please select a valid image file');
-            }
-            e.target.value = ''; // Reset input
-          }}
-          className="hidden"
-          id="mobile-camera-input"
-        />
-        
+      {/* Take Selfie Button */}
+      <div>
         <button
-          onClick={() => {
-            // Try to use native mobile camera first
-            document.getElementById('mobile-camera-input')?.click();
-          }}
+          onClick={() => setCameraOpen(true)}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
         >
           <Camera className="h-5 w-5" />
-          <span>Take Photo</span>
-        </button>
-        
-        <button
-          onClick={() => setCameraOpen(true)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50"
-        >
-          <Camera className="h-5 w-5" />
-          <span>Use Camera View</span>
+          <span>Take Selfie</span>
         </button>
       </div>
     </div>
