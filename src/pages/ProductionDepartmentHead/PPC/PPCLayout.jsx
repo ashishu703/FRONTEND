@@ -68,7 +68,7 @@ export default function PPCLayout({ onLogout, activeView, setActiveView, childre
           {children}
         </div>
       </div>
-      <AshvayChat />
+      <AshvayChat showFloatingButton={false} />
     </div>
   );
 }

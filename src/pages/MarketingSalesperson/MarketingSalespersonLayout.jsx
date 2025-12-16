@@ -70,7 +70,7 @@ const MarketingSalespersonLayout = ({ onLogout }) => {
             </div>
           </div>
         </div>
-      <AshvayChat />
+      <AshvayChat showFloatingButton={false} />
       </MarketingFollowUpDataProvider>
     </MarketingSharedDataProvider>
   );

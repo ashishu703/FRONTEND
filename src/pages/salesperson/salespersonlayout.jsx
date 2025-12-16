@@ -243,7 +243,7 @@ export default function SalespersonLayout({ onLogout }) {
           </div>
         </div>
       </div>
-      <AshvayChat />
+      <AshvayChat showFloatingButton={false} />
     </SharedDataProvider>
   )
 }

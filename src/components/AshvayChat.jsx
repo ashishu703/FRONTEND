@@ -10,12 +10,23 @@ const INITIAL_MESSAGE = {
   timestamp: new Date()
 }
 
-export default function AshvayChat() {
+export default function AshvayChat({ showFloatingButton = true }) {
   const [showModal, setShowModal] = useState(false)
   const [message, setMessage] = useState("")
   const [image, setImage] = useState(null)
   const [chatMessages, setChatMessages] = useState([INITIAL_MESSAGE])
   const chatEndRef = useRef(null)
+
+  // Listen for external open events (from header)
+  useEffect(() => {
+    const handleOpenChat = () => {
+      setShowModal(true)
+    }
+    window.addEventListener('openAshvayChat', handleOpenChat)
+    return () => {
+      window.removeEventListener('openAshvayChat', handleOpenChat)
+    }
+  }, [])
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -53,12 +64,14 @@ export default function AshvayChat() {
 
   return (
     <>
-      <button
-        onClick={() => setShowModal(true)}
-        className="fixed bottom-8 right-8 w-20 h-20 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-50 overflow-hidden bg-white p-2"
-      >
-        <img src={ASHVAY_LOGO} alt="Ashvay" className="w-full h-full object-contain rounded-full" />
-      </button>
+      {showFloatingButton && (
+        <button
+          onClick={() => setShowModal(true)}
+          className="fixed bottom-8 right-8 w-20 h-20 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-50 overflow-hidden bg-white p-2"
+        >
+          <img src={ASHVAY_LOGO} alt="Ashvay" className="w-full h-full object-contain rounded-full" />
+        </button>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

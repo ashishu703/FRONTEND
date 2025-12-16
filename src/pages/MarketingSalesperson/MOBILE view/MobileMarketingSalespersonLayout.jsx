@@ -6,8 +6,8 @@ import MobileToolbox from './MobileToolbox';
 import MobileAssignedMeetings from './MobileAssignedMeetings';
 import MobileCheckInHistory from './MobileCheckInHistory';
 import MobileOrders from './MobileOrders';
-import PaymentStatusView from '../PaymentStatusView';
-import MarketingSalespersonCalendar from '../MarketingSalespersonCalendar';
+import MobilePaymentStatusView from './MobilePaymentStatusView';
+import MobileCalendar from './MobileCalendar';
 import { useAuth } from '../../../hooks/useAuth';
 import AshvayChat from '../../../components/AshvayChat';
 
@@ -66,29 +66,13 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
       case 'orders':
         return <MobileOrders />;
       case 'payment-status-due':
-        return (
-          <div className="p-4">
-            <PaymentStatusView type="due" />
-          </div>
-        );
+        return <MobilePaymentStatusView type="due" />;
       case 'payment-status-advance':
-        return (
-          <div className="p-4">
-            <PaymentStatusView type="advance" />
-          </div>
-        );
+        return <MobilePaymentStatusView type="advance" />;
       case 'payment-status-completed':
-        return (
-          <div className="p-4">
-            <PaymentStatusView type="completed" />
-          </div>
-        );
+        return <MobilePaymentStatusView type="completed" />;
       case 'calendar':
-        return (
-          <div className="p-4">
-            <MarketingSalespersonCalendar />
-          </div>
-        );
+        return <MobileCalendar />;
       case 'toolbox':
         return <MobileToolbox />;
       default:
@@ -113,6 +97,22 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
             </div>
           </div>
           <div className="flex items-center space-x-2">
+            {/* Ashvay Chat Button */}
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('openAshvayChat'));
+              }}
+              className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Ashvay AI Support"
+            >
+              <div className="w-7 h-7 rounded-full overflow-hidden bg-white p-0.5">
+                <img 
+                  src="https://res.cloudinary.com/dngojnptn/image/upload/v1764139419/ChatGPT_Image_Nov_26_2025_11_50_20_AM_qkwcqe.png" 
+                  alt="Ashvay" 
+                  className="w-full h-full object-contain rounded-full" 
+                />
+              </div>
+            </button>
             <button className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
               <Bell className="h-5 w-5 text-gray-700" />
             </button>
@@ -248,7 +248,7 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
           })}
         </div>
       </div>
-      <AshvayChat />
+      <AshvayChat showFloatingButton={false} />
     </div>
   );
 };

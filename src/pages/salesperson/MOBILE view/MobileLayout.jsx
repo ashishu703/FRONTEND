@@ -211,6 +211,22 @@ const MobileLayout = ({ onLogout, onToggleDesktopView }) => {
             </div>
           </div>
           <div className="flex items-center space-x-2">
+            {/* Ashvay Chat Button */}
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('openAshvayChat'));
+              }}
+              className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Ashvay AI Support"
+            >
+              <div className="w-7 h-7 rounded-full overflow-hidden bg-white p-0.5">
+                <img 
+                  src="https://res.cloudinary.com/dngojnptn/image/upload/v1764139419/ChatGPT_Image_Nov_26_2025_11_50_20_AM_qkwcqe.png" 
+                  alt="Ashvay" 
+                  className="w-full h-full object-contain rounded-full" 
+                />
+              </div>
+            </button>
             <button 
               onClick={() => setNotificationsOpen(!notificationsOpen)}
               className="relative p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
@@ -588,7 +604,7 @@ const MobileLayout = ({ onLogout, onToggleDesktopView }) => {
           </button>
         </div>
       </div>
-      <AshvayChat />
+      <AshvayChat showFloatingButton={false} />
     </div>
   );
 };

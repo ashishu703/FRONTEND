@@ -17,7 +17,7 @@ const OfficeSalesPersonLayout = () => {
         <FixedHeader userType="office-sales-person" currentPage={activeView} />
         <OfficeSalesPersonDashboard activeView={activeView} />
       </div>
-      <AshvayChat />
+      <AshvayChat showFloatingButton={false} />
     </div>
   );
 };
