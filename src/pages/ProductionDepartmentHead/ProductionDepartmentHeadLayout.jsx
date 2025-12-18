@@ -68,7 +68,7 @@ export default function ProductionDepartmentHeadLayout({ onLogout, activeView, s
           {children}
         </div>
       </div>
-      <AshvayChat />
+      <AshvayChat showFloatingButton={false} />
     </div>
   );
 }

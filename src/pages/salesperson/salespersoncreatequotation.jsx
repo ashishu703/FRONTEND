@@ -8,6 +8,7 @@ import html2pdf from 'html2pdf.js';
 import templateService from '../../services/TemplateService';
 import companyBranchService from '../../services/CompanyBranchService';
 import { QuotationDataMapper } from '../../utils/QuotationDataMapper';
+import { getProducts, addProduct, UNITS } from '../../constants/products';
 
 function Card({ className, children }) {
   return <div className={`rounded-lg border bg-white shadow-sm ${className || ''}`}>{children}</div>;
@@ -134,6 +135,8 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
 
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [availableTemplates, setAvailableTemplates] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [productSearchTerm, setProductSearchTerm] = useState({});
 
   // Auto-fill bill-to from customer data
   useEffect(() => {
@@ -154,6 +157,11 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
         }
     }));
   }, [customer]);
+
+  // Load products
+  useEffect(() => {
+    setProducts(getProducts());
+  }, []);
 
   // Load quotation templates from configuration
   useEffect(() => {
@@ -229,6 +237,27 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
     updatedItems[index] = {
       ...updatedItems[index],
       [field]: value
+    }
+    
+    // If product name is changed, try to find matching product and auto-fill HSN and unit
+    if (field === 'productName' && value) {
+      const matchingProduct = products.find(p => 
+        p.name.toLowerCase() === value.toLowerCase()
+      );
+      
+      if (matchingProduct) {
+        updatedItems[index].hsn = matchingProduct.hsn || '';
+        if (!updatedItems[index].unit) {
+          updatedItems[index].unit = matchingProduct.defaultUnit || 'Mtr';
+        }
+      } else {
+        // If product not found, save it for future use
+        const currentHsn = updatedItems[index].hsn || '';
+        const currentUnit = updatedItems[index].unit || 'Mtr';
+        addProduct(value, currentHsn, currentUnit);
+        // Refresh products list
+        setProducts(getProducts());
+      }
     }
     
     // Calculate amount for this item
@@ -755,14 +784,37 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     {quotationData.items.map((item, index) => (
                       <tr key={item.id}>
                         <td className="px-2 py-3">
-                          <input
-                            type="text"
-                            placeholder="Product name"
-                            value={item.productName}
-                            onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
-                            required
-                          />
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="Product name"
+                              value={item.productName}
+                              onChange={(e) => {
+                                setProductSearchTerm(prev => ({ ...prev, [index]: e.target.value }));
+                                handleItemChange(index, 'productName', e.target.value);
+                              }}
+                              onFocus={() => setProductSearchTerm(prev => ({ ...prev, [index]: item.productName || '' }))}
+                              onBlur={() => {
+                                setTimeout(() => setProductSearchTerm(prev => {
+                                  const newState = { ...prev };
+                                  delete newState[index];
+                                  return newState;
+                                }), 200);
+                              }}
+                              className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                              required
+                              list={`product-list-${index}`}
+                            />
+                            <datalist id={`product-list-${index}`}>
+                              {products
+                                .filter(p => !productSearchTerm[index] || 
+                                  p.name.toLowerCase().includes(productSearchTerm[index].toLowerCase()))
+                                .slice(0, 20)
+                                .map((product, idx) => (
+                                  <option key={idx} value={product.name} />
+                                ))}
+                            </datalist>
+                          </div>
                         </td>
                         <td className="px-2 py-3">
                           <input
@@ -790,10 +842,9 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                             className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
                           >
                             <option value="">Select</option>
-                            <option value="Nos">Nos</option>
-                            <option value="Mtr">Mtr</option>
-                            <option value="Kg">Kg</option>
-                            <option value="Set">Set</option>
+                            {UNITS.map(unit => (
+                              <option key={unit} value={unit}>{unit}</option>
+                            ))}
                           </select>
                         </td>
                         <td className="px-2 py-3">

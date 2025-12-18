@@ -19,7 +19,7 @@ const AccountsLayout = ({ children, onLogout, activeView, setActiveView, headerU
           {children}
         </main>
       </div>
-      <AshvayChat />
+      <AshvayChat showFloatingButton={false} />
     </div>
   );
 };

@@ -33,8 +33,20 @@ class LeadService {
       salesStatus: lead.sales_status,
       salesStatusRemark: lead.sales_status_remark || null,
       createdAt: this.formatToIST(lead.created_at),
-      assignedSalesperson: lead.assigned_salesperson,
-      assignedTelecaller: lead.assigned_telecaller,
+      assignedSalesperson: (() => {
+        const val = lead.assigned_salesperson;
+        if (!val) return null;
+        const s = String(val).trim().toLowerCase();
+        if (s === '' || s === 'unassigned' || s === 'assigned' || s === 'n/a' || s === 'na' || s === '-') return null;
+        return lead.assigned_salesperson;
+      })(),
+      assignedTelecaller: (() => {
+        const val = lead.assigned_telecaller;
+        if (!val) return null;
+        const s = String(val).trim().toLowerCase();
+        if (s === '' || s === 'unassigned' || s === 'assigned' || s === 'n/a' || s === 'na' || s === '-') return null;
+        return lead.assigned_telecaller;
+      })(),
       telecallerStatus: lead.telecaller_status,
       paymentStatus: lead.payment_status,
       phone: lead.phone,
@@ -141,6 +153,28 @@ class LeadService {
     }
   }
 
+  async deleteLead(leadId) {
+    try {
+      const resp = await departmentHeadService.deleteLead(leadId);
+      return resp;
+    } catch (error) {
+      apiErrorHandler.handleError(error, 'delete lead');
+      throw error;
+    }
+  }
+
+  async batchDeleteLeads(leadIds) {
+    try {
+      // Delete leads one by one to ensure proper cleanup
+      const deletePromises = leadIds.map(id => this.deleteLead(id));
+      await Promise.all(deletePromises);
+      return true;
+    } catch (error) {
+      apiErrorHandler.handleError(error, 'batch delete leads');
+      throw error;
+    }
+  }
+
   async importLeads(leadsPayload) {
     try {
       const resp = await departmentHeadService.importLeads(leadsPayload);
@@ -153,9 +187,31 @@ class LeadService {
   }
 
   buildLeadPayload(customerData) {
+    // Clean phone number - extract only digits and take last 10 digits
+    const cleanPhone = (phone) => {
+      if (!phone) return null;
+      const digits = String(phone).replace(/\D/g, '');
+      if (digits.length === 0) return null;
+      // Take last 10 digits (in case country code is included)
+      return digits.slice(-10);
+    };
+
+    // Clean whatsapp number
+    const cleanWhatsapp = (whatsapp) => {
+      if (!whatsapp) return null;
+      const digits = String(whatsapp).replace(/\D/g, '');
+      if (digits.length === 0) return null;
+      // Take last 10 digits
+      return digits.slice(-10);
+    };
+
+    const phone = cleanPhone(customerData.mobileNumber);
+    const whatsapp = cleanWhatsapp(customerData.whatsappNumber || customerData.mobileNumber);
+
     return {
       customer: customerData.customerName || null,
-      phone: customerData.mobileNumber || null,
+      name: customerData.customerName || null, // Also include name for validator
+      phone: phone || null,
       email: customerData.email || null,
       business: customerData.businessType || null,
       leadSource: customerData.leadSource || null,
@@ -167,83 +223,141 @@ class LeadService {
         : (customerData.productNames || 'N/A'),
       address: customerData.address || null,
       state: customerData.state || null,
-      assignedSalesperson: customerData.assignedSalesperson || null,
-      assignedTelecaller: customerData.assignedTelecaller || null,
-      whatsapp: customerData.whatsappNumber || customerData.mobileNumber || null,
+      assignedSalesperson: (() => {
+        const val = customerData.assignedSalesperson;
+        if (!val || val === '' || String(val).trim() === '' || String(val).trim().toLowerCase() === 'unassigned' || String(val).trim().toLowerCase() === 'assigned') return null;
+        return String(val).trim();
+      })(),
+      assignedTelecaller: (() => {
+        const val = customerData.assignedTelecaller;
+        if (!val || val === '' || String(val).trim() === '' || String(val).trim().toLowerCase() === 'unassigned' || String(val).trim().toLowerCase() === 'assigned') return null;
+        return String(val).trim();
+      })(),
+      whatsapp: whatsapp || null,
       date: customerData.date || new Date().toISOString().split('T')[0],
       createdAt: new Date().toISOString().split('T')[0],
       telecallerStatus: 'INACTIVE',
       paymentStatus: 'PENDING',
       connectedStatus: 'pending',
       finalStatus: 'open',
-      customerType: 'business'
+      customerType: customerData.businessCategory || 'business'
     };
   }
 
   buildCSVLeadPayload(row, index, validationErrors) {
-    const trimField = (value, maxLength) => {
-      if (!value || typeof value !== 'string') return value;
-      const trimmed = value.trim();
-      return trimmed.length > maxLength ? trimmed.substring(0, maxLength) : trimmed;
+    // Helper function to normalize empty/NA values
+    const normalizeValue = (val) => {
+      const trimmed = (val || '').trim().toUpperCase();
+      return (trimmed === '' || trimmed === 'NA' || trimmed === 'N/A' || trimmed === '-' || trimmed === 'NULL') ? 'N/A' : (val || '').trim();
     };
     
-    const customer = trimField(row['Customer Name'], 100);
-    const phone = (row['Mobile Number'] || '').trim();
-    const whatsapp = (row['WhatsApp Number'] || '').trim();
-    const email = trimField(row['Email'], 255);
-    const address = trimField(row['Address'], 1000);
-    const business = trimField(row['Business Name'], 100);
-    const gstNo = trimField(row['GST Number'], 50);
-    const leadSource = trimField(row['Lead Source'], 100);
-    const category = trimField(row['Business Category'], 100);
-    const state = trimField(row['State'], 100);
-    const productNames = trimField(row['Product Names (comma separated)'], 500);
-    const assignedSalesperson = trimField(row['Assigned Salesperson'], 255);
-    const assignedTelecaller = trimField(row['Assigned Telecaller'], 255);
+    let customer = normalizeValue(row['Customer Name']);
+    let phone = (row['Mobile Number'] || '').trim();
+    let whatsapp = (row['WhatsApp Number'] || '').trim();
+    const email = normalizeValue(row['Email']);
+    const address = normalizeValue(row['Address']);
+    const business = normalizeValue(row['Business Name']);
+    const gstNo = normalizeValue(row['GST Number']);
     
-    const normalizePhoneDigits = (phoneValue, fieldName) => {
-      if (!phoneValue) {
-        if (fieldName === 'Mobile Number') {
-          validationErrors.push(`Row ${index + 2}: Mobile Number is required. Skipping row.`);
+    // Validate customer name (required, cannot be N/A)
+    if (!customer || customer === 'N/A' || customer.length < 2) {
+      validationErrors.push(`Row ${index + 2}: Customer Name is required and must be at least 2 characters`);
+      customer = customer === 'N/A' ? '' : customer;
+    }
+    
+    // Process phone number
+    if (phone) {
+      phone = phone.replace(/\D/g, '');
+      if (phone.length > 50) {
+        validationErrors.push(`Row ${index + 2}: Mobile Number exceeds 50 characters. Truncating.`);
+        phone = phone.substring(0, 50);
+      }
+    }
+    
+    // Validate phone (required, cannot be empty/NA)
+    if (!phone || phone.length === 0 || phone === 'NA' || phone === 'N/A') {
+      validationErrors.push(`Row ${index + 2}: Mobile Number is required`);
+    } else if (phone.length < 10) {
+      validationErrors.push(`Row ${index + 2}: Mobile Number seems too short (${phone.length} digits). Minimum 10 digits required.`);
+    }
+    
+    // Process WhatsApp number
+    if (whatsapp && whatsapp.trim() && whatsapp.toUpperCase() !== 'NA' && whatsapp.toUpperCase() !== 'N/A') {
+      whatsapp = whatsapp.replace(/\D/g, '');
+      if (whatsapp.length > 50) {
+        validationErrors.push(`Row ${index + 2}: WhatsApp Number exceeds 50 characters. Truncating.`);
+        whatsapp = whatsapp.substring(0, 50);
+      }
+      if (whatsapp.length > 0 && whatsapp.length < 10) {
+        validationErrors.push(`Row ${index + 2}: WhatsApp Number seems too short (${whatsapp.length} digits). Minimum 10 digits recommended.`);
+      }
+    } else {
+      // Use phone as fallback if WhatsApp is NA or empty
+      whatsapp = phone;
+    }
+    
+    // Normalize other fields
+    const leadSource = normalizeValue(row['Lead Source']);
+    const category = normalizeValue(row['Business Category']);
+    const productNames = normalizeValue(row['Product Names (comma separated)']);
+    const state = normalizeValue(row['State']);
+    
+    // Handle date - support both DD/MM/YYYY and YYYY-MM-DD formats
+    let dateValue = (row['Date (DD/MM/YYYY or YYYY-MM-DD)'] || row['Date (YYYY-MM-DD)'] || '').trim();
+    if (!dateValue || dateValue.toUpperCase() === 'NA' || dateValue.toUpperCase() === 'N/A') {
+      dateValue = new Date().toISOString().split('T')[0];
+    } else {
+      // Try DD/MM/YYYY format first
+      const ddmmyyyyRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+      const ddmmyyyyMatch = dateValue.match(ddmmyyyyRegex);
+      if (ddmmyyyyMatch) {
+        const [, day, month, year] = ddmmyyyyMatch;
+        dateValue = `${year}-${month}-${day}`;
+      } else if (!dateValue.includes('-') || !/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+        // If not in expected format, try to parse as date
+        try {
+          const parsedDate = new Date(dateValue);
+          if (!isNaN(parsedDate.getTime())) {
+            dateValue = parsedDate.toISOString().split('T')[0];
+          } else {
+            dateValue = new Date().toISOString().split('T')[0];
+          }
+        } catch (e) {
+          dateValue = new Date().toISOString().split('T')[0];
         }
-        return null;
       }
-      const digits = phoneValue.replace(/\D/g, '');
-      if (digits.length !== 10) {
-        validationErrors.push(`Row ${index + 2}: ${fieldName} must be exactly 10 digits (found ${digits.length} digits). Skipping row.`);
-        return null;
-      }
-      return digits;
-    };
-    
-    const normalizedPhone = normalizePhoneDigits(phone, 'Mobile Number');
-    if (!normalizedPhone) return null;
-    
-    const normalizedWhatsapp = whatsapp ? normalizePhoneDigits(whatsapp, 'WhatsApp Number') : normalizedPhone;
-    if (whatsapp && !normalizedWhatsapp) return null;
+    }
     
     return {
       customer: customer || null,
-      phone: normalizedPhone,
-      email: email || null,
-      address: address || null,
-      business: business || null,
-      leadSource: leadSource || null,
-      category: category || null,
-      salesStatus: null,
-      gstNo: gstNo || null,
-      productNames: productNames || null,
-      state: state || null,
-      assignedSalesperson: assignedSalesperson || null,
-      assignedTelecaller: assignedTelecaller || null,
-      whatsapp: normalizedWhatsapp,
-      date: row['Date (YYYY-MM-DD)'] || null,
-      createdAt: null,
-      telecallerStatus: null,
-      paymentStatus: null,
-      connectedStatus: null,
-      finalStatus: null,
-      customerType: null
+      phone: phone || null,
+      email: email === 'N/A' ? null : (email || null),
+      address: address === 'N/A' ? null : (address || null),
+      business: business === 'N/A' ? null : (business || null),
+      leadSource: leadSource === 'N/A' ? null : (leadSource || null),
+      category: category === 'N/A' ? 'N/A' : category,
+      salesStatus: 'PENDING',
+      gstNo: gstNo === 'N/A' ? null : (gstNo || null),
+      productNames: productNames === 'N/A' ? 'N/A' : productNames,
+      state: state === 'N/A' ? null : (state || null),
+      assignedSalesperson: (() => {
+        const val = (row['Assigned Salesperson'] || '').trim();
+        if (!val || val === '' || val.toLowerCase() === 'unassigned' || val.toLowerCase() === 'assigned' || val.toUpperCase() === 'NA' || val.toUpperCase() === 'N/A') return null;
+        return val;
+      })(),
+      assignedTelecaller: (() => {
+        const val = (row['Assigned Telecaller'] || '').trim();
+        if (!val || val === '' || val.toLowerCase() === 'unassigned' || val.toLowerCase() === 'assigned' || val.toUpperCase() === 'NA' || val.toUpperCase() === 'N/A') return null;
+        return val;
+      })(),
+      whatsapp: whatsapp || phone || null,
+      date: dateValue,
+      createdAt: new Date().toISOString().split('T')[0],
+      telecallerStatus: 'INACTIVE',
+      paymentStatus: 'PENDING',
+      connectedStatus: 'pending',
+      finalStatus: 'open',
+      customerType: category === 'N/A' ? 'business' : category.toLowerCase()
     };
   }
 }

@@ -6,7 +6,8 @@ const SearchBar = ({
   onSearchChange, 
   onImportClick, 
   onAddCustomer, 
-  onAssignSelected, 
+  onAssignSelected,
+  onDeleteSelected,
   onBulkDelete,
   onExportExcel,
   selectedCount,
@@ -63,6 +64,18 @@ const SearchBar = ({
           <Upload className="w-5 h-5" />
         </button>
 
+        {onDeleteSelected && (
+          <button
+            onClick={onDeleteSelected}
+            disabled={selectedCount === 0}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${selectedCount === 0 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}
+            title={selectedCount > 0 ? `Delete ${selectedCount} selected lead(s)` : 'Select leads to delete'}
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>Delete Selected{selectedCount ? ` (${selectedCount})` : ''}</span>
+          </button>
+        )}
+
         {onBulkDelete && (
           <button
             onClick={onBulkDelete}
@@ -97,4 +110,3 @@ const SearchBar = ({
 };
 
 export default SearchBar;
-

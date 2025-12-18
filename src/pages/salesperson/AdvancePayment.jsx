@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Package, Eye, X, Edit, Clock, CheckCircle, MessageCircle, Mail, DollarSign, CreditCard, XCircle, AlertCircle } from 'lucide-react';
 import Toolbar, { ProductPagination } from './PaymentTracking';
 import apiClient from '../../utils/apiClient';
@@ -185,22 +185,31 @@ class PaymentTrackingService {
       const validPayments = payments.filter(PaymentValidator.isValid);
       const approvedPayments = validPayments.filter(PaymentValidator.isApproved);
 
-      const totalPaid = approvedPayments
-        .filter(p => {
-          const status = (p.payment_status || '').toLowerCase();
-          return ['completed', 'paid', 'success', 'advance'].includes(status);
-        })
+      // Filter approved payments to only those with valid payment status
+      const approvedPaymentsForDate = approvedPayments.filter(p => {
+        const status = (p.payment_status || '').toLowerCase();
+        return ['completed', 'paid', 'success', 'advance'].includes(status);
+      });
+
+      const totalPaid = approvedPaymentsForDate
         .reduce((sum, p) => sum + Number(p.installment_amount || p.paid_amount || 0), 0);
+      
+      // Only process if there's at least one approved payment (not all rejected)
+      if (approvedPaymentsForDate.length === 0) {
+        console.log('⚠️ [AdvancePayment] No approved payments for quotation:', quotation.id, '- Skipping');
+        continue;
+      }
 
       const quotationTotal = Number(quotation.total_amount || 0);
       const remainingAmount = Math.max(0, quotationTotal - totalPaid);
       const { paymentStatus, displayStatus } = this.calculatePaymentStatus(quotationTotal, totalPaid);
-      const { deliveryDate, deliveryStatus, purchaseOrderId } = this.extractDeliveryInfo(validPayments, quotation);
-
-      const advanceDate = validPayments.length > 0 
-        ? (validPayments[0]?.payment_date || validPayments[0]?.created_at?.split('T')[0])
+      // Use only approved payments for delivery info
+      const { deliveryDate, deliveryStatus, purchaseOrderId } = this.extractDeliveryInfo(approvedPaymentsForDate, quotation);
+      
+      const advanceDate = approvedPaymentsForDate.length > 0 
+        ? (approvedPaymentsForDate[0]?.payment_date || approvedPaymentsForDate[0]?.created_at?.split('T')[0])
         : null;
-      const firstPayment = validPayments.length > 0 ? validPayments[0] : null;
+      const firstPayment = approvedPaymentsForDate.length > 0 ? approvedPaymentsForDate[0] : null;
 
       // Fetch product names from PI (via quotation items that PI references)
       let productNames = 'N/A';
@@ -265,10 +274,11 @@ class PaymentTrackingService {
           delivery_date: deliveryDate,
           delivery_status: deliveryStatus
         },
-        paymentsData: validPayments
+        paymentsData: approvedPaymentsForDate  // Only include approved payments (exclude rejected)
       });
     }
 
+    // Filter to only show advance payments (items already have only approved payments in paymentsData)
     const advancePayments = paymentTrackingData.filter(item => 
       item.paidAmount > 0 && item.remainingAmount > 0 && item.paymentStatus === 'advance'
     );
@@ -306,6 +316,7 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
   const [quotationError, setQuotationError] = useState(null);
   const [quotationSummary, setQuotationSummary] = useState(null);
   const [paymentsForQuotation, setPaymentsForQuotation] = useState([]);
+  const [pisByQuotationId, setPisByQuotationId] = useState({});
 
   if (!item) return null;
 
@@ -328,13 +339,17 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
         const chosenQuotationId = item.quotationData?.id;
         if (chosenQuotationId) {
           try {
-            const [sRes, pRes] = await Promise.all([
+            const [sRes, pRes, piRes] = await Promise.all([
               quotationService.getSummary(chosenQuotationId),
-              paymentService.getPaymentsByQuotation(chosenQuotationId)
+              paymentService.getPaymentsByQuotation(chosenQuotationId),
+              proformaInvoiceService.getPIsByQuotation(chosenQuotationId)
             ]);
             setCustomerQuotations([item.quotationData]);
             setQuotationSummary(sRes?.data || null);
             setPaymentsForQuotation(pRes?.data || []);
+            const pis = DataExtractor.extractArray(piRes);
+            console.log('[AdvancePayment Timeline] Fetched PIs for quotation', chosenQuotationId, ':', pis);
+            setPisByQuotationId({ [chosenQuotationId]: pis });
             return;
           } catch (innerErr) {
             console.warn('Failed to load quotation summary/payments', innerErr);
@@ -345,6 +360,24 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
         const quotationsResponse = await quotationService.getQuotationsByCustomer(item.leadData.id);
         const qList = quotationsResponse?.data || [];
         setCustomerQuotations(qList);
+        
+        // Fetch PIs for all quotations
+        const pisMap = {};
+        for (const q of qList) {
+          try {
+            const piRes = await proformaInvoiceService.getPIsByQuotation(q.id);
+            const pis = DataExtractor.extractArray(piRes);
+            console.log('[AdvancePayment Timeline] Fetched PIs for quotation', q.id, ':', pis);
+            if (pis.length > 0) {
+              pisMap[q.id] = pis;
+            }
+          } catch (err) {
+            console.warn(`Failed to fetch PIs for quotation ${q.id}:`, err);
+          }
+        }
+        console.log('[AdvancePayment Timeline] Final pisByQuotationId:', pisMap);
+        setPisByQuotationId(pisMap);
+        
         const latestApproved = qList.filter(q => q.status === 'approved').slice(-1)[0];
         if (latestApproved?.id) {
           const [sRes, pRes] = await Promise.all([
@@ -364,6 +397,57 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
 
     fetchCustomerQuotations();
   }, [item.leadData?.id, item.quotationData?.id, refreshKey]);
+
+  // Handle view PI - show in new window
+  const handleViewPI = async (piId) => {
+    try {
+      const response = await proformaInvoiceService.getPI(piId);
+      if (response.success) {
+        const pi = response.data;
+        const piWindow = window.open('', '_blank', 'width=1000,height=800,scrollbars=yes,resizable=yes');
+        
+        if (piWindow) {
+          // Create HTML content for PI preview (similar to quotation preview)
+          const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>PI ${pi.pi_number || pi.id}</title>
+              <script src="https://cdn.tailwindcss.com"></script>
+              <style>
+                @media print {
+                  .no-print { display: none !important; }
+                }
+              </style>
+            </head>
+            <body class="bg-gray-100">
+              <div class="max-w-4xl mx-auto bg-white font-sans text-sm p-6">
+                <div class="border-2 border-black mb-4 p-4">
+                  <h1 class="text-xl font-bold">Proforma Invoice</h1>
+                  <p class="text-sm">PI Number: ${pi.pi_number || `PI-${pi.id}`}</p>
+                  <p class="text-sm">Date: ${pi.created_at ? new Date(pi.created_at).toLocaleDateString('en-IN') : 'N/A'}</p>
+                  <p class="text-sm">Total Amount: ₹${Number(pi.total_amount || 0).toLocaleString('en-IN')}</p>
+                </div>
+                <div class="text-center mt-4">
+                  <p class="text-gray-600">PI details will be displayed here</p>
+                </div>
+              </div>
+              <div class="fixed bottom-0 left-0 right-0 bg-white p-4 border-t border-gray-300 flex justify-between no-print">
+                <button onclick="window.close()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Close</button>
+                <button onclick="window.print()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">Print PDF</button>
+              </div>
+            </body>
+            </html>
+          `;
+          piWindow.document.write(htmlContent);
+          piWindow.document.close();
+        }
+      }
+    } catch (error) {
+      console.error('Error viewing PI:', error);
+      alert('Failed to load PI');
+    }
+  };
 
   // Handle view quotation - show in modal using QuotationPreview format
   const handleViewQuotation = async (quotationId) => {
@@ -825,8 +909,10 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
   const dueDate = getDueDate();
   const hasPendingAmount = dataReady && paymentSummary?.dueAmount > 0;
 
+
   // Timeline events data - complete sequence (include payments inline)
-  const timelineEvents = [
+  // Use useMemo to recalculate when pisByQuotationId or customerQuotations change
+  const timelineEvents = useMemo(() => [
     {
       id: 'customer-created',
       title: 'Customer Created',
@@ -835,17 +921,36 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
       icon: '✓',
       description: `Lead ID: ${item.leadId}`
     },
-    ...customerQuotations.map((quotation, index) => ({
-      id: `quotation-${quotation.id}`,
-      title: `Quotation ${index + 1}`,
-      date: formatIndianDateTime(quotation.created_at),
-      status: quotation.status === 'approved' ? 'approved' : 'pending',
-      icon: quotation.status === 'approved' ? '✓' : '⏳',
-      description: `ID: ${quotation.quotation_number || `QT-${quotation.id}`} | Purchase Order: ${quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'}`,
-      amount: quotation.total_amount || 0,
-      quotationId: quotation.id,
-      quotationStatus: quotation.status
-    })),
+    ...customerQuotations.flatMap((quotation, index) => {
+      const quotationEvent = {
+        id: `quotation-${quotation.id}`,
+        title: `Quotation ${index + 1}`,
+        date: formatIndianDateTime(quotation.created_at),
+        status: quotation.status === 'approved' ? 'approved' : 'pending',
+        icon: quotation.status === 'approved' ? '✓' : '⏳',
+        description: `ID: ${quotation.quotation_number || `QT-${quotation.id}`} | Purchase Order: ${quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'}`,
+        amount: quotation.total_amount || 0,
+        quotationId: quotation.id,
+        quotationStatus: quotation.status
+      };
+      
+      // Get PIs for this quotation
+      const pis = pisByQuotationId[quotation.id] || [];
+      console.log('[AdvancePayment Timeline] Creating events for quotation', quotation.id, 'with', pis.length, 'PIs. pisByQuotationId:', pisByQuotationId);
+      const piEvents = pis.map((pi, piIndex) => ({
+        id: `pi-${pi.id}`,
+        title: `PI ${piIndex + 1}`,
+        date: formatIndianDateTime(pi.created_at || pi.createdAt),
+        status: (pi.status || 'pending').toLowerCase() === 'approved' ? 'approved' : ((pi.status || 'pending').toLowerCase() === 'rejected' ? 'rejected' : 'pending'),
+        icon: (pi.status || 'pending').toLowerCase() === 'approved' ? '✓' : ((pi.status || 'pending').toLowerCase() === 'rejected' ? '✕' : '⏳'),
+        description: `PI Number: ${pi.pi_number || pi.piNumber || `PI-${pi.id}`}`,
+        amount: pi.total_amount || pi.totalAmount || 0,
+        piId: pi.id,
+        piStatus: pi.status
+      }));
+      
+      return [quotationEvent, ...piEvents];
+    }),
     ...paymentTimeline.map((payment, index) => ({
       id: `payment-${index + 1}`,
       title: `${payment.label} Payment #${index + 1}`,
@@ -874,7 +979,7 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
       icon: '✓',
       description: 'Full and final payment received'
     }] : [])
-  ];
+  ], [customerQuotations, pisByQuotationId, paymentTimeline, hasPendingAmount, dueDate, paymentSummary, item.paymentsData, item.leadData?.created_at, item.leadId]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end">
@@ -929,6 +1034,8 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
                     ? 'bg-red-500'
                     : event.id?.startsWith('payment-')
                     ? 'bg-yellow-500'
+                    : event.status === 'rejected'
+                    ? 'bg-red-500'
                     : event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
                     ? 'bg-green-500'
                     : 'bg-gray-400'
@@ -942,6 +1049,8 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
                     ? 'bg-red-50 border border-red-300'
                     : event.id?.startsWith('payment-')
                     ? 'bg-yellow-50'
+                    : event.status === 'rejected'
+                    ? 'bg-red-50 border border-red-300'
                     : event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
                     ? 'bg-green-50'
                     : 'bg-gray-50'
@@ -961,11 +1070,23 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
                         <p className="text-xs text-red-600 mt-1 font-medium">Remaining: ₹{Number(event.remainingAmount).toLocaleString('en-IN')}</p>
                       )}
                       
-                      {/* View button for quotations */}
+                      {/* View buttons for quotations and PIs */}
                       {event.quotationId && (
                         <div className="mt-2 flex items-center space-x-2">
                           <button
                             onClick={() => handleViewQuotation(event.quotationId)}
+                            className="text-blue-600 hover:text-blue-800 text-xs flex items-center space-x-1"
+                          >
+                            <Eye className="h-3 w-3" />
+                            <span>View</span>
+                          </button>
+                        </div>
+                      )}
+                      {/* View button for PIs */}
+                      {event.piId && (
+                        <div className="mt-2 flex items-center space-x-2">
+                          <button
+                            onClick={() => handleViewPI(event.piId)}
                             className="text-blue-600 hover:text-blue-800 text-xs flex items-center space-x-1"
                           >
                             <Eye className="h-3 w-3" />
@@ -1005,6 +1126,7 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
     payment_status: 'advance',
     payment_receipt_url: '',
     purchase_order_id: '',
+    payment_date: new Date().toISOString().split('T')[0], // Default to today's date
     delivery_date: '',
     delivery_status: 'pending'
   });
@@ -1162,6 +1284,11 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         return;
       }
 
+      // Format payment_date to ISO string if provided, otherwise use current date
+      const paymentDate = paymentData.payment_date 
+        ? new Date(paymentData.payment_date).toISOString()
+        : new Date().toISOString();
+
       const paymentPayload = {
         lead_id: item.leadData?.id,
         quotation_id: selectedQuotationId,
@@ -1171,7 +1298,7 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         payment_reference: paymentData.payment_reference,
         payment_status: paymentData.payment_status,
         payment_receipt_url: receiptUrl || undefined,
-        payment_date: new Date().toISOString(),
+        payment_date: paymentDate,
         notes: paymentData.delivery_note,
         remarks: paymentData.payment_remark,
         purchase_order_id: paymentData.purchase_order_id,
@@ -1381,6 +1508,19 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
                 onChange={(e) => setPaymentData(prev => ({ ...prev, purchase_order_id: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Purchase order reference"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Payment Date *
+              </label>
+              <input
+                type="date"
+                required
+                value={paymentData.payment_date}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, payment_date: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
 

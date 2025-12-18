@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useSharedToolboxState } from '../../hooks/useSharedToolboxState';
 import { 
   Calculator, 
   DollarSign, 
@@ -79,33 +80,34 @@ const sections = [
 ];
 
 const ToolboxInterface = ({ isDarkMode = false }) => {
-  const [activeSection, setActiveSection] = useState("products");
-  const [selectedTableData, setSelectedTableData] = useState(null);
-  const [isTableOpen, setIsTableOpen] = useState(false);
-  const [selectedCalculator, setSelectedCalculator] = useState(null);
-  const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
-  const [calculatorInputs, setCalculatorInputs] = useState({
+  // Use shared state for key values that should sync across instances
+  const [activeSection, setActiveSection] = useSharedToolboxState("activeSection", "products");
+  const [selectedLocation, setSelectedLocation] = useSharedToolboxState("selectedLocation", "IT Park, Jabalpur");
+  const [showBusinessCard, setShowBusinessCard] = useSharedToolboxState("showBusinessCard", false);
+  const [showCompanyEmails, setShowCompanyEmails] = useSharedToolboxState("showCompanyEmails", false);
+  const [isLocationOpen, setIsLocationOpen] = useSharedToolboxState("isLocationOpen", false);
+  const [showHelpingCalculators, setShowHelpingCalculators] = useSharedToolboxState("showHelpingCalculators", false);
+  const [calculatorInputs, setCalculatorInputs] = useSharedToolboxState("calculatorInputs", {
     conductorType: '',
     conductorSize: '',
     temperature: '',
     standard: ''
   });
-  const [calculationResults, setCalculationResults] = useState({
+  const [calculationResults, setCalculationResults] = useSharedToolboxState("calculationResults", {
     currentCapacity: null,
     resistance: null,
     cableOD: null
   });
+  
+  // Local state for UI-only values (don't need to sync)
+  const [selectedTableData, setSelectedTableData] = useState(null);
+  const [isTableOpen, setIsTableOpen] = useState(false);
+  const [selectedCalculator, setSelectedCalculator] = useState(null);
+  const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
   const [isTechnicalCalculationsOpen, setIsTechnicalCalculationsOpen] = useState(false);
   const [isConversionCalculationsOpen, setIsConversionCalculationsOpen] = useState(false);
   const [isWireGaugeChartOpen, setIsWireGaugeChartOpen] = useState(false);
   const [isTemperatureCorrectionOpen, setIsTemperatureCorrectionOpen] = useState(false);
-  
-  // Sidebar state
-  const [selectedLocation, setSelectedLocation] = useState("IT Park, Jabalpur");
-  const [showBusinessCard, setShowBusinessCard] = useState(false);
-  const [showCompanyEmails, setShowCompanyEmails] = useState(false);
-  const [isLocationOpen, setIsLocationOpen] = useState(false);
-  const [showHelpingCalculators, setShowHelpingCalculators] = useState(false);
   
   // User data state
   const [userData, setUserData] = useState({
@@ -218,8 +220,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   const [isBisFolderOpen, setIsBisFolderOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredTools, setFilteredTools] = useState([]);
-  // AB Cable - Costing calculator editable inputs (sheet row 30)
-  const [abPhaseInputs, setAbPhaseInputs] = useState({ cores: 3, strands: 7, strandSize: 2.12 });
+  // AB Cable - Costing calculator editable inputs (sheet row 30) - shared state
+  const [abPhaseInputs, setAbPhaseInputs] = useSharedToolboxState("abPhaseInputs", { cores: 3, strands: 7, strandSize: 2.12 });
   // CALCUS helper function
   const getCalcusValue = (strands) => {
     const map = {
@@ -256,18 +258,18 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   // CALCUS values
   const abPhaseCalcus = getCalcusValue(abPhaseInputs.strands); // F30
   const abPhInnCalcus = getCalcusMultiplier(abPhaseInputs.strands) * Number(abPhaseInputs.strandSize) || 0; // Row 2: IFS(D30=...)*E30
-  // Pricing & details shared inputs
-  const [lengthMeters, setLengthMeters] = useState(1000);
-  const [aluminiumRate, setAluminiumRate] = useState(270.0); // C41
-  const [alloyRate, setAlloyRate] = useState(270.0); // C42
-  const [innerInsuRate, setInnerInsuRate] = useState(120.0); // C43
-  const [outerInsuRate, setOuterInsuRate] = useState(0.0);   // C44
-  const [drumType, setDrumType] = useState("DRUM 2X");
+  // Pricing & details shared inputs - shared state
+  const [lengthMeters, setLengthMeters] = useSharedToolboxState("lengthMeters", 1000);
+  const [aluminiumRate, setAluminiumRate] = useSharedToolboxState("aluminiumRate", 270.0); // C41
+  const [alloyRate, setAlloyRate] = useSharedToolboxState("alloyRate", 270.0); // C42
+  const [innerInsuRate, setInnerInsuRate] = useSharedToolboxState("innerInsuRate", 120.0); // C43
+  const [outerInsuRate, setOuterInsuRate] = useSharedToolboxState("outerInsuRate", 0.0);   // C44
+  const [drumType, setDrumType] = useSharedToolboxState("drumType", "DRUM 2X");
   
-  // Reverse calculation mode - when user inputs sale price and profit %
-  const [reverseMode, setReverseMode] = useState(false);
-  const [targetSalePrice, setTargetSalePrice] = useState(0);
-  const [targetProfitPercent, setTargetProfitPercent] = useState(0);
+  // Reverse calculation mode - when user inputs sale price and profit % - shared state
+  const [reverseMode, setReverseMode] = useSharedToolboxState("reverseMode", false);
+  const [targetSalePrice, setTargetSalePrice] = useSharedToolboxState("targetSalePrice", 0);
+  const [targetProfitPercent, setTargetProfitPercent] = useSharedToolboxState("targetProfitPercent", 0);
   const drumCost = (() => {
     const L = Number(lengthMeters) || 0;
     let ratePerM;
@@ -300,8 +302,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     const kg = ((F * E * E * 0.785) * density * C) * (lengthMeters / 1000);
     return Number.isFinite(kg) ? kg : 0;
   })();
-  // PH INN INS (row 31) - Gauge: F31 + E31 + E31, with F31 fixed 6.36 mm
-  const [abPhInnIns, setAbPhInnIns] = useState({ thickness: 1.20 });
+  // PH INN INS (row 31) - Gauge: F31 + E31 + E31, with F31 fixed 6.36 mm - shared state
+  const [abPhInnIns, setAbPhInnIns] = useSharedToolboxState("abPhInnIns", { thickness: 1.20 });
   const abPhInnGauge = (() => {
     const e = Number(abPhInnIns.thickness) || 0;
     const f = 6.36; // CALCUS value (F31)
@@ -318,8 +320,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     const kg = ((ringArea * C) * density) / 1000 * lengthMeters;
     return Number.isFinite(kg) ? kg : 0;
   })();
-  // PH OUT INS (row 32) - Gauge: G31 + E32 + E32
-  const [abPhOutIns, setAbPhOutIns] = useState({ thickness: 0 });
+  // PH OUT INS (row 32) - Gauge: G31 + E32 + E32 - shared state
+  const [abPhOutIns, setAbPhOutIns] = useSharedToolboxState("abPhOutIns", { thickness: 0 });
   const abPhOutGauge = (() => {
     const e = Number(abPhOutIns.thickness) || 0;
     const g31 = Number(abPhInnGauge) || 0;
@@ -336,8 +338,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     const kg = ((ringArea * C) * density) / 1000 * lengthMeters;
     return Number.isFinite(kg) ? kg : 0;
   })();
-  // STREET LIGHT conductor (row 33) - Gauge: E33*E33*D33*0.785
-  const [abStreetInputs, setAbStreetInputs] = useState({ cores: 1, strands: 7, strandSize: 1.70 });
+  // STREET LIGHT conductor (row 33) - Gauge: E33*E33*D33*0.785 - shared state
+  const [abStreetInputs, setAbStreetInputs] = useSharedToolboxState("abStreetInputs", { cores: 1, strands: 7, strandSize: 1.70 });
   const abStreetGauge = (() => {
     const s = Number(abStreetInputs.strandSize) || 0;
     const n = Number(abStreetInputs.strands) || 0;
@@ -347,9 +349,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   // CALCUS for STREET (row 4)
   const abStreetCalcus = getCalcusValue(abStreetInputs.strands); // F33
   const abStlInnCalcus = getCalcusMultiplier(abStreetInputs.strands) * Number(abStreetInputs.strandSize) || 0; // Row 5: IFS(D33=...)*E33
-  // STL INN/OUT INS thicknesses and derived gauges (rows 34, 35)
-  const [stlInnIns, setStlInnIns] = useState({ thickness: 1.20 });
-  const [stlOutIns, setStlOutIns] = useState({ thickness: 0 });
+  // STL INN/OUT INS thicknesses and derived gauges (rows 34, 35) - shared state
+  const [stlInnIns, setStlInnIns] = useSharedToolboxState("stlInnIns", { thickness: 1.20 });
+  const [stlOutIns, setStlOutIns] = useSharedToolboxState("stlOutIns", { thickness: 0 });
   const stlInnGauge = (() => {
     const e = Number(stlInnIns.thickness) || 0; // E34
     const f = 5.10; // F34
@@ -371,8 +373,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     const kg = ((F * E * E * 0.785) * density * C) * lengthMeters / 1000;
     return Number.isFinite(kg) ? kg : 0;
   })();
-  // MESSENGER conductor (row 36) - Gauge: E36*E36*D36*0.785
-  const [abMessengerInputs, setAbMessengerInputs] = useState({ cores: 1, strands: 7, strandSize: 2.12 });
+  // MESSENGER conductor (row 36) - Gauge: E36*E36*D36*0.785 - shared state
+  const [abMessengerInputs, setAbMessengerInputs] = useSharedToolboxState("abMessengerInputs", { cores: 1, strands: 7, strandSize: 2.12 });
   const abMessengerGauge = (() => {
     const s = Number(abMessengerInputs.strandSize) || 0;
     const n = Number(abMessengerInputs.strands) || 0;
@@ -390,8 +392,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     const kg = ((F * E * E * 0.785) * density) * lengthMeters / 1000;
     return Number.isFinite(kg) ? kg : 0;
   })();
-  // MSN INN INS (row 37) - Gauge: F37 + E37 + E37 (F37 = 6.36 mm)
-  const [abMsnInn, setAbMsnInn] = useState({ thickness: 0 });
+  // MSN INN INS (row 37) - Gauge: F37 + E37 + E37 (F37 = 6.36 mm) - shared state
+  const [abMsnInn, setAbMsnInn] = useSharedToolboxState("abMsnInn", { thickness: 0 });
   const abMsnInnGauge = (() => {
     const e = Number(abMsnInn.thickness) || 0;
     const f = 6.36;
@@ -418,8 +420,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     const kg = (ringArea * density * C) / 1000 * lengthMeters;
     return Number.isFinite(kg) ? kg : 0;
   })();
-  // MSN OUT INS (row 38) - Gauge: F38 + E38 + E38 (F38 = 6.36 mm)
-  const [abMsnOut, setAbMsnOut] = useState({ thickness: 0 });
+  // MSN OUT INS (row 38) - Gauge: F38 + E38 + E38 (F38 = 6.36 mm) - shared state
+  const [abMsnOut, setAbMsnOut] = useSharedToolboxState("abMsnOut", { thickness: 0 });
   const abMsnOutGauge = (() => {
     const e = Number(abMsnOut.thickness) || 0;
     const f = 6.36;

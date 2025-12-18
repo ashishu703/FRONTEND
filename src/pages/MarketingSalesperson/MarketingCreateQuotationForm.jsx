@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus, DollarSign, Eye, Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import MarketingQuotationPreview from "./MarketingQuotationPreview.jsx"
-// Removed PI template import; PI functionality is limited to salesperson module
+import { getProducts, addProduct, UNITS } from '../../constants/products';
 
-// CreateQuotationForm Component for Marketing Salesperson
 const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
   const getSevenDaysLater = (dateString) => {
     const date = new Date(dateString);
@@ -12,7 +11,6 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
     return date.toISOString().split('T')[0];
   };
 
-  // Company branch configuration
   const companyBranches = {
     ANODE: {
       name: 'ANODE ELECTRIC PRIVATE LIMITED',
@@ -61,7 +59,8 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
         unit: "Nos",
         companyRate: 0,
         buyerRate: 0,
-        amount: 0
+        amount: 0,
+        hsn: ""
       }
     ],
     subtotal: 0,
@@ -78,6 +77,14 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
       state: customer?.state || ""
     }
   });
+
+  const [products, setProducts] = useState([]);
+  const [productSearchTerm, setProductSearchTerm] = useState({});
+
+  // Load products
+  useEffect(() => {
+    setProducts(getProducts());
+  }, []);
 
   const handleInputChange = (field, value) => {
     const newData = {
@@ -99,6 +106,27 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
       ...updatedItems[index],
       [field]: value
     };
+    
+    // If product name is changed, try to find matching product and auto-fill HSN and unit
+    if (field === 'productName' && value) {
+      const matchingProduct = products.find(p => 
+        p.name.toLowerCase() === value.toLowerCase()
+      );
+      
+      if (matchingProduct) {
+        updatedItems[index].hsn = matchingProduct.hsn || '';
+        if (!updatedItems[index].unit) {
+          updatedItems[index].unit = matchingProduct.defaultUnit || 'Mtr';
+        }
+      } else {
+        // If product not found, save it for future use
+        const currentHsn = updatedItems[index].hsn || '';
+        const currentUnit = updatedItems[index].unit || 'Mtr';
+        addProduct(value, currentHsn, currentUnit);
+        // Refresh products list
+        setProducts(getProducts());
+      }
+    }
     
     // Calculate amount for this item
     if (['quantity', 'companyRate', 'buyerRate'].includes(field)) {
@@ -385,14 +413,37 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
                     {quotationData.items.map((item, index) => (
                       <tr key={item.id}>
                         <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            placeholder="Product name"
-                            value={item.productName}
-                            onChange={(e) => handleItemChange(index, 'productName', e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
-                            required
-                          />
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="Product name"
+                              value={item.productName}
+                              onChange={(e) => {
+                                setProductSearchTerm(prev => ({ ...prev, [index]: e.target.value }));
+                                handleItemChange(index, 'productName', e.target.value);
+                              }}
+                              onFocus={() => setProductSearchTerm(prev => ({ ...prev, [index]: item.productName || '' }))}
+                              onBlur={() => {
+                                setTimeout(() => setProductSearchTerm(prev => {
+                                  const newState = { ...prev };
+                                  delete newState[index];
+                                  return newState;
+                                }), 200);
+                              }}
+                              className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                              required
+                              list={`product-list-${index}`}
+                            />
+                            <datalist id={`product-list-${index}`}>
+                              {products
+                                .filter(p => !productSearchTerm[index] || 
+                                  p.name.toLowerCase().includes(productSearchTerm[index].toLowerCase()))
+                                .slice(0, 20)
+                                .map((product, idx) => (
+                                  <option key={idx} value={product.name} />
+                                ))}
+                            </datalist>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <input
@@ -409,10 +460,9 @@ const MarketingQuotationForm = ({ customer, user, onClose, onSave }) => {
                             onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
                             className="w-20 px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
                           >
-                            <option value="Nos">Nos</option>
-                            <option value="Mtr">Mtr</option>
-                            <option value="Kg">Kg</option>
-                            <option value="Set">Set</option>
+                            {UNITS.map(unit => (
+                              <option key={unit} value={unit}>{unit}</option>
+                            ))}
                           </select>
                         </td>
                         <td className="px-4 py-3">

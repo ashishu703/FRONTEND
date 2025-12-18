@@ -51,6 +51,8 @@ const MobileProducts = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [viewingImageRowIndex, setViewingImageRowIndex] = useState(null); // Track which row index is being viewed in modal
+  const [viewingImageIndex, setViewingImageIndex] = useState(null); // Track which image index is being viewed
+  const [previewUrl, setPreviewUrl] = useState(""); // Preview URL for image modal
   const [isFileViewerOpen, setIsFileViewerOpen] = useState(false); // File viewer modal state
   const imageUploadInputRef = useRef(null); // Ref for file input
   // Approvals: BIS doc preview (uses desktop mapping)
@@ -2919,9 +2921,8 @@ const MobileProducts = () => {
                   </div>
                 )}
 
-                {/* Costing Calculator - Show for ACSR, AAAC (exclude AB Cable and PVC Submersible) */}
-                {(selectedProduct.name.toLowerCase().includes('aluminium conductor galvanized steel reinforced') ||
-                  selectedProduct.name.toLowerCase().includes('all aluminium alloy conductor')) && (
+                {/* Costing Calculator has been moved to Helping Calculators */}
+                {false && (
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -3769,6 +3770,7 @@ const MobileProducts = () => {
                     {[
                       { name: "TECHNICAL CALCULATIONS", description: "Advanced technical calculation tools", icon: Calculator },
                       { name: "CONVERSIONAL CALCULATIONS", description: "Unit conversion and calculation utilities", icon: Settings },
+                      { name: "COSTING CALCULATOR", description: "Calculate cable costing and pricing", icon: DollarSign },
                       { name: "WIRE GAUGE CHART", description: "Wire gauge reference and calculations", icon: BarChart3 },
                       { name: "TEMPERATURE CORRECTION FACTORS kt FOR CONDUCTOR RESISTANCE TO CORRECT THE MEASURED RESISTANCE AT t°C TO 20°C", description: "Temperature correction factor calculations", icon: Wrench },
                     ].map((calculator, index) => (
@@ -3781,6 +3783,9 @@ const MobileProducts = () => {
                             setIsHelpingCalcOpen(true);
                           } else if (calculator.name === 'CONVERSIONAL CALCULATIONS') {
                             setHelpingCalcType('conversional');
+                            setIsHelpingCalcOpen(true);
+                          } else if (calculator.name === 'COSTING CALCULATOR') {
+                            setHelpingCalcType('costing');
                             setIsHelpingCalcOpen(true);
                           } else if (calculator.name === 'WIRE GAUGE CHART') {
                             setHelpingCalcType('wire-gauge');
@@ -5291,6 +5296,27 @@ const MobileProducts = () => {
                     ))}
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Helping Calculators Modal - Costing Calculator */}
+      {isHelpingCalcOpen && helpingCalcType === 'costing' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-2">
+          <div className="w-full max-w-full max-h-[95vh] overflow-y-auto bg-white rounded-lg">
+            <div className="flex items-center justify-between p-3 border-b sticky top-0 bg-white z-10">
+              <h3 className="text-base font-semibold text-gray-900">Costing Calculator</h3>
+              <button onClick={closeHelpingCalc} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="text-center py-12">
+                <Calculator className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 font-medium mb-2">Costing Calculator</p>
+                <p className="text-sm text-gray-400">Feature coming soon</p>
               </div>
             </div>
           </div>

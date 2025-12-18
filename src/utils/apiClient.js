@@ -2,12 +2,19 @@ import CacheBuster from './cacheBuster';
 
 class ApiClient {
   constructor() {
-    
-    this.baseURL = '';
-    
+    // In development, use relative URLs to leverage Vite proxy (avoids CORS)
+    // In production or when explicitly set, use full URLs
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-    if (apiBaseUrl && apiBaseUrl.includes('http')) {
+    const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+    
+    // If no explicit API URL is set in dev, use relative URLs (proxy will handle it)
+    // Otherwise, use the configured URL
+    if (!apiBaseUrl && isDevelopment) {
+      this.baseURL = ''; // Empty means relative URLs - will use Vite proxy
+    } else if (apiBaseUrl && apiBaseUrl.includes('http')) {
       this.baseURL = apiBaseUrl.replace(/\/api.*$/, '');
+    } else {
+      this.baseURL = ''; // Default to relative URLs
     }
   }
 
@@ -127,8 +134,13 @@ class ApiClient {
         ...options,
       };
 
-      // Use relative URLs for proxy, or full URLs if baseURL is set
-      const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
+      // Use relative URLs for proxy (when baseURL is empty), or full URLs if baseURL is set
+      // If URL already starts with http, use it as-is
+      // If baseURL is empty, use relative URL (Vite proxy will handle it)
+      // Otherwise, prepend baseURL
+      const fullUrl = url.startsWith('http') 
+        ? url 
+        : (this.baseURL ? `${this.baseURL}${url}` : url);
       const response = await fetch(fullUrl, config);
       return await this.handleResponse(response);
     } catch (error) {
@@ -192,7 +204,9 @@ class ApiClient {
       }
 
       const token = sessionStorage.getItem('authToken') || this.getAuthToken();
-      const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
+      const fullUrl = url.startsWith('http') 
+        ? url 
+        : (this.baseURL ? `${this.baseURL}${url}` : url);
       const response = await fetch(fullUrl, {
         method: 'POST',
         headers: {
@@ -216,7 +230,9 @@ class ApiClient {
       }
 
       const token = sessionStorage.getItem('authToken') || this.getAuthToken();
-      const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
+      const fullUrl = url.startsWith('http') 
+        ? url 
+        : (this.baseURL ? `${this.baseURL}${url}` : url);
       const response = await fetch(fullUrl, {
         method: 'PUT',
         headers: {
