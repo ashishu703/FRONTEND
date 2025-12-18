@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun, BarChart3, Clock, User, Factory, Wrench, HelpCircle, Activity, Server, Settings, Shield, Link, Ticket } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 
+const ASHVAY_LOGO = "https://res.cloudinary.com/dngojnptn/image/upload/v1764139419/ChatGPT_Image_Nov_26_2025_11_50_20_AM_qkwcqe.png";
+
 const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onToggleMobileView, isMobileView = false, isDarkMode = false, onToggleDarkMode, onProfileClick }) => {
   const { user, logout } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -604,6 +606,23 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
         <div className="flex items-center space-x-4">
           {/* Mobile Toggle Button - Only for salesperson */}
           {/* Mobile toggle removed; mobile layout auto-detected via viewport */}
+          
+          {/* Ashvay Chat Button */}
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('openAshvayChat'));
+            }}
+            className={`p-2 rounded-lg transition-colors ${
+              isDarkMode 
+                ? 'hover:bg-gray-700' 
+                : 'hover:bg-gray-100'
+            }`}
+            title="Ashvay AI Support"
+          >
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-white p-0.5">
+              <img src={ASHVAY_LOGO} alt="Ashvay" className="w-full h-full object-contain rounded-full" />
+            </div>
+          </button>
           
           {/* Dark Mode Toggle Button - Only for salesperson */}
           {userType === "salesperson" && onToggleDarkMode && (

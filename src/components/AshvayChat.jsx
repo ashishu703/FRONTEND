@@ -10,7 +10,7 @@ const INITIAL_MESSAGE = {
   timestamp: new Date()
 }
 
-export default function AshvayChat() {
+export default function AshvayChat({ showFloatingButton = true }) {
   const [showModal, setShowModal] = useState(false)
   const [message, setMessage] = useState("")
   const [image, setImage] = useState(null)

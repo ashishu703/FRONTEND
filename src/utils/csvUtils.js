@@ -15,12 +15,14 @@ export const downloadCSVTemplate = () => {
     'Assigned Salesperson',
     'Assigned Telecaller',
     'State',
-    'Date (YYYY-MM-DD)'
+    'Date (DD/MM/YYYY or YYYY-MM-DD)'
   ];
   
-  const csvContent = headers.join(',') + '\n' + 
-    'Sample Customer,9876543210,9876543210,sample@email.com,123 Main St,22ABCDE1234F1Z5,Sample Business,dealer,instagram,ACSR AAAC,John Doe,Jane Smith,Delhi,2024-01-15\n' +
-    'Another Customer,9876543211,9876543211,another@email.com,456 Main St,22ABCDE1234F1Z6,Another Business,contractor,facebook,AB CABLE AAAC,Jane Doe,John Smith,Mumbai,2024-01-16';
+  // Demo data as provided by user for Marketing Department Head
+  const csvContent = [
+    headers.map(h => `"${h}"`).join(','),
+    '"saurabh jhariya","9876549874","9876547564","jhariya@gmail.com","right town jabalpur","23FDGT546GF54","samriddhi","business","social media","acsr","NA","NA","MP","06/12/2025"'
+  ].join('\n');
   
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
@@ -125,8 +127,10 @@ export const parseCSV = (csvText) => {
     'business category': 'Business Category',
     'category': 'Category',
     'state': 'State',
-    'date (yyyy-mm-dd)': 'Date (YYYY-MM-DD)',
-    'date': 'Date',
+    'date (dd/mm/yyyy or yyyy-mm-dd)': 'Date (DD/MM/YYYY or YYYY-MM-DD)',
+    'date (yyyy-mm-dd)': 'Date (DD/MM/YYYY or YYYY-MM-DD)',
+    'date (dd/mm/yyyy)': 'Date (DD/MM/YYYY or YYYY-MM-DD)',
+    'date': 'Date (DD/MM/YYYY or YYYY-MM-DD)',
     'assigned salesperson': 'Assigned Salesperson',
     'assigned telecaller': 'Assigned Telecaller',
     'product names (comma separated)': 'Product Names (comma separated)',
@@ -214,15 +218,37 @@ export const parseCSV = (csvText) => {
 };
 
 export const formatDate = (dateString) => {
-  if (!dateString) return new Date().toISOString().split('T')[0];
+  if (!dateString || !dateString.trim()) {
+    return new Date().toISOString().split('T')[0];
+  }
   
+  const trimmed = dateString.trim().toUpperCase();
+  if (trimmed === 'NA' || trimmed === 'N/A' || trimmed === '-') {
+    return new Date().toISOString().split('T')[0];
+  }
+  
+  // Try DD/MM/YYYY format first
+  const ddmmyyyyRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  const ddmmyyyyMatch = dateString.trim().match(ddmmyyyyRegex);
+  if (ddmmyyyyMatch) {
+    const [, day, month, year] = ddmmyyyyMatch;
+    // Validate date
+    const dateObj = new Date(`${year}-${month}-${day}`);
+    if (dateObj.getFullYear() == year && dateObj.getMonth() + 1 == parseInt(month) && dateObj.getDate() == parseInt(day)) {
+      return `${year}-${month}-${day}`;
+    }
+  }
+  
+  // Try YYYY-MM-DD format
   if (dateString.includes('-')) {
     const parts = dateString.split('-');
     if (parts.length === 3) {
       if (parts[0].length === 2 && parts[2].length === 4) {
+        // DD-MM-YYYY format
         return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
       }
       if (parts[0].length === 4 && parts[1].length === 2 && parts[2].length === 2) {
+        // YYYY-MM-DD format
         return dateString;
       }
     }

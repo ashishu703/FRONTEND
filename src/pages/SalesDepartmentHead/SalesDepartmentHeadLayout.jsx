@@ -19,7 +19,7 @@ const SalesDepartmentHeadLayout = ({ children, onLogout, activeView, setActiveVi
           {children}
         </main>
       </div>
-      <AshvayChat />
+      <AshvayChat showFloatingButton={false} />
     </div>
   );
 };

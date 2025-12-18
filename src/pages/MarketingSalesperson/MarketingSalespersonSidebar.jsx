@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { 
-  ChevronDown, 
-  ChevronRight, 
   BarChart3, 
   Users, 
   Calendar,
@@ -10,24 +8,25 @@ import {
   X,
   LogOut,
   UserCheck,
-  MapPin,
   ShoppingCart,
-  Clock,
   IndianRupee,
   User,
-  HelpCircle
+  HelpCircle,
+  CalendarCheck,
+  Camera,
+  ChevronDown
 } from 'lucide-react';
 
 const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [paymentsOpen, setPaymentsOpen] = useState(false);
 
   const toggleSidebar = () => {
     setIsExpanded(!isExpanded);
   };
 
-  const toggleFollowUp = () => {
-    setFollowUpOpen(!followUpOpen);
+  const togglePayments = () => {
+    setPaymentsOpen(!paymentsOpen);
   };
 
   const sidebarItems = [
@@ -44,9 +43,15 @@ const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
       hasDropdown: false
     },
     {
-      id: 'visits',
-      label: 'Visits',
-      icon: <MapPin className="w-5 h-5" />,
+      id: 'assigned-meetings',
+      label: 'Assigned Meetings',
+      icon: <CalendarCheck className="w-5 h-5" />,
+      hasDropdown: false
+    },
+    {
+      id: 'checkin-history',
+      label: 'Check-In History',
+      icon: <Camera className="w-5 h-5" />,
       hasDropdown: false
     },
     {
@@ -56,9 +61,9 @@ const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
       hasDropdown: false
     },
     {
-      id: 'follow-up',
-      label: 'Lead Status',
-      icon: <Clock className="w-5 h-5" />,
+      id: 'payments',
+      label: 'Payments',
+      icon: <IndianRupee className="w-5 h-5" />,
       hasDropdown: true
     },
     {
@@ -77,22 +82,20 @@ const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
 
   const handleItemClick = (item) => {
     if (item.hasDropdown) {
-      toggleFollowUp();
+      togglePayments();
     } else {
       setActiveView(item.id);
     }
   };
 
-  const handleFollowUpClick = (status) => {
-    setActiveView(`follow-up-${status}`);
+  const handlePaymentStatusClick = (status) => {
+    setActiveView(`payment-status-${status}`);
   };
 
-  const followUpStatuses = [
-    { id: 'connected', label: 'Connected', color: 'text-green-500' },
-    { id: 'not-connected', label: 'Not Connected', color: 'text-red-500' },
-    { id: 'todays-meeting', label: 'Todays Meeting', color: 'text-blue-500' },
-    { id: 'converted', label: 'Converted', color: 'text-purple-500' },
-    { id: 'closed', label: 'Closed', color: 'text-gray-500' },
+  const paymentStatuses = [
+    { id: 'due', label: 'Due Payments', color: 'text-orange-500' },
+    { id: 'advance', label: 'Advance Payments', color: 'text-blue-500' },
+    { id: 'completed', label: 'Completed Payments', color: 'text-green-500' },
   ];
 
   return (
@@ -125,7 +128,7 @@ const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
             <button
               onClick={() => handleItemClick(item)}
               className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                activeView === item.id || (item.hasDropdown && activeView.startsWith('follow-up-'))
+                activeView === item.id || (item.hasDropdown && activeView.startsWith('payment-status-'))
                   ? 'bg-blue-100 text-blue-700 border-r-2 border-blue-600'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               }`}
@@ -137,21 +140,21 @@ const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
                 <>
                   <span className="text-sm font-medium">{item.label}</span>
                   {item.hasDropdown && (
-                    <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${followUpOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${paymentsOpen ? 'rotate-180' : ''}`} />
                   )}
                 </>
               )}
             </button>
             
-            {/* Follow Up Dropdown */}
-            {item.hasDropdown && followUpOpen && isExpanded && (
+            {/* Payments Dropdown */}
+            {item.hasDropdown && item.id === 'payments' && paymentsOpen && isExpanded && (
               <div className="ml-6 mt-2 space-y-1">
-                {followUpStatuses.map((status) => (
+                {paymentStatuses.map((status) => (
                   <button
                     key={status.id}
-                    onClick={() => handleFollowUpClick(status.id)}
+                    onClick={() => handlePaymentStatusClick(status.id)}
                     className={`w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
-                      activeView === `follow-up-${status.id}`
+                      activeView === `payment-status-${status.id}`
                         ? 'bg-blue-50 text-blue-700 font-medium'
                         : 'text-gray-600 hover:bg-gray-50'
                     }`}
@@ -195,3 +198,4 @@ const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
 };
 
 export default MarketingSalespersonSidebar;
+

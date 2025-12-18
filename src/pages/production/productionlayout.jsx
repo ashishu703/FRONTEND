@@ -29,7 +29,7 @@ export default function ProductionStaffLayout({ onLogout }) {
           </div>
         </main>
       </div>
-      <AshvayChat />
+      <AshvayChat showFloatingButton={false} />
     </PermissionGuard>
   )
 }
