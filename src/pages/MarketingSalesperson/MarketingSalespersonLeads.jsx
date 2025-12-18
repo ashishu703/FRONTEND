@@ -3186,6 +3186,7 @@ const MarketingSalespersonLeads = () => {
                             <option value="Nos">Nos</option>
                             <option value="Kg">Kg</option>
                             <option value="Set">Set</option>
+                            <option value="PCS">PCS</option>
                           </select>
                         </div>
                         <div className="space-y-2">

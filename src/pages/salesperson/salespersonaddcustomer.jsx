@@ -213,31 +213,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     }))
   }
 
-  const handleFileChange = (field, file) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: file,
-    }))
-  }
-
-  const isDisabled = (field) => {
-    if (!editingCustomer) return false
-    const initialMap = {
-      customerName: editingCustomer?.name,
-      mobileNumber: editingCustomer?.phone,
-      whatsappNumber: editingCustomer?.whatsapp,
-      email: editingCustomer?.email,
-      business: editingCustomer?.business,
-      productName: editingCustomer?.productName,
-      gstNumber: editingCustomer?.gstNo,
-      address: editingCustomer?.address,
-      state: editingCustomer?.state,
-      customerType: editingCustomer?.customerType,
-      leadSource: editingCustomer?.enquiryBy,
-    }
-    const raw = (initialMap[field] ?? '').toString().trim()
-    return raw !== '' && raw.toUpperCase() !== 'N/A'
-  }
   const handleSubmit = (e) => {
     e.preventDefault()
     
@@ -292,7 +267,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="text"
-                  disabled={isDisabled('customerName')}
                   value={formData.customerName}
                   onChange={(e) => handleInputChange("customerName", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -307,7 +281,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="tel"
-                  disabled={isDisabled('mobileNumber')}
                   value={formData.mobileNumber}
                   onChange={(e) => handleInputChange("mobileNumber", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -322,7 +295,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="tel"
-                  disabled={isDisabled('whatsappNumber')}
                   value={formData.whatsappNumber}
                   onChange={(e) => handleInputChange("whatsappNumber", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -337,7 +309,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="email"
-                  disabled={isDisabled('email')}
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -355,7 +326,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="text"
-                  disabled={isDisabled('productName')}
                   value={formData.productName}
                   onChange={(e) => handleInputChange("productName", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -370,7 +340,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="text"
-                  disabled={isDisabled('gstNumber')}
                   value={formData.gstNumber}
                   onChange={(e) => handleInputChange("gstNumber", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -385,7 +354,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="text"
-                  disabled={isDisabled('state')}
                   value={formData.state}
                   onChange={(e) => handleInputChange("state", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -400,7 +368,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="text"
-                  disabled={isDisabled('business')}
                   value={formData.business}
                   onChange={(e) => handleInputChange("business", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -417,7 +384,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 Address
               </label>
               <textarea
-                disabled={isDisabled('address')}
                 value={formData.address}
                 onChange={(e) => handleInputChange("address", e.target.value)}
                 rows={3}
@@ -436,7 +402,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="text"
-                  disabled={isDisabled('customerType')}
                   value={formData.customerType}
                   onChange={(e) => handleInputChange("customerType", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -451,7 +416,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                 </label>
                 <input
                   type="text"
-                  disabled={isDisabled('leadSource')}
                   value={formData.leadSource}
                   onChange={(e) => handleInputChange("leadSource", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"

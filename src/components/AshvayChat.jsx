@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { X, Send, Upload } from "lucide-react"
 
 const ASHVAY_LOGO = "https://res.cloudinary.com/dngojnptn/image/upload/v1764139419/ChatGPT_Image_Nov_26_2025_11_50_20_AM_qkwcqe.png"
@@ -16,10 +16,92 @@ export default function AshvayChat() {
   const [image, setImage] = useState(null)
   const [chatMessages, setChatMessages] = useState([INITIAL_MESSAGE])
   const chatEndRef = useRef(null)
+  const logoRef = useRef(null)
+  const [position, setPosition] = useState({ x: null, y: null })
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartRef = useRef({ x: 0, y: 0 })
+  const mouseDownPosRef = useRef({ x: 0, y: 0 })
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [chatMessages])
+
+  // Initialize position to bottom-right on mount
+  useEffect(() => {
+    if (position.x === null && position.y === null) {
+      setPosition({ x: window.innerWidth - 100, y: window.innerHeight - 100 })
+    }
+  }, [position])
+
+  // Handle window resize to keep logo within bounds
+  useEffect(() => {
+    const handleResize = () => {
+      if (logoRef.current && position.x !== null && position.y !== null) {
+        const logoRect = logoRef.current.getBoundingClientRect()
+        const maxX = window.innerWidth - logoRect.width
+        const maxY = window.innerHeight - logoRect.height
+        
+        setPosition(prev => ({
+          x: Math.min(prev.x, maxX),
+          y: Math.min(prev.y, maxY)
+        }))
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [position])
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true)
+    const currentX = position.x !== null ? position.x : (window.innerWidth - 100)
+    const currentY = position.y !== null ? position.y : (window.innerHeight - 100)
+    dragStartRef.current = {
+      x: e.clientX - currentX,
+      y: e.clientY - currentY
+    }
+    mouseDownPosRef.current = { x: e.clientX, y: e.clientY }
+    e.preventDefault()
+  }
+
+  const handleMouseMove = useCallback((e) => {
+    const logoRect = logoRef.current?.getBoundingClientRect()
+    if (!logoRect) return
+
+    const newX = e.clientX - dragStartRef.current.x
+    const newY = e.clientY - dragStartRef.current.y
+    
+    // Keep logo within window bounds
+    const maxX = window.innerWidth - logoRect.width
+    const maxY = window.innerHeight - logoRect.height
+    
+    setPosition({
+      x: Math.max(0, Math.min(newX, maxX)),
+      y: Math.max(0, Math.min(newY, maxY))
+    })
+  }, [])
+
+  const handleMouseUp = useCallback((e) => {
+    setIsDragging(false)
+    // Only open modal if it was a click (not a drag) - check if mouse moved less than 5px
+    const moved = Math.abs(e.clientX - mouseDownPosRef.current.x) > 5 || 
+                  Math.abs(e.clientY - mouseDownPosRef.current.y) > 5
+    if (!moved) {
+      setShowModal(true)
+    }
+  }, [])
+
+  // Add global mouse event listeners for dragging
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp])
 
   const handleImageChange = (e) => {
     if (e.target.files?.[0]) setImage(e.target.files[0])
@@ -54,10 +136,18 @@ export default function AshvayChat() {
   return (
     <>
       <button
-        onClick={() => setShowModal(true)}
-        className="fixed bottom-8 right-8 w-20 h-20 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-50 overflow-hidden bg-white p-2"
+        ref={logoRef}
+        onMouseDown={handleMouseDown}
+        className="fixed w-20 h-20 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-50 overflow-hidden bg-white p-2 cursor-move"
+        style={{
+          left: position.x !== null ? `${position.x}px` : 'auto',
+          top: position.y !== null ? `${position.y}px` : 'auto',
+          right: position.x === null ? '32px' : 'auto',
+          bottom: position.y === null ? '32px' : 'auto',
+          userSelect: 'none'
+        }}
       >
-        <img src={ASHVAY_LOGO} alt="Ashvay" className="w-full h-full object-contain rounded-full" />
+        <img src={ASHVAY_LOGO} alt="Ashvay" className="w-full h-full object-contain rounded-full pointer-events-none" />
       </button>
 
       {showModal && (

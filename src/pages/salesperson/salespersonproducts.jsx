@@ -1200,6 +1200,7 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
     payment_status: 'advance',
     payment_receipt_url: '',
     purchase_order_id: '',
+    payment_date: new Date().toISOString().split('T')[0], // Default to today's date
     delivery_date: '',
     delivery_status: 'pending'
   });
@@ -1366,6 +1367,11 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         return;
       }
 
+      // Format payment_date to ISO string if provided, otherwise use current date
+      const paymentDate = paymentData.payment_date 
+        ? new Date(paymentData.payment_date).toISOString()
+        : new Date().toISOString();
+
       const paymentPayload = {
         lead_id: item.leadData?.id,
         quotation_id: selectedQuotationId,
@@ -1375,7 +1381,7 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         payment_reference: paymentData.payment_reference,
         payment_status: paymentData.payment_status,
         payment_receipt_url: receiptUrl || undefined,
-        payment_date: new Date().toISOString(),
+        payment_date: paymentDate,
         notes: paymentData.delivery_note,
         remarks: paymentData.payment_remark,
         purchase_order_id: paymentData.purchase_order_id,
@@ -1598,6 +1604,19 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
               onChange={(e) => setPaymentData(prev => ({ ...prev, purchase_order_id: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Purchase order reference"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Payment Date *
+            </label>
+            <input
+              type="date"
+              required
+              value={paymentData.payment_date}
+              onChange={(e) => setPaymentData(prev => ({ ...prev, payment_date: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 

@@ -48,7 +48,6 @@ export function useSalespersonLeads(initialCustomers = []) {
     fetchAssigned()
   }, [])
 
-  // OPTIMIZED: Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);

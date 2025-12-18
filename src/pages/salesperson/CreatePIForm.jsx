@@ -887,6 +887,7 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
                                     <option value="Mtr">Mtr</option>
                                     <option value="Kg">Kg</option>
                                     <option value="Set">Set</option>
+                                    <option value="PCS">PCS</option>
                                   </select>
                                 </td>
                                 <td className="px-2 py-3">
