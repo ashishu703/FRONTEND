@@ -10,6 +10,7 @@ const ColumnFilterModal = ({ isOpen, onClose, visibleColumns, onToggleColumn, on
     business: 'Business',
     address: 'Address',
     state: 'State',
+    division: 'Division',
     followUpStatus: 'Follow Up Status',
     salesStatus: 'Sales Status',
     assignedSalesperson: 'Assigned Salesperson',
@@ -23,6 +24,29 @@ const ColumnFilterModal = ({ isOpen, onClose, visibleColumns, onToggleColumn, on
     paymentStatus: 'Payment Status',
     updatedAt: 'Updated At'
   };
+
+  // Ensure division is in visibleColumns if it's missing (for backward compatibility)
+  const safeVisibleColumns = {
+    ...visibleColumns,
+    division: visibleColumns.division !== undefined ? visibleColumns.division : false
+  };
+
+  // Define the order of columns to ensure consistent display
+  const columnOrder = [
+    'customerId', 'customer', 'business', 'address', 'state', 'division',
+    'followUpStatus', 'salesStatus', 'assignedSalesperson', 'assignedTelecaller',
+    'gstNo', 'leadSource', 'productNames', 'category', 'createdAt',
+    'telecallerStatus', 'paymentStatus', 'updatedAt'
+  ];
+
+  // Sort entries by predefined order
+  const sortedColumns = columnOrder
+    .filter(key => safeVisibleColumns.hasOwnProperty(key))
+    .map(key => [key, safeVisibleColumns[key]])
+    .concat(
+      Object.entries(safeVisibleColumns)
+        .filter(([key]) => !columnOrder.includes(key))
+    );
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -55,16 +79,26 @@ const ColumnFilterModal = ({ isOpen, onClose, visibleColumns, onToggleColumn, on
             </div>
             
             <div className="space-y-3 max-h-64 overflow-y-auto">
-              {Object.entries(visibleColumns).map(([key, value]) => (
-                <div key={key} className="flex items-center justify-between">
-                  <label className="text-sm text-gray-700">{columnLabels[key]}</label>
+              {sortedColumns.map(([key, value]) => (
+                <label key={key} className="flex items-center justify-between py-1.5 cursor-pointer hover:bg-gray-50 px-2 rounded transition-colors">
+                  <span className="text-sm text-gray-700 flex-1 select-none">{columnLabels[key] || key}</span>
                   <input
                     type="checkbox"
-                    checked={value}
-                    onChange={() => onToggleColumn(key)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    checked={value || false}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      onToggleColumn(key);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-5 h-5 cursor-pointer flex-shrink-0"
+                    style={{ 
+                      minWidth: '20px',
+                      minHeight: '20px',
+                      accentColor: '#2563eb',
+                      cursor: 'pointer'
+                    }}
                   />
-                </div>
+                </label>
               ))}
             </div>
           </div>

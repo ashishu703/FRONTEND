@@ -53,7 +53,8 @@ export default function AddCustomerModal({ onClose, onSave, editingCustomer }) {
     productNames: Array.isArray(editingCustomer?.productNames)
       ? editingCustomer.productNames
       : (editingCustomer?.productName ? [editingCustomer.productName] : []),
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    division: editingCustomer?.division || ''
   });
 
   const [usernames, setUsernames] = useState([]);
@@ -185,6 +186,10 @@ export default function AddCustomerModal({ onClose, onSave, editingCustomer }) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
               <input type="text" value={formData.state} onChange={(e) => handleChange('state', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Division</label>
+              <input type="text" value={formData.division} onChange={(e) => handleChange('division', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter division" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>

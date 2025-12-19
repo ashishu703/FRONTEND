@@ -153,6 +153,14 @@ const LeadTable = ({
                   </div>
                 </th>
               )}
+              {visibleColumns.division && (
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
+                  <div className="flex items-center space-x-2">
+                    <Building className="w-4 h-4 text-teal-600" />
+                    <span>Division</span>
+                  </div>
+                </th>
+              )}
               {visibleColumns.followUpStatus && (
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
                   <div className="flex items-center space-x-2">
@@ -473,6 +481,17 @@ const LeadTable = ({
                     />
                   </td>
                 )}
+                {visibleColumns.division && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={columnFilters.division || ''}
+                      onChange={(e) => onColumnFilterChange?.('division', e.target.value)}
+                      placeholder="Filter Division"
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </td>
+                )}
                 {visibleColumns.followUpStatus && (
                   <td className="px-4 py-2">
                     <input
@@ -666,6 +685,9 @@ const LeadTable = ({
                   )}
                   {visibleColumns.state && (
                     <td className="px-4 py-4 text-sm text-gray-900">{lead.state}</td>
+                  )}
+                  {visibleColumns.division && (
+                    <td className="px-4 py-4 text-sm text-gray-900">{lead.division || '-'}</td>
                   )}
                   {visibleColumns.followUpStatus && (
                     <td className="px-4 py-4">

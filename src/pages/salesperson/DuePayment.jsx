@@ -315,7 +315,6 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
   const [quotationError, setQuotationError] = useState(null);
   const [quotationSummary, setQuotationSummary] = useState(null);
   const [paymentsForQuotation, setPaymentsForQuotation] = useState([]);
-  const [pisByQuotationId, setPisByQuotationId] = useState({});
 
   if (!item) return null;
 
@@ -338,16 +337,13 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
         const chosenQuotationId = item.quotationData?.id;
         if (chosenQuotationId) {
           try {
-            const [sRes, pRes, piRes] = await Promise.all([
+            const [sRes, pRes] = await Promise.all([
               quotationService.getSummary(chosenQuotationId),
-              paymentService.getPaymentsByQuotation(chosenQuotationId),
-              proformaInvoiceService.getPIsByQuotation(chosenQuotationId)
+              paymentService.getPaymentsByQuotation(chosenQuotationId)
             ]);
             setCustomerQuotations([item.quotationData]);
             setQuotationSummary(sRes?.data || null);
             setPaymentsForQuotation(pRes?.data || []);
-            const pis = DataExtractor.extractArray(piRes);
-            setPisByQuotationId({ [chosenQuotationId]: pis });
             return;
           } catch (innerErr) {
             console.warn('Failed to load quotation summary/payments', innerErr);
@@ -358,22 +354,6 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
         const quotationsResponse = await quotationService.getQuotationsByCustomer(item.leadData.id);
         const qList = quotationsResponse?.data || [];
         setCustomerQuotations(qList);
-        
-        // Fetch PIs for all quotations
-        const pisMap = {};
-        for (const q of qList) {
-          try {
-            const piRes = await proformaInvoiceService.getPIsByQuotation(q.id);
-            const pis = DataExtractor.extractArray(piRes);
-            if (pis.length > 0) {
-              pisMap[q.id] = pis;
-            }
-          } catch (err) {
-            console.warn(`Failed to fetch PIs for quotation ${q.id}:`, err);
-          }
-        }
-        setPisByQuotationId(pisMap);
-        
         const latestApproved = qList.filter(q => q.status === 'approved').slice(-1)[0];
         if (latestApproved?.id) {
           const [sRes, pRes] = await Promise.all([
@@ -393,57 +373,6 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
 
     fetchCustomerQuotations();
   }, [item.leadData?.id, item.quotationData?.id, refreshKey]);
-
-  // Handle view PI - show in new window
-  const handleViewPI = async (piId) => {
-    try {
-      const response = await proformaInvoiceService.getPI(piId);
-      if (response.success) {
-        const pi = response.data;
-        const piWindow = window.open('', '_blank', 'width=1000,height=800,scrollbars=yes,resizable=yes');
-        
-        if (piWindow) {
-          // Create HTML content for PI preview (similar to quotation preview)
-          const htmlContent = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>PI ${pi.pi_number || pi.id}</title>
-              <script src="https://cdn.tailwindcss.com"></script>
-              <style>
-                @media print {
-                  .no-print { display: none !important; }
-                }
-              </style>
-            </head>
-            <body class="bg-gray-100">
-              <div class="max-w-4xl mx-auto bg-white font-sans text-sm p-6">
-                <div class="border-2 border-black mb-4 p-4">
-                  <h1 class="text-xl font-bold">Proforma Invoice</h1>
-                  <p class="text-sm">PI Number: ${pi.pi_number || `PI-${pi.id}`}</p>
-                  <p class="text-sm">Date: ${pi.created_at ? new Date(pi.created_at).toLocaleDateString('en-IN') : 'N/A'}</p>
-                  <p class="text-sm">Total Amount: ₹${Number(pi.total_amount || 0).toLocaleString('en-IN')}</p>
-                </div>
-                <div class="text-center mt-4">
-                  <p class="text-gray-600">PI details will be displayed here</p>
-                </div>
-              </div>
-              <div class="fixed bottom-0 left-0 right-0 bg-white p-4 border-t border-gray-300 flex justify-between no-print">
-                <button onclick="window.close()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Close</button>
-                <button onclick="window.print()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">Print PDF</button>
-              </div>
-            </body>
-            </html>
-          `;
-          piWindow.document.write(htmlContent);
-          piWindow.document.close();
-        }
-      }
-    } catch (error) {
-      console.error('Error viewing PI:', error);
-      alert('Failed to load PI');
-    }
-  };
 
   // Handle view quotation - show in modal using QuotationPreview format
   const handleViewQuotation = async (quotationId) => {
@@ -915,35 +844,17 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
       icon: '✓',
       description: `Lead ID: ${item.leadId}`
     },
-    ...customerQuotations.flatMap((quotation, index) => {
-      const quotationEvent = {
-        id: `quotation-${quotation.id}`,
-        title: `Quotation ${index + 1}`,
-        date: formatIndianDateTime(quotation.created_at),
-        status: quotation.status === 'approved' ? 'approved' : 'pending',
-        icon: quotation.status === 'approved' ? '✓' : '⏳',
-        description: `ID: ${quotation.quotation_number || `QT-${quotation.id}`} | Purchase Order: ${quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'}`,
-        amount: quotation.total_amount || 0,
-        quotationId: quotation.id,
-        quotationStatus: quotation.status
-      };
-      
-      // Get PIs for this quotation
-      const pis = pisByQuotationId[quotation.id] || [];
-      const piEvents = pis.map((pi, piIndex) => ({
-        id: `pi-${pi.id}`,
-        title: `PI ${piIndex + 1}`,
-        date: formatIndianDateTime(pi.created_at),
-        status: pi.status === 'approved' ? 'approved' : (pi.status === 'rejected' ? 'rejected' : 'pending'),
-        icon: pi.status === 'approved' ? '✓' : (pi.status === 'rejected' ? '✕' : '⏳'),
-        description: `PI Number: ${pi.pi_number || `PI-${pi.id}`}`,
-        amount: pi.total_amount || 0,
-        piId: pi.id,
-        piStatus: pi.status
-      }));
-      
-      return [quotationEvent, ...piEvents];
-    }),
+    ...customerQuotations.map((quotation, index) => ({
+      id: `quotation-${quotation.id}`,
+      title: `Quotation ${index + 1}`,
+      date: formatIndianDateTime(quotation.created_at),
+      status: quotation.status === 'approved' ? 'approved' : 'pending',
+      icon: quotation.status === 'approved' ? '✓' : '⏳',
+      description: `ID: ${quotation.quotation_number || `QT-${quotation.id}`} | Purchase Order: ${quotation.work_order_id ? `PO-${quotation.work_order_id}` : 'N/A'}`,
+      amount: quotation.total_amount || 0,
+      quotationId: quotation.id,
+      quotationStatus: quotation.status
+    })),
     ...paymentTimeline.map((payment, index) => ({
       id: `payment-${index + 1}`,
       title: `${payment.label} Payment #${index + 1}`,
@@ -1027,8 +938,6 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
                     ? 'bg-red-500'
                     : event.id?.startsWith('payment-')
                     ? 'bg-yellow-500'
-                    : event.status === 'rejected'
-                    ? 'bg-red-500'
                     : event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
                     ? 'bg-green-500'
                     : 'bg-gray-400'
@@ -1042,8 +951,6 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
                     ? 'bg-red-50 border border-red-300'
                     : event.id?.startsWith('payment-')
                     ? 'bg-yellow-50'
-                    : event.status === 'rejected'
-                    ? 'bg-red-50 border border-red-300'
                     : event.status === 'completed' || event.status === 'approved' || event.status === 'paid'
                     ? 'bg-green-50'
                     : 'bg-gray-50'
@@ -1063,22 +970,11 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
                         <p className="text-xs text-red-600 mt-1 font-medium">Remaining: ₹{Number(event.remainingAmount).toLocaleString('en-IN')}</p>
                       )}
                       
-                      {/* View buttons for quotations and PIs */}
+                      {/* View button for quotations */}
                       {event.quotationId && (
                         <div className="mt-2 flex items-center space-x-2">
                           <button
                             onClick={() => handleViewQuotation(event.quotationId)}
-                            className="text-blue-600 hover:text-blue-800 text-xs flex items-center space-x-1"
-                          >
-                            <Eye className="h-3 w-3" />
-                            <span>View</span>
-                          </button>
-                        </div>
-                      )}
-                      {event.piId && (
-                        <div className="mt-2 flex items-center space-x-2">
-                          <button
-                            onClick={() => handleViewPI(event.piId)}
                             className="text-blue-600 hover:text-blue-800 text-xs flex items-center space-x-1"
                           >
                             <Eye className="h-3 w-3" />

@@ -53,6 +53,7 @@ class LeadService {
       address: lead.address,
       gstNo: lead.gst_no,
       state: lead.state,
+      division: lead.division,
       customerType: lead.customer_type,
       date: lead.date,
       followUpStatus: lead.follow_up_status || lead.connected_status || lead.telecaller_status,
@@ -223,6 +224,7 @@ class LeadService {
         : (customerData.productNames || 'N/A'),
       address: customerData.address || null,
       state: customerData.state || null,
+      division: customerData.division || null,
       assignedSalesperson: (() => {
         const val = customerData.assignedSalesperson;
         if (!val || val === '' || String(val).trim() === '' || String(val).trim().toLowerCase() === 'unassigned' || String(val).trim().toLowerCase() === 'assigned') return null;

@@ -533,9 +533,6 @@ export default function LastCall() {
         
         console.log(`[LastCall] Received ${leadsData.length} leads from API for user: ${user?.email}`);
         
-        // Filter leads - only show leads that have actual follow-up/call data
-        // This means they must have follow_up_status or follow_up_remark (indicating a call/interaction happened)
-        // AND the follow-up date must be <= today's date
         const today = new Date();
         today.setHours(23, 59, 59, 999); // Set to end of today for comparison
         
@@ -543,15 +540,43 @@ export default function LastCall() {
           const hasFollowUpStatus = lead.follow_up_status && lead.follow_up_status.trim() !== '';
           const hasFollowUpRemark = lead.follow_up_remark && lead.follow_up_remark.trim() !== '';
           
-          // Only include leads that have actual call/follow-up data
-          if (!hasFollowUpStatus && !hasFollowUpRemark) {
+          // Check for scheduled dates (same logic as ScheduledCall page)
+          const hasFollowUpDate = lead.follow_up_date && lead.follow_up_date !== 'N/A' && lead.follow_up_date !== '';
+          const hasFollowUpTime = lead.follow_up_time && lead.follow_up_time !== 'N/A' && lead.follow_up_time !== '';
+          const hasNextMeetingDate = lead.next_meeting_date && lead.next_meeting_date !== 'N/A' && lead.next_meeting_date !== '';
+          const hasNextMeetingTime = lead.next_meeting_time && lead.next_meeting_time !== 'N/A' && lead.next_meeting_time !== '';
+          const hasMeetingDate = lead.meeting_date && lead.meeting_date !== 'N/A' && lead.meeting_date !== '';
+          const hasMeetingTime = lead.meeting_time && lead.meeting_time !== 'N/A' && lead.meeting_time !== '';
+          const hasScheduledDate = lead.scheduled_date && lead.scheduled_date !== 'N/A' && lead.scheduled_date !== '';
+          const hasScheduledTime = lead.scheduled_time && lead.scheduled_time !== 'N/A' && lead.scheduled_time !== '';
+          const hasNextMeetingStatus = lead.sales_status === 'next_meeting' && lead.sales_status_remark;
+          
+          const hasScheduledDateOrTime = hasFollowUpDate || hasFollowUpTime || hasNextMeetingDate || hasNextMeetingTime || 
+                                         hasMeetingDate || hasMeetingTime || hasScheduledDate || hasScheduledTime || hasNextMeetingStatus;
+          
+          // Include leads that have follow-up status/remark OR scheduled dates
+          if (!hasFollowUpStatus && !hasFollowUpRemark && !hasScheduledDateOrTime) {
             return false;
           }
           
-          // Check if the follow-up date is <= today
+          // Check if the follow-up/scheduled date is <= today
           let callDate = null;
+          
+          // Priority: follow_up_date > next_meeting_date > meeting_date > scheduled_date
           if (lead.follow_up_date) {
             callDate = new Date(lead.follow_up_date);
+          } else if (lead.next_meeting_date) {
+            callDate = new Date(lead.next_meeting_date);
+          } else if (lead.meeting_date) {
+            callDate = new Date(lead.meeting_date);
+          } else if (lead.scheduled_date) {
+            callDate = new Date(lead.scheduled_date);
+          } else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
+            // Extract date from remark format like "2025-10-28 AT 19:10"
+            const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
+            if (dateMatch) {
+              callDate = new Date(dateMatch[1]);
+            }
           } else if (lead.updated_at) {
             callDate = new Date(lead.updated_at);
           }
@@ -561,7 +586,7 @@ export default function LastCall() {
             return false;
           }
           
-          // Only include if call date is <= today
+          // Only include if call/scheduled date is <= today
           return callDate <= today;
         });
         
@@ -842,13 +867,29 @@ export default function LastCall() {
     const groups = {};
     
     filteredLeads.forEach(lead => {
-      // Use follow_up_date if available, otherwise use updated_at
+      // Priority: follow_up_date > next_meeting_date > meeting_date > scheduled_date > updated_at
       let dateObj = null;
       let dateKey = '';
       
       if (lead.follow_up_date) {
         dateObj = new Date(lead.follow_up_date);
         dateKey = lead.follow_up_date; // Use ISO date string as key
+      } else if (lead.next_meeting_date) {
+        dateObj = new Date(lead.next_meeting_date);
+        dateKey = lead.next_meeting_date;
+      } else if (lead.meeting_date) {
+        dateObj = new Date(lead.meeting_date);
+        dateKey = lead.meeting_date;
+      } else if (lead.scheduled_date) {
+        dateObj = new Date(lead.scheduled_date);
+        dateKey = lead.scheduled_date;
+      } else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
+        // Extract date from remark format like "2025-10-28 AT 19:10"
+        const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) {
+          dateObj = new Date(dateMatch[1]);
+          dateKey = dateMatch[1];
+        }
       } else if (lead.updated_at) {
         dateObj = new Date(lead.updated_at);
         dateKey = lead.updated_at.split('T')[0]; // Use date part only
@@ -1143,9 +1184,32 @@ export default function LastCall() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {lead.follow_up_date 
-                              ? new Date(lead.follow_up_date).toLocaleDateString('en-GB') 
-                              : (lead.updated_at ? new Date(lead.updated_at).toLocaleDateString('en-GB') : 'N/A')}
+                            {(() => {
+                              // Priority: follow_up_date > next_meeting_date > meeting_date > scheduled_date > updated_at
+                              let dateToDisplay = null;
+                              
+                              if (lead.follow_up_date) {
+                                dateToDisplay = lead.follow_up_date;
+                              } else if (lead.next_meeting_date) {
+                                dateToDisplay = lead.next_meeting_date;
+                              } else if (lead.meeting_date) {
+                                dateToDisplay = lead.meeting_date;
+                              } else if (lead.scheduled_date) {
+                                dateToDisplay = lead.scheduled_date;
+                              } else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
+                                // Extract date from remark format like "2025-10-28 AT 19:10"
+                                const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
+                                if (dateMatch) {
+                                  dateToDisplay = dateMatch[1];
+                                }
+                              } else if (lead.updated_at) {
+                                dateToDisplay = lead.updated_at;
+                              }
+                              
+                              return dateToDisplay 
+                                ? new Date(dateToDisplay).toLocaleDateString('en-GB') 
+                                : 'N/A';
+                            })()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex items-center space-x-2">
