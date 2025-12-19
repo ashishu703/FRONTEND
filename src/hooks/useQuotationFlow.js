@@ -57,9 +57,10 @@ export function useQuotationFlow(customerId, isRefreshing = false) {
     return () => clearInterval(interval)
   }, [customerId])
 
-  const handleSaveQuotation = async (quotationData, viewingCustomer) => {
+  const handleSaveQuotation = async (quotationData, viewingCustomer, quotationId = null) => {
     try {
       console.log('💾 Saving quotation with data:', quotationData);
+      const isEdit = !!quotationId;
       
       const quotationPayload = {
         customerId: viewingCustomer.id, 
@@ -110,22 +111,54 @@ export function useQuotationFlow(customerId, isRefreshing = false) {
           gstRate: item.gstRate || 18.00,
           taxableAmount: item.amount, 
           gstAmount: (item.amount * (item.gstRate || 18.00) / 100),
-          totalAmount: item.amount * (1 + (item.gstRate || 18.00) / 100)
+          totalAmount: item.amount * (1 + (item.gstRate || 18.00) / 100),
+          remark: item.remark || ''
         }))
       }
       
       console.log('📤 Quotation payload being sent:', quotationPayload);
-      const response = await quotationService.createQuotation(quotationPayload)
-      if (response.success) {
-        const newQuotation = QuotationHelper.normalizeQuotation(response.data, viewingCustomer)
-        setQuotations(prev => [newQuotation, ...prev])
-        Toast.success('Quotation created and saved successfully!')
-        return true
+      
+      let response;
+      if (isEdit) {
+        // Update existing quotation
+        response = await quotationService.updateQuotation(quotationId, quotationPayload);
+        if (response.success) {
+          const updatedQuotation = QuotationHelper.normalizeQuotation(response.data, viewingCustomer);
+          setQuotations(prev => prev.map(q => (q.id === quotationId ? updatedQuotation : q)));
+          Toast.success('Quotation updated successfully!');
+          
+          // Auto-submit for approval after edit
+          try {
+            const submitResponse = await quotationService.submitForVerification(quotationId);
+            if (submitResponse?.success) {
+              const newStatus = submitResponse.data?.status || 'pending';
+              setQuotations(prev => prev.map(q => (q.id === quotationId ? { ...q, status: newStatus, verificationSentAt: new Date().toISOString() } : q)));
+              Toast.success('Quotation updated and sent for approval!');
+            } else {
+              Toast.warning('Quotation updated but failed to submit for approval. Please submit manually.');
+            }
+          } catch (submitError) {
+            console.error('Error submitting for approval:', submitError);
+            Toast.warning('Quotation updated but failed to submit for approval. Please submit manually.');
+          }
+          
+          return true;
+        }
+      } else {
+        // Create new quotation
+        response = await quotationService.createQuotation(quotationPayload);
+        if (response.success) {
+          const newQuotation = QuotationHelper.normalizeQuotation(response.data, viewingCustomer);
+          setQuotations(prev => [newQuotation, ...prev]);
+          Toast.success('Quotation created and saved successfully!');
+          return true;
+        }
       }
     } catch (error) {
-      Toast.error('Failed to save quotation to database')
+      console.error('Error saving quotation:', error);
+      Toast.error(isEdit ? 'Failed to update quotation' : 'Failed to save quotation to database');
     }
-    return false
+    return false;
   }
 
   const handleViewQuotation = async (quotation) => {
@@ -166,7 +199,8 @@ export function useQuotationFlow(customerId, isRefreshing = false) {
               total: i.total_amount || i.total,
               hsn: i.hsn_code || i.hsn,
               hsnCode: i.hsn_code || i.hsn,
-              gstRate: i.gst_rate || i.gstRate || 18
+              gstRate: i.gst_rate || i.gstRate || 18,
+              remark: i.remark || ''
             })),
 
             // Financial summary

@@ -40,6 +40,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
   const [viewingCustomerForQuotation, setViewingCustomerForQuotation] = React.useState(null)
   const [showAddCustomer, setShowAddCustomer] = React.useState(false)
   const [showCreateQuotation, setShowCreateQuotation] = React.useState(false)
+  const [editingQuotation, setEditingQuotation] = React.useState(null)
   const [selectedCustomerForQuotation, setSelectedCustomerForQuotation] = React.useState(null)
   const [selectedCustomerForPI, setSelectedCustomerForPI] = React.useState(null)
   const [selectedQuotationForPI, setSelectedQuotationForPI] = React.useState(null)
@@ -76,6 +77,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
     gstNo: false,
     address: true,
     state: true,
+    division: false,
     customerType: false,
     leadSource: false,
     salesStatus: false,
@@ -139,7 +141,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
       const mapped = rows.map((r) => ({
         id: r.id, name: r.name, phone: r.phone, email: r.email || 'N/A', business: r.business || 'N/A',
         address: r.address || 'N/A', gstNo: r.gst_no || 'N/A', productName: r.product_type || 'N/A',
-        state: r.state || 'N/A', enquiryBy: r.lead_source || 'N/A', customerType: r.customer_type || 'N/A',
+        state: r.state || 'N/A', division: r.division || null, enquiryBy: r.lead_source || 'N/A', customerType: r.customer_type || 'N/A',
         date: r.date ? new Date(r.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         salesStatus: r.sales_status || 'pending', salesStatusRemark: r.sales_status_remark || null,
         salesStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
@@ -329,6 +331,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
         formData.append('gst_no', customerData.gstNumber || '')
         formData.append('product_type', customerData.productName || 'N/A')
         formData.append('state', customerData.state || 'N/A')
+        formData.append('division', customerData.division || '')
         formData.append('lead_source', customerData.leadSource || 'N/A')
         formData.append('customer_type', customerData.customerType || 'N/A')
         formData.append('date', customerData.date)
@@ -374,6 +377,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
         formData.append('gst_no', customerData.gstNumber || '')
         formData.append('product_type', customerData.productName || '')
         formData.append('state', customerData.state || '')
+        formData.append('division', customerData.division || '')
         formData.append('lead_source', customerData.leadSource || '')
         formData.append('customer_type', customerData.customerType || '')
         formData.append('date', customerData.date || '')
@@ -455,6 +459,26 @@ export default function CustomerListContent({ isDarkMode = false }) {
     }
   }
 
+  // Edit quotation handler
+  const handleEditQuotation = async (quotation, customer) => {
+    try {
+      // Fetch full quotation details
+      const response = await quotationService.getQuotation(quotation.id)
+      if (response?.success) {
+        const fullQuotation = response.data
+        // Set customer and quotation for editing
+        setViewingCustomerForQuotation(customer)
+        setEditingQuotation(fullQuotation)
+        setShowCreateQuotation(true)
+      } else {
+        Toast.error('Failed to load quotation for editing')
+      }
+    } catch (error) {
+      console.error('Error loading quotation for edit:', error)
+      Toast.error('Failed to load quotation for editing')
+    }
+  }
+
   // Save quotation handler
   const handleSaveQuotation = async (quotationData) => {
     const customerToUse = viewingCustomerForQuotation || viewingCustomer
@@ -462,10 +486,12 @@ export default function CustomerListContent({ isDarkMode = false }) {
       Toast.error('Customer not found')
       return
     }
-    const success = await quotationHook.handleSaveQuotation(quotationData, customerToUse)
+    const quotationId = quotationData.quotationId || editingQuotation?.id || null
+    const success = await quotationHook.handleSaveQuotation(quotationData, customerToUse, quotationId)
     if (success) {
       setShowCreateQuotation(false)
       setViewingCustomerForQuotation(null)
+      setEditingQuotation(null)
       // Refresh quotations list
       if (customerToUse.id) {
         const res = await quotationService.getQuotationsByCustomer(customerToUse.id)
@@ -658,6 +684,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
                 {columnVisibility.gstNo && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">GST No</th>}
                 {columnVisibility.address && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Address</th>}
                 {columnVisibility.state && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">State</th>}
+                {columnVisibility.division && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Division</th>}
                 {columnVisibility.customerType && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer Type</th>}
                 {columnVisibility.leadSource && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lead Source</th>}
                 {columnVisibility.salesStatus && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sales Status</th>}
@@ -701,6 +728,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
                   {columnVisibility.gstNo && <td className="px-4 py-3 text-sm text-gray-500">{customer.gstNo !== 'N/A' ? customer.gstNo : '-'}</td>}
                   {columnVisibility.address && <td className="px-4 py-3 text-sm text-gray-500">{customer.address}</td>}
                   {columnVisibility.state && <td className="px-4 py-3 text-sm text-gray-500">{customer.state}</td>}
+                  {columnVisibility.division && <td className="px-4 py-3 text-sm text-gray-500">{customer.division || '-'}</td>}
                   {columnVisibility.customerType && <td className="px-4 py-3"><span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">{customer.customerType}</span></td>}
                   {columnVisibility.leadSource && <td className="px-4 py-3 text-sm text-gray-500">{customer.enquiryBy !== 'N/A' ? customer.enquiryBy : '-'}</td>}
                   {columnVisibility.salesStatus && <td className="px-4 py-3 text-sm text-gray-500">{StatusConverter.toTitleStatus(customer.salesStatus)}</td>}
@@ -743,7 +771,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
       </div>
 
       {/* Modals */}
-      {viewingCustomer && <CustomerDetailSidebar customer={viewingCustomer} onClose={() => setViewingCustomer(null)} onEdit={() => { setEditingCustomer(viewingCustomer); setViewingCustomer(null); setShowAddCustomer(true) }} onQuotation={handleQuotation} quotations={quotationHook.quotations} onViewQuotation={handleViewQuotation} onSendQuotation={quotationHook.handleSendQuotation} onDeleteQuotation={quotationHook.handleDeleteQuotation} onCreatePI={(quotation, customer) => { setSelectedQuotationForPI(quotation); setViewingCustomerForQuotation(customer); setShowCreatePIModal(true); setViewingCustomer(null) }} quotationPIs={piHook.quotationPIs} piHook={piHook} onViewPI={piHook.handleViewPI} />}
+      {viewingCustomer && <CustomerDetailSidebar customer={viewingCustomer} onClose={() => setViewingCustomer(null)} onEdit={() => { setEditingCustomer(viewingCustomer); setViewingCustomer(null); setShowAddCustomer(true) }} onQuotation={handleQuotation} quotations={quotationHook.quotations} onViewQuotation={handleViewQuotation} onEditQuotation={handleEditQuotation} onSendQuotation={quotationHook.handleSendQuotation} onDeleteQuotation={quotationHook.handleDeleteQuotation} onCreatePI={(quotation, customer) => { setSelectedQuotationForPI(quotation); setViewingCustomerForQuotation(customer); setShowCreatePIModal(true); setViewingCustomer(null) }} quotationPIs={piHook.quotationPIs} piHook={piHook} onViewPI={piHook.handleViewPI} />}
       {showAddCustomer && <AddCustomerForm onClose={() => { setShowAddCustomer(false); setEditingCustomer(null) }} onSave={handleSaveCustomer} editingCustomer={editingCustomer} />}
       
       {/* Duplicate Lead Modal */}
@@ -805,7 +833,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
           </div>
         </div>
       )}
-      {showCreateQuotation && viewingCustomerForQuotation && <CreateQuotationForm customer={viewingCustomerForQuotation} user={user} onClose={() => { setShowCreateQuotation(false); setViewingCustomerForQuotation(null) }} onSave={handleSaveQuotation} />}
+      {showCreateQuotation && viewingCustomerForQuotation && <CreateQuotationForm customer={viewingCustomerForQuotation} user={user} existingQuotation={editingQuotation} onClose={() => { setShowCreateQuotation(false); setViewingCustomerForQuotation(null); setEditingQuotation(null) }} onSave={handleSaveQuotation} />}
       {showCreatePIModal && selectedQuotationForPI && viewingCustomerForQuotation && <CreatePIForm quotation={selectedQuotationForPI} customer={viewingCustomerForQuotation} user={user} modal={true} onClose={async (savedPI) => { 
         setShowCreatePIModal(false)
         if (selectedQuotationForPI?.id) {
@@ -830,7 +858,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
         />
       )}
       <ImportLeadsModal show={showImportModal} onClose={() => setShowImportModal(false)} onImportSuccess={handleImportSuccess} />
-      <ColumnVisibilityModal show={showColumnModal} onClose={() => setShowColumnModal(false)} columns={{ namePhone: 'Name/Phone', email: 'Email', whatsapp: 'WhatsApp', business: 'Business', productType: 'Product Type', gstNo: 'GST No', address: 'Address', state: 'State', customerType: 'Customer Type', leadSource: 'Lead Source', salesStatus: 'Sales Status', salesStatusRemark: 'Sales Status Remark', followUpStatus: 'Follow Up Status', followUpRemark: 'Follow Up Remark', followUpDate: 'Follow Up Date', followUpTime: 'Follow Up Time', date: 'Date' }} visibleColumns={columnVisibility} onToggleColumn={handleToggleColumn} />
+      <ColumnVisibilityModal show={showColumnModal} onClose={() => setShowColumnModal(false)} columns={{ namePhone: 'Name/Phone', email: 'Email', whatsapp: 'WhatsApp', business: 'Business', productType: 'Product Type', gstNo: 'GST No', address: 'Address', state: 'State', division: 'Division', customerType: 'Customer Type', leadSource: 'Lead Source', salesStatus: 'Sales Status', salesStatusRemark: 'Sales Status Remark', followUpStatus: 'Follow Up Status', followUpRemark: 'Follow Up Remark', followUpDate: 'Follow Up Date', followUpTime: 'Follow Up Time', date: 'Date' }} visibleColumns={columnVisibility} onToggleColumn={handleToggleColumn} />
       <TagManager showCreateTagModal={showCreateTagModal} setShowCreateTagModal={setShowCreateTagModal} newTagName={newTagName} setNewTagName={setNewTagName} selectedLeadsForTag={selectedLeadsForTag} setSelectedLeadsForTag={setSelectedLeadsForTag} customers={leadsHook.customers} setCustomers={leadsHook.setCustomers} isCreatingTag={isCreatingTag} setIsCreatingTag={setIsCreatingTag} handleToggleLeadForTag={handleToggleLeadForTag} handleSelectAllLeadsForTag={handleSelectAllLeadsForTag} />
       
       {/* Bulk Actions Modal */}

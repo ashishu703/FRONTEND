@@ -134,7 +134,8 @@ export class QuotationDataMapper {
         buyerRate: String(rateValue),
         productName: item.productName || item.name || '',
         unit: item.unit || item.per || '',
-        amount: item.amount || 0
+        amount: item.amount || 0,
+        remark: item.remark || ''
       };
     });
   }

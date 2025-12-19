@@ -69,7 +69,7 @@ const calculateTotals = (items, discountRate, taxRate) => {
   };
 };
 
-export default function CreateQuotationForm({ customer, user, onClose, onSave, standalone = false }) {
+export default function CreateQuotationForm({ customer, user, onClose, onSave, standalone = false, existingQuotation = null }) {
   const getSevenDaysLater = (dateString) => {
     const date = new Date(dateString);
     date.setDate(date.getDate() + 7);
@@ -93,7 +93,8 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
         companyRate: 0,
         buyerRate: "",
         amount: 0,
-        hsn: ""
+        hsn: "",
+        remark: ""
       }
     ],
     subtotal: 0,
@@ -107,6 +108,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
     dispatchThrough: "",
     deliveryTerms: "",
     materialType: "",
+    remark: "",
     termsSections: defaultQuotationTerms.map(section => ({ ...section, points: [...section.points] })),
     // Editable bill-to information
     billTo: {
@@ -157,6 +159,88 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
         }
     }));
   }, [customer]);
+
+  // Load existing quotation data for editing
+  useEffect(() => {
+    if (existingQuotation && existingQuotation.id) {
+      const dbQuotation = existingQuotation;
+      
+      // Parse JSON fields
+      const billTo = typeof dbQuotation.bill_to === 'string' 
+        ? JSON.parse(dbQuotation.bill_to) 
+        : (dbQuotation.bill_to || {});
+      
+      const bankDetails = typeof dbQuotation.bank_details === 'string'
+        ? JSON.parse(dbQuotation.bank_details)
+        : (dbQuotation.bank_details || {
+            bankName: "ICICI Bank",
+            branchName: "WRIGHT TOWN JABALPUR",
+            accountNumber: "657605601783",
+            ifscCode: "ICIC0006576"
+          });
+      
+      const termsSections = typeof dbQuotation.terms_sections === 'string'
+        ? JSON.parse(dbQuotation.terms_sections)
+        : (dbQuotation.terms_sections || defaultQuotationTerms.map(section => ({ ...section, points: [...section.points] })));
+      
+      // Format items
+      const items = (dbQuotation.items || []).map((item, index) => ({
+        id: index + 1,
+        productName: item.product_name || item.productName || "",
+        quantity: item.quantity || "",
+        unit: item.unit || "",
+        companyRate: 0,
+        buyerRate: item.unit_price || item.buyerRate || "",
+        amount: item.taxable_amount || item.amount || 0,
+        hsn: item.hsn_code || item.hsn || "",
+        remark: item.remark || ""
+      }));
+      
+      setQuotationData({
+        quotationNumber: dbQuotation.quotation_number || `ANQ${Date.now().toString().slice(-6)}`,
+        quotationDate: dbQuotation.quotation_date ? dbQuotation.quotation_date.split('T')[0] : new Date().toISOString().split('T')[0],
+        validUpto: dbQuotation.valid_until ? dbQuotation.valid_until.split('T')[0] : getSevenDaysLater(new Date().toISOString().split('T')[0]),
+        selectedBranch: dbQuotation.branch || '',
+        items: items.length > 0 ? items : [{
+          id: 1,
+          productName: "",
+          quantity: "",
+          unit: "",
+          companyRate: 0,
+          buyerRate: "",
+          amount: 0,
+          hsn: "",
+          remark: ""
+        }],
+        subtotal: parseFloat(dbQuotation.subtotal || 0),
+        discountRate: parseFloat(dbQuotation.discount_rate || 0),
+        discountAmount: parseFloat(dbQuotation.discount_amount || 0),
+        taxRate: parseFloat(dbQuotation.tax_rate || 18),
+        taxAmount: parseFloat(dbQuotation.tax_amount || 0),
+        total: parseFloat(dbQuotation.total_amount || 0),
+        paymentMode: dbQuotation.payment_mode || "",
+        transportTc: dbQuotation.transport_tc || "",
+        dispatchThrough: dbQuotation.dispatch_through || "",
+        deliveryTerms: dbQuotation.delivery_terms || "",
+        materialType: dbQuotation.material_type || "",
+        remark: dbQuotation.remark || "",
+        termsSections: termsSections,
+        billTo: billTo,
+        transportDetails: {
+          lrNo: "",
+          transport: "",
+          transportId: "",
+          vehicleNumber: ""
+        },
+        bankDetails: bankDetails
+      });
+      
+      // Set template if available
+      if (dbQuotation.template) {
+        setSelectedTemplate(dbQuotation.template);
+      }
+    }
+  }, [existingQuotation]);
 
   // Load products
   useEffect(() => {
@@ -348,7 +432,8 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
         companyRate: 0,
         buyerRate: "",
         amount: 0,
-        hsn: ""
+        hsn: "",
+        remark: ""
       }]
     }));
   };
@@ -383,10 +468,11 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
 
     try {
       await onSave({
-      ...quotationData,
+        ...quotationData,
         customer,
-      createdAt: new Date().toISOString(),
-        template: selectedTemplate
+        createdAt: new Date().toISOString(),
+        template: selectedTemplate,
+        quotationId: existingQuotation?.id || null // Pass quotation ID if editing
       });
       // Let parent decide whether to close (onSave may handle it)
       if (!standalone && typeof onClose === 'function') {
@@ -430,26 +516,232 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
         // Keep it visible for PDF - no need to hide
       }
 
-      // PDF options
+      // PDF options - Optimized for single page A4, HD quality, and color preservation
       const opt = {
-        margin: [0.4, 0.4, 0.4, 0.4],
+        margin: [0.05, 0.05, 0.05, 0.05], // Minimal margins for maximum space
         filename: `Quotation-${previewData?.quotationNumber || 'Draft'}-${(previewData?.billTo?.business || 'Customer').replace(/\s+/g, '-')}.pdf`,
-        image: { type: 'jpeg', quality: 0.8 },
+        image: { type: 'png', quality: 1.0 }, // PNG preserves colors better than JPEG
         html2canvas: { 
-          scale: 1.1,
+          scale: 3.5, // High scale for HD quality (prevents blurry text)
           useCORS: true,
           letterRendering: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
-          logging: false
+          logging: false,
+          removeContainer: false, // Preserve container for better rendering
+          foreignObjectRendering: false, // Better color preservation
+          imageTimeout: 0, // No timeout for images
+          onclone: (clonedDoc) => {
+            // Inject optimized CSS to fit content on single A4 page and preserve colors
+            const style = clonedDoc.createElement('style');
+            style.textContent = `
+              * {
+                box-sizing: border-box;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              body {
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              #quotation-content {
+                width: 210mm !important;
+                max-height: 297mm !important;
+                overflow: hidden !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .page {
+                width: 210mm !important;
+                min-height: auto !important;
+                max-height: 297mm !important;
+                padding: 6px 12px 8px !important;
+                margin: 0 !important;
+                overflow: hidden !important;
+                page-break-inside: avoid !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .mt-8 { margin-top: 3px !important; }
+              .mt-16 { margin-top: 5px !important; }
+              .top-title { 
+                padding: 5px 0 !important; 
+                font-size: 15px !important;
+                margin-bottom: 3px !important;
+                background: #87CEEB !important;
+                background-color: #87CEEB !important;
+                color: #fff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              .section-header { 
+                padding: 3px 0 !important; 
+                font-size: 10px !important;
+                margin-top: 4px !important;
+                background: #87CEEB !important;
+                background-color: #87CEEB !important;
+                color: #fff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              .sub-header {
+                background: #E0F2FE !important;
+                background-color: #E0F2FE !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              .product-header th {
+                background: #E0F2FE !important;
+                background-color: #E0F2FE !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              .summary-label {
+                background: #E0F2FE !important;
+                background-color: #E0F2FE !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              .small { font-size: 8.5px !important; }
+              .terms-section { margin-top: 3px !important; }
+              .terms-title { margin-top: 6px !important; }
+              .terms-section p { 
+                margin: 0.5px 0 !important; 
+                font-size: 7.5px !important;
+                line-height: 1.15 !important;
+              }
+              .terms-section-title { 
+                font-size: 8.5px !important;
+                margin-bottom: 0.5px !important;
+              }
+              .prepared-by { margin-top: 12px !important; }
+              .bordered td, .bordered th { 
+                padding: 1.5px 3px !important; 
+                font-size: 8.5px !important;
+              }
+              .product-remark {
+                font-size: 7.5px !important;
+                margin-top: 0.5px !important;
+              }
+              table { 
+                font-size: 8.5px !important;
+              }
+              .company-block p { 
+                margin: 0.5px 0 !important; 
+                font-size: 8.5px !important;
+              }
+              .info-box td { 
+                padding: 1.5px 3px !important; 
+                font-size: 8.5px !important;
+              }
+              .info-title {
+                background: #E0F2FE !important;
+                background-color: #E0F2FE !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              .logo-box {
+                width: 100px !important;
+                height: 80px !important;
+              }
+              .company-name {
+                font-size: 12px !important;
+              }
+            `;
+            clonedDoc.head.appendChild(style);
+            
+            // Ensure content fits on single page and force colors
+            const clonedElement = clonedDoc.getElementById('quotation-content');
+            if (clonedElement) {
+              clonedElement.style.width = '210mm';
+              clonedElement.style.maxHeight = '297mm';
+              clonedElement.style.overflow = 'hidden';
+              clonedElement.style.webkitPrintColorAdjust = 'exact';
+              clonedElement.style.printColorAdjust = 'exact';
+              
+              // Find and optimize the page element
+              const pageElement = clonedElement.querySelector('.page');
+              if (pageElement) {
+                pageElement.style.width = '210mm';
+                pageElement.style.maxHeight = '297mm';
+                pageElement.style.overflow = 'hidden';
+                pageElement.style.pageBreakInside = 'avoid';
+                pageElement.style.webkitPrintColorAdjust = 'exact';
+                pageElement.style.printColorAdjust = 'exact';
+              }
+              
+              // Force background colors as inline styles on all colored elements
+              const topTitles = clonedElement.querySelectorAll('.top-title');
+              topTitles.forEach(el => {
+                el.style.background = '#87CEEB';
+                el.style.backgroundColor = '#87CEEB';
+                el.style.color = '#fff';
+                el.style.webkitPrintColorAdjust = 'exact';
+                el.style.printColorAdjust = 'exact';
+              });
+              
+              const sectionHeaders = clonedElement.querySelectorAll('.section-header');
+              sectionHeaders.forEach(el => {
+                el.style.background = '#87CEEB';
+                el.style.backgroundColor = '#87CEEB';
+                el.style.color = '#fff';
+                el.style.webkitPrintColorAdjust = 'exact';
+                el.style.printColorAdjust = 'exact';
+              });
+              
+              const subHeaders = clonedElement.querySelectorAll('.sub-header, .info-title');
+              subHeaders.forEach(el => {
+                el.style.background = '#E0F2FE';
+                el.style.backgroundColor = '#E0F2FE';
+                el.style.webkitPrintColorAdjust = 'exact';
+                el.style.printColorAdjust = 'exact';
+              });
+              
+              const productHeaders = clonedElement.querySelectorAll('.product-header th');
+              productHeaders.forEach(el => {
+                el.style.background = '#E0F2FE';
+                el.style.backgroundColor = '#E0F2FE';
+                el.style.webkitPrintColorAdjust = 'exact';
+                el.style.printColorAdjust = 'exact';
+              });
+              
+              const summaryLabels = clonedElement.querySelectorAll('.summary-label');
+              summaryLabels.forEach(el => {
+                el.style.background = '#E0F2FE';
+                el.style.backgroundColor = '#E0F2FE';
+                el.style.webkitPrintColorAdjust = 'exact';
+                el.style.printColorAdjust = 'exact';
+              });
+              
+              // Force color preservation on all elements
+              const allElements = clonedElement.querySelectorAll('*');
+              allElements.forEach(el => {
+                el.style.webkitPrintColorAdjust = 'exact';
+                el.style.printColorAdjust = 'exact';
+                el.style.colorAdjust = 'exact';
+              });
+            }
+          }
         },
         jsPDF: { 
-          unit: 'in', 
+          unit: 'mm', 
           format: 'a4', 
           orientation: 'portrait',
-          compress: true,
+          compress: false, // Disable compression to preserve quality and colors
           putOnlyUsedFonts: true
-        }
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // Prevent page breaks
       };
 
       // Generate and download PDF from the currently visible template
@@ -584,7 +876,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
               <FileText className="h-5 w-5 text-white" />
             </div>
             <div>
-              <CardTitle className="text-xl font-semibold">Create Quotation</CardTitle>
+              <CardTitle className="text-xl font-semibold">{existingQuotation ? 'Edit Quotation' : 'Create Quotation'}</CardTitle>
               <p className="text-sm text-gray-600">For {customer?.name}</p>
             </div>
           </div>
@@ -772,9 +1064,9 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                 <table className="w-full min-w-full table-fixed">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '30%' }}>Product Name</th>
+                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '28%' }}>Product Name</th>
                       <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '12%' }}>HSN/SAC</th>
-                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '8%' }}>Qty</th>
+                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '12%' }}>Qty</th>
                       <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '10%' }}>Unit</th>
                       <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '15%' }}>Buyer Rate</th>
                       <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '15%' }}>Amount</th>
@@ -782,86 +1074,99 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {quotationData.items.map((item, index) => (
-                      <tr key={item.id}>
-                        <td className="px-2 py-3">
-                          <div className="relative">
+                      <>
+                        <tr key={item.id}>
+                          <td className="px-2 py-3">
+                            <div className="relative">
+                              <input
+                                type="text"
+                                placeholder="Product name"
+                                value={item.productName}
+                                onChange={(e) => {
+                                  setProductSearchTerm(prev => ({ ...prev, [index]: e.target.value }));
+                                  handleItemChange(index, 'productName', e.target.value);
+                                }}
+                                onFocus={() => setProductSearchTerm(prev => ({ ...prev, [index]: item.productName || '' }))}
+                                onBlur={() => {
+                                  setTimeout(() => setProductSearchTerm(prev => {
+                                    const newState = { ...prev };
+                                    delete newState[index];
+                                    return newState;
+                                  }), 200);
+                                }}
+                                className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                required
+                                list={`product-list-${index}`}
+                              />
+                              <datalist id={`product-list-${index}`}>
+                                {products
+                                  .filter(p => !productSearchTerm[index] || 
+                                    p.name.toLowerCase().includes(productSearchTerm[index].toLowerCase()))
+                                  .slice(0, 20)
+                                  .map((product, idx) => (
+                                    <option key={idx} value={product.name} />
+                                  ))}
+                              </datalist>
+                            </div>
+                          </td>
+                          <td className="px-2 py-3">
                             <input
                               type="text"
-                              placeholder="Product name"
-                              value={item.productName}
-                              onChange={(e) => {
-                                setProductSearchTerm(prev => ({ ...prev, [index]: e.target.value }));
-                                handleItemChange(index, 'productName', e.target.value);
-                              }}
-                              onFocus={() => setProductSearchTerm(prev => ({ ...prev, [index]: item.productName || '' }))}
-                              onBlur={() => {
-                                setTimeout(() => setProductSearchTerm(prev => {
-                                  const newState = { ...prev };
-                                  delete newState[index];
-                                  return newState;
-                                }), 200);
-                              }}
-                              className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
-                              required
-                              list={`product-list-${index}`}
+                              placeholder="HSN/SAC"
+                              value={item.hsn || ''}
+                              onChange={(e) => handleItemChange(index, 'hsn', e.target.value)}
+                              className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono text-xs"
                             />
-                            <datalist id={`product-list-${index}`}>
-                              {products
-                                .filter(p => !productSearchTerm[index] || 
-                                  p.name.toLowerCase().includes(productSearchTerm[index].toLowerCase()))
-                                .slice(0, 20)
-                                .map((product, idx) => (
-                                  <option key={idx} value={product.name} />
-                                ))}
-                            </datalist>
-                          </div>
-                        </td>
-                        <td className="px-2 py-3">
-                          <input
-                            type="text"
-                            placeholder="HSN/SAC"
-                            value={item.hsn || ''}
-                            onChange={(e) => handleItemChange(index, 'hsn', e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 font-mono text-xs"
-                          />
-                        </td>
-                        <td className="px-2 py-3">
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder="Qty"
-                            value={item.quantity || ''}
-                            onChange={(e) => handleItemChange(index, 'quantity', e.target.value === '' ? '' : parseFloat(e.target.value) || '')}
-                            className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
-                          />
-                        </td>
-                        <td className="px-2 py-3">
-                          <select
-                            value={item.unit || ''}
-                            onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
-                            className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
-                          >
-                            <option value="">Select</option>
-                            {UNITS.map(unit => (
-                              <option key={unit} value={unit}>{unit}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-2 py-3">
+                          </td>
+                          <td className="px-2 py-3">
                             <input
                               type="number"
                               min="0"
-                              step="0.01"
-                            placeholder="Rate"
-                            value={item.buyerRate || ''}
-                            onChange={(e) => handleItemChange(index, 'buyerRate', e.target.value === '' ? '' : parseFloat(e.target.value) || '')}
-                            className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
-                          />
-                        </td>
-                        <td className="px-2 py-3 text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis">
-                          ₹{parseFloat(item.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                      </tr>
+                              placeholder="Qty"
+                              value={item.quantity || ''}
+                              onChange={(e) => handleItemChange(index, 'quantity', e.target.value === '' ? '' : parseFloat(e.target.value) || '')}
+                              className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            />
+                          </td>
+                          <td className="px-2 py-3">
+                            <select
+                              value={item.unit || ''}
+                              onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
+                              className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                              <option value="">Select</option>
+                              {UNITS.map(unit => (
+                                <option key={unit} value={unit}>{unit}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-2 py-3">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                              placeholder="Rate"
+                              value={item.buyerRate || ''}
+                              onChange={(e) => handleItemChange(index, 'buyerRate', e.target.value === '' ? '' : parseFloat(e.target.value) || '')}
+                              className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            />
+                          </td>
+                          <td className="px-2 py-3 text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                            ₹{parseFloat(item.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                        <tr key={`remark-${item.id}`} className="bg-gray-50">
+                          <td colSpan="6" className="px-2 py-2">
+                            <input
+                              type="text"
+                              placeholder="Enter remark for this product (optional)"
+                              value={item.remark || ''}
+                              onChange={(e) => handleItemChange(index, 'remark', e.target.value)}
+                              className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 italic text-gray-600"
+                            />
+                          </td>
+                        </tr>
+                      </>
                     ))}
                   </tbody>
                 </table>
@@ -958,6 +1263,24 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     placeholder="e.g. Original, Spare"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Remark Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-blue-500" />
+                Remarks
+              </h3>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Quotation Remark</label>
+                <textarea
+                  value={quotationData.remark}
+                  onChange={(e) => handleInputChange('remark', e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                  placeholder="Enter any additional remarks or notes for this quotation"
+                />
               </div>
             </div>
 

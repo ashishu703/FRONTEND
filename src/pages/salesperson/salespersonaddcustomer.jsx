@@ -73,6 +73,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     callRecordingFile: null,
     transferredTo: editingCustomer?.transferredTo || '',
     date: new Date().toISOString().split('T')[0],
+    division: editingCustomer?.division || '',
   })
 
   // Fetch salespersons when form opens
@@ -358,6 +359,20 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                   onChange={(e) => handleInputChange("state", e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter state"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-indigo-500" />
+                  Division
+                </label>
+                <input
+                  type="text"
+                  value={formData.division}
+                  onChange={(e) => handleInputChange("division", e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter division"
                 />
               </div>
 

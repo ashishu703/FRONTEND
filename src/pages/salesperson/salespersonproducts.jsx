@@ -1267,7 +1267,6 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         
         const allApprovedQuotations = extractApiArray(qRes);
         
-        // Filter to only show quotations with at least one PI
         const quotationsWithPI = await paymentTrackingServiceInstance.filterQuotationsWithPI(allApprovedQuotations);
         setApprovedQuotations(quotationsWithPI);
 

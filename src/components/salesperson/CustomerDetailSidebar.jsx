@@ -1,11 +1,11 @@
 import React from 'react'
-import { X, Eye, Package, Send, Trash2, FileText, Receipt } from 'lucide-react'
+import { X, Eye, Package, Send, Trash2, FileText, Receipt, Pencil } from 'lucide-react'
 import { QuotationHelper } from '../../utils/QuotationHelper'
 import Toast from '../../utils/Toast'
 
 export default function CustomerDetailSidebar({ 
   customer, onClose, onEdit, onQuotation, quotations, 
-  onViewQuotation, onSendQuotation, onDeleteQuotation, 
+  onViewQuotation, onEditQuotation, onSendQuotation, onDeleteQuotation, 
   onCreatePI, quotationPIs, piHook, onViewPI 
 }) {
   if (!customer) return null
@@ -140,6 +140,18 @@ export default function CustomerDetailSidebar({
                           >
                             <Eye className="h-3.5 w-3.5" />
                           </button>
+                          {quotation.id && onEditQuotation && (
+                            <button 
+                              onClick={() => {
+                                onEditQuotation(quotation, customer)
+                                onClose()
+                              }} 
+                              className="p-1.5 text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded" 
+                              title="Edit Quotation"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                           {quotation.status !== 'approved' && quotation.status !== 'rejected' && quotation.status !== 'pending_verification' && quotation.status !== 'pending' && (
                             <button 
                               onClick={() => onSendQuotation(quotation)} 
