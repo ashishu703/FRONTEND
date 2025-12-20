@@ -1,29 +1,110 @@
 "use client"
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Eye, Edit, Mail, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, RefreshCcw } from 'lucide-react';
+import { Eye, Edit, Mail, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCcw } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
 import { useAuth } from '../../hooks/useAuth';
 import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
+import { getProducts } from '../../constants/products';
 
 // Edit Lead Status Modal Component
 const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
+  // Parse enquired products from lead - support both old format (array of strings) and new format (array of objects)
+  const parseEnquiredProducts = () => {
+    if (!lead?.enquired_products) return [];
+    
+    try {
+      const parsed = Array.isArray(lead.enquired_products) 
+        ? lead.enquired_products 
+        : JSON.parse(lead.enquired_products || '[]');
+      
+      // Convert old format (strings) to new format (objects)
+      return parsed.map(item => {
+        if (typeof item === 'string') {
+          return { product: item, quantity: '', remark: '' };
+        }
+        return { product: item.product || item.name || '', quantity: item.quantity || '', remark: item.remark || '' };
+      });
+    } catch {
+      return [];
+    }
+  };
+  
+  const initialEnquiredProducts = parseEnquiredProducts();
+  
   const [formData, setFormData] = useState({
     sales_status: lead?.sales_status || '',
     sales_status_remark: lead?.sales_status_remark || '',
     follow_up_status: lead?.follow_up_status || '',
     follow_up_remark: lead?.follow_up_remark || '',
     follow_up_date: lead?.follow_up_date || '',
-    follow_up_time: lead?.follow_up_time || ''
+    follow_up_time: lead?.follow_up_time || '',
+    enquired_products: initialEnquiredProducts,
+    other_product: lead?.other_product || ''
   });
+  
+  const [products] = useState(() => getProducts());
+  const [showOtherInput, setShowOtherInput] = useState(
+    initialEnquiredProducts.some(p => p.product === 'Other')
+  );
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
+    }));
+  };
+
+  const handleProductSelect = (e) => {
+    const selectedProduct = e.target.value;
+    if (!selectedProduct || selectedProduct === '') return;
+    
+    // Don't add if already exists
+    if (formData.enquired_products.some(p => p.product === selectedProduct)) {
+      e.target.value = ''; // Reset dropdown
+      return;
+    }
+    
+    const hasOther = selectedProduct === 'Other' || formData.enquired_products.some(p => p.product === 'Other');
+    setShowOtherInput(hasOther);
+    
+    setFormData(prev => ({
+      ...prev,
+      enquired_products: [...prev.enquired_products, { product: selectedProduct, quantity: '', remark: '' }]
+    }));
+    
+    e.target.value = ''; // Reset dropdown after selection
+  };
+
+  const handleRemoveProduct = (indexToRemove) => {
+    const updatedProducts = formData.enquired_products.filter((_, index) => index !== indexToRemove);
+    const hasOther = updatedProducts.some(p => p.product === 'Other');
+    setShowOtherInput(hasOther);
+    
+    setFormData(prev => ({
+      ...prev,
+      enquired_products: updatedProducts
+    }));
+  };
+
+  const handleProductQuantityChange = (index, quantity) => {
+    setFormData(prev => ({
+      ...prev,
+      enquired_products: prev.enquired_products.map((item, i) => 
+        i === index ? { ...item, quantity } : item
+      )
+    }));
+  };
+
+  const handleProductRemarkChange = (index, remark) => {
+    setFormData(prev => ({
+      ...prev,
+      enquired_products: prev.enquired_products.map((item, i) => 
+        i === index ? { ...item, remark } : item
+      )
     }));
   };
 
@@ -68,8 +149,8 @@ const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   const showDateTimeFields = ['appointment scheduled', 'interested', 'negotiation', 'call back request'].includes(formData.follow_up_status);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-4">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 my-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Update Lead Status & Follow Up</h3>
           <button
@@ -143,6 +224,85 @@ const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter any remarks about the lead status..."
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Enquired Products
+            </label>
+            <select
+              onChange={handleProductSelect}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              defaultValue=""
+            >
+              <option value="">Select Product</option>
+              {products.map((product) => (
+                <option key={product.name} value={product.name}>
+                  {product.name}
+                </option>
+              ))}
+              <option value="Other">Other</option>
+            </select>
+            
+            {/* Display selected products */}
+            {formData.enquired_products.length > 0 && (
+              <div className="mt-2 max-h-64 overflow-y-auto space-y-2 pr-1">
+                {formData.enquired_products.map((item, index) => (
+                  <div key={index} className="bg-blue-50 px-3 py-3 rounded-md border border-blue-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-800 flex-1 break-words pr-2">
+                        {item.product === 'Other' ? formData.other_product || 'Other' : item.product}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveProduct(index)}
+                        className="text-red-600 hover:text-red-800 text-sm font-medium flex-shrink-0"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+                        <input
+                          type="text"
+                          value={item.quantity}
+                          onChange={(e) => handleProductQuantityChange(index, e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter quantity..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Remark</label>
+                        <textarea
+                          value={item.remark}
+                          onChange={(e) => handleProductRemarkChange(index, e.target.value)}
+                          rows={2}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter remark..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {showOtherInput && (
+              <div className="mt-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Other Product Name
+                </label>
+                <input
+                  type="text"
+                  name="other_product"
+                  value={formData.other_product}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter other product name..."
+                />
+              </div>
+            )}
           </div>
 
           {showDateTimeFields && (
@@ -299,7 +459,6 @@ export default function LeadStatusPage() {
 
   const fetchLeads = async (pageNum = currentPage, fetchAllForFiltering = false) => {
     if (fetchingRef.current) {
-      console.log('Already fetching leads, skipping duplicate call');
       return;
     }
     
@@ -320,7 +479,6 @@ export default function LeadStatusPage() {
       const leadsData = response?.data || [];
       const pagination = response?.pagination || {};
       
-      console.log(`[LeadStatus] Received ${leadsData.length} leads from API for user: ${user?.email}`);
 
       setLeads(leadsData);
       setTotalLeads(pagination.total || leadsData.length);
@@ -361,7 +519,6 @@ export default function LeadStatusPage() {
     }
 
     if (lastUserIdRef.current !== null && lastUserIdRef.current !== currentUserId) {
-      console.log('[LeadStatus] User changed, clearing leads. Old:', lastUserIdRef.current, 'New:', currentUserId);
       setLeads([]);
       setFilteredLeads([]);
       setError(null);
@@ -510,6 +667,12 @@ export default function LeadStatusPage() {
   // Handle lead status update
   const handleUpdateLeadStatus = async (leadId, statusData) => {
     try {
+      // Handle enquired_products - convert array to JSON string if needed
+      const enquiredProducts = statusData.enquired_products || [];
+      const enquiredProductsStr = Array.isArray(enquiredProducts) 
+        ? JSON.stringify(enquiredProducts) 
+        : enquiredProducts;
+      
       const payload = {
         sales_status: statusData.sales_status ?? statusData.salesStatus ?? '',
         sales_status_remark: statusData.sales_status_remark ?? statusData.salesStatusRemark ?? '',
@@ -517,6 +680,8 @@ export default function LeadStatusPage() {
         follow_up_remark: statusData.follow_up_remark ?? statusData.followUpRemark ?? '',
         follow_up_date: statusData.follow_up_date ?? statusData.followUpDate ?? '',
         follow_up_time: statusData.follow_up_time ?? statusData.followUpTime ?? '',
+        enquired_products: enquiredProductsStr,
+        other_product: statusData.other_product || '',
       }
       const fd = new FormData()
       Object.entries(payload).forEach(([k, v]) => fd.append(k, v == null ? '' : v))
@@ -524,10 +689,26 @@ export default function LeadStatusPage() {
       
       if (response.success) {
         // Update the leads list
+        // Format products for state update - parse the string back to array
+        let formattedProductsForState = [];
+        try {
+          formattedProductsForState = typeof enquiredProductsStr === 'string' 
+            ? JSON.parse(enquiredProductsStr) 
+            : enquiredProducts;
+        } catch {
+          formattedProductsForState = enquiredProducts;
+        }
+        
         setLeads(prevLeads => 
           prevLeads.map(lead => 
             lead.id === leadId 
-              ? { ...lead, ...payload, updated_at: new Date().toISOString() }
+              ? { 
+                  ...lead, 
+                  ...payload, 
+                  enquired_products: formattedProductsForState,
+                  other_product: statusData.other_product || '',
+                  updated_at: new Date().toISOString() 
+                }
               : lead
           )
         );
@@ -536,7 +717,13 @@ export default function LeadStatusPage() {
         setFilteredLeads(prevFiltered => 
           prevFiltered.map(lead => 
             lead.id === leadId 
-              ? { ...lead, ...payload, updated_at: new Date().toISOString() }
+              ? { 
+                  ...lead, 
+                  ...payload, 
+                  enquired_products: formattedProductsForState,
+                  other_product: statusData.other_product || '',
+                  updated_at: new Date().toISOString() 
+                }
               : lead
           )
         );

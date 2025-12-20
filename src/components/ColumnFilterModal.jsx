@@ -1,10 +1,10 @@
 import React from 'react';
 import { X } from 'lucide-react';
 
-const ColumnFilterModal = ({ isOpen, onClose, visibleColumns, onToggleColumn, onResetColumns, onShowAllColumns }) => {
+const ColumnFilterModal = ({ isOpen, onClose, visibleColumns, onToggleColumn, onResetColumns, onShowAllColumns, columnLabels: customColumnLabels }) => {
   if (!isOpen) return null;
 
-  const columnLabels = {
+  const defaultColumnLabels = {
     customerId: 'Customer ID',
     customer: 'Customer',
     business: 'Business',
@@ -22,8 +22,22 @@ const ColumnFilterModal = ({ isOpen, onClose, visibleColumns, onToggleColumn, on
     createdAt: 'Created',
     telecallerStatus: 'Telecaller Status',
     paymentStatus: 'Payment Status',
-    updatedAt: 'Updated At'
+    updatedAt: 'Updated At',
+    // Enquiry specific columns
+    customer_name: 'Customer Name',
+    enquired_product: 'Enquired Product',
+    product_quantity: 'Quantity',
+    product_remark: 'Product Remark',
+    follow_up_status: 'Follow Up Status',
+    follow_up_remark: 'Follow Up Remark',
+    sales_status: 'Sales Status',
+    sales_status_remark: 'Sales Status Remark',
+    salesperson: 'Salesperson',
+    telecaller: 'Telecaller',
+    enquiry_date: 'Enquiry Date'
   };
+
+  const columnLabels = customColumnLabels || defaultColumnLabels;
 
   // Ensure division is in visibleColumns if it's missing (for backward compatibility)
   const safeVisibleColumns = {
@@ -33,10 +47,11 @@ const ColumnFilterModal = ({ isOpen, onClose, visibleColumns, onToggleColumn, on
 
   // Define the order of columns to ensure consistent display
   const columnOrder = [
-    'customerId', 'customer', 'business', 'address', 'state', 'division',
-    'followUpStatus', 'salesStatus', 'assignedSalesperson', 'assignedTelecaller',
-    'gstNo', 'leadSource', 'productNames', 'category', 'createdAt',
-    'telecallerStatus', 'paymentStatus', 'updatedAt'
+    'customerId', 'customer', 'customer_name', 'business', 'address', 'state', 'division',
+    'followUpStatus', 'follow_up_status', 'follow_up_remark', 'salesStatus', 'sales_status', 'sales_status_remark',
+    'assignedSalesperson', 'assignedTelecaller', 'salesperson', 'telecaller',
+    'gstNo', 'leadSource', 'productNames', 'enquired_product', 'product_quantity', 'product_remark',
+    'category', 'createdAt', 'enquiry_date', 'telecallerStatus', 'paymentStatus', 'updatedAt'
   ];
 
   // Sort entries by predefined order

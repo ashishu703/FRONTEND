@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { FileText, Package, RefreshCw, Filter } from 'lucide-react';
 import AddCustomerModal from './AddCustomerModal';
 import QuotationPreview from '../../components/QuotationPreview';
 import PIPreview from '../../components/PIPreview';
@@ -30,12 +31,51 @@ import { useAuth } from '../../hooks/useAuth';
 import CSVImportValidationService from '../../services/CSVImportValidationService';
 import { debounce } from '../../utils/debounce';
 import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
+import EnquiryTable from '../../components/EnquiryTable';
 
 const LeadsSimplified = () => {
+  const [activeTab, setActiveTab] = useState('leads');
   const { user } = useAuth();
   const [leadsData, setLeadsData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
+  
+  // Enquiry state
+  const [enquiries, setEnquiries] = useState([]);
+  const [enquiriesGroupedByDate, setEnquiriesGroupedByDate] = useState({});
+  const [enquiriesLoading, setEnquiriesLoading] = useState(false);
+  
+  // Enquiry filters
+  const [enquiryFilters, setEnquiryFilters] = useState({
+    salesperson: '',
+    telecaller: '',
+    state: '',
+    division: '',
+    follow_up_status: '',
+    sales_status: '',
+    enquiry_date: ''
+  });
+  const [showEnquiryFilters, setShowEnquiryFilters] = useState(false);
+  
+  const [enquiryVisibleColumns, setEnquiryVisibleColumns] = useState({
+    customer_name: true,
+    business: true,
+    state: true,
+    division: true,
+    address: true,
+    enquired_product: true,
+    product_quantity: true,
+    product_remark: true,
+    // Hidden by default
+    follow_up_status: false,
+    follow_up_remark: false,
+    sales_status: false,
+    sales_status_remark: false,
+    salesperson: false,
+    telecaller: false,
+    enquiry_date: false
+  });
+  const [showEnquiryColumnModal, setShowEnquiryColumnModal] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [showAll, setShowAll] = useState(false);
@@ -149,6 +189,225 @@ const LeadsSimplified = () => {
   const piService = useMemo(() => new PIService(), []);
   const quotationServiceInstance = useMemo(() => new QuotationService(), []);
   const leadsFilterService = useMemo(() => new LeadsFilterService(apiClient), []);
+
+  // Fetch enquiries
+  const fetchEnquiries = useCallback(async () => {
+    if (activeTab !== 'enquiry') return;
+    
+    setEnquiriesLoading(true);
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.ENQUIRIES_DEPARTMENT_HEAD());
+      if (response.success) {
+        setEnquiries(response.data?.enquiries || []);
+        setEnquiriesGroupedByDate(response.data?.groupedByDate || {});
+      }
+    } catch (error) {
+      console.error('Error fetching enquiries:', error);
+      apiErrorHandler.handleError(error, 'fetch enquiries');
+    } finally {
+      setEnquiriesLoading(false);
+    }
+  }, [activeTab]);
+
+  // Fetch enquiries when tab changes
+  useEffect(() => {
+    if (activeTab === 'enquiry') {
+      fetchEnquiries();
+    }
+  }, [activeTab, fetchEnquiries]);
+
+  // Extract unique values from enquiries for filter dropdowns
+  const enquiryFilterOptions = useMemo(() => {
+    const allEnquiries = Object.values(enquiriesGroupedByDate).flat();
+    if (allEnquiries.length === 0 && enquiries.length > 0) {
+      allEnquiries.push(...enquiries);
+    }
+    
+    return {
+      salespersons: [...new Set(allEnquiries.map(e => e.salesperson).filter(Boolean))].sort(),
+      telecallers: [...new Set(allEnquiries.map(e => e.telecaller).filter(Boolean))].sort(),
+      states: [...new Set(allEnquiries.map(e => e.state).filter(Boolean))].sort(),
+      divisions: [...new Set(allEnquiries.map(e => e.division).filter(Boolean))].sort(),
+      followUpStatuses: [...new Set(allEnquiries.map(e => e.follow_up_status).filter(Boolean))].sort(),
+      salesStatuses: [...new Set(allEnquiries.map(e => e.sales_status).filter(Boolean))].sort()
+    };
+  }, [enquiries, enquiriesGroupedByDate]);
+
+  // Filter enquiries based on selected filters
+  const filteredEnquiries = useMemo(() => {
+    const allEnquiries = Object.values(enquiriesGroupedByDate).flat();
+    if (allEnquiries.length === 0 && enquiries.length > 0) {
+      allEnquiries.push(...enquiries);
+    }
+    
+    return allEnquiries.filter(enquiry => {
+      if (enquiryFilters.salesperson && enquiry.salesperson !== enquiryFilters.salesperson) return false;
+      if (enquiryFilters.telecaller && enquiry.telecaller !== enquiryFilters.telecaller) return false;
+      if (enquiryFilters.state && enquiry.state !== enquiryFilters.state) return false;
+      if (enquiryFilters.division && enquiry.division !== enquiryFilters.division) return false;
+      if (enquiryFilters.follow_up_status && enquiry.follow_up_status !== enquiryFilters.follow_up_status) return false;
+      if (enquiryFilters.sales_status && enquiry.sales_status !== enquiryFilters.sales_status) return false;
+      if (enquiryFilters.enquiry_date && enquiry.enquiry_date !== enquiryFilters.enquiry_date) return false;
+      return true;
+    });
+  }, [enquiries, enquiriesGroupedByDate, enquiryFilters]);
+
+  // Group filtered enquiries by date
+  const filteredEnquiriesGroupedByDate = useMemo(() => {
+    const grouped = {};
+    filteredEnquiries.forEach(enquiry => {
+      const dateKey = enquiry.enquiry_date;
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(enquiry);
+    });
+    return grouped;
+  }, [filteredEnquiries]);
+
+  // Export enquiries to CSV
+  const handleExportEnquiries = () => {
+    if (filteredEnquiries.length === 0) {
+      toastManager.error('No enquiries to export');
+      return;
+    }
+
+    const headers = [
+      'Customer Name',
+      'Business',
+      'Address',
+      'State',
+      'Division',
+      'Follow Up Status',
+      'Follow Up Remark',
+      'Sales Status',
+      'Sales Status Remark',
+      'Enquired Product',
+      'Quantity',
+      'Product Remark',
+      'Salesperson',
+      'Telecaller',
+      'Enquiry Date'
+    ];
+
+    const escapeCSV = (value) => {
+      if (value === null || value === undefined) return '';
+      const str = String(value);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const rows = filteredEnquiries.map(enquiry => [
+      escapeCSV(enquiry.customer_name || 'N/A'),
+      escapeCSV(enquiry.business || 'N/A'),
+      escapeCSV(enquiry.address || 'N/A'),
+      escapeCSV(enquiry.state || 'N/A'),
+      escapeCSV(enquiry.division || 'N/A'),
+      escapeCSV(enquiry.follow_up_status || 'N/A'),
+      escapeCSV(enquiry.follow_up_remark || 'N/A'),
+      escapeCSV(enquiry.sales_status || 'N/A'),
+      escapeCSV(enquiry.sales_status_remark || 'N/A'),
+      escapeCSV(enquiry.enquired_product || 'N/A'),
+      escapeCSV(enquiry.product_quantity || 'N/A'),
+      escapeCSV(enquiry.product_remark || 'N/A'),
+      escapeCSV(enquiry.salesperson || 'N/A'),
+      escapeCSV(enquiry.telecaller || 'N/A'),
+      escapeCSV(enquiry.enquiry_date || 'N/A')
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `enquiries_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toastManager.success(`Exported ${filteredEnquiries.length} enquiry(ies) to CSV`);
+  };
+
+  // Handle enquiry edit
+  const handleEditEnquiry = (enquiry) => {
+    // TODO: Open edit modal
+    console.log('Edit enquiry:', enquiry);
+    toastManager.info('Edit functionality coming soon');
+  };
+
+  // Handle enquiry delete
+  const handleDeleteEnquiry = async (enquiryId) => {
+    try {
+      setEnquiriesLoading(true);
+      const response = await apiClient.delete(API_ENDPOINTS.ENQUIRY_DELETE(enquiryId));
+      if (response.success) {
+        toastManager.success('Enquiry deleted successfully');
+        // Refresh enquiries
+        await fetchEnquiries();
+      }
+    } catch (error) {
+      console.error('Error deleting enquiry:', error);
+      apiErrorHandler.handleError(error, 'delete enquiry');
+    } finally {
+      setEnquiriesLoading(false);
+    }
+  };
+
+  // Handle enquiry column visibility
+  const toggleEnquiryColumn = (columnKey) => {
+    setEnquiryVisibleColumns(prev => ({
+      ...prev,
+      [columnKey]: !prev[columnKey]
+    }));
+  };
+
+  const resetEnquiryColumns = () => {
+    setEnquiryVisibleColumns({
+      customer_name: true,
+      business: true,
+      state: true,
+      division: true,
+      address: true,
+      enquired_product: true,
+      product_quantity: true,
+      product_remark: true,
+      follow_up_status: false,
+      follow_up_remark: false,
+      sales_status: false,
+      sales_status_remark: false,
+      salesperson: false,
+      telecaller: false,
+      enquiry_date: false
+    });
+  };
+
+  const showAllEnquiryColumns = () => {
+    setEnquiryVisibleColumns({
+      customer_name: true,
+      business: true,
+      state: true,
+      division: true,
+      address: true,
+      enquired_product: true,
+      product_quantity: true,
+      product_remark: true,
+      follow_up_status: true,
+      follow_up_remark: true,
+      sales_status: true,
+      sales_status_remark: true,
+      salesperson: true,
+      telecaller: true,
+      enquiry_date: true
+    });
+  };
 
   const fetchQuotations = async (leadId) => {
     setLoadingQuotations(true);
@@ -1157,6 +1416,36 @@ const LeadsSimplified = () => {
         flexShrink: 0
       }}
     >
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('leads')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+              activeTab === 'leads'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            Leads
+          </button>
+          <button
+            onClick={() => setActiveTab('enquiry')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+              activeTab === 'enquiry'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Package className="w-4 h-4" />
+            Enquiry
+          </button>
+        </nav>
+      </div>
+
+      {activeTab === 'leads' && (
+        <>
       <SearchBar
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
@@ -1315,6 +1604,215 @@ const LeadsSimplified = () => {
           </button>
         </div>
       </div>
+        </>
+      )}
+
+      {activeTab === 'enquiry' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-800">Enquiries</h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowEnquiryFilters(!showEnquiryFilters)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  showEnquiryFilters 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                title="Toggle Filters"
+              >
+                <Filter className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleExportEnquiries}
+                disabled={filteredEnquiries.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FileText className="w-4 h-4" />
+                Export CSV
+              </button>
+              <button
+                onClick={fetchEnquiries}
+                disabled={enquiriesLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`w-4 h-4 ${enquiriesLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {/* Filters - Collapsible */}
+          {showEnquiryFilters && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Filter by Salesperson */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Salesperson</label>
+                <select
+                  value={enquiryFilters.salesperson}
+                  onChange={(e) => setEnquiryFilters(prev => ({ ...prev, salesperson: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Salespersons</option>
+                  {enquiryFilterOptions.salespersons.map(sp => (
+                    <option key={sp} value={sp}>{sp}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter by Telecaller */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Telecaller</label>
+                <select
+                  value={enquiryFilters.telecaller}
+                  onChange={(e) => setEnquiryFilters(prev => ({ ...prev, telecaller: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Telecallers</option>
+                  {enquiryFilterOptions.telecallers.map(tc => (
+                    <option key={tc} value={tc}>{tc}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter by State */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by State</label>
+                <select
+                  value={enquiryFilters.state}
+                  onChange={(e) => setEnquiryFilters(prev => ({ ...prev, state: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All States</option>
+                  {enquiryFilterOptions.states.map(state => (
+                    <option key={state} value={state}>{state}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter by Division */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Division</label>
+                <select
+                  value={enquiryFilters.division}
+                  onChange={(e) => setEnquiryFilters(prev => ({ ...prev, division: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Divisions</option>
+                  {enquiryFilterOptions.divisions.map(div => (
+                    <option key={div} value={div}>{div}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter by Follow Up Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Follow Up Status</label>
+                <select
+                  value={enquiryFilters.follow_up_status}
+                  onChange={(e) => setEnquiryFilters(prev => ({ ...prev, follow_up_status: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Follow Up Statuses</option>
+                  {enquiryFilterOptions.followUpStatuses.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter by Sales Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Sales Status</label>
+                <select
+                  value={enquiryFilters.sales_status}
+                  onChange={(e) => setEnquiryFilters(prev => ({ ...prev, sales_status: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Sales Statuses</option>
+                  {enquiryFilterOptions.salesStatuses.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter by Enquiry Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Enquiry Date</label>
+                <input
+                  type="date"
+                  value={enquiryFilters.enquiry_date}
+                  onChange={(e) => setEnquiryFilters(prev => ({ ...prev, enquiry_date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Clear Filters */}
+              <div className="flex items-end">
+                <button
+                  onClick={() => setEnquiryFilters({
+                    salesperson: '',
+                    telecaller: '',
+                    state: '',
+                    division: '',
+                    follow_up_status: '',
+                    sales_status: '',
+                    enquiry_date: ''
+                  })}
+                  className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </div>
+          )}
+
+          {enquiriesLoading ? (
+            <DashboardSkeleton />
+          ) : (
+            <EnquiryTable 
+              enquiries={filteredEnquiries} 
+              loading={enquiriesLoading}
+              groupedByDate={filteredEnquiriesGroupedByDate}
+              onRefresh={fetchEnquiries}
+              onEdit={handleEditEnquiry}
+              onDelete={handleDeleteEnquiry}
+              visibleColumns={enquiryVisibleColumns}
+              onToggleColumnVisibility={() => setShowEnquiryColumnModal(true)}
+            />
+          )}
+          
+          {/* Column Visibility Modal */}
+          {showEnquiryColumnModal && (
+            <ColumnFilterModal
+              isOpen={showEnquiryColumnModal}
+              onClose={() => setShowEnquiryColumnModal(false)}
+              visibleColumns={enquiryVisibleColumns}
+              onToggleColumn={toggleEnquiryColumn}
+              onResetColumns={resetEnquiryColumns}
+              onShowAllColumns={showAllEnquiryColumns}
+              columnLabels={{
+                customer_name: 'Customer Name',
+                business: 'Business',
+                state: 'State',
+                division: 'Division',
+                address: 'Address',
+                enquired_product: 'Enquired Product',
+                product_quantity: 'Quantity',
+                product_remark: 'Product Remark',
+                follow_up_status: 'Follow Up Status',
+                follow_up_remark: 'Follow Up Remark',
+                sales_status: 'Sales Status',
+                sales_status_remark: 'Sales Status Remark',
+                salesperson: 'Salesperson',
+                telecaller: 'Telecaller',
+                enquiry_date: 'Enquiry Date'
+              }}
+            />
+          )}
+        </div>
+      )}
 
       <ColumnFilterModal
         isOpen={showColumnFilter}
