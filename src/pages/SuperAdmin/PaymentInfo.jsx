@@ -3,6 +3,7 @@ import { Search, Filter, Download, User, DollarSign, Clock, Calendar, Link, Copy
 import paymentService from '../../api/admin_api/paymentService';
 import departmentHeadService from '../../api/admin_api/departmentHeadService';
 import PaymentInfoTable from '../../components/payment/PaymentInfoTable';
+import { SkeletonTable, SkeletonStatCard } from '../../components/dashboard/DashboardSkeleton';
 
 const PaymentInfo = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -425,19 +426,35 @@ const PaymentInfo = () => {
     </div>
   );
 
-  // Show loader while initial data is loading
+  // Show skeleton loader while initial data is loading
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative">
-            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <RotateCw className="w-8 h-8 text-blue-600 animate-spin" />
+      <div className="min-h-screen bg-gray-50 p-6">
+        {/* Header skeleton */}
+        <div className="mb-6">
+          <div className="h-8 bg-gray-200 rounded w-48 mb-2 animate-pulse"></div>
+        </div>
+
+        {/* Stats Cards skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonStatCard key={i} />
+          ))}
+        </div>
+
+        {/* Search and filters skeleton */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="h-10 bg-gray-200 rounded w-96 animate-pulse"></div>
+            <div className="flex items-center gap-3">
+              <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+              <div className="h-10 bg-gray-200 rounded w-24 animate-pulse"></div>
+              <div className="h-10 bg-gray-200 rounded w-28 animate-pulse"></div>
             </div>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Payment Information</h3>
-          <p className="text-sm text-gray-600">Fetching data from all companies and departments...</p>
+
+          {/* Table skeleton */}
+          <SkeletonTable rows={10} />
         </div>
       </div>
     );
@@ -447,8 +464,7 @@ const PaymentInfo = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Payment Info</h1>
-        <p className="text-gray-600">View payment details from all companies and all department heads</p>
+        <h1 className="text-2xl font-bold text-gray-900">Payment Info</h1>
       </div>
 
       {/* Stats Cards */}

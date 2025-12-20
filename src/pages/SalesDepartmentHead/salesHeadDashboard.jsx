@@ -1,7 +1,7 @@
 "use client"
 
 import { TrendingUp, CheckCircle, Clock, CreditCard, UserPlus, CalendarCheck, ArrowUp, XCircle, PhoneOff, Target, BarChart3, PieChart as PieChartIcon, Activity, Award, TrendingDown, ArrowRightLeft, Calendar, FileText, FileCheck, FileX, Receipt, ShoppingCart, DollarSign, RefreshCw, Trophy } from "lucide-react"
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useCallback } from "react"
 import apiClient from '../../utils/apiClient'
 import { API_ENDPOINTS } from '../../api/admin_api/api'
 import quotationService from '../../api/admin_api/quotationService'
@@ -11,6 +11,7 @@ import departmentUserService from '../../api/admin_api/departmentUserService'
 import departmentHeadService from '../../api/admin_api/departmentHeadService'
 import { useAuth } from '../../hooks/useAuth'
 import salesDataService from '../../services/SalesDataService'
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton'
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")
@@ -762,6 +763,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   const [overviewDateFilter, setOverviewDateFilter] = useState('')
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [error, setError] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
   const [allPayments, setAllPayments] = useState([])
@@ -853,7 +855,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
 
   // OPTIMIZED: Fetch ALL leads at once for dashboard overview
   // Use salesDataService.fetchAllLeads() to match SuperAdmin dashboard logic
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -881,11 +883,12 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       setLeads([])
     } finally {
       setLoading(false)
+      setInitialLoading(false)
     }
-  }
+  }, [user?.departmentType, user?.department_type])
 
   // Fetch department head target data
-  const fetchUserTarget = async () => {
+  const fetchUserTarget = useCallback(async () => {
     try {
       if (!user?.id) {
         setUserTarget({
@@ -914,7 +917,6 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       
       if (headData) {
         const target = parseFloat(headData.target || 0)
-        console.log('Department head target fetched:', target, 'from data:', headData)
         setUserTarget({
           target: target,
           achievedTarget: parseFloat(headData.achievedTarget || headData.achieved_target || 0),
@@ -936,75 +938,22 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         targetDurationDays: null
       })
     }
-  }
-
-  // OPTIMIZED: Refresh dashboard function - fetch leads first, then metrics with leads data
-  // Use salesDataService.fetchAllLeads() to match SuperAdmin dashboard logic
-  const refreshDashboard = async () => {
-    try {
-      setRefreshing(true)
-      // Fetch leads using the same method as SuperAdmin dashboard
-      const departmentType = user?.departmentType || user?.department_type || 'office_sales'
-      const allLeads = await salesDataService.fetchAllLeads(departmentType)
-      
-      // Transform API data to match our format
-      const transformedLeads = allLeads.map(lead => ({
-        id: lead.id,
-        name: lead.customer || lead.name,
-        sales_status: lead.sales_status || lead.salesStatus || 'pending',
-        follow_up_status: lead.follow_up_status || lead.followUpStatus || '',
-        source: lead.lead_source || lead.leadSource || 'Unknown',
-        created_at: lead.created_at || lead.createdAt || lead.date || new Date().toISOString(),
-        assigned_salesperson: lead.assigned_salesperson || lead.assignedSalesperson || ''
-      }))
-      
-      setLeads(transformedLeads)
-      
-      // Then fetch metrics with leads data (avoids duplicate API call)
-      await Promise.all([
-        fetchBusinessMetrics(transformedLeads),
-        fetchUserTarget()
-      ])
-    } catch (err) {
-      console.error('Error refreshing dashboard:', err)
-    } finally {
-      setRefreshing(false)
-    }
-  }
+  }, [user?.id])
 
   // OPTIMIZED: Fetch business metrics - reuse leads from state if available
-  const fetchBusinessMetrics = async (leadsData = null) => {
+  const fetchBusinessMetrics = useCallback(async (leadsData = null) => {
     try {
       setLoadingMetrics(true)
       
-      // OPTIMIZED: Reuse leads from state if available, otherwise fetch
+      // OPTIMIZED: Reuse leads from state if available, otherwise fetch using parallel pagination
       let allLeads = leadsData || leads
       if (!allLeads || allLeads.length === 0) {
-        // Get all leads for department head (includes all salespersons' leads)
-        allLeads = []
-        let page = 1
-        const pageSize = 100
-        
-        while (true) {
-          const leadsResponse = await departmentHeadService.getAllLeads({ page, limit: pageSize })
-          // Handle different response structures
-          let leadsData = []
-          if (Array.isArray(leadsResponse?.data)) {
-            leadsData = leadsResponse.data
-          } else if (Array.isArray(leadsResponse)) {
-            leadsData = leadsResponse
-          } else if (leadsResponse?.success && Array.isArray(leadsResponse.data)) {
-            leadsData = leadsResponse.data
-          }
-          
-          if (!leadsData || leadsData.length === 0) break
-          allLeads = allLeads.concat(leadsData)
-          if (leadsData.length < pageSize) break
-          page += 1
-        }
+        // Use salesDataService.fetchAllLeads for parallel pagination (same as SuperAdmin)
+        const departmentType = user?.departmentType || user?.department_type || 'office_sales'
+        const fetchedLeads = await salesDataService.fetchAllLeads(departmentType)
         
         // Transform if needed
-        allLeads = allLeads.map(lead => ({
+        allLeads = fetchedLeads.map(lead => ({
           id: lead.id,
           name: lead.customer || lead.name,
           sales_status: lead.sales_status || lead.salesStatus || 'pending',
@@ -1015,8 +964,6 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         }))
       }
       
-      console.log('Fetched leads count:', allLeads.length)
-      
       const leadIds = allLeads.map(lead => lead.id).filter(id => id != null)
       
       if (leadIds.length === 0) {
@@ -1025,11 +972,12 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         return
       }
       
-      // OPTIMIZED: Get all quotations for all leads in ONE bulk API call
-      console.log('Fetching bulk quotations for', leadIds.length, 'customers...')
-      const bulkQuotationsRes = await quotationService.getBulkQuotationsByCustomers(leadIds)
+      // OPTIMIZED: Parallel fetch of quotations, customer payments
+      const [bulkQuotationsRes, bulkCustomerPaymentsRes] = await Promise.all([
+        quotationService.getBulkQuotationsByCustomers(leadIds),
+        paymentService.getBulkPaymentsByCustomers(leadIds)
+      ])
       let allQuotations = bulkQuotationsRes?.data || []
-      console.log('Fetched quotations count:', allQuotations.length)
         
       // Remove duplicates based on quotation ID
       const uniqueQuotations = new Map()
@@ -1039,17 +987,16 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         }
       })
       allQuotations = Array.from(uniqueQuotations.values())
-      console.log('Unique quotations count:', allQuotations.length)
       
       const quotationIds = allQuotations.map(q => q.id).filter(id => id != null)
       
-      console.log('Fetching bulk payments for', quotationIds.length, 'quotations...')
-      const [bulkQuotationPaymentsRes, bulkCustomerPaymentsRes] = await Promise.all([
+      // OPTIMIZED: Parallel fetch of quotation payments and PIs
+      const [quotationPaymentsRes, bulkPIsRes] = await Promise.all([
         quotationIds.length > 0 ? paymentService.getBulkPaymentsByQuotations(quotationIds) : Promise.resolve({ data: [] }),
-        paymentService.getBulkPaymentsByCustomers(leadIds)
+        quotationIds.length > 0 ? proformaInvoiceService.getBulkPIsByQuotations(quotationIds) : Promise.resolve({ data: [] })
       ])
       
-      const quotationPayments = bulkQuotationPaymentsRes?.data || []
+      const quotationPayments = quotationPaymentsRes?.data || []
       const customerPayments = bulkCustomerPaymentsRes?.data || []
       
       // Merge and deduplicate payments
@@ -1062,7 +1009,6 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       })
       
       const fetchedPayments = Array.from(paymentMap.values())
-      console.log('Fetched payments count:', fetchedPayments.length)
       
       // Store payments for monthly revenue calculation
       setAllPayments(fetchedPayments)
@@ -1070,14 +1016,8 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       // Use fetchedPayments variable for rest of the function
       const allPayments = fetchedPayments
       
-      // OPTIMIZED: Fetch all PIs in ONE bulk API call
-      let allPIs = []
-      if (quotationIds.length > 0) {
-        console.log('Fetching bulk PIs for', quotationIds.length, 'quotations...')
-        const bulkPIsRes = await proformaInvoiceService.getBulkPIsByQuotations(quotationIds)
-        allPIs = bulkPIsRes?.data || []
-        console.log('Fetched PIs count:', allPIs.length)
-      }
+      // Get PIs
+      const allPIs = bulkPIsRes?.data || []
       
       // Set of quotation IDs which have at least one PI
       const quotationIdsWithPI = new Set(
@@ -1123,9 +1063,6 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         return isPaymentCompleted(p) && !isPaymentRefund(p) && isPaymentApprovedByAccounts(p)
       })
       
-      console.log('All payments count:', allPayments.length)
-      console.log('Completed approved payments count:', completedPayments.length)
-      
       // Apply date range filter if department head has target dates
       if (userTarget.targetStartDate && userTarget.targetEndDate) {
         const startDate = new Date(userTarget.targetStartDate)
@@ -1143,31 +1080,23 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       
       // Calculate total received payment (all completed payments within date range)
       const totalReceivedPayment = completedPayments.reduce((sum, p) => sum + getPaymentAmount(p), 0)
-      console.log('Total Received Payment:', totalReceivedPayment)
       
       // Calculate advance payment (first payment or payments marked as advance)
       const advancePayments = completedPayments.filter(isAdvancePayment)
       const totalAdvancePayment = advancePayments.reduce((sum, p) => sum + getPaymentAmount(p), 0)
-      console.log('Total Advance Payment:', totalAdvancePayment)
       
       // Calculate due payments - ONLY for quotations that have PI created
       // Don't care about quotation approval status, just need PI to exist
       const quotationsWithPI = allQuotations.filter(q => quotationIdsWithPI.has(q.id))
       
-      console.log('Total quotations:', allQuotations.length)
-      console.log('Quotations with PI:', quotationsWithPI.length)
-      console.log('Quotation IDs with PI:', Array.from(quotationIdsWithPI))
-      
-      // Fetch summaries for quotations with PI to get accurate totals
+      // Fetch summaries for quotations with PI to get accurate totals (in background)
       const quotationIdsForSummary = quotationsWithPI.map(q => q.id)
       let summariesMap = {}
       
       if (quotationIdsForSummary.length > 0) {
         try {
-          console.log('Fetching bulk summaries for', quotationIdsForSummary.length, 'quotations...')
           const bulkSummariesRes = await quotationService.getBulkSummaries(quotationIdsForSummary)
           summariesMap = bulkSummariesRes?.data || {}
-          console.log('Fetched summaries count:', Object.keys(summariesMap).length)
         } catch (err) {
           console.error('Error fetching summaries:', err)
         }
@@ -1191,9 +1120,6 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
           quotationTotal = Number(quotation.total_amount || quotation.total || 0)
         }
         
-        console.log(`\nQuotation ID ${quotation.id}:`)
-        console.log('  - Has Summary:', !!summary)
-        console.log('  - Total Amount:', quotationTotal)
         
         // Safeguard against unreasonably large numbers (> 10 crore per quotation)
         if (quotationTotal > 100000000) {
@@ -1216,19 +1142,12 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
             isPaymentApprovedByAccounts(p)
           )
           
-          console.log('  - Approved payments count:', quotationPayments.length)
-          
           const paidTotal = quotationPayments.reduce((sum, p) => {
-            const amt = getPaymentAmount(p)
-            console.log(`    Payment ID ${p.id}: ₹${amt}`)
-            return sum + amt
+            return sum + getPaymentAmount(p)
           }, 0)
-          
-          console.log('  - Total Paid:', paidTotal)
           
           // Calculate remaining amount (Due Payment)
           const remaining = quotationTotal - paidTotal
-          console.log('  - Remaining (Due):', remaining)
           
           if (remaining > 0) {
             duePayment += remaining
@@ -1236,15 +1155,10 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         }
       })
       
-      console.log('\n=== SUMMARY ===')
-      console.log('Total Revenue (from approved quotations with PI):', totalRevenue)
-      console.log('Total Due Payment:', duePayment)
-      
       // Count sale orders
       // Business rule: any quotation that has at least one PI created is treated as a Sale Order
       // So we simply count unique quotation IDs which have a PI
       const totalSaleOrder = quotationIdsWithPI.size
-      console.log('Total Sale Order (quotations with PI):', totalSaleOrder)
       
       setBusinessMetrics({
         totalQuotation,
@@ -1262,22 +1176,9 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         totalRevenue
       })
       
-      // Calculate top performers based on payment received
-      await calculateTopPerformers(fetchedPayments, allQuotations, allLeads, quotationIdsWithPI)
-      
-      console.log('Business metrics calculated:', {
-        totalQuotation,
-        approvedQuotation,
-        pendingQuotation,
-        rejectedQuotation,
-        totalPI,
-        approvedPI,
-        pendingPI,
-        rejectedPI,
-        totalAdvancePayment,
-        duePayment,
-        totalSaleOrder,
-        totalReceivedPayment
+      // Calculate top performers based on payment received (in background)
+      calculateTopPerformers(fetchedPayments, allQuotations, allLeads, quotationIdsWithPI).catch(err => {
+        console.error('Error calculating top performers:', err)
       })
     } catch (err) {
       console.error('Error fetching business metrics:', err)
@@ -1300,7 +1201,41 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
     } finally {
       setLoadingMetrics(false)
     }
-  }
+  }, [user?.departmentType, user?.department_type, userTarget.targetStartDate, userTarget.targetEndDate, leads])
+
+  // OPTIMIZED: Refresh dashboard function - fetch leads first, then metrics with leads data
+  // Use salesDataService.fetchAllLeads() to match SuperAdmin dashboard logic
+  const refreshDashboard = useCallback(async () => {
+    try {
+      setRefreshing(true)
+      // Fetch leads using the same method as SuperAdmin dashboard
+      const departmentType = user?.departmentType || user?.department_type || 'office_sales'
+      const allLeads = await salesDataService.fetchAllLeads(departmentType)
+      
+      // Transform API data to match our format
+      const transformedLeads = allLeads.map(lead => ({
+        id: lead.id,
+        name: lead.customer || lead.name,
+        sales_status: lead.sales_status || lead.salesStatus || 'pending',
+        follow_up_status: lead.follow_up_status || lead.followUpStatus || '',
+        source: lead.lead_source || lead.leadSource || 'Unknown',
+        created_at: lead.created_at || lead.createdAt || lead.date || new Date().toISOString(),
+        assigned_salesperson: lead.assigned_salesperson || lead.assignedSalesperson || ''
+      }))
+      
+      setLeads(transformedLeads)
+      
+      // Then fetch metrics with leads data (avoids duplicate API call)
+      await Promise.all([
+        fetchBusinessMetrics(transformedLeads),
+        fetchUserTarget()
+      ])
+    } catch (err) {
+      console.error('Error refreshing dashboard:', err)
+    } finally {
+      setRefreshing(false)
+    }
+  }, [user?.departmentType, user?.department_type, fetchBusinessMetrics, fetchUserTarget])
 
   // Calculate top performers based on payment received
   const calculateTopPerformers = async (payments, quotations, leads, quotationIdsWithPI = new Set()) => {
@@ -1329,7 +1264,6 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       }
       
       if (!Array.isArray(users) || users.length === 0) {
-        console.log('No department users found or invalid response:', usersResponse)
         setTopPerformers([])
         return
       }
@@ -1789,12 +1723,14 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   // Handle date filter change
   const handleDateFilterChange = (selectedDate) => {
     setDateFilter(selectedDate)
-    console.log('Filtering performance data for date:', selectedDate)
   }
 
-  // Calculate real metrics
-  const calculatedMetrics = calculateMetrics()
-  const statusData = calculateLeadStatusData()
+  // OPTIMIZED: Memoize heavy calculations
+  const calculatedMetrics = useMemo(() => calculateMetrics(), [leads, overviewDateFilter])
+  const statusData = useMemo(() => calculateLeadStatusData(), [leads, overviewDateFilter])
+  const leadSources = useMemo(() => calculateLeadSources(), [leads, overviewDateFilter])
+  const weeklyActivity = useMemo(() => calculateWeeklyActivity(), [leads, overviewDateFilter])
+  const monthlyRevenue = useMemo(() => calculateMonthlyRevenue(), [allPayments, overviewDateFilter])
 
   // Generate performance data with demo data
   const getPerformanceData = (selectedDate) => {
@@ -1935,9 +1871,9 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         trendUp: false
       },
     ],
-    weeklyLeads: calculateWeeklyActivity(),
-    leadSourceData: calculateLeadSources(),
-    monthlyRevenue: calculateMonthlyRevenue()
+    weeklyLeads: weeklyActivity,
+    leadSourceData: leadSources,
+    monthlyRevenue: monthlyRevenue
   }
 
   const overviewMetrics = overviewData.metrics
@@ -2047,17 +1983,9 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
     },
   ]
 
-  if (loading) {
-    return (
-      <main className="flex-1 overflow-y-auto overflow-x-hidden p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading dashboard data...</p>
-          </div>
-        </div>
-      </main>
-    )
+  // Show skeleton loader on initial load (same as SuperAdmin)
+  if (initialLoading) {
+    return <DashboardSkeleton />
   }
 
   if (error) {

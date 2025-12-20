@@ -7,12 +7,14 @@ import departmentHeadService from '../../api/admin_api/departmentHeadService';
 import LeadService from '../../services/LeadService';
 import { getStatusBadge as getStatusBadgeUtil } from '../../utils/statusUtils';
 import { useAuth } from '../../hooks/useAuth';
+import { SkeletonTable } from '../../components/dashboard/DashboardSkeleton';
 
 const AllLeads = () => {
   const { user } = useAuth();
   const [leadsData, setLeadsData] = useState([]);
   const [allLeadsData, setAllLeadsData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
   const [total, setTotal] = useState(0);
@@ -211,6 +213,7 @@ const AllLeads = () => {
       console.error('Error fetching leads:', err);
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   }, [page, limit, debouncedSearchTerm, columnFilters.state, columnFilters.leadSource, columnFilters.salesStatus, columnFilters.followUpStatus, leadService]);
 
@@ -433,6 +436,28 @@ const AllLeads = () => {
   }, [columnFilters, debouncedSearchTerm, assignedSalespersonFilter, assignedTelecallerFilter]);
 
   const totalPages = Math.ceil(total / limit);
+
+  // Show skeleton loader on initial load
+  if (initialLoading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="mb-6">
+          <div className="h-8 bg-gray-200 rounded w-48 mb-4 animate-pulse"></div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="h-10 bg-gray-200 rounded w-96 animate-pulse"></div>
+            <div className="flex items-center gap-3">
+              <div className="h-10 bg-gray-200 rounded w-24 animate-pulse"></div>
+              <div className="h-10 bg-gray-200 rounded w-10 animate-pulse"></div>
+              <div className="h-10 bg-gray-200 rounded w-10 animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+        <SkeletonTable rows={10} />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">

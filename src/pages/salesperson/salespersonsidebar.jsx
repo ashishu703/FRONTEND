@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useRef, useEffect } from "react"
 import { LayoutDashboard, Users, LogOut, Menu, X, Package, Box, Wrench, BarChart3, CreditCard, Bell, HelpCircle } from "lucide-react"
 import LeadStatusDropdown from './LeadStatusDropdown'
 import PaymentTrackingDropdown from './PaymentTrackingDropdown'
@@ -9,6 +10,47 @@ function cx(...classes) {
 }
 
 export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen, setSidebarOpen, isDarkMode = false }) {
+  const collapseTimerRef = useRef(null);
+  const isManuallyToggledRef = useRef(false);
+
+  // Auto-collapse on mouse leave
+  const handleMouseEnter = () => {
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+      collapseTimerRef.current = null;
+    }
+    if (!isManuallyToggledRef.current) {
+      setSidebarOpen(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isManuallyToggledRef.current) {
+      collapseTimerRef.current = setTimeout(() => {
+        setSidebarOpen(false);
+      }, 2000); // Collapse after 2 seconds
+    }
+  };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (collapseTimerRef.current) {
+        clearTimeout(collapseTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Handle manual toggle
+  const handleToggle = () => {
+    isManuallyToggledRef.current = !sidebarOpen; // If expanding manually, set flag; if collapsing, clear flag
+    setSidebarOpen(!sidebarOpen);
+    // Clear any pending auto-collapse
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+      collapseTimerRef.current = null;
+    }
+  };
 
   return (
     <>
@@ -21,6 +63,8 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen
             : "bg-white border-gray-200",
           sidebarOpen ? "w-64" : "w-16",
         )}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
         <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between">
@@ -46,7 +90,7 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen
               </div>
             )}
             <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
+              onClick={handleToggle}
               className={`p-1 rounded transition-colors ${
                 isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
               }`}

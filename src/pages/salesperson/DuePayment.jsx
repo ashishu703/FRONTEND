@@ -11,6 +11,7 @@ import uploadService from '../../api/admin_api/uploadService';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
 import { useAuth } from '../../hooks/useAuth';
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 
 class DataExtractor {
   static extractArray(response) {
@@ -1519,6 +1520,7 @@ export default function DuePaymentPage({ isDarkMode = false }) {
   const [paymentTracking, setPaymentTracking] = useState([]);
   const [filteredPaymentTracking, setFilteredPaymentTracking] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -1572,11 +1574,12 @@ export default function DuePaymentPage({ isDarkMode = false }) {
         setFilteredPaymentTracking(duePayments);
       } catch (error) {
         console.error('Error fetching payment tracking data:', error);
-        setError('Failed to load payment tracking data');
-      } finally {
-        setLoading(false);
-      }
-    };
+      setError('Failed to load payment tracking data');
+    } finally {
+      setLoading(false);
+      setInitialLoading(false);
+    }
+  };
 
     fetchPaymentTracking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1738,20 +1741,17 @@ export default function DuePaymentPage({ isDarkMode = false }) {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <p className="text-red-600">{error}</p>
       </div>
     );
+  }
+
+  // Show skeleton loader on initial load
+  if (initialLoading) {
+    return <DashboardSkeleton />;
   }
 
   // Group payments by due date

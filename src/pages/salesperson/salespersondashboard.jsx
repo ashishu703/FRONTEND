@@ -1,7 +1,7 @@
 "use client"
 
 import { TrendingUp, CheckCircle, Clock, CreditCard, UserPlus, CalendarCheck, ArrowUp, XCircle, PhoneOff, Target, BarChart3, PieChart as PieChartIcon, Activity, Award, TrendingDown, ArrowRightLeft, Calendar, FileText, FileCheck, FileX, Receipt, ShoppingCart, DollarSign, RefreshCw } from "lucide-react"
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useCallback } from "react"
 import apiClient from '../../utils/apiClient'
 import { API_ENDPOINTS } from '../../api/admin_api/api'
 import quotationService from '../../api/admin_api/quotationService'
@@ -9,6 +9,7 @@ import paymentService from '../../api/admin_api/paymentService'
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService'
 import departmentUserService from '../../api/admin_api/departmentUserService'
 import { useAuth } from '../../hooks/useAuth'
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton'
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000
 
@@ -746,6 +747,7 @@ export default function DashboardContent({ isDarkMode = false }) {
   const [overviewDateFilter, setOverviewDateFilter] = useState('')
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [error, setError] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
   const [allPayments, setAllPayments] = useState([])
@@ -786,16 +788,13 @@ export default function DashboardContent({ isDarkMode = false }) {
   }
 
   // Fetch real leads from API - with cache busting to ensure fresh data
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
     try {
       setLoading(true)
       // Add timestamp to prevent caching
       const url = `${API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME()}?_t=${Date.now()}`;
-      console.log('[Dashboard] Fetching leads from API for user:', currentUser?.email || currentUser?.username);
       const leadsResponse = await apiClient.get(url)
       const assignedLeads = leadsResponse?.data || []
-      
-      console.log('[Dashboard] Received', assignedLeads.length, 'leads from API for user:', currentUser?.email || currentUser?.username);
       
       // Transform API data to match our format
       const transformedLeads = assignedLeads.map(lead => ({
@@ -806,7 +805,6 @@ export default function DashboardContent({ isDarkMode = false }) {
         created_at: lead.created_at || lead.createdAt || lead.date || new Date().toISOString()
       }))
       
-      console.log('[Dashboard] Setting', transformedLeads.length, 'leads in state for user:', currentUser?.email || currentUser?.username);
       setLeads(transformedLeads)
       setError(null)
     } catch (err) {
@@ -815,11 +813,12 @@ export default function DashboardContent({ isDarkMode = false }) {
       setLeads([])
     } finally {
       setLoading(false)
+      setInitialLoading(false)
     }
-  }
+  }, [])
 
   // Fetch user target data
-  const fetchUserTarget = async () => {
+  const fetchUserTarget = useCallback(async () => {
     try {
       // When department_user calls listUsers, it automatically filters by their email
       const response = await departmentUserService.listUsers({ page: 1, limit: 1 })
@@ -847,44 +846,10 @@ export default function DashboardContent({ isDarkMode = false }) {
         targetDurationDays: null
       })
     }
-  }
+  }, [])
 
-  // OPTIMIZED: Refresh dashboard function - fetch leads first, then metrics with leads data
-  const refreshDashboard = async () => {
-    try {
-      setRefreshing(true)
-      // Fetch leads first with cache busting
-      const url = `${API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME()}?_t=${Date.now()}`;
-      const leadsResponse = await apiClient.get(url)
-      const assignedLeads = leadsResponse?.data || []
-      
-      console.log('[Dashboard] Refresh: Received', assignedLeads.length, 'leads for user:', currentUser?.email || currentUser?.username);
-      
-      // Transform API data to match our format
-      const transformedLeads = assignedLeads.map(lead => ({
-        id: lead.id,
-        name: lead.name,
-        sales_status: lead.sales_status || lead.salesStatus || 'pending',
-        source: lead.lead_source || lead.leadSource || 'Unknown',
-        created_at: lead.created_at || lead.createdAt || lead.date || new Date().toISOString()
-      }))
-      
-      setLeads(transformedLeads)
-      
-      // Then fetch metrics with leads data (avoids duplicate API call)
-      await Promise.all([
-        fetchBusinessMetrics(transformedLeads),
-        fetchUserTarget()
-      ])
-    } catch (err) {
-      console.error('Error refreshing dashboard:', err)
-    } finally {
-      setRefreshing(false)
-    }
-  }
-
-  // OPTIMIZED: Fetch business metrics - reuse leads from state if available
-  const fetchBusinessMetrics = async (leadsData = null) => {
+  // OPTIMIZED: Fetch business metrics - reuse leads from state if available, parallel API calls
+  const fetchBusinessMetrics = useCallback(async (leadsData = null) => {
     try {
       setLoadingMetrics(true)
       
@@ -912,46 +877,52 @@ export default function DashboardContent({ isDarkMode = false }) {
         return
       }
       
-      // Fetch ALL quotations for all leads using bulk API
-      let allQuotations = []
-      try {
-        const qRes = await quotationService.getBulkQuotationsByCustomers(leadIds)
-        allQuotations = qRes?.data || []
-      } catch (err) {
-        console.error('Error fetching bulk quotations:', err)
-        allQuotations = []
-      }
+      // OPTIMIZED: Fetch quotations, payments, and PIs in parallel
+      const [quotationsResult, paymentsByCustomersResult] = await Promise.all([
+        quotationService.getBulkQuotationsByCustomers(leadIds).catch(err => {
+          console.error('Error fetching bulk quotations:', err)
+          return { data: [] }
+        }),
+        paymentService.getBulkPaymentsByCustomers(leadIds).catch(err => {
+          console.error('Error fetching bulk payments by customers:', err)
+          return { data: [] }
+        })
+      ])
       
-      // Fetch ALL payments using bulk APIs
-      const allPayments = []
-      
-      // Fetch payments by customers (bulk)
-      try {
-        const paymentRes = await paymentService.getBulkPaymentsByCustomers(leadIds)
-        const payments = Array.isArray(paymentRes?.data) ? paymentRes.data : []
-        allPayments.push(...payments)
-      } catch (err) {
-        console.error('Error fetching bulk payments by customers:', err)
-      }
-      
-      // Also fetch payments by quotations (bulk) to catch any missed payments
+      const allQuotations = quotationsResult?.data || []
       const quotationIds = allQuotations.map(q => q.id)
-      if (quotationIds.length > 0) {
-        try {
-          const pRes = await paymentService.getBulkPaymentsByQuotations(quotationIds)
-          const payments = Array.isArray(pRes?.data) ? pRes.data : []
-          // Add payments that aren't already in allPayments
-          payments.forEach(p => {
-            const exists = allPayments.some(ap => ap.id === p.id || 
-              (ap.payment_reference && p.payment_reference && ap.payment_reference === p.payment_reference))
-            if (!exists) {
-              allPayments.push(p)
-            }
-          })
-        } catch (err) {
-          console.error('Error fetching bulk payments by quotations:', err)
+      
+      // OPTIMIZED: Fetch payments by quotations and PIs in parallel
+      const [paymentsByQuotationsResult, pisResult] = await Promise.all([
+        quotationIds.length > 0 
+          ? paymentService.getBulkPaymentsByQuotations(quotationIds).catch(err => {
+              console.error('Error fetching bulk payments by quotations:', err)
+              return { data: [] }
+            })
+          : Promise.resolve({ data: [] }),
+        quotationIds.length > 0
+          ? proformaInvoiceService.getBulkPIsByQuotations(quotationIds).catch(err => {
+              console.error('Error fetching bulk PIs:', err)
+              return { data: [] }
+            })
+          : Promise.resolve({ data: [] })
+      ])
+      
+      // Combine payments from both sources
+      const allPayments = []
+      const paymentsByCustomers = Array.isArray(paymentsByCustomersResult?.data) ? paymentsByCustomersResult.data : []
+      const paymentsByQuotations = Array.isArray(paymentsByQuotationsResult?.data) ? paymentsByQuotationsResult.data : []
+      
+      allPayments.push(...paymentsByCustomers)
+      
+      // Add payments that aren't already in allPayments
+      paymentsByQuotations.forEach(p => {
+        const exists = allPayments.some(ap => ap.id === p.id || 
+          (ap.payment_reference && p.payment_reference && ap.payment_reference === p.payment_reference))
+        if (!exists) {
+          allPayments.push(p)
         }
-      }
+      })
       
       // Store payments for monthly revenue calculation
       setAllPayments(allPayments)
@@ -959,17 +930,8 @@ export default function DashboardContent({ isDarkMode = false }) {
       // Use allPayments variable for rest of the function
       const fetchedPayments = allPayments
       
-      // Fetch all PIs using bulk API
-      let allPIs = []
-      if (quotationIds.length > 0) {
-        try {
-          const piRes = await proformaInvoiceService.getBulkPIsByQuotations(quotationIds)
-          allPIs = piRes?.data || []
-        } catch (err) {
-          console.error('Error fetching bulk PIs:', err)
-          allPIs = []
-        }
-      }
+      // Get PIs
+      const allPIs = pisResult?.data || []
 
       // Set of quotation IDs which have at least one PI (used for Sale Order count)
       const quotationIdsWithPI = new Set(
@@ -1217,7 +1179,39 @@ export default function DashboardContent({ isDarkMode = false }) {
     } finally {
       setLoadingMetrics(false)
     }
-  }
+  }, [leads, userTarget])
+
+  // OPTIMIZED: Refresh dashboard function - parallel API calls
+  const refreshDashboard = useCallback(async () => {
+    try {
+      setRefreshing(true)
+      // Fetch leads first with cache busting
+      const url = `${API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME()}?_t=${Date.now()}`;
+      const leadsResponse = await apiClient.get(url)
+      const assignedLeads = leadsResponse?.data || []
+      
+      // Transform API data to match our format
+      const transformedLeads = assignedLeads.map(lead => ({
+        id: lead.id,
+        name: lead.name,
+        sales_status: lead.sales_status || lead.salesStatus || 'pending',
+        source: lead.lead_source || lead.leadSource || 'Unknown',
+        created_at: lead.created_at || lead.createdAt || lead.date || new Date().toISOString()
+      }))
+      
+      setLeads(transformedLeads)
+      
+      // OPTIMIZED: Fetch metrics and user target in parallel
+      await Promise.all([
+        fetchBusinessMetrics(transformedLeads),
+        fetchUserTarget()
+      ])
+    } catch (err) {
+      console.error('Error refreshing dashboard:', err)
+    } finally {
+      setRefreshing(false)
+    }
+  }, [fetchBusinessMetrics, fetchUserTarget])
 
   const fetchingMetricsRef = React.useRef(false);
   const lastUserIdRef = React.useRef(null);
@@ -1253,11 +1247,12 @@ export default function DashboardContent({ isDarkMode = false }) {
     lastUserIdRef.current = currentUserId;
     
     const loadData = async () => {
-      console.log('[Dashboard] Fetching leads for user:', currentUserId);
-      // Fetch leads first
-      await fetchLeads();
-      // Fetch user target in parallel
-      await fetchUserTarget();
+      // OPTIMIZED: Fetch leads and user target in parallel
+      await Promise.all([
+        fetchLeads(),
+        fetchUserTarget()
+      ]);
+      setInitialLoading(false);
     };
     
     if (currentUserId) {
@@ -1277,8 +1272,7 @@ export default function DashboardContent({ isDarkMode = false }) {
         fetchingMetricsRef.current = false;
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leads.length, currentUserId]); // Only when leads are loaded and user is set
+  }, [leads.length, currentUserId, fetchBusinessMetrics]); // Only when leads are loaded and user is set
   
   // OPTIMIZED: Fetch business metrics when user target dates change (to recalculate with date range)
   useEffect(() => {
@@ -1292,8 +1286,7 @@ export default function DashboardContent({ isDarkMode = false }) {
         fetchingMetricsRef.current = false;
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userTarget.targetStartDate, userTarget.targetEndDate, currentUserId])
+  }, [userTarget.targetStartDate, userTarget.targetEndDate, currentUserId, leads, fetchBusinessMetrics])
 
   // Simple status mapping function
   const mapSalesStatusToBucket = (status) => {
@@ -1568,9 +1561,12 @@ export default function DashboardContent({ isDarkMode = false }) {
     ]
   }
 
-  // Calculate real metrics
-  const calculatedMetrics = calculateMetrics()
-  const statusData = calculateLeadStatusData()
+  // OPTIMIZED: Memoize heavy calculations
+  const calculatedMetrics = useMemo(() => calculateMetrics(), [leads, overviewDateFilter])
+  const statusData = useMemo(() => calculateLeadStatusData(), [leads, overviewDateFilter])
+  const leadSources = useMemo(() => calculateLeadSources(), [leads, overviewDateFilter])
+  const weeklyActivity = useMemo(() => calculateWeeklyActivity(), [leads, overviewDateFilter])
+  const monthlyRevenue = useMemo(() => calculateMonthlyRevenue(), [allPayments, overviewDateFilter])
 
   // Calculate days left based on target period
   const daysLeftInTarget = (() => {
@@ -1630,9 +1626,9 @@ export default function DashboardContent({ isDarkMode = false }) {
         trendUp: false
       },
     ],
-    weeklyLeads: calculateWeeklyActivity(),
-    leadSourceData: calculateLeadSources(),
-    monthlyRevenue: calculateMonthlyRevenue()
+    weeklyLeads: weeklyActivity,
+    leadSourceData: leadSources,
+    monthlyRevenue: monthlyRevenue
   }
 
   const overviewMetrics = overviewData.metrics
@@ -1733,17 +1729,9 @@ export default function DashboardContent({ isDarkMode = false }) {
     },
   ]
 
-  if (loading) {
-    return (
-      <main className="flex-1 overflow-y-auto overflow-x-hidden p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading dashboard data...</p>
-          </div>
-        </div>
-      </main>
-    )
+  // Show skeleton loader on initial load
+  if (initialLoading) {
+    return <DashboardSkeleton />;
   }
 
   if (error) {

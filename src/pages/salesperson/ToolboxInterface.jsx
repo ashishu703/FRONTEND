@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSharedToolboxState } from '../../hooks/useSharedToolboxState';
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 import { 
   Calculator, 
   DollarSign, 
@@ -114,6 +115,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     name: 'User',
     email: ''
   });
+  const [initialLoading, setInitialLoading] = useState(true);
 
   // Fetch user data from API
   useEffect(() => {
@@ -139,6 +141,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
         } catch {
           // Keep default values
         }
+      } finally {
+        setInitialLoading(false);
       }
     };
 
@@ -3497,6 +3501,11 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   // keep rendering more modals and UI below within the component
 
   // (component continues)
+
+  // Show skeleton loader on initial load
+  if (initialLoading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className={`flex min-h-screen ${

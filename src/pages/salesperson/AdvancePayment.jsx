@@ -11,6 +11,7 @@ import uploadService from '../../api/admin_api/uploadService';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
 import { useAuth } from '../../hooks/useAuth';
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 
 class DataExtractor {
   static extractArray(response) {
@@ -1631,6 +1632,7 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
   const [paymentTracking, setPaymentTracking] = useState([]);
   const [filteredPaymentTracking, setFilteredPaymentTracking] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -1687,6 +1689,7 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
         setError('Failed to load payment tracking data');
       } finally {
         setLoading(false);
+        setInitialLoading(false);
       }
     };
 
@@ -1848,14 +1851,6 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
       </span>
     );
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   if (error) {
     return (

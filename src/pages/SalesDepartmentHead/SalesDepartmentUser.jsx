@@ -4,6 +4,7 @@ import departmentUserService, { apiToUiDepartment } from '../../api/admin_api/de
 import departmentHeadService from '../../api/admin_api/departmentHeadService';
 import { useAuth } from '../../hooks/useAuth';
 import toastManager from '../../utils/ToastManager';
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
@@ -22,6 +23,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -355,6 +357,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
       setError(err.message || 'Failed to load users');
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -375,6 +378,11 @@ const SalesDepartmentUser = ({ setActiveView }) => {
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
+
+  // Show skeleton loader on initial load
+  if (initialLoading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">

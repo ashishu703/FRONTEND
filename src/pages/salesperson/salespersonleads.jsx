@@ -21,6 +21,7 @@ import { QuotationHelper } from '../../utils/QuotationHelper'
 import { StatusConverter } from '../../utils/StatusConverter'
 import { Search, RefreshCw, Plus, Filter, Eye, Pencil, FileText, Upload, Settings, Tag, X } from 'lucide-react'
 import { apiClient, API_ENDPOINTS, quotationService } from '../../utils/globalImports'
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton'
 
 const getUserData = () => {
   try {
@@ -32,7 +33,8 @@ const getUserData = () => {
 }
 
 export default function CustomerListContent({ isDarkMode = false }) {
-  const { customers, setCustomers } = useSharedData()
+  const { customers, setCustomers, loading } = useSharedData()
+  const [initialLoading, setInitialLoading] = React.useState(true)
   const user = getUserData()
   
   // Modal states
@@ -122,6 +124,16 @@ export default function CustomerListContent({ isDarkMode = false }) {
     loadBranches()
   }, [])
 
+  // Initial data load on mount
+  const initialLoadRef = React.useRef(false)
+  React.useEffect(() => {
+    if (!initialLoadRef.current) {
+      initialLoadRef.current = true
+      handleRefresh()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // OPTIMIZED: Prevent duplicate refresh calls
   const refreshingRef = React.useRef(false)
   
@@ -161,6 +173,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
     } finally {
       setIsRefreshing(false)
       refreshingRef.current = false
+      setInitialLoading(false)
     }
   }
 
@@ -609,6 +622,11 @@ export default function CustomerListContent({ isDarkMode = false }) {
   const totalPages = Math.ceil(leadsHook.filteredCustomers.length / leadsHook.itemsPerPage)
   const goToPreviousPage = () => leadsHook.setCurrentPage(prev => Math.max(1, prev - 1))
   const goToNextPage = () => leadsHook.setCurrentPage(prev => Math.min(totalPages, prev + 1))
+
+  // Show skeleton loader on initial load (after all hooks)
+  if (initialLoading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <main className={`flex-1 overflow-auto p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>

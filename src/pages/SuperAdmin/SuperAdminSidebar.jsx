@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -24,13 +24,50 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
     salesDepartment: false,
     marketingSalesperson: false
   });
+  const collapseTimerRef = useRef(null);
+  const isManuallyToggledRef = useRef(false);
+
+  // Auto-collapse on mouse leave
+  const handleMouseEnter = () => {
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+      collapseTimerRef.current = null;
+    }
+    if (!isManuallyToggledRef.current) {
+      setIsExpanded(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isManuallyToggledRef.current) {
+      collapseTimerRef.current = setTimeout(() => {
+        setIsExpanded(false);
+        setOpenDropdowns({ department: false, salesDepartment: false, marketingSalesperson: false });
+      }, 2000); // Collapse after 2 seconds
+    }
+  };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (collapseTimerRef.current) {
+        clearTimeout(collapseTimerRef.current);
+      }
+    };
+  }, []);
 
   const toggleSidebar = () => {
+    isManuallyToggledRef.current = !isExpanded; // If expanding manually, set flag; if collapsing, clear flag
     setIsExpanded(!isExpanded);
     if (!isExpanded) {
       setOpenDropdowns({ department: false, salesDepartment: false, marketingSalesperson: false });
     } else {
       setOpenDropdowns({ department: false, salesDepartment: false, marketingSalesperson: false });
+    }
+    // Clear any pending auto-collapse
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+      collapseTimerRef.current = null;
     }
   };
 
@@ -84,7 +121,11 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
   // console.log('Sidebar items structure:', JSON.stringify(sidebarItems, null, 2));
 
   return (
-    <div className={`bg-white shadow-lg transition-all duration-300 ${isExpanded ? 'w-64' : 'w-16'} h-screen flex flex-col border-r border-gray-200`}>
+    <div 
+      className={`bg-white shadow-lg transition-all duration-300 ${isExpanded ? 'w-64' : 'w-16'} h-screen flex flex-col border-r border-gray-200`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">

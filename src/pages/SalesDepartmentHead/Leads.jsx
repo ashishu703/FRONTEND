@@ -29,11 +29,13 @@ import { COMPANY_BRANCHES, DEFAULT_USER, DEFAULT_BRANCH } from '../../config/app
 import { useAuth } from '../../hooks/useAuth';
 import CSVImportValidationService from '../../services/CSVImportValidationService';
 import { debounce } from '../../utils/debounce';
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 
 const LeadsSimplified = () => {
   const { user } = useAuth();
   const [leadsData, setLeadsData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [showAll, setShowAll] = useState(false);
@@ -470,6 +472,7 @@ const LeadsSimplified = () => {
       apiErrorHandler.handleError(error, 'fetch leads');
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -1132,6 +1135,11 @@ const LeadsSimplified = () => {
   };
 
   const getStatusBadge = getStatusBadgeUtil;
+
+  // Show skeleton loader on initial load
+  if (initialLoading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div

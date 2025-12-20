@@ -6,6 +6,7 @@ import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
 import { useAuth } from '../../hooks/useAuth';
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 
 // Edit Lead Status Modal Component
 const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
@@ -211,6 +212,7 @@ export default function LeadStatusPage() {
   const [leads, setLeads] = useState([]);
   const [filteredLeads, setFilteredLeads] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
   const [timelineLead, setTimelineLead] = useState(null);
@@ -348,6 +350,7 @@ export default function LeadStatusPage() {
       setError('Failed to load leads data');
     } finally {
       setLoading(false);
+      setInitialLoading(false);
       fetchingRef.current = false;
     }
   };
@@ -498,6 +501,11 @@ export default function LeadStatusPage() {
   useEffect(() => {
     setFilteredLeads(filteredLeadsMemo);
   }, [filteredLeadsMemo]);
+
+  // Show skeleton loader on initial load
+  if (initialLoading) {
+    return <DashboardSkeleton />;
+  }
 
   // Handle lead status update
   const handleUpdateLeadStatus = async (leadId, statusData) => {
@@ -758,12 +766,7 @@ export default function LeadStatusPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">Loading leads data...</span>
-        </div>
-      ) : error ? (
+      {error ? (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <div className="flex">
             <div className="ml-3">

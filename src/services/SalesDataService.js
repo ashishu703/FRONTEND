@@ -6,33 +6,46 @@ import departmentUserService from '../api/admin_api/departmentUserService';
 
 class SalesDataService {
   async fetchAllLeads(departmentType = null) {
-    let allLeads = [];
-    let page = 1;
+    // OPTIMIZED: Fetch first page to get total count, then fetch all pages in parallel
     const pageSize = 100;
-
-    while (true) {
-      const params = { page, limit: pageSize };
-      // Add departmentType filter if provided (for SuperAdmin to filter by office_sales)
-      if (departmentType) {
-        params.departmentType = departmentType;
-      }
-      
-      const response = await departmentHeadService.getAllLeads(params);
-      const leadsData = response?.data || [];
-      
-      if (!leadsData || leadsData.length === 0) break;
-      
-      allLeads = allLeads.concat(leadsData);
-      if (leadsData.length < pageSize) break;
-      page += 1;
+    const params = { page: 1, limit: pageSize };
+    if (departmentType) {
+      params.departmentType = departmentType;
     }
-
+    
+    const firstResponse = await departmentHeadService.getAllLeads(params);
+    const firstPageData = firstResponse?.data || [];
+    const pagination = firstResponse?.pagination || {};
+    const total = pagination.total || firstPageData.length;
+    const totalPages = pagination.pages || Math.ceil(total / pageSize);
+    
+    // If only one page, return early
+    if (totalPages <= 1) {
+      return firstPageData;
+    }
+    
+    // Fetch remaining pages in parallel
+    const pagePromises = [];
+    for (let page = 2; page <= totalPages; page++) {
+      const pageParams = { page, limit: pageSize };
+      if (departmentType) {
+        pageParams.departmentType = departmentType;
+      }
+      pagePromises.push(departmentHeadService.getAllLeads(pageParams));
+    }
+    
+    const remainingResponses = await Promise.all(pagePromises);
+    let allLeads = [...firstPageData];
+    
+    remainingResponses.forEach(response => {
+      const leadsData = response?.data || [];
+      allLeads = allLeads.concat(leadsData);
+    });
+    
     return allLeads;
   }
 
   calculateLeadStatuses(allLeads) {
-    // Use same calculation logic as Sales Department Head dashboard for consistency
-    // Count statuses directly from sales_status field (matching salesHeadDashboard.jsx logic)
     const statusCounts = { 
       all: 0, 
       pending: 0, 
@@ -46,10 +59,8 @@ class SalesDataService {
     
     statusCounts.all = allLeads.length;
     allLeads.forEach(l => {
-      // Use sales_status first, then fallback to salesStatus (matching Sales Department Head logic)
       const status = String(l.sales_status || l.salesStatus || '').toLowerCase().trim();
       
-      // Handle 'win/closed' status (with slash)
       if (status === 'win/closed' || status === 'win closed') {
         statusCounts['win/closed'] += 1;
       } else if (statusCounts[status] != null) {
@@ -57,7 +68,6 @@ class SalesDataService {
       }
     });
     
-    // Follow-up specific counts
     const followUpCounts = { 
       'appointment scheduled': 0, 
       'closed/lost': 0, 
@@ -290,12 +300,6 @@ class SalesDataService {
         }
       });
 
-      console.log('[SalesDataService] Due Payment calculated (matching Sales Department Head logic):', {
-        quotationsWithPICount: quotationsWithPI.length,
-        totalRevenue,
-        duePayment
-      });
-      
       return duePayment;
     } catch (error) {
       console.error('[SalesDataService] Error calculating due payment:', error);
@@ -323,41 +327,49 @@ class SalesDataService {
   }
 
   async fetchAllDepartmentUsers(departmentType = null) {
-    let allUsers = [];
-    let page = 1;
+    // OPTIMIZED: Fetch first page to get total count, then fetch all pages in parallel
     const pageSize = 100;
-
-    while (true) {
-      const params = { page, limit: pageSize };
-      // Add departmentType filter if provided (for SuperAdmin to filter by office_sales)
-      if (departmentType) {
-        params.departmentType = departmentType;
-      }
-      
-      const response = await departmentUserService.listUsers(params);
-      const usersData = response?.data?.users || response?.data || [];
-      if (!usersData || usersData.length === 0) break;
-      
-      allUsers = allUsers.concat(usersData);
-      if (usersData.length < pageSize) break;
-      page += 1;
+    const params = { page: 1, limit: pageSize };
+    if (departmentType) {
+      params.departmentType = departmentType;
     }
-
+    
+    const firstResponse = await departmentUserService.listUsers(params);
+    const firstPageData = firstResponse?.data?.users || firstResponse?.data || [];
+    const pagination = firstResponse?.pagination || {};
+    const total = pagination.total || firstPageData.length;
+    const totalPages = pagination.pages || Math.ceil(total / pageSize);
+    
+    // If only one page, return early
+    if (totalPages <= 1) {
+      return firstPageData;
+    }
+    
+    // Fetch remaining pages in parallel
+    const pagePromises = [];
+    for (let page = 2; page <= totalPages; page++) {
+      const pageParams = { page, limit: pageSize };
+      if (departmentType) {
+        pageParams.departmentType = departmentType;
+      }
+      pagePromises.push(departmentUserService.listUsers(pageParams));
+    }
+    
+    const remainingResponses = await Promise.all(pagePromises);
+    let allUsers = [...firstPageData];
+    
+    remainingResponses.forEach(response => {
+      const usersData = response?.data?.users || response?.data || [];
+      allUsers = allUsers.concat(usersData);
+    });
+    
     return allUsers;
   }
 
   async calculateTopPerformers(allPayments, allLeads, allQuotations, departmentType = null) {
     try {
-      console.log('[SalesDataService] calculateTopPerformers - Input:', {
-        paymentsCount: allPayments?.length || 0,
-        leadsCount: allLeads?.length || 0,
-        quotationsCount: allQuotations?.length || 0,
-        departmentType
-      });
-
       // Filter users by departmentType if provided (for SuperAdmin to filter by office_sales)
       const allUsers = await this.fetchAllDepartmentUsers(departmentType);
-      console.log('[SalesDataService] Fetched users:', allUsers?.length || 0);
       
       const userMap = new Map();
       
@@ -380,8 +392,6 @@ class SalesDataService {
           userMap.set(String(user.id).toLowerCase(), { name, username: user.username || user.email || '', email: user.email || '' });
         }
       });
-      
-      console.log('[SalesDataService] User map size:', userMap.size);
     
     const performerMap = new Map();
     
@@ -395,13 +405,11 @@ class SalesDataService {
     };
 
     const approvedPayments = allPayments.filter(isPaymentApproved);
-    console.log('[SalesDataService] Approved payments:', approvedPayments.length);
 
     const quotationToSalesperson = new Map();
     allQuotations.forEach(q => {
       const salesperson = q.assigned_salesperson || q.assignedSalesperson || q.created_by;
       if (salesperson && q.id) {
-        // Store with both string and number keys for flexibility
         const qId = q.id;
         quotationToSalesperson.set(qId, salesperson);
         if (!isNaN(qId)) {
@@ -410,23 +418,12 @@ class SalesDataService {
         }
       }
     });
-    console.log('[SalesDataService] Quotation to salesperson map size:', quotationToSalesperson.size);
-    if (quotationToSalesperson.size === 0 && allQuotations.length > 0) {
-      console.log('[SalesDataService] Sample quotation fields:', {
-        id: allQuotations[0]?.id,
-        assigned_salesperson: allQuotations[0]?.assigned_salesperson,
-        assignedSalesperson: allQuotations[0]?.assignedSalesperson,
-        created_by: allQuotations[0]?.created_by,
-        allKeys: Object.keys(allQuotations[0] || {})
-      });
-    }
 
     const leadToSalesperson = new Map();
     allLeads.forEach(l => {
       const salesperson = l.assigned_salesperson || l.assignedSalesperson;
       if (salesperson && l.id) {
         const leadId = l.id;
-        // Store with both string and number keys for flexibility
         leadToSalesperson.set(leadId, salesperson);
         if (!isNaN(leadId)) {
           leadToSalesperson.set(String(leadId), salesperson);
@@ -434,27 +431,6 @@ class SalesDataService {
         }
       }
     });
-    console.log('[SalesDataService] Lead to salesperson map size:', leadToSalesperson.size);
-    
-    // Debug: Check if lead_id 17 exists in map
-    if (approvedPayments.length > 0) {
-      const samplePayment = approvedPayments[0];
-      if (samplePayment.lead_id) {
-        const testLeadId = samplePayment.lead_id;
-        console.log('[SalesDataService] Testing lead_id lookup:', {
-          lead_id: testLeadId,
-          type: typeof testLeadId,
-          found_direct: leadToSalesperson.has(testLeadId),
-          found_string: leadToSalesperson.has(String(testLeadId)),
-          found_number: !isNaN(testLeadId) ? leadToSalesperson.has(Number(testLeadId)) : false,
-          salesperson: leadToSalesperson.get(testLeadId) || leadToSalesperson.get(String(testLeadId)) || (!isNaN(testLeadId) ? leadToSalesperson.get(Number(testLeadId)) : null)
-        });
-      }
-    }
-
-    let processedCount = 0;
-    let skippedCount = 0;
-    let matchedCount = 0;
 
     approvedPayments.forEach(payment => {
       let salespersonId = payment.assigned_salesperson || payment.assignedSalesperson;
@@ -498,23 +474,12 @@ class SalesDataService {
       }
       
       const amount = Number(payment.paid_amount || payment.installment_amount || payment.amount || payment.payment_amount || 0);
-      processedCount++;
       
       if (amount <= 0) {
-        skippedCount++;
         return;
       }
       
       if (!salespersonId) {
-        skippedCount++;
-        if (processedCount <= 5) {
-          console.log('[SalesDataService] Payment without salesperson:', {
-            payment_id: payment.id,
-            quotation_id: payment.quotation_id,
-            lead_id: payment.lead_id,
-            customer_id: payment.customer_id
-          });
-        }
         return;
       }
       
@@ -522,7 +487,6 @@ class SalesDataService {
       
       // Skip if salesperson is "Unassigned" or empty
       if (!salespersonKey || salespersonKey === 'unassigned' || salespersonKey === 'null' || salespersonKey === 'undefined' || salespersonKey === '') {
-        skippedCount++;
         return;
       }
       
@@ -536,7 +500,7 @@ class SalesDataService {
       }
       
       if (!userInfo) {
-        // Try matching by username directly (case-insensitive)
+        // Try matching by username directly (case-insensitive) - optimized with early break
         for (const [key, value] of userMap.entries()) {
           if (key === salespersonKey || value.username?.toLowerCase() === salespersonKey || value.email?.toLowerCase() === salespersonKey) {
             userInfo = value;
@@ -548,11 +512,6 @@ class SalesDataService {
       // Fallback to using salespersonId as display name
       if (!userInfo) {
         userInfo = { name: salespersonId, username: salespersonId, email: salespersonKey.includes('@') ? salespersonKey : '' };
-        if (matchedCount < 3) {
-          console.log('[SalesDataService] No user match found for salesperson:', salespersonKey, 'using fallback');
-        }
-      } else {
-        matchedCount++;
       }
       
       // Prefer username over name, but fallback to name if username is not available
@@ -568,21 +527,12 @@ class SalesDataService {
       });
     });
     
-    console.log('[SalesDataService] Payment processing stats:', {
-      total: approvedPayments.length,
-      processed: processedCount,
-      skipped: skippedCount,
-      matched: matchedCount,
-      performerMapSize: performerMap.size
-    });
+    const performers = Array.from(performerMap.values())
+      .filter(p => p.amount > 0)
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 3);
 
-      const performers = Array.from(performerMap.values())
-        .filter(p => p.amount > 0)
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 3);
-
-      console.log('[SalesDataService] Top Performers calculated:', performers.length, performers);
-      return performers;
+    return performers;
     } catch (error) {
       console.error('[SalesDataService] Error calculating top performers:', error);
       return [];
