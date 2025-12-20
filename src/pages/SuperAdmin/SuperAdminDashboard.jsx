@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { BarChart3, RefreshCw } from 'lucide-react';
 import LeadStatusCards from '../../components/dashboard/LeadStatusCards';
 import TargetTimeline from '../../components/dashboard/TargetTimeline';
 import KeyPerformanceMetrics from '../../components/dashboard/KeyPerformanceMetrics';
 import TopPerformers from '../../components/dashboard/TopPerformers';
 import BusinessMetrics from '../../components/dashboard/BusinessMetrics';
-import PieChart from '../../components/dashboard/PieChart';
 import ColorfulPieChart from '../../components/dashboard/ColorfulPieChart';
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 import salesDataService from '../../services/SalesDataService';
 import StatCard from '../../components/dashboard/StatCard';
 import { DollarSign, Ticket, CheckCircle, Clock, XCircle, Server } from 'lucide-react';
 import paymentService from '../../api/admin_api/paymentService';
+import quotationService from '../../api/admin_api/quotationService';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import departmentHeadService from '../../api/admin_api/departmentHeadService';
@@ -21,9 +22,8 @@ const SuperAdminDashboard = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true); // Initial page load state
+  const [initialLoading, setInitialLoading] = useState(true);
   
   const [salesData, setSalesData] = useState({
     leads: {
@@ -59,61 +59,117 @@ const SuperAdminDashboard = () => {
     closed: 0
   });
 
-  useEffect(() => {
-    const loadAllData = async () => {
-      setInitialLoading(true);
-      try {
-        await Promise.all([
-          fetchSalesData(),
-          fetchAccountsData(),
-          fetchITData(),
-          fetchRevenueTargets()
-        ]);
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-      } finally {
-        setInitialLoading(false);
-      }
-    };
-    
-    loadAllData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPeriod]);
-
-  // Fetch revenue targets from all sales departments across all companies
-  const fetchRevenueTargets = async () => {
+  // OPTIMIZED: Fetch revenue targets with parallel pagination
+  const fetchRevenueTargets = useCallback(async () => {
     try {
-      // Fetch all sales department heads (office_sales) across all companies
-      let allSalesHeads = [];
-      let page = 1;
-      const limit = 100;
+      // Fetch first page to get total pages, then fetch all in parallel
+      const firstPageResponse = await departmentHeadService.listHeads({
+        page: 1,
+        limit: 100,
+        departmentType: 'office_sales',
+        isActive: true
+      });
       
-      while (true) {
-        const response = await departmentHeadService.listHeads({
-          page,
-          limit,
-          departmentType: 'office_sales',
-          isActive: true
+      const pagination = firstPageResponse?.pagination || firstPageResponse?.data?.pagination;
+      const totalPages = pagination?.pages || 1;
+      const firstPageData = firstPageResponse?.users || firstPageResponse?.data?.users || [];
+      
+      // If only one page, process and return early
+      if (totalPages <= 1) {
+        let allSalesHeads = firstPageData;
+        
+        // Filter to ensure only office_sales department heads
+        const officeSalesHeads = allSalesHeads.filter(head => {
+          const deptType = head.department_type || head.departmentType || '';
+          return deptType.toLowerCase() === 'office_sales';
         });
         
-        const heads = response?.users || response?.data?.users || [];
-        if (!heads || heads.length === 0) break;
+        // Deduplicate by email
+        const uniqueHeadsMap = new Map();
+        officeSalesHeads.forEach(head => {
+          const key = head.email || head.id;
+          if (key && !uniqueHeadsMap.has(key)) {
+            uniqueHeadsMap.set(key, head);
+          }
+        });
+        const uniqueHeads = Array.from(uniqueHeadsMap.values());
         
-        allSalesHeads = allSalesHeads.concat(heads);
+        // Aggregate targets
+        let totalTarget = 0;
+        let earliestStartDate = null;
+        let latestEndDate = null;
         
-        // Check if there are more pages
-        const pagination = response?.pagination || response?.data?.pagination;
-        if (!pagination || page >= pagination.pages || heads.length < limit) break;
-        page += 1;
+        uniqueHeads.forEach(head => {
+          const targetValue = head.target || 0;
+          const target = typeof targetValue === 'string' 
+            ? parseFloat(targetValue.replace(/,/g, '')) || 0
+            : parseFloat(targetValue) || 0;
+          totalTarget += target;
+          
+          const startDate = head.target_start_date || head.targetStartDate;
+          const endDate = head.target_end_date || head.targetEndDate;
+          
+          if (startDate) {
+            const start = new Date(startDate);
+            if (!earliestStartDate || start < earliestStartDate) {
+              earliestStartDate = start;
+            }
+          }
+          
+          if (endDate) {
+            const end = new Date(endDate);
+            if (!latestEndDate || end > latestEndDate) {
+              latestEndDate = end;
+            }
+          }
+        });
+        
+        let daysLeft = 0;
+        if (latestEndDate) {
+          daysLeft = salesDataService.calculateDaysLeft(latestEndDate.toISOString().split('T')[0]);
+        }
+        
+        setSalesData(prev => ({
+          ...prev,
+          revenue: {
+            ...prev.revenue,
+            target: totalTarget,
+            targetStartDate: earliestStartDate ? earliestStartDate.toISOString().split('T')[0] : null,
+            targetEndDate: latestEndDate ? latestEndDate.toISOString().split('T')[0] : null,
+            daysLeft: daysLeft
+          }
+        }));
+        return;
       }
       
-      // Filter to ensure only office_sales department heads are included (exclude marketing_sales)
+      // Fetch remaining pages in parallel (skip page 1 as we already have it)
+      const pagePromises = [];
+      for (let page = 2; page <= totalPages; page++) {
+        pagePromises.push(
+          departmentHeadService.listHeads({
+            page,
+            limit: 100,
+            departmentType: 'office_sales',
+            isActive: true
+          })
+        );
+      }
+      
+      const remainingResponses = await Promise.all(pagePromises);
+      let allSalesHeads = [...firstPageData];
+      
+      remainingResponses.forEach(response => {
+        const heads = response?.users || response?.data?.users || [];
+        allSalesHeads = allSalesHeads.concat(heads);
+      });
+      
+      // Filter to ensure only office_sales department heads
       const officeSalesHeads = allSalesHeads.filter(head => {
         const deptType = head.department_type || head.departmentType || '';
         return deptType.toLowerCase() === 'office_sales';
       });
       
-      // Deduplicate by email (most reliable unique identifier)
+      // Deduplicate by email
       const uniqueHeadsMap = new Map();
       officeSalesHeads.forEach(head => {
         const key = head.email || head.id;
@@ -123,7 +179,7 @@ const SuperAdminDashboard = () => {
       });
       const uniqueHeads = Array.from(uniqueHeadsMap.values());
       
-      // Aggregate targets from unique office_sales department heads only
+      // Aggregate targets
       let totalTarget = 0;
       let earliestStartDate = null;
       let latestEndDate = null;
@@ -153,13 +209,13 @@ const SuperAdminDashboard = () => {
         }
       });
       
-      // Calculate days left based on latest end date
+      // Calculate days left
       let daysLeft = 0;
       if (latestEndDate) {
         daysLeft = salesDataService.calculateDaysLeft(latestEndDate.toISOString().split('T')[0]);
       }
       
-      // Update revenue data with aggregated targets
+      // Update revenue data
       setSalesData(prev => ({
         ...prev,
         revenue: {
@@ -173,7 +229,6 @@ const SuperAdminDashboard = () => {
       
     } catch (error) {
       console.error('[SuperAdminDashboard] Error fetching revenue targets:', error);
-      // Set defaults on error
       setSalesData(prev => ({
         ...prev,
         revenue: {
@@ -185,118 +240,122 @@ const SuperAdminDashboard = () => {
         }
       }));
     }
-  };
+  }, []);
 
-  const fetchSalesData = async () => {
-    setLoading(true);
+  // OPTIMIZED: Parallel API calls in fetchSalesData with progressive updates
+  const fetchSalesData = useCallback(async () => {
     setRefreshing(true);
+    try {
+      // Step 1: Fetch leads
+      const allLeads = await salesDataService.fetchAllLeads('office_sales');
+      const leadStatuses = salesDataService.calculateLeadStatuses(allLeads);
+      const leadIds = allLeads.map(l => l.id).filter(id => id != null);
+      
+      // Update leads immediately (progressive loading)
+      setSalesData(prev => ({
+        ...prev,
+        leads: leadStatuses,
+        metrics: {
+          ...prev.metrics,
+          totalLeads: leadStatuses.total
+        }
+      }));
+      
+      // Step 2: Fetch quotations (depends on leadIds)
+      const allQuotations = await salesDataService.fetchQuotations(leadIds);
+      const quotations = salesDataService.calculateQuotationMetrics(allQuotations);
+      leadStatuses.quotationSent = quotations.total;
+      const quotationIds = allQuotations.map(q => q.id).filter(id => id != null);
+      
+      // Update quotations immediately
+      setSalesData(prev => ({
+        ...prev,
+        quotations,
+        leads: { ...prev.leads, quotationSent: quotations.total }
+      }));
+      
+      // Step 3: Parallel fetch of payments and PIs (skip summaries for now)
+      const [allPayments, allPIs] = await Promise.all([
+        salesDataService.fetchPayments(quotationIds, leadIds),
+        salesDataService.fetchProformaInvoices(quotationIds)
+      ]);
+      
+      const proformaInvoices = salesDataService.calculatePIMetrics(allPIs);
+      const quotationIdsWithPI = new Set(allPIs.map(pi => pi.quotation_id).filter(id => id != null));
+      const quotationsWithPI = allQuotations.filter(q => quotationIdsWithPI.has(q.id));
+      
+      // Update PIs immediately
+      setSalesData(prev => ({
+        ...prev,
+        proformaInvoices,
+        payments: {
+          ...prev.payments,
+          totalSaleOrder: quotationIdsWithPI.size
+        }
+      }));
+      
+      // Step 4: Calculate payment metrics (fast)
+      const { totalReceived, totalAdvance } = salesDataService.calculatePaymentMetrics(
+        allPayments, quotationsWithPI, allQuotations
+      );
+      const { conversionRate, pendingRate } = salesDataService.calculateMetrics(leadStatuses);
+      
+      // Update payment metrics immediately
+      setSalesData(prev => ({
+        ...prev,
+        revenue: {
+          ...prev.revenue,
+          achieved: totalReceived,
+        },
+        metrics: {
+          ...prev.metrics,
+          conversionRate,
+          pendingRate,
+          totalRevenue: totalReceived,
+          conversionRateChange: 3.2,
+          pendingRateChange: -2.1
+        },
+        payments: {
+          ...prev.payments,
+          totalAdvance,
+          totalReceived
+        }
+      }));
+      
+      // Step 5: Heavy calculations in background (non-blocking)
+      // Calculate duePayment and topPerformers asynchronously
+      Promise.all([
+        salesDataService.calculateDuePayment(quotationsWithPI, allQuotations, allPayments),
+        salesDataService.calculateTopPerformers(allPayments, allLeads, allQuotations, 'office_sales')
+      ]).then(([duePayment, topPerformers]) => {
+        setSalesData(prev => ({
+          ...prev,
+          payments: {
+            ...prev.payments,
+            duePayment
+          },
+          topPerformers
+        }));
+      }).catch(error => {
+        console.error('[SuperAdminDashboard] Error in heavy calculations:', error);
+      });
+      
+    } catch (error) {
+      console.error('[SuperAdminDashboard] Error fetching sales data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
-    // Only fetch leads from office_sales department (exclude marketing_sales)
-    const allLeads = await salesDataService.fetchAllLeads('office_sales');
-    const leadStatuses = salesDataService.calculateLeadStatuses(allLeads);
-    
-    const leadIds = allLeads.map(l => l.id).filter(id => id != null);
-    const allQuotations = await salesDataService.fetchQuotations(leadIds);
-    const quotations = salesDataService.calculateQuotationMetrics(allQuotations);
-    leadStatuses.quotationSent = quotations.total;
-
-    const quotationIds = allQuotations.map(q => q.id).filter(id => id != null);
-    const [allPayments, allPIs] = await Promise.all([
-      salesDataService.fetchPayments(quotationIds, leadIds),
-      salesDataService.fetchProformaInvoices(quotationIds)
-    ]);
-    
-    const proformaInvoices = salesDataService.calculatePIMetrics(allPIs);
-    const quotationIdsWithPI = new Set(allPIs.map(pi => pi.quotation_id).filter(id => id != null));
-    const quotationsWithPI = allQuotations.filter(q => quotationIdsWithPI.has(q.id));
-    
-    console.log('[SuperAdminDashboard] Before payment calculation:', {
-      allPaymentsCount: allPayments.length,
-      quotationsWithPICount: quotationsWithPI.length,
-      allQuotationsCount: allQuotations.length
-    });
-    
-    const { totalReceived, totalAdvance } = salesDataService.calculatePaymentMetrics(
-      allPayments, quotationsWithPI, allQuotations
-    );
-    
-    console.log('[SuperAdminDashboard] Payment calculation result:', {
-      totalReceived,
-      totalAdvance,
-      revenueTarget: salesData.revenue.target,
-      targetStartDate: salesData.revenue.targetStartDate,
-      targetEndDate: salesData.revenue.targetEndDate
-    });
-    
-    // Calculate due payment ONLY for quotations that have PI created
-    // Due payment = Total amount - Paid amount for quotations with PI
-    // Use same logic as Sales Department Head dashboard (pass allQuotations and allPayments)
-    const duePayment = await salesDataService.calculateDuePayment(quotationsWithPI, allQuotations, allPayments);
-    // Only calculate top performers from office_sales department (exclude marketing_sales)
-    const topPerformers = await salesDataService.calculateTopPerformers(allPayments, allLeads, allQuotations, 'office_sales');
-    const { conversionRate, pendingRate } = salesDataService.calculateMetrics(leadStatuses);
-    
-    // Get current revenue data (targets are fetched separately)
-    setSalesData(prev => ({
-      leads: leadStatuses,
-      revenue: {
-        ...prev.revenue, // Keep existing target data from fetchRevenueTargets
-        achieved: totalReceived,
-        // daysLeft will be updated by fetchRevenueTargets
-      },
-      metrics: {
-        totalLeads: leadStatuses.total,
-        conversionRate,
-        pendingRate,
-        totalRevenue: totalReceived,
-        conversionRateChange: 3.2,
-        pendingRateChange: -2.1
-      },
-      quotations,
-      proformaInvoices,
-      payments: {
-        totalAdvance,
-        duePayment,
-        // Business rule: any quotation that has at least one PI created is treated as a Sale Order
-        // So we simply count unique quotation IDs which have a PI (matches salesperson dashboard logic)
-        totalSaleOrder: quotationIdsWithPI.size,
-        totalReceived
-      },
-      topPerformers
-    }));
-
-    setLoading(false);
-    setRefreshing(false);
-  };
-
-  const formatDisplayRange = (start, end) => {
+  const formatDisplayRange = useCallback((start, end) => {
     if (!start && !end) return 'Select date range';
     if (start && end) return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`;
     if (start) return `${new Date(start).toLocaleDateString()} - ...`;
     return `... - ${new Date(end).toLocaleDateString()}`;
-  };
+  }, []);
 
-  const applyDateRange = () => {
-    setDateRange(formatDisplayRange(startDate, endDate));
-    setShowDatePicker(false);
-    fetchSalesData();
-    fetchAccountsData();
-    fetchITData();
-    fetchRevenueTargets();
-  };
-
-  const clearDateRange = () => {
-    setStartDate('');
-    setEndDate('');
-    setDateRange('Select date range');
-    setShowDatePicker(false);
-    fetchSalesData();
-    fetchAccountsData();
-    fetchITData();
-    fetchRevenueTargets();
-  };
-
-  const fetchAccountsData = async () => {
+  // OPTIMIZED: Parallel fetch for accounts data
+  const fetchAccountsData = useCallback(async () => {
     try {
       const statuses = ['pending', 'approved', 'rejected'];
       const responses = await Promise.all(
@@ -322,9 +381,9 @@ const SuperAdminDashboard = () => {
         rejected: { count: 0, amount: 0 }
       });
     }
-  };
+  }, []);
 
-  const fetchITData = async () => {
+  const fetchITData = useCallback(async () => {
     try {
       const response = await apiClient.get(API_ENDPOINTS.TICKETS_LIST());
       const tickets = response?.data || response || [];
@@ -351,48 +410,94 @@ const SuperAdminDashboard = () => {
         closed: 0
       });
     }
-  };
+  }, []);
 
-  const leadStatusChartData = [
-    { label: 'Pending', value: salesData.leads.pending || 0, color: '#8b5cf6' },
-    { label: 'Running', value: salesData.leads.running || 0, color: '#3b82f6' },
-    { label: 'Converted', value: salesData.leads.converted || 0, color: '#10b981' },
-    { label: 'Interested', value: salesData.leads.interested || 0, color: '#f59e0b' },
-    { label: 'Win/Closed', value: salesData.leads.winClosed || 0, color: '#10b981' },
-    { label: 'Closed', value: salesData.leads.closed || 0, color: '#6366f1' },
-    { label: 'Lost', value: salesData.leads.lost || 0, color: '#ef4444' }
-  ].filter(item => item.value > 0);
+  const applyDateRange = useCallback(() => {
+    setDateRange(formatDisplayRange(startDate, endDate));
+    setShowDatePicker(false);
+    // Refresh all data in parallel
+    Promise.all([
+      fetchSalesData(),
+      fetchAccountsData(),
+      fetchITData(),
+      fetchRevenueTargets()
+    ]);
+  }, [startDate, endDate, formatDisplayRange, fetchSalesData, fetchAccountsData, fetchITData, fetchRevenueTargets]);
 
-  const totalChartValue = leadStatusChartData.reduce((sum, item) => sum + item.value, 0);
+  const clearDateRange = useCallback(() => {
+    setStartDate('');
+    setEndDate('');
+    setDateRange('Select date range');
+    setShowDatePicker(false);
+    // Refresh all data in parallel
+    Promise.all([
+      fetchSalesData(),
+      fetchAccountsData(),
+      fetchITData(),
+      fetchRevenueTargets()
+    ]);
+  }, [fetchSalesData, fetchAccountsData, fetchITData, fetchRevenueTargets]);
 
-  // Show initial loader while all data is being fetched
+  // OPTIMIZED: Memoized chart data calculation
+  const leadStatusChartData = useMemo(() => {
+    return [
+      { label: 'Pending', value: salesData.leads.pending || 0, color: '#8b5cf6' },
+      { label: 'Running', value: salesData.leads.running || 0, color: '#3b82f6' },
+      { label: 'Converted', value: salesData.leads.converted || 0, color: '#10b981' },
+      { label: 'Interested', value: salesData.leads.interested || 0, color: '#f59e0b' },
+      { label: 'Win/Closed', value: salesData.leads.winClosed || 0, color: '#10b981' },
+      { label: 'Closed', value: salesData.leads.closed || 0, color: '#6366f1' },
+      { label: 'Lost', value: salesData.leads.lost || 0, color: '#ef4444' }
+    ].filter(item => item.value > 0);
+  }, [salesData.leads]);
+
+  // OPTIMIZED: Memoized total chart value
+  const totalChartValue = useMemo(() => {
+    return leadStatusChartData.reduce((sum, item) => sum + item.value, 0);
+  }, [leadStatusChartData]);
+
+  // OPTIMIZED: Memoized refresh handler
+  const handleRefresh = useCallback(() => {
+    Promise.all([
+      fetchSalesData(),
+      fetchAccountsData(),
+      fetchITData(),
+      fetchRevenueTargets()
+    ]);
+  }, [fetchSalesData, fetchAccountsData, fetchITData, fetchRevenueTargets]);
+
+  // Initial data load
+  useEffect(() => {
+    let isMounted = true;
+    
+    const loadAllData = async () => {
+      setInitialLoading(true);
+      try {
+        await Promise.all([
+          fetchSalesData(),
+          fetchAccountsData(),
+          fetchITData(),
+          fetchRevenueTargets()
+        ]);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        if (isMounted) {
+          setInitialLoading(false);
+        }
+      }
+    };
+    
+    loadAllData();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedPeriod, fetchSalesData, fetchAccountsData, fetchITData, fetchRevenueTargets]);
+
+  // Show skeleton loader instead of spinner
   if (initialLoading) {
-    return (
-      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative">
-            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
-            </div>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Dashboard</h3>
-          <p className="text-sm text-gray-600">Fetching sales, accounts, IT data and revenue targets...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show loader for refresh (when user clicks refresh button)
-  if (loading && !refreshing) {
-    return (
-      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading dashboard data...</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
@@ -401,12 +506,7 @@ const SuperAdminDashboard = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => {
-                fetchSalesData();
-                fetchAccountsData();
-                fetchITData();
-                fetchRevenueTargets();
-              }}
+              onClick={handleRefresh}
               disabled={refreshing}
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
@@ -421,7 +521,6 @@ const SuperAdminDashboard = () => {
               value={selectedPeriod}
               onChange={(e) => {
                 setSelectedPeriod(e.target.value);
-                fetchSalesData();
               }}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
@@ -575,4 +674,4 @@ const SuperAdminDashboard = () => {
   );
 };
 
-export default SuperAdminDashboard;
+export default memo(SuperAdminDashboard);

@@ -4,6 +4,7 @@ import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import organizationService from '../../api/admin_api/organizationService';
 import toastManager from '../../utils/ToastManager';
+import { SkeletonTable } from '../../components/dashboard/DashboardSkeleton';
 
 const initialFormState = {
   organizationName: '',
@@ -311,7 +312,7 @@ const CreateOrganisation = () => {
         {/* Organizations Table */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           {listLoading ? (
-            <div className="p-8 text-center text-gray-500">Loading organizations...</div>
+            <SkeletonTable rows={10} />
           ) : organizations.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               <Building2 className="w-12 h-12 mx-auto mb-4 text-gray-400" />

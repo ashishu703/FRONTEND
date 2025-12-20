@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from "react"
 import { Package, Search, CheckCircle, XCircle, AlertCircle, Image as ImageIcon } from "lucide-react"
 import apiClient from "../../utils/apiClient"
 import { API_ENDPOINTS } from "../../api/admin_api/api"
+import DashboardSkeleton from "../../components/dashboard/DashboardSkeleton"
 
 // Helper function to get side view image for each product
 const getSideViewImage = (productName) => {
@@ -73,6 +74,7 @@ export default function StockManagement({ isDarkMode = false }) {
   const [selectedFilter, setSelectedFilter] = useState('all'); // 'all', 'available', 'limited', 'out_of_stock'
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   // Load stock data from backend
   useEffect(() => {
@@ -119,6 +121,7 @@ export default function StockManagement({ isDarkMode = false }) {
       setProducts(productsWithEmptyStock);
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -186,15 +189,9 @@ export default function StockManagement({ isDarkMode = false }) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className={`min-h-screen p-6 flex items-center justify-center ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-        <div className="text-center">
-          <Package className={`w-12 h-12 mx-auto mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
-          <p className={`text-lg ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading stock data...</p>
-        </div>
-      </div>
-    );
+  // Show skeleton loader on initial load (after all hooks)
+  if (initialLoading) {
+    return <DashboardSkeleton />;
   }
 
   return (

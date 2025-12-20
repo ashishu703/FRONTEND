@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, Download, User, DollarSign, Clock, Calendar, Link, Copy, Eye, MoreHorizontal, CreditCard, AlertCircle, CheckCircle, XCircle, ChevronDown, Edit, Package, FileText, RotateCw, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import paymentService from '../../api/admin_api/paymentService';
 import WorkOrderFormat from './WorkOrderFormat';
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 
 const PaymentsDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,6 +27,7 @@ const PaymentsDashboard = () => {
   const [payments, setPayments] = useState([]);
   const [allPaymentsData, setAllPaymentsData] = useState([]); // Store all payments before filtering
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10, // Items per page
@@ -130,6 +132,7 @@ const PaymentsDashboard = () => {
       setPayments([]);
       setPagination({ page: 1, limit: 50, total: 0, pages: 0 });
     } finally {
+      setInitialLoading(false);
       setLoading(false);
     }
   };
@@ -527,6 +530,11 @@ const PaymentsDashboard = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showFilterDropdown, showDateRangeFilter]);
+
+  // Show skeleton loader on initial load (AFTER all hooks)
+  if (initialLoading) {
+    return <DashboardSkeleton />;
+  }
 
   const StatCard = ({ title, value, subtitle, color, bgColor, icon: Icon }) => (
     <div className={`${bgColor} rounded-lg border p-4 shadow-sm`}>

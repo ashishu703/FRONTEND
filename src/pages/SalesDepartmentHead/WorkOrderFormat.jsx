@@ -83,7 +83,12 @@ const WorkOrderFormat = ({ paymentData, onClose, onSave }) => {
   if (!workOrder) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white p-4 rounded">Loading...</div>
+        <div className="bg-white p-4 rounded">
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded w-24"></div>
+          </div>
+        </div>
       </div>
     );
   }

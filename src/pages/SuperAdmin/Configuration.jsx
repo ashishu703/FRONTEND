@@ -21,6 +21,7 @@ import {
 import configurationService from '../../api/admin_api/configurationService';
 import TemplateFormSidebar from '../../components/TemplateFormSidebar';
 import EmailTemplateFormSidebar from '../../components/EmailTemplateFormSidebar';
+import { SkeletonCard } from '../../components/dashboard/DashboardSkeleton';
 
 const Configuration = () => {
   const [activeTab, setActiveTab] = useState('smtp');
@@ -1210,19 +1211,24 @@ const Configuration = () => {
 
   if (loading) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
-        <Loader className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="mb-6">
+          <div className="h-8 bg-gray-200 rounded w-48 mb-2 animate-pulse"></div>
+          <div className="h-4 bg-gray-200 rounded w-96 animate-pulse"></div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="space-y-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Configuration</h1>
-        <p className="text-gray-600">Manage your system settings and configurations</p>
-      </div>
 
       {/* Message Alert */}
       {message.text && (

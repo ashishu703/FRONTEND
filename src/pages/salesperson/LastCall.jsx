@@ -9,6 +9,7 @@ import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
 import toastManager from '../../utils/ToastManager';
 import { useAuth } from '../../hooks/useAuth';
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 
 // Lead Status Preview Modal Component
 const LeadStatusPreview = ({ lead, onClose }) => {
@@ -483,6 +484,7 @@ export default function LastCall() {
   const [leads, setLeads] = useState([]);
   const [filteredLeads, setFilteredLeads] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
   const [timelineLead, setTimelineLead] = useState(null);
@@ -599,6 +601,7 @@ export default function LastCall() {
         setError('Failed to load last call data');
       } finally {
         setLoading(false);
+        setInitialLoading(false);
       }
     };
 
@@ -937,6 +940,11 @@ export default function LastCall() {
     setCurrentPage(1);
   };
 
+  // Show skeleton loader on initial load
+  if (initialLoading) {
+    return <DashboardSkeleton />;
+  }
+
   return (
     <div className={`p-6 transition-all duration-300 ${showCustomerTimeline ? 'pr-[360px]' : ''}`}>
 
@@ -1061,12 +1069,7 @@ export default function LastCall() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">Loading leads data...</span>
-        </div>
-      ) : error ? (
+      {error ? (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <div className="flex">
             <div className="ml-3">

@@ -9,6 +9,7 @@ import quotationService from '../../api/admin_api/quotationService'
 import companyBranchService from '../../services/CompanyBranchService'
 import templateService from '../../services/TemplateService'
 import apiClient from '../../utils/apiClient'
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton'
 
 function Card({ className, children }) {
   return <div className={`rounded-lg border bg-white shadow-sm ${className || ''}`}>{children}</div>
@@ -342,6 +343,7 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
         alert('Error loading quotation data. Please try again.')
       } finally {
         setLoading(false)
+        setInitialLoading(false)
       }
     }
 
@@ -666,13 +668,7 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen w-full bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-lg text-gray-700">Loading PI form...</p>
-        </div>
-      </div>
-    )
+    return <DashboardSkeleton />;
   }
 
   if (!quotationData) {
@@ -1153,6 +1149,11 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
         {formContent}
       </div>
     )
+  }
+
+  // Show skeleton loader on initial load
+  if (initialLoading) {
+    return <DashboardSkeleton />;
   }
 
   return (

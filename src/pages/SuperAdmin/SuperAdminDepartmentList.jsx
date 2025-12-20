@@ -4,6 +4,7 @@ import departmentHeadService, { uiToApiDepartment, apiToUiDepartment } from '../
 import departmentUserService from '../../api/admin_api/departmentUserService';
 import { useAuth } from '../../hooks/useAuth';
 import organizationService from '../../api/admin_api/organizationService';
+import { SkeletonTable, SkeletonStatCard } from '../../components/dashboard/DashboardSkeleton';
 
 const DepartmentManagement = () => {
   const { login, impersonate, user } = useAuth();
@@ -38,6 +39,7 @@ const DepartmentManagement = () => {
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -112,6 +114,7 @@ const DepartmentManagement = () => {
       setError(err.message || 'Failed to load users');
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -239,6 +242,26 @@ const DepartmentManagement = () => {
   const filteredDepartments = departments.filter((dept) => {
     return isWithinDateRange(dept.createdAt);
   });
+
+  // Show skeleton loader on initial load
+  if (initialLoading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="mb-6">
+          <div className="h-8 bg-gray-200 rounded w-64 mb-4 animate-pulse"></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonStatCard key={i} />
+          ))}
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+          <div className="h-10 bg-gray-200 rounded w-64 mb-4 animate-pulse"></div>
+        </div>
+        <SkeletonTable rows={10} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -399,7 +422,7 @@ const DepartmentManagement = () => {
         {/* Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8">
           {loading ? (
-            <div className="text-center py-16">Loading...</div>
+            <SkeletonTable rows={10} />
           ) : filteredDepartments.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

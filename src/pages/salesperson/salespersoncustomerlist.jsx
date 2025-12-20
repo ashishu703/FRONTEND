@@ -6,6 +6,7 @@ import html2pdf from 'html2pdf.js'
 import Quotation from './salespersonquotation.jsx'
 import AddCustomerForm from './salespersonaddcustomer.jsx'
 import CreateQuotationForm from './salespersoncreatequotation.jsx'
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton'
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")
@@ -20,6 +21,7 @@ function CardContent({ className, children }) {
 }
 
 export default function CustomerListContent() {
+  const [initialLoading, setInitialLoading] = React.useState(true)
   const [viewingCustomer, setViewingCustomer] = React.useState(null)
   const [modalTab, setModalTab] = React.useState('details')
   const [showAddCustomer, setShowAddCustomer] = React.useState(false)

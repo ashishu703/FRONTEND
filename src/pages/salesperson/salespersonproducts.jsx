@@ -11,8 +11,8 @@ import uploadService from '../../api/admin_api/uploadService';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
 import { useAuth } from '../../hooks/useAuth';
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 
-// Utility Functions
 class DataExtractor {
   static extractArray(response) {
     if (Array.isArray(response)) return response;
@@ -69,7 +69,6 @@ class PaymentValidator {
   }
 }
 
-// Payment Tracking Data Service (OOP)
 class PaymentTrackingService {
   constructor(apiClient, paymentService, quotationService, proformaInvoiceService) {
     this.apiClient = apiClient;
@@ -1227,7 +1226,6 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
   const loadQuotationDetails = async (quotationId, creditSource = baseCredit, quotationDetails = null) => {
     if (!quotationId) return;
     
-    // If quotation already has PIs from filter, use them; otherwise fetch
     const quotationWithPIs = approvedQuotations.find(q => q.id === quotationId);
     const existingPIs = quotationWithPIs?.pis || [];
     
@@ -1716,6 +1714,7 @@ export default function ProductsPage() {
   const [filteredPaymentTracking, setFilteredPaymentTracking] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
   const [timelineRefreshKey, setTimelineRefreshKey] = useState(0);
   
@@ -1755,6 +1754,7 @@ export default function ProductsPage() {
       setError('Failed to load payment tracking data');
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -1903,6 +1903,10 @@ export default function ProductsPage() {
     setSelectedProduct(item);
   };
 
+  // Show skeleton loader on initial load (after all hooks)
+  if (initialLoading) {
+    return <DashboardSkeleton />;
+  }
 
   // Helper function to format address by splitting on commas
   const formatAddress = (address) => {
@@ -2040,12 +2044,7 @@ export default function ProductsPage() {
         loading={loading}
       />
 
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">Loading payment tracking data...</span>
-        </div>
-      ) : error ? (
+      {error ? (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <div className="flex">
             <div className="ml-3">

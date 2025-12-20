@@ -6,10 +6,12 @@ import apiErrorHandler from '../../utils/ApiErrorHandler';
 import toastManager from '../../utils/ToastManager';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 
 const SalesDashboard = () => {
   const [userData, setUserData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -169,6 +171,7 @@ const SalesDashboard = () => {
         toastManager.error('Failed to load user performance data');
       } finally {
         setLoading(false);
+        setInitialLoading(false);
       }
     };
 
@@ -319,6 +322,11 @@ const SalesDashboard = () => {
   const getFilteredUsers = () => {
     return filterUsers(userData);
   };
+
+  // Show skeleton loader on initial load
+  if (initialLoading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
