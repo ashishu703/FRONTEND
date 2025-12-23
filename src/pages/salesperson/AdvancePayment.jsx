@@ -12,6 +12,10 @@ import { API_ENDPOINTS } from '../../api/admin_api/api';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
 import { useAuth } from '../../hooks/useAuth';
 import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
+import { useViewQuotationPI } from '../../hooks/useViewQuotationPI';
+import QuotationPreview from '../../components/QuotationPreview';
+import PIPreview from '../../components/PIPreview';
+import CompanyBranchService from '../../services/CompanyBranchService';
 
 class DataExtractor {
   static extractArray(response) {
@@ -68,6 +72,40 @@ class PaymentTrackingService {
     const response = await this.proformaInvoiceService.getPIsByQuotation(quotationId);
     const pis = DataExtractor.extractArray(response);
     return pis.length > 0;
+  }
+
+  // OPTIMIZED: Bulk fetch quotation items with memoization
+  async _fetchQuotationItemsBulk(quotationIds) {
+    if (quotationIds.length === 0) return new Map();
+    
+    const itemsMap = new Map();
+    const quotationsToFetch = [];
+    
+    for (const id of quotationIds) {
+      quotationsToFetch.push(id);
+    }
+
+    if (quotationsToFetch.length === 0) return itemsMap;
+
+    // OPTIMIZED: Fetch all quotations in parallel (batch of 20 to avoid overwhelming)
+    const batchSize = 20;
+    for (let i = 0; i < quotationsToFetch.length; i += batchSize) {
+      const batch = quotationsToFetch.slice(i, i + batchSize);
+      const quotationPromises = batch.map(id =>
+        this.quotationService.getQuotation(id)
+          .then(res => ({ id, items: res?.data?.items || res?.items || [] }))
+          .catch(() => ({ id, items: [] }))
+      );
+
+      const results = await Promise.all(quotationPromises);
+      results.forEach(({ id, items }) => {
+        if (items && items.length > 0) {
+          itemsMap.set(id, items);
+        }
+      });
+    }
+
+    return itemsMap;
   }
 
   mergePayments(existingPayments, newPayments) {
@@ -160,28 +198,46 @@ class PaymentTrackingService {
 
   async buildAdvancePaymentData(paymentMap) {
     const paymentTrackingData = [];
-
-    for (const [, { quotation, lead, payments }] of paymentMap.entries()) {
-      if (!quotation) continue;
-
-      // Fetch PI data for this quotation to get product names from PI
-      let pis = [];
-      try {
-        console.log('🔍 [AdvancePayment] Fetching PI for quotation:', quotation.id);
-        const response = await this.proformaInvoiceService.getPIsByQuotation(quotation.id);
-        pis = DataExtractor.extractArray(response);
-        console.log('✅ [AdvancePayment] PI data fetched:', pis);
-      } catch (error) {
-        console.warn(`❌ [AdvancePayment] Failed to fetch PI for quotation ${quotation.id}:`, error);
+    
+    // OPTIMIZED: Collect all quotation IDs first for bulk operations
+    const quotationIds = [];
+    const quotationEntries = [];
+    for (const [key, { quotation, lead, payments }] of paymentMap.entries()) {
+      if (quotation?.id) {
+        quotationIds.push(quotation.id);
+        quotationEntries.push({ key, quotation, lead, payments });
       }
+    }
+
+    // OPTIMIZED: Parallel bulk fetch of PIs and quotation items for all quotations
+    const [bulkPIsResult, quotationItemsMap] = await Promise.all([
+      quotationIds.length > 0 
+        ? this.proformaInvoiceService.getBulkPIsByQuotations(quotationIds).catch(() => ({ data: [] }))
+        : Promise.resolve({ data: [] }),
+      this._fetchQuotationItemsBulk(quotationIds)
+    ]);
+
+    // Build PI map by quotation ID
+    const pisByQuotationId = new Map();
+    const allPIs = DataExtractor.extractArray(bulkPIsResult);
+    allPIs.forEach(pi => {
+      if (pi.quotation_id) {
+        if (!pisByQuotationId.has(pi.quotation_id)) {
+          pisByQuotationId.set(pi.quotation_id, []);
+        }
+        pisByQuotationId.get(pi.quotation_id).push(pi);
+      }
+    });
+
+    // Process each quotation with pre-fetched data
+    for (const { quotation, lead, payments } of quotationEntries) {
+      // Get PIs from pre-fetched map
+      const pis = pisByQuotationId.get(quotation.id) || [];
 
       // Only include if PI exists
       if (pis.length === 0) {
-        console.log('⚠️ [AdvancePayment] No PI found for quotation:', quotation.id, '- Skipping');
         continue;
       }
-      
-      console.log('✅ [AdvancePayment] PI exists for quotation:', quotation.id, '- Processing payment tracking');
 
       const validPayments = payments.filter(PaymentValidator.isValid);
       const approvedPayments = validPayments.filter(PaymentValidator.isApproved);
@@ -197,7 +253,6 @@ class PaymentTrackingService {
       
       // Only process if there's at least one approved payment (not all rejected)
       if (approvedPaymentsForDate.length === 0) {
-        console.log('⚠️ [AdvancePayment] No approved payments for quotation:', quotation.id, '- Skipping');
         continue;
       }
 
@@ -212,25 +267,11 @@ class PaymentTrackingService {
         : null;
       const firstPayment = approvedPaymentsForDate.length > 0 ? approvedPaymentsForDate[0] : null;
 
+      // Get quotation items from pre-fetched map
+      let quotationItems = quotationItemsMap.get(quotation.id) || quotation?.items || [];
+      
       // Fetch product names from PI (via quotation items that PI references)
       let productNames = 'N/A';
-      console.log('🔍 [AdvancePayment] Building payment tracking - Quotation ID:', quotation.id);
-      console.log('📦 [AdvancePayment] Quotation data:', quotation);
-      console.log('📋 [AdvancePayment] PI data:', pis);
-      
-      // Fetch quotation items if not already included
-      let quotationItems = quotation?.items;
-      if (!quotationItems || !Array.isArray(quotationItems) || quotationItems.length === 0) {
-        try {
-          console.log('📥 [AdvancePayment] Fetching quotation items for:', quotation.id);
-          const quotationWithItems = await this.quotationService.getQuotation(quotation.id);
-          quotationItems = quotationWithItems?.data?.items || quotationWithItems?.items || [];
-          console.log('✅ [AdvancePayment] Quotation items fetched:', quotationItems);
-        } catch (error) {
-          console.warn('⚠️ [AdvancePayment] Failed to fetch quotation items:', error);
-          quotationItems = [];
-        }
-      }
       
       // PI references quotation, so get product names from quotation items
       // Since PI is created from quotation, items are the same
@@ -239,16 +280,11 @@ class PaymentTrackingService {
           .map(item => item.product_name || item.productName || item.description)
           .filter(Boolean)
           .join(', ');
-        console.log('✅ [AdvancePayment] Product names from quotation items:', productNames);
       } else if (lead.product_type) {
         productNames = lead.product_type;
-        console.log('⚠️ [AdvancePayment] Using lead product_type as fallback:', productNames);
       } else if (firstPayment?.product_name) {
         productNames = firstPayment.product_name;
-        console.log('⚠️ [AdvancePayment] Using payment product_name as fallback:', productNames);
       }
-      
-      console.log('📝 [AdvancePayment] Final product name for payment tracking:', productNames);
 
       paymentTrackingData.push({
         id: `${quotation.customer_id || lead.id}-${quotation.id}`,
@@ -291,18 +327,31 @@ class PaymentTrackingService {
     });
   }
 
+  // OPTIMIZED: Parallel API calls with memoization
   async fetchAdvancePaymentData() {
     const leads = await this.fetchAssignedLeads();
     const leadIds = leads.map(lead => lead.id);
     const leadsMap = this.buildLeadsMap(leads);
 
+    if (leadIds.length === 0) {
+      return [];
+    }
+
+    // OPTIMIZED: Fetch all data in parallel
     const [allPayments, allQuotations] = await Promise.all([
       this.fetchBulkPaymentsByCustomers(leadIds),
       this.fetchBulkQuotationsByCustomers(leadIds)
     ]);
 
     const quotationIds = allQuotations.map(q => q.id).filter(Boolean);
-    const quotationPayments = await this.fetchBulkPaymentsByQuotations(quotationIds);
+    
+    // OPTIMIZED: Fetch quotation payments in parallel (no need to wait)
+    const quotationPaymentsPromise = quotationIds.length > 0 
+      ? this.fetchBulkPaymentsByQuotations(quotationIds)
+      : Promise.resolve([]);
+
+    // Process while fetching quotation payments
+    const quotationPayments = await quotationPaymentsPromise;
     const mergedPayments = this.mergePayments(allPayments, quotationPayments);
 
     const paymentMap = this.buildPaymentMap(allQuotations, mergedPayments, leadsMap);
@@ -311,7 +360,7 @@ class PaymentTrackingService {
 }
 
 // Timeline Sidebar component for viewing payment tracking details
-const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
+const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0, companyBranches, user, viewHook }) => {
   const [customerQuotations, setCustomerQuotations] = useState([]);
   const [loadingQuotations, setLoadingQuotations] = useState(false);
   const [quotationError, setQuotationError] = useState(null);
@@ -349,11 +398,9 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
             setQuotationSummary(sRes?.data || null);
             setPaymentsForQuotation(pRes?.data || []);
             const pis = DataExtractor.extractArray(piRes);
-            console.log('[AdvancePayment Timeline] Fetched PIs for quotation', chosenQuotationId, ':', pis);
             setPisByQuotationId({ [chosenQuotationId]: pis });
             return;
           } catch (innerErr) {
-            console.warn('Failed to load quotation summary/payments', innerErr);
           }
         }
 
@@ -368,15 +415,12 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
           try {
             const piRes = await proformaInvoiceService.getPIsByQuotation(q.id);
             const pis = DataExtractor.extractArray(piRes);
-            console.log('[AdvancePayment Timeline] Fetched PIs for quotation', q.id, ':', pis);
             if (pis.length > 0) {
               pisMap[q.id] = pis;
             }
           } catch (err) {
-            console.warn(`Failed to fetch PIs for quotation ${q.id}:`, err);
           }
         }
-        console.log('[AdvancePayment Timeline] Final pisByQuotationId:', pisMap);
         setPisByQuotationId(pisMap);
         
         const latestApproved = qList.filter(q => q.status === 'approved').slice(-1)[0];
@@ -399,360 +443,9 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
     fetchCustomerQuotations();
   }, [item.leadData?.id, item.quotationData?.id, refreshKey]);
 
-  // Handle view PI - show in new window
-  const handleViewPI = async (piId) => {
-    try {
-      const response = await proformaInvoiceService.getPI(piId);
-      if (response.success) {
-        const pi = response.data;
-        const piWindow = window.open('', '_blank', 'width=1000,height=800,scrollbars=yes,resizable=yes');
-        
-        if (piWindow) {
-          // Create HTML content for PI preview (similar to quotation preview)
-          const htmlContent = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>PI ${pi.pi_number || pi.id}</title>
-              <script src="https://cdn.tailwindcss.com"></script>
-              <style>
-                @media print {
-                  .no-print { display: none !important; }
-                }
-              </style>
-            </head>
-            <body class="bg-gray-100">
-              <div class="max-w-4xl mx-auto bg-white font-sans text-sm p-6">
-                <div class="border-2 border-black mb-4 p-4">
-                  <h1 class="text-xl font-bold">Proforma Invoice</h1>
-                  <p class="text-sm">PI Number: ${pi.pi_number || `PI-${pi.id}`}</p>
-                  <p class="text-sm">Date: ${pi.created_at ? new Date(pi.created_at).toLocaleDateString('en-IN') : 'N/A'}</p>
-                  <p class="text-sm">Total Amount: ₹${Number(pi.total_amount || 0).toLocaleString('en-IN')}</p>
-                </div>
-                <div class="text-center mt-4">
-                  <p class="text-gray-600">PI details will be displayed here</p>
-                </div>
-              </div>
-              <div class="fixed bottom-0 left-0 right-0 bg-white p-4 border-t border-gray-300 flex justify-between no-print">
-                <button onclick="window.close()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Close</button>
-                <button onclick="window.print()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">Print PDF</button>
-              </div>
-            </body>
-            </html>
-          `;
-          piWindow.document.write(htmlContent);
-          piWindow.document.close();
-        }
-      }
-    } catch (error) {
-      console.error('Error viewing PI:', error);
-      alert('Failed to load PI');
-    }
-  };
-
-  // Handle view quotation - show in modal using QuotationPreview format
-  const handleViewQuotation = async (quotationId) => {
-    try {
-      const response = await quotationService.getQuotation(quotationId);
-      
-      if (response.success) {
-        // Open quotation in new tab/window for viewing
-        const quotationWindow = window.open('', '_blank', 'width=1000,height=800,scrollbars=yes,resizable=yes');
-        
-        if (quotationWindow) {
-          const quotation = response.data;
-          
-          // Company branches data (same as in quotation creation)
-          const companyBranches = {
-            ANODE: {
-              name: 'ANODE ELECTRIC PRIVATE LIMITED',
-              gstNumber: '(23AANCA7455R1ZX)',
-              description: 'MANUFACTURING & SUPPLY OF ELECTRICAL CABLES & WIRES.',
-              address: 'KHASRA NO. 805/5, PLOT NO. 10, IT PARK, BARGI HILLS, JABALPUR - 482003, MADHYA PRADESH, INDIA.',
-              tel: '6262002116, 6262002113',
-              web: 'www.anocab.com',
-              email: 'info@anocab.com',
-              logo: 'Anocab - A Positive Connection.....'
-            }
-          };
-          
-          // Mock user data
-          const user = {
-            name: 'Salesperson',
-            email: 'salesperson@anocab.com'
-          };
-          
-          // Format quotation data to match QuotationPreview component
-          const quotationData = {
-            quotationNumber: quotation.quotation_number || `QT-${quotation.id}`,
-            quotationDate: quotation.quotation_date || quotation.created_at?.split('T')[0],
-            validUpto: quotation.valid_until,
-            voucherNumber: `VOUCH-${quotation.id?.slice(-4) || '0000'}`,
-            billTo: {
-              business: quotation.customer_name,
-              address: quotation.customer_address,
-              phone: quotation.customer_phone,
-              gstNo: quotation.customer_gst_no,
-              state: quotation.customer_state
-            },
-            items: quotation.items?.map(item => ({
-              productName: item.description || item.product_name,
-              description: item.description || item.product_name,
-              quantity: item.quantity,
-              unit: item.unit || 'Nos',
-              buyerRate: item.rate || item.unit_price,
-              unitPrice: item.rate || item.unit_price,
-              amount: item.amount || item.taxable_amount,
-              total: item.total_amount || item.amount,
-              hsn: item.hsn_code || '85446090',
-              gstRate: item.gst_rate || quotation.tax_rate || 18
-            })) || [],
-            subtotal: parseFloat(quotation.subtotal || 0),
-            taxAmount: parseFloat(quotation.tax_amount || 0),
-            total: parseFloat(quotation.total_amount || 0),
-            discountRate: parseFloat(quotation.discount_rate || 0),
-            discountAmount: parseFloat(quotation.discount_amount || 0),
-            taxRate: parseFloat(quotation.tax_rate || 18),
-            selectedBranch: 'ANODE'
-          };
-          
-          // Create HTML content using the exact same format as QuotationPreview
-          const htmlContent = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>Quotation ${quotationData.quotationNumber}</title>
-              <script src="https://cdn.tailwindcss.com"></script>
-              <style>
-                @media print {
-                  .no-print { display: none !important; }
-                }
-              </style>
-            </head>
-            <body class="bg-gray-100">
-              <div class="max-w-4xl mx-auto bg-white font-sans text-sm" id="quotation-content">
-                <div class="p-6">
-                  <div class="border-2 border-black mb-4">
-                    <div class="p-2 flex justify-between items-center">
-                      <div>
-                        <h1 class="text-xl font-bold">${companyBranches.ANODE.name}</h1>
-                        <p class="text-xs font-semibold text-gray-700">${companyBranches.ANODE.gstNumber}</p>
-                        <p class="text-xs">${companyBranches.ANODE.description}</p>
-                      </div>
-                      <div class="text-right">
-                        <img
-                          src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
-                          alt="Company Logo"
-                          class="h-12 w-auto bg-white p-1 rounded"
-                        />
-                      </div>
-                    </div>
-
-                    <div class="p-3 bg-gray-50">
-                      <div class="grid grid-cols-2 gap-4 text-xs">
-                        <div>
-                          <p><strong>${companyBranches.ANODE.address}</strong></p>
-                        </div>
-                        <div class="text-right">
-                          <p>Tel: ${companyBranches.ANODE.tel}</p>
-                          <p>Web: ${companyBranches.ANODE.web}</p>
-                          <p>Email: ${companyBranches.ANODE.email}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="border border-black mb-4">
-                    <div class="bg-gray-100 p-2 text-center font-bold">
-                      <h2>Quotation Details</h2>
-                    </div>
-                    <div class="grid grid-cols-4 gap-2 p-2 text-xs border-b">
-                      <div><strong>Quotation Date</strong></div>
-                      <div><strong>Quotation Number</strong></div>
-                      <div><strong>Valid Upto</strong></div>
-                      <div><strong>Voucher Number</strong></div>
-                    </div>
-                    <div class="grid grid-cols-4 gap-2 p-2 text-xs">
-                      <div>${quotationData.quotationDate}</div>
-                      <div>${quotationData.quotationNumber}</div>
-                      <div>${quotationData.validUpto}</div>
-                      <div>${quotationData.voucherNumber}</div>
-                    </div>
-                  </div>
-
-                  <div class="border border-black mb-4">
-                    <div class="grid grid-cols-2 gap-4 p-3 text-xs">
-                      <div>
-                        <h3 class="font-bold mb-2">BILL TO:</h3>
-                        <p><strong>${quotationData.billTo.business || 'Customer'}</strong></p>
-                        ${quotationData.billTo.address ? `<p>${quotationData.billTo.address}</p>` : ''}
-                        ${quotationData.billTo.phone ? `<p><strong>PHONE:</strong> ${quotationData.billTo.phone}</p>` : ''}
-                        ${quotationData.billTo.gstNo ? `<p><strong>GSTIN:</strong> ${quotationData.billTo.gstNo}</p>` : ''}
-                        ${quotationData.billTo.state ? `<p><strong>State:</strong> ${quotationData.billTo.state}</p>` : ''}
-                      </div>
-                      <div>
-                        <p><strong>L.R. No:</strong> -</p>
-                        <p><strong>Transport:</strong> STAR TRANSPORTS</p>
-                        <p><strong>Transport ID:</strong> 562345</p>
-                        <p><strong>Vehicle Number:</strong> GJ01HJ2520</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="border border-black mb-4">
-                    <table class="w-full text-xs">
-                      <thead>
-                        <tr class="bg-gray-100">
-                          <th class="border border-gray-300 p-1 text-center w-10">Sr.</th>
-                          <th class="border border-gray-300 p-2 text-left">Name of Product / Service</th>
-                          <th class="border border-gray-300 p-1 text-center w-16">HSN / SAC</th>
-                          <th class="border border-gray-300 p-1 text-center w-12">Qty</th>
-                          <th class="border border-gray-300 p-1 text-center w-12">Unit</th>
-                          <th class="border border-gray-300 p-1 text-right w-20">Buyer Rate</th>
-                          <th class="border border-gray-300 p-1 text-right w-20">Taxable Value</th>
-                          <th class="border border-gray-300 p-0.5 text-center w-8 text-[10px] whitespace-nowrap">GST%</th>
-                          <th class="border border-gray-300 p-1 text-right w-24">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        ${quotationData.items && quotationData.items.length > 0 ? 
-                          quotationData.items.map((item, index) => `
-                            <tr>
-                              <td class="border border-gray-300 p-1 text-center">${index + 1}</td>
-                              <td class="border border-gray-300 p-2">${item.productName || item.description}</td>
-                              <td class="border border-gray-300 p-1 text-center">${item.hsn || '85446090'}</td>
-                              <td class="border border-gray-300 p-1 text-center">${item.quantity}</td>
-                              <td class="border border-gray-300 p-1 text-center">${item.unit || 'Nos'}</td>
-                              <td class="border border-gray-300 p-1 text-right">${parseFloat(item.buyerRate || item.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                              <td class="border border-gray-300 p-1 text-right">${parseFloat(item.amount || item.taxable || item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                              <td class="border border-gray-300 p-0 text-center text-xs">${item.gstRate ? `${item.gstRate}%` : '18%'}</td>
-                              <td class="border border-gray-300 p-1 text-right">${parseFloat((item.amount ?? item.total ?? 0) * (item.gstMultiplier ?? 1.18)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                            </tr>
-                          `).join('') : 
-                          '<tr><td colspan="9" class="border border-gray-300 p-2 text-center">No items</td></tr>'
-                        }
-
-                        ${Array.from({ length: 8 }).map((_, i) => `
-                          <tr class="h-8">
-                            <td class="border border-gray-300 p-2"></td>
-                            <td class="border border-gray-300 p-2"></td>
-                            <td class="border border-gray-300 p-2"></td>
-                            <td class="border border-gray-300 p-2"></td>
-                            <td class="border border-gray-300 p-2"></td>
-                            <td class="border border-gray-300 p-2"></td>
-                            <td class="border border-gray-300 p-2"></td>
-                            <td class="border border-gray-300 p-2"></td>
-                            <td class="border border-gray-300 p-2"></td>
-                          </tr>
-                        `).join('')}
-
-                        <tr class="bg-gray-100 font-bold">
-                          <td class="border border-gray-300 p-2 text-left">Total</td>
-                          <td class="border border-gray-300 p-2"></td>
-                          <td class="border border-gray-300 p-2"></td>
-                          <td class="border border-gray-300 p-2"></td>
-                          <td class="border border-gray-300 p-2"></td>
-                          <td class="border border-gray-300 p-2"></td>
-                          <td class="border border-gray-300 p-2">${quotationData.subtotal?.toFixed ? quotationData.subtotal.toFixed(2) : (quotationData.subtotal || '').toString()}</td>
-                          <td class="border border-gray-300 p-2">${quotationData.taxAmount?.toFixed ? quotationData.taxAmount.toFixed(2) : (quotationData.taxAmount || '').toString()}</td>
-                          <td class="border border-gray-300 p-2">${quotationData.total?.toFixed ? quotationData.total.toFixed(2) : (quotationData.total || '').toString()}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div class="border border-black p-3">
-                      <h3 class="font-bold text-xs mb-2">Bank Details</h3>
-                      <div class="text-xs space-y-1">
-                        <p><strong>Bank Name:</strong> ICICI Bank</p>
-                        <p><strong>Branch Name:</strong> WRIGHT TOWN JABALPUR</p>
-                        <p><strong>Bank Account Number:</strong> 657605601783</p>
-                        <p><strong>Bank Branch IFSC:</strong> ICIC0006576</p>
-                      </div>
-                    </div>
-                    <div class="border border-black p-3">
-                      <div class="text-xs space-y-1">
-                        <div class="flex justify-between">
-                          <span>Subtotal</span>
-                          <span>${quotationData.subtotal?.toFixed ? quotationData.subtotal.toFixed(2) : (quotationData.subtotal || '0.00')}</span>
-                        </div>
-                        <div class="flex justify-between">
-                          <span>Less: Discount (${quotationData.discountRate || 0}%)</span>
-                          <span>${quotationData.discountAmount?.toFixed ? quotationData.discountAmount.toFixed(2) : (quotationData.discountAmount || '0.00')}</span>
-                        </div>
-                        <div class="flex justify-between">
-                          <span>Taxable Amount</span>
-                          <span>${(typeof quotationData.subtotal === 'number' ? (quotationData.subtotal - (quotationData.discountAmount || 0)).toFixed(2) : (quotationData.taxable || '')).toString()}</span>
-                        </div>
-                        <div class="flex justify-between">
-                          <span>Add: Total GST (${quotationData.taxRate || 18}%)</span>
-                          <span>${quotationData.taxAmount?.toFixed ? quotationData.taxAmount.toFixed(2) : (quotationData.taxAmount || '0.00')}</span>
-                        </div>
-                        <div class="flex justify-between font-bold border-t pt-1">
-                          <span>Total Amount After Tax</span>
-                          <span>₹ ${quotationData.total?.toFixed ? quotationData.total.toFixed(2) : (quotationData.total || '0.00')}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="border border-black mb-4">
-                    <div class="bg-gray-100 p-2 font-bold text-xs">
-                      <h3>Terms and Conditions</h3>
-                    </div>
-                    <div class="p-3 text-xs space-y-2">
-                      <div>
-                        <h4 class="font-bold">PRICING & VALIDITY</h4>
-                        <p>• Prices are valid for 3 days only from the date of the final quotation/PI unless otherwise specified terms.</p>
-                        <p>• The order will be considered confirmed only upon receipt of the advance payment.</p>
-                      </div>
-                      <div>
-                        <h4 class="font-bold">PAYMENT TERMS</h4>
-                        <p>• 30% advance payment upon order confirmation</p>
-                        <p>• Remaining Balance at time of final dispatch / against LC / Bank Guarantee (if applicable).</p>
-                        <p>• Liquidated Damages @ 0.5% to 1% per WEEK will be charged on delayed payments beyond the agreed terms.</p>
-                      </div>
-                      <div>
-                        <h4 class="font-bold">DELIVERY & DISPATCH</h4>
-                        <p>• Standard delivery period as per the telecommunication with customer.</p>
-                        <p>• Any delays due to unforeseen circumstances (force majeure, strikes, and transportation issues) will be communicated.</p>
-                      </div>
-                      <div>
-                        <h4 class="font-bold">QUALITY & WARRANTY</h4>
-                        <p>• Cables will be supplied as per IS and other applicable BIS standards/or as per the agreed specifications mentioned/special demand by the customer.</p>
-                        <p>• Any manufacturing defects should be reported immediately, within 3 working days of receipt.</p>
-                        <p>• Warranty: 12 months from the date of dispatch for manufacturing defects only in ISI mark products.</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="text-right text-xs">
-                    <p class="mb-4">For <strong>${companyBranches.ANODE.name}</strong></p>
-                    <p class="mb-8">This is computer generated invoice no signature required.</p>
-                    <p class="font-bold">Authorized Signatory</p>
-                    <p class="mt-2 text-sm font-semibold text-gray-800">${user.name || user.email || 'User'}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="fixed bottom-0 left-0 right-0 bg-white p-4 border-t border-gray-300 flex justify-between no-print">
-                <button onclick="window.close()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">Close</button>
-                <button onclick="window.print()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">Print PDF</button>
-              </div>
-            </body>
-            </html>
-          `;
-          
-          quotationWindow.document.write(htmlContent);
-          quotationWindow.document.close();
-        }
-      }
-    } catch (error) {
-      console.error('Error viewing quotation:', error);
-      alert('Failed to load quotation');
-    }
-  };
+  // Handle view quotation and PI using shared hook
+  const handleViewQuotation = viewHook?.handleViewQuotation;
+  const handleViewPI = viewHook?.handleViewPI;
 
   // Format date to Indian format (DD/MM/YYYY)
   const formatIndianDate = (dateString) => {
@@ -937,7 +630,6 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0 }) => {
       
       // Get PIs for this quotation
       const pis = pisByQuotationId[quotation.id] || [];
-      console.log('[AdvancePayment Timeline] Creating events for quotation', quotation.id, 'with', pis.length, 'PIs. pisByQuotationId:', pisByQuotationId);
       const piEvents = pis.map((pi, piIndex) => ({
         id: `pi-${pi.id}`,
         title: `PI ${piIndex + 1}`,
@@ -1164,7 +856,6 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
               quotationsWithPI.push(q);
             }
           } catch (err) {
-            console.warn(`Error fetching PI for quotation ${q.id}:`, err);
           }
         }
         
@@ -1276,8 +967,6 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
 
       // Validate installment amount
       const installmentAmount = parseFloat(paymentData.installment_amount);
-      console.log('💰 [AdvancePayment] Payment submission - installment_amount:', installmentAmount);
-      console.log('💰 [AdvancePayment] Payment data:', paymentData);
       
       if (!installmentAmount || isNaN(installmentAmount) || installmentAmount <= 0) {
         setError('Please enter a valid payment amount greater than 0');
@@ -1307,9 +996,7 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         delivery_status: paymentData.delivery_status
       };
 
-      console.log('📤 [AdvancePayment] Sending payment payload:', paymentPayload);
       const response = await paymentService.createPayment(paymentPayload);
-      console.log('✅ [AdvancePayment] Payment response:', response);
       if (response.success) {
         const { summary: responseSummary } = response.data;
         onClose();
@@ -1639,6 +1326,7 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPaymentItem, setSelectedPaymentItem] = useState(null);
+  const [companyBranches, setCompanyBranches] = useState({});
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredPaymentTracking.length / itemsPerPage);
@@ -1658,6 +1346,13 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
   const currentUserId = user?.id;
   const lastUserIdRef = React.useRef(null);
 
+  // Setup view hook for quotations and PIs
+  const viewHook = useViewQuotationPI(companyBranches, user);
+  
+  // Handle view quotation and PI using shared hook
+  const handleViewQuotation = viewHook?.handleViewQuotation || (() => {});
+  const handleViewPI = viewHook?.handleViewPI || (() => {});
+
   useEffect(() => {
     // If no user is logged in, do nothing
     if (!currentUserId) {
@@ -1666,7 +1361,6 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
 
     // If user has changed, clear existing data
     if (lastUserIdRef.current !== null && lastUserIdRef.current !== currentUserId) {
-      console.log('[AdvancePayment] User changed, clearing data. Old:', lastUserIdRef.current, 'New:', currentUserId);
       setPaymentTracking([]);
       setFilteredPaymentTracking([]);
       setError(null);
@@ -1681,7 +1375,6 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
         setError(null);
         // Global cache busting is automatically applied by apiClient.get()
         const advancePayments = await paymentTrackingService.fetchAdvancePaymentData();
-        console.log(`[AdvancePayment] Received ${advancePayments.length} advance payments for user: ${user?.email}`);
         setPaymentTracking(advancePayments);
         setFilteredPaymentTracking(advancePayments);
       } catch (error) {
@@ -1696,6 +1389,19 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
     fetchPaymentTracking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId]);
+
+  // Load company branches from database
+  useEffect(() => {
+    const loadBranches = async () => {
+      try {
+        const { branches } = await CompanyBranchService.fetchBranches();
+        setCompanyBranches(branches);
+      } catch (error) {
+        console.error('Failed to load company branches:', error);
+      }
+    };
+    loadBranches();
+  }, []);
 
   // Handle search and filtering
   const handleSearch = (searchQuery) => {
@@ -2060,6 +1766,18 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
         <SalespersonCustomerTimeline
           item={selectedProduct}
           onClose={() => setSelectedProduct(null)}
+          onQuotationView={(quotation) => {
+            const quotationId = typeof quotation === 'object' ? quotation?.id : quotation;
+            if (quotationId) {
+              handleViewQuotation(quotationId);
+            }
+          }}
+          onPIView={(pi) => {
+            const piId = typeof pi === 'object' ? pi?.id : pi;
+            if (piId) {
+              handleViewPI(piId);
+            }
+          }}
         />
       )}
       
@@ -2085,6 +1803,26 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
               setLoading(false);
             }
           }}
+        />
+      )}
+
+      {/* Quotation Preview Modal */}
+      {viewHook.showQuotationModal && viewHook.quotationModalData && (
+        <QuotationPreview
+          quotationData={viewHook.quotationModalData}
+          companyBranches={companyBranches}
+          user={user}
+          onClose={viewHook.closeQuotationModal}
+        />
+      )}
+
+      {/* PI Preview Modal */}
+      {viewHook.showPIModal && viewHook.piModalData && (
+        <PIPreview
+          piData={viewHook.piModalData}
+          companyBranches={companyBranches}
+          user={user}
+          onClose={viewHook.closePIModal}
         />
       )}
       

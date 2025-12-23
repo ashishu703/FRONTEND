@@ -4,6 +4,8 @@ import ReportDataView from '../../components/reports/ReportDataView';
 import ReportService from '../../services/ReportService';
 import { getReportById, getAllReports } from '../../config/reportsConfig';
 import { useAuth } from '../../hooks/useAuth';
+import SalespersonReportsPage from './SalespersonReportsPage';
+import OrdersReport from './OrdersReport';
 
 class DetailedReportController {
   constructor(reportId) {
@@ -209,6 +211,21 @@ const DetailedReportPage = ({ activeView, setActiveView }) => {
   }, [setActiveView]);
 
   const reportConfig = reportId ? getReportById(reportId) : null;
+
+  // Show salesperson reports page for activity and sales-performance
+  if (reportId === 'activity' || reportId === 'sales-performance') {
+    return (
+      <SalespersonReportsPage
+        reportType={reportId === 'activity' ? 'activity' : reportId === 'sales-performance' ? 'performance' : null}
+        onBack={handleBack}
+      />
+    );
+  }
+
+  // Show orders report
+  if (reportId === 'orders') {
+    return <OrdersReport />;
+  }
 
   if (!reportId || !reportConfig) {
     return (

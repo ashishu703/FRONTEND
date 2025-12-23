@@ -66,7 +66,6 @@ const LeadsSimplified = () => {
     enquired_product: true,
     product_quantity: true,
     product_remark: true,
-    // Hidden by default
     follow_up_status: false,
     follow_up_remark: false,
     sales_status: false,

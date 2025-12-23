@@ -126,6 +126,17 @@ class PaymentService {
     }
   }
 
+  // Get detailed installment breakdown for a quotation
+  async getInstallmentBreakdown(quotationId) {
+    try {
+      const response = await apiClient.get(`/api/payments/installment-breakdown/quotation/${quotationId}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching installment breakdown:', error);
+      throw error;
+    }
+  }
+
   // Get customer credit balance
   async getCustomerCredit(customerId) {
     try {

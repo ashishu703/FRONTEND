@@ -1,14 +1,7 @@
 import {
   TrendingUp,
-  Users,
-  Phone,
-  DollarSign,
-  Target,
-  BarChart3,
-  Building2,
   Activity,
-  PieChart,
-  LineChart
+  ShoppingCart
 } from 'lucide-react';
 
 export const REPORT_TYPES = {
@@ -19,28 +12,11 @@ export const REPORT_TYPES = {
     icon: TrendingUp,
     color: 'blue',
     category: 'Sales',
-    reportCount: 12,
+    reportCount: 3,
     examples: [
-      'Sales by Lead Source',
-      'Won vs Lost Deals',
-      'Sales by Product / Region / Salesperson',
-      'Revenue Forecast Report',
-      'Conversion Rate Report'
-    ]
-  },
-  LEADS_PIPELINE: {
-    id: 'leads-pipeline',
-    title: 'Leads & Pipeline Reports',
-    description: 'Track lead process and pipeline status. Identify new leads, conversion rates, pipeline stages, and aging pipeline reports.',
-    icon: Users,
-    color: 'green',
-    category: 'Leads',
-    reportCount: 8,
-    examples: [
-      'New Leads This Month',
-      'Lead Conversion Rate',
-      'Pipeline by Stage',
-      'Aging Pipeline Report'
+      'Salesperson Performance Report',
+      'Top Performer Comparison',
+      'Revenue & Target Achievement'
     ]
   },
   ACTIVITY: {
@@ -50,98 +26,25 @@ export const REPORT_TYPES = {
     icon: Activity,
     color: 'purple',
     category: 'Activity',
-    reportCount: 6,
+    reportCount: 3,
     examples: [
-      'Calls Made / Emails Sent',
-      'Meetings Scheduled vs Completed',
-      'Tasks Completed per User'
+      'Salesperson Activity Report',
+      'Date-wise Calls & Followups',
+      'Activity Status Tracking'
     ]
   },
-  REVENUE_FINANCIAL: {
-    id: 'revenue-financial',
-    title: 'Revenue & Financial Reports',
-    description: 'Analyze sales financial metrics. View monthly revenue trends, profit margins, discount analysis, and invoice status reports.',
-    icon: DollarSign,
-    color: 'orange',
-    category: 'Finance',
-    reportCount: 9,
+  ORDERS: {
+    id: 'orders',
+    title: 'Orders Report',
+    description: 'View all orders (quotations with Proforma Invoices) salesperson-wise. Track order status, payment details, and delivery information with date-wise filtering.',
+    icon: ShoppingCart,
+    color: 'green',
+    category: 'Orders',
+    reportCount: 1,
     examples: [
-      'Monthly Revenue Trend',
-      'Profit Margin Report',
-      'Discount Analysis',
-      'Invoices by Status'
-    ]
-  },
-  FORECASTING: {
-    id: 'forecasting',
-    title: 'Forecasting Reports',
-    description: 'Predict future revenue and sales targets. Compare forecast vs actual sales, upcoming quarter forecasts, and sales rep target achievements.',
-    icon: Target,
-    color: 'red',
-    category: 'Forecast',
-    reportCount: 5,
-    examples: [
-      'Forecast vs Actual Sales',
-      'Upcoming Quarter Forecast',
-      'Sales Rep Target Achievement'
-    ]
-  },
-  CUSTOM_ANALYTICAL: {
-    id: 'custom-analytical',
-    title: 'Custom / Analytical Reports',
-    description: 'Advanced analytics for data-driven decisions. Cross-module reports, sales cycle duration analysis, customer lifetime value, and retention rates.',
-    icon: PieChart,
-    color: 'pink',
-    category: 'Analytics',
-    reportCount: 15,
-    examples: [
-      'Cross-module Reports',
-      'Sales Cycle Duration Analysis',
-      'Customer Lifetime Value (CLV)',
-      'Retention Rate Report'
-    ]
-  },
-  DASHBOARD: {
-    id: 'dashboard',
-    title: 'Dashboard Reports',
-    description: 'Graphical view with charts, KPIs, and summaries. View KPI dashboards, regional sales dashboards, and marketing & sales funnel visualizations.',
-    icon: BarChart3,
-    color: 'teal',
-    category: 'Dashboard',
-    reportCount: 7,
-    examples: [
-      'KPI Dashboard',
-      'Regional Sales Dashboard',
-      'Marketing & Sales Funnel Visualization'
-    ]
-  },
-  ORGANISATION: {
-    id: 'organisation',
-    title: 'Organisation Wise Report',
-    description: 'View comprehensive reports organized by organisation. Track performance, revenue, and metrics across different organizations.',
-    icon: Building2,
-    color: 'pink',
-    category: 'Organisation',
-    reportCount: 10,
-    examples: [
-      'Organisation Performance',
-      'Organisation Revenue',
-      'Organisation Metrics'
-    ]
-  },
-  CALL: {
-    id: 'call',
-    title: 'Call Report',
-    description: 'Track and analyze call activities. View call statistics, call duration, call outcomes, and call performance metrics.',
-    icon: Phone,
-    color: 'yellow',
-    category: 'Calls',
-    reportCount: 4,
-    examples: [
-      'Call Statistics',
-      'Call Duration Analysis',
-      'Call Outcomes',
-      'Call Performance Metrics'
+      'Salesperson Orders Report',
+      'Orders by Date Range',
+      'Orders with Payment Status'
     ]
   }
 };

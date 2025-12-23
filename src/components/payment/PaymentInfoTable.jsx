@@ -42,13 +42,67 @@ class PaymentInfoTable {
   }
 
   static calculateStats(payments) {
+    // Group payments by quotation_id to avoid counting same quotation multiple times
+    // One quotation can have multiple payment installments, but should be counted once
+    const quotationMap = new Map();
+    
+    payments.forEach(payment => {
+      // Use quotation_id if available, otherwise use quotationId as fallback
+      const quotationKey = payment.quotationIdRaw || payment.quotationId || payment.id;
+      
+      if (!quotationMap.has(quotationKey)) {
+        quotationMap.set(quotationKey, {
+          quotationId: quotationKey,
+          quotationTotal: Number(payment.quotationTotal || payment.totalAmount || 0),
+          quotationTotalPaid: Number(payment.quotationTotalPaid || payment.paidAmount || 0),
+          quotationRemainingDue: Number(payment.quotationRemainingDue || payment.dueAmount || 0),
+          status: payment.status || '',
+          paymentCount: 0
+        });
+      }
+      
+      // Update with latest values (in case different installments have different totals)
+      const quotation = quotationMap.get(quotationKey);
+      quotation.quotationTotal = Math.max(quotation.quotationTotal, Number(payment.quotationTotal || payment.totalAmount || 0));
+      quotation.quotationTotalPaid = Math.max(quotation.quotationTotalPaid, Number(payment.quotationTotalPaid || payment.paidAmount || 0));
+      quotation.quotationRemainingDue = Math.max(quotation.quotationRemainingDue, Number(payment.quotationRemainingDue || payment.dueAmount || 0));
+      quotation.paymentCount += 1;
+      
+      // Update status based on latest payment status
+      if (payment.status && payment.status !== 'Rejected') {
+        if (payment.status === 'Paid') {
+          quotation.status = 'Paid';
+        } else if (payment.status === 'Advance' && quotation.status !== 'Paid') {
+          quotation.status = 'Advance';
+        } else if (payment.status === 'Due' && quotation.status !== 'Paid' && quotation.status !== 'Advance') {
+          quotation.status = 'Due';
+        }
+      }
+    });
+    
+    // Convert map to array for counting
+    const uniqueQuotations = Array.from(quotationMap.values());
+    
+    // Count unique quotations with due amount > 0 (not individual payments)
+    const dueQuotations = uniqueQuotations.filter(q => {
+      const dueAmount = Number(q.quotationRemainingDue || 0);
+      const status = q.status || '';
+      // Count if there's a due amount and status is not 'Paid' or 'Rejected'
+      return dueAmount > 0 && status !== 'Paid' && status !== 'Rejected';
+    });
+    
+    // Count unique quotations by status
+    const paidQuotations = uniqueQuotations.filter(q => q.status === 'Paid').length;
+    const advanceQuotations = uniqueQuotations.filter(q => q.status === 'Advance').length;
+    const rejectedQuotations = uniqueQuotations.filter(q => q.status === 'Rejected').length;
+    
     return {
-      allPayments: payments.length,
+      allPayments: payments.length, // Total payment installments
       totalValue: payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0),
-      paid: payments.filter(p => p.status === 'Paid').length,
-      advance: payments.filter(p => p.status === 'Advance').length,
-      due: payments.filter(p => p.status === 'Due').length,
-      rejected: payments.filter(p => p.status === 'Rejected').length
+      paid: paidQuotations, // Unique quotations that are fully paid
+      advance: advanceQuotations, // Unique quotations with advance payments
+      due: dueQuotations.length, // Unique quotations with due amount
+      rejected: rejectedQuotations // Unique quotations that are rejected
     };
   }
 }
