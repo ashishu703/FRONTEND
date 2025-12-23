@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Search, Filter, RefreshCw, Eye, X, FileText } from 'lucide-react';
+import { Search, Filter, RefreshCw, Eye, X, FileText, Phone, Clock } from 'lucide-react';
 import LeadTable from '../../components/LeadTable';
 import CustomerTimeline from '../../components/CustomerTimeline';
 import ColumnFilterModal from '../../components/ColumnFilterModal';
@@ -264,10 +264,230 @@ const AllLeads = () => {
     }
   }, [page, limit, debouncedSearchTerm, columnFilters.state, columnFilters.leadSource, columnFilters.salesStatus, columnFilters.followUpStatus, leadService]);
 
+  // Fetch all leads for Last Call tab (without pagination)
+  const fetchAllLeadsForLastCall = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch all leads without pagination for Last Call
+      const allLeads = await leadService.fetchAllLeads(200);
+      
+      // Transform and set
+      const transformedLeads = allLeads
+        .filter(lead => {
+          // Filter out null/undefined leads and test/sample data
+          if (!lead || lead == null) return false;
+          
+          // Filter out obvious test/sample data
+          const customer = (lead.customer || '').toLowerCase();
+          const business = (lead.business || '').toLowerCase();
+          const email = (lead.email || '').toLowerCase();
+          
+          const isTestData = customer.includes('sample') || 
+              customer.includes('test') || 
+              customer.includes('demo') ||
+              business.includes('sample') ||
+              business.includes('test') ||
+              business.includes('demo') ||
+              email.includes('sample@') ||
+              email.includes('test@') ||
+              email.includes('demo@');
+          
+          return !isTestData;
+        })
+        .map(lead => ({
+          ...lead,
+          productNames: lead.productNamesText || lead.product_names || '',
+          updatedAt: lead.updated_at || lead.created_at || '',
+          assignedSalesperson: lead.assignedSalesperson || lead.assigned_salesperson || 'Unassigned',
+          assignedTelecaller: lead.assignedTelecaller || lead.assigned_telecaller || 'Unassigned',
+          // Preserve date fields for Last Call filtering
+          follow_up_date: lead.follow_up_date || lead.followUpDate || null,
+          follow_up_remark: lead.follow_up_remark || lead.followUpRemark || null,
+          follow_up_status: lead.follow_up_status || lead.followUpStatus || null,
+          next_meeting_date: lead.next_meeting_date || lead.nextMeetingDate || null,
+          meeting_date: lead.meeting_date || lead.meetingDate || null,
+          scheduled_date: lead.scheduled_date || lead.scheduledDate || null,
+          sales_status: lead.sales_status || lead.salesStatus || null,
+          sales_status_remark: lead.sales_status_remark || lead.salesStatusRemark || null,
+          updated_at: lead.updated_at || lead.updatedAt || null
+        }));
+      
+      setAllLeadsData(transformedLeads);
+      return transformedLeads;
+    } catch (err) {
+      console.error('Error fetching all leads for Last Call:', err);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [leadService]);
+
   // Fetch leads when filters change
   useEffect(() => {
     fetchLeads();
   }, [fetchLeads]);
+
+  // Fetch all leads when Last Call tab is active
+  useEffect(() => {
+    if (activeTab === 'lastCall') {
+      // Always fetch all leads for Last Call tab to ensure we have complete data
+      fetchAllLeadsForLastCall();
+    }
+  }, [activeTab, fetchAllLeadsForLastCall]);
+
+  // Format date for display (short format like "10 Dec")
+  const formatDateShort = useCallback((dateString) => {
+    if (!dateString || dateString === 'No Date') return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      return date.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short'
+      });
+    } catch {
+      return 'N/A';
+    }
+  }, []);
+
+  // Format date for grouping (full format)
+  const formatDateForGrouping = useCallback((dateString) => {
+    if (!dateString || dateString === 'No Date') return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      return date.toLocaleDateString('en-GB', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch {
+      return 'N/A';
+    }
+  }, []);
+
+  // Filter leads for Last Call tab - use allLeadsData if available, otherwise leadsData
+  const filteredLastCallLeads = useMemo(() => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // Set to end of today for comparison (like salesperson)
+    
+    // Use allLeadsData if available (has more data), otherwise fallback to leadsData
+    const dataSource = allLeadsData.length > 0 ? allLeadsData : leadsData;
+    
+    return dataSource.filter(lead => {
+      if (!lead) return false;
+      
+      const hasFollowUpStatus = lead.follow_up_status && lead.follow_up_status.trim() !== '';
+      const hasFollowUpRemark = lead.follow_up_remark && lead.follow_up_remark.trim() !== '';
+      
+      // Check for scheduled dates
+      const hasFollowUpDate = lead.follow_up_date && lead.follow_up_date !== 'N/A' && lead.follow_up_date !== '';
+      const hasNextMeetingDate = lead.next_meeting_date && lead.next_meeting_date !== 'N/A' && lead.next_meeting_date !== '';
+      const hasMeetingDate = lead.meeting_date && lead.meeting_date !== 'N/A' && lead.meeting_date !== '';
+      const hasScheduledDate = lead.scheduled_date && lead.scheduled_date !== 'N/A' && lead.scheduled_date !== '';
+      const hasNextMeetingStatus = lead.sales_status === 'next_meeting' && lead.sales_status_remark;
+      
+      const hasScheduledDateOrTime = hasFollowUpDate || hasNextMeetingDate || hasMeetingDate || hasScheduledDate || hasNextMeetingStatus;
+      
+      // Include leads that have follow-up status/remark OR scheduled dates
+      if (!hasFollowUpStatus && !hasFollowUpRemark && !hasScheduledDateOrTime) {
+        return false;
+      }
+      
+      // Check if the follow-up/scheduled date is <= today
+      let callDate = null;
+      
+      // Priority: follow_up_date > next_meeting_date > meeting_date > scheduled_date
+      if (lead.follow_up_date) {
+        callDate = new Date(lead.follow_up_date);
+      } else if (lead.next_meeting_date) {
+        callDate = new Date(lead.next_meeting_date);
+      } else if (lead.meeting_date) {
+        callDate = new Date(lead.meeting_date);
+      } else if (lead.scheduled_date) {
+        callDate = new Date(lead.scheduled_date);
+      } else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
+        // Extract date from remark format like "2025-10-28 AT 19:10"
+        const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) {
+          callDate = new Date(dateMatch[1]);
+        }
+      } else if (lead.updated_at) {
+        callDate = new Date(lead.updated_at);
+      }
+      
+      // If no date is available, exclude the lead
+      if (!callDate || isNaN(callDate.getTime())) {
+        return false;
+      }
+      
+      // Only include if call/scheduled date is <= today
+      callDate.setHours(0, 0, 0, 0);
+      return callDate <= today;
+    });
+  }, [allLeadsData, leadsData]);
+
+  // Group leads by date (last call date)
+  const groupedLastCallLeads = useMemo(() => {
+    const groups = {};
+    
+    filteredLastCallLeads.forEach(lead => {
+      // Priority: follow_up_date > next_meeting_date > meeting_date > scheduled_date > updated_at
+      let dateObj = null;
+      let dateKey = '';
+      
+      if (lead.follow_up_date) {
+        dateObj = new Date(lead.follow_up_date);
+        dateKey = lead.follow_up_date; // Use ISO date string as key
+      } else if (lead.next_meeting_date) {
+        dateObj = new Date(lead.next_meeting_date);
+        dateKey = lead.next_meeting_date;
+      } else if (lead.meeting_date) {
+        dateObj = new Date(lead.meeting_date);
+        dateKey = lead.meeting_date;
+      } else if (lead.scheduled_date) {
+        dateObj = new Date(lead.scheduled_date);
+        dateKey = lead.scheduled_date;
+      } else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
+        // Extract date from remark format like "2025-10-28 AT 19:10"
+        const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) {
+          dateObj = new Date(dateMatch[1]);
+          dateKey = dateMatch[1];
+        }
+      } else if (lead.updated_at) {
+        dateObj = new Date(lead.updated_at);
+        dateKey = lead.updated_at.split('T')[0]; // Use date part only
+      } else {
+        dateKey = 'No Date';
+        dateObj = new Date(0); // Use epoch for sorting
+      }
+      
+      if (!groups[dateKey]) {
+        groups[dateKey] = {
+          dateObj: dateObj,
+          dateKey: dateKey,
+          leads: []
+        };
+      }
+      groups[dateKey].leads.push(lead);
+    });
+    
+    // Sort dates in descending order (most recent first)
+    const sortedDates = Object.keys(groups).sort((a, b) => {
+      if (a === 'No Date') return 1;
+      if (b === 'No Date') return -1;
+      return groups[b].dateObj - groups[a].dateObj;
+    });
+    
+    return sortedDates.map(dateKey => ({
+      dateKey,
+      dateObj: groups[dateKey].dateObj,
+      leads: groups[dateKey].leads
+    }));
+  }, [filteredLastCallLeads]);
 
   // Filter leads based on column filters and search
   const filteredLeads = useMemo(() => {
@@ -749,6 +969,17 @@ const AllLeads = () => {
             >
               Enquiry
             </button>
+            <button
+              onClick={() => setActiveTab('lastCall')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                activeTab === 'lastCall'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Phone className="w-4 h-4" />
+              Last Call
+            </button>
           </nav>
         </div>
       </div>
@@ -968,6 +1199,148 @@ const AllLeads = () => {
                 </button>
               </div>
                       </div>
+        </>
+      )}
+
+      {activeTab === 'lastCall' && (
+        <>
+          {/* Search and Action Bar */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 max-w-xl">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search by name, email, or business..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <button
+                  className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  onClick={() => setShowColumnFilter(true)}
+                  title="Toggle Columns"
+                >
+                  <Eye className="w-4 h-4 text-gray-600" />
+                </button>
+                
+                <button 
+                  className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" 
+                  onClick={fetchLeads}
+                  disabled={loading}
+                  title="Refresh"
+                >
+                  <RefreshCw className={`w-4 h-4 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Last Call Leads - Grouped by Date */}
+          {groupedLastCallLeads.length > 0 ? (
+            <div className="space-y-6">
+              {groupedLastCallLeads.map((group) => {
+                // Filter leads in this group by search term
+                const filteredGroupLeads = group.leads.filter(lead => {
+                  if (!searchTerm) return true;
+                  const searchLower = searchTerm.toLowerCase();
+                  return (
+                    (lead.customer || '').toLowerCase().includes(searchLower) ||
+                    (lead.email || '').toLowerCase().includes(searchLower) ||
+                    (lead.business || '').toLowerCase().includes(searchLower) ||
+                    (lead.phone || '').toLowerCase().includes(searchLower)
+                  );
+                });
+
+                if (filteredGroupLeads.length === 0) return null;
+
+                const dateDisplay = group.dateKey === 'No Date' 
+                  ? 'No Date' 
+                  : formatDateShort(group.dateKey);
+                const dateFull = group.dateKey === 'No Date' 
+                  ? 'No Date' 
+                  : formatDateForGrouping(group.dateKey);
+                
+                return (
+                  <div key={group.dateKey} className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                            <Clock className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-900">
+                              {dateDisplay}
+                            </h3>
+                            <p className="text-sm text-gray-600">{dateFull}</p>
+                          </div>
+                        </div>
+                        <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                          {filteredGroupLeads.length} call{filteredGroupLeads.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="overflow-x-auto">
+                      <LeadTable
+                        filteredLeads={filteredGroupLeads}
+                        tableLoading={loading}
+                        hasStatusFilter={false}
+                        visibleColumns={visibleColumns}
+                        isAllSelected={false}
+                        selectedLeadIds={[]}
+                        isLeadAssigned={isLeadAssigned}
+                        isValueAssigned={isValueAssigned}
+                        getStatusBadge={getStatusBadge}
+                        toggleSelectAll={() => {}}
+                        toggleSelectOne={() => {}}
+                        onEdit={handleEdit}
+                        onViewTimeline={handleViewTimeline}
+                        onAssign={handleAssign}
+                        showCustomerTimeline={showCustomerTimeline}
+                        setShowColumnFilter={setShowColumnFilter}
+                        allLeadsData={allLeadsData}
+                        assignedSalespersonFilter=""
+                        assignedTelecallerFilter=""
+                        onAssignedSalespersonFilterChange={() => {}}
+                        onAssignedTelecallerFilterChange={() => {}}
+                        usernames={[]}
+                        columnFilters={{}}
+                        onColumnFilterChange={() => {}}
+                        showColumnFilterRow={false}
+                        onToggleColumnFilterRow={() => {}}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+              <Clock className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No last call data</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                You don't have any last call activities at the moment.
+              </p>
+            </div>
+          )}
+          
+          {/* Customer Timeline */}
+          {showCustomerTimeline && timelineLead && (
+            <CustomerTimeline
+              lead={timelineLead}
+              onClose={() => {
+                setShowCustomerTimeline(false);
+                setTimelineLead(null);
+              }}
+            />
+          )}
         </>
       )}
 

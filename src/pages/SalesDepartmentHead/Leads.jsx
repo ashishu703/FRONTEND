@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { FileText, Package, RefreshCw, Filter } from 'lucide-react';
+import { FileText, Package, RefreshCw, Filter, Phone, Clock } from 'lucide-react';
 import AddCustomerModal from './AddCustomerModal';
 import QuotationPreview from '../../components/QuotationPreview';
 import PIPreview from '../../components/PIPreview';
@@ -215,6 +215,14 @@ const LeadsSimplified = () => {
     }
   }, [activeTab, fetchEnquiries]);
 
+  // Fetch all leads when Last Call tab is active
+  useEffect(() => {
+    if (activeTab === 'lastCall' && allLeadsData.length === 0) {
+      // Load all leads for filtering
+      loadAllLeadsForFilters(true).catch(() => {});
+    }
+  }, [activeTab, allLeadsData.length]);
+
   // Extract unique values from enquiries for filter dropdowns
   const enquiryFilterOptions = useMemo(() => {
     const allEnquiries = Object.values(enquiriesGroupedByDate).flat();
@@ -231,6 +239,159 @@ const LeadsSimplified = () => {
       salesStatuses: [...new Set(allEnquiries.map(e => e.sales_status).filter(Boolean))].sort()
     };
   }, [enquiries, enquiriesGroupedByDate]);
+
+  // Format date for display (short format like "10 Dec")
+  const formatDateShort = useCallback((dateString) => {
+    if (!dateString || dateString === 'No Date') return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      return date.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short'
+      });
+    } catch {
+      return 'N/A';
+    }
+  }, []);
+
+  // Format date for grouping (full format)
+  const formatDateForGrouping = useCallback((dateString) => {
+    if (!dateString || dateString === 'No Date') return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      return date.toLocaleDateString('en-GB', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch {
+      return 'N/A';
+    }
+  }, []);
+
+  // Filter leads for Last Call tab - use allLeadsData if available, otherwise leadsData
+  const filteredLastCallLeads = useMemo(() => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // Set to end of today for comparison (like salesperson)
+    
+    // Use allLeadsData if available (has more data), otherwise fallback to leadsData
+    const dataSource = allLeadsData.length > 0 ? allLeadsData : leadsData;
+    
+    return dataSource.filter(lead => {
+      if (!lead) return false;
+      
+      const hasFollowUpStatus = lead.follow_up_status && lead.follow_up_status.trim() !== '';
+      const hasFollowUpRemark = lead.follow_up_remark && lead.follow_up_remark.trim() !== '';
+      
+      // Check for scheduled dates
+      const hasFollowUpDate = lead.follow_up_date && lead.follow_up_date !== 'N/A' && lead.follow_up_date !== '';
+      const hasNextMeetingDate = lead.next_meeting_date && lead.next_meeting_date !== 'N/A' && lead.next_meeting_date !== '';
+      const hasMeetingDate = lead.meeting_date && lead.meeting_date !== 'N/A' && lead.meeting_date !== '';
+      const hasScheduledDate = lead.scheduled_date && lead.scheduled_date !== 'N/A' && lead.scheduled_date !== '';
+      const hasNextMeetingStatus = lead.sales_status === 'next_meeting' && lead.sales_status_remark;
+      
+      const hasScheduledDateOrTime = hasFollowUpDate || hasNextMeetingDate || hasMeetingDate || hasScheduledDate || hasNextMeetingStatus;
+      
+      // Include leads that have follow-up status/remark OR scheduled dates
+      if (!hasFollowUpStatus && !hasFollowUpRemark && !hasScheduledDateOrTime) {
+        return false;
+      }
+      
+      // Check if the follow-up/scheduled date is <= today
+      let callDate = null;
+      
+      // Priority: follow_up_date > next_meeting_date > meeting_date > scheduled_date
+      if (lead.follow_up_date) {
+        callDate = new Date(lead.follow_up_date);
+      } else if (lead.next_meeting_date) {
+        callDate = new Date(lead.next_meeting_date);
+      } else if (lead.meeting_date) {
+        callDate = new Date(lead.meeting_date);
+      } else if (lead.scheduled_date) {
+        callDate = new Date(lead.scheduled_date);
+      } else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
+        // Extract date from remark format like "2025-10-28 AT 19:10"
+        const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) {
+          callDate = new Date(dateMatch[1]);
+        }
+      } else if (lead.updated_at) {
+        callDate = new Date(lead.updated_at);
+      }
+      
+      // If no date is available, exclude the lead
+      if (!callDate || isNaN(callDate.getTime())) {
+        return false;
+      }
+      
+      // Only include if call/scheduled date is <= today
+      callDate.setHours(0, 0, 0, 0);
+      return callDate <= today;
+    });
+  }, [allLeadsData, leadsData]);
+
+  // Group leads by date (last call date)
+  const groupedLastCallLeads = useMemo(() => {
+    const groups = {};
+    
+    filteredLastCallLeads.forEach(lead => {
+      // Priority: follow_up_date > next_meeting_date > meeting_date > scheduled_date > updated_at
+      let dateObj = null;
+      let dateKey = '';
+      
+      if (lead.follow_up_date) {
+        dateObj = new Date(lead.follow_up_date);
+        dateKey = lead.follow_up_date; // Use ISO date string as key
+      } else if (lead.next_meeting_date) {
+        dateObj = new Date(lead.next_meeting_date);
+        dateKey = lead.next_meeting_date;
+      } else if (lead.meeting_date) {
+        dateObj = new Date(lead.meeting_date);
+        dateKey = lead.meeting_date;
+      } else if (lead.scheduled_date) {
+        dateObj = new Date(lead.scheduled_date);
+        dateKey = lead.scheduled_date;
+      } else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
+        // Extract date from remark format like "2025-10-28 AT 19:10"
+        const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) {
+          dateObj = new Date(dateMatch[1]);
+          dateKey = dateMatch[1];
+        }
+      } else if (lead.updated_at) {
+        dateObj = new Date(lead.updated_at);
+        dateKey = lead.updated_at.split('T')[0]; // Use date part only
+      } else {
+        dateKey = 'No Date';
+        dateObj = new Date(0); // Use epoch for sorting
+      }
+      
+      if (!groups[dateKey]) {
+        groups[dateKey] = {
+          dateObj: dateObj,
+          dateKey: dateKey,
+          leads: []
+        };
+      }
+      groups[dateKey].leads.push(lead);
+    });
+    
+    // Sort dates in descending order (most recent first)
+    const sortedDates = Object.keys(groups).sort((a, b) => {
+      if (a === 'No Date') return 1;
+      if (b === 'No Date') return -1;
+      return groups[b].dateObj - groups[a].dateObj;
+    });
+    
+    return sortedDates.map(dateKey => ({
+      dateKey,
+      dateObj: groups[dateKey].dateObj,
+      leads: groups[dateKey].leads
+    }));
+  }, [filteredLastCallLeads]);
 
   // Filter enquiries based on selected filters
   const filteredEnquiries = useMemo(() => {
@@ -675,7 +836,20 @@ const LeadsSimplified = () => {
 
   const applyLeadResponse = (response, { refreshAll = false } = {}) => {
     if (!response?.data) return;
-    setLeadsData(response.data);
+    // Ensure date fields are preserved for Last Call filtering
+    const leadsWithDates = response.data.map(lead => ({
+      ...lead,
+      follow_up_date: lead.follow_up_date || lead.followUpDate || null,
+      follow_up_remark: lead.follow_up_remark || lead.followUpRemark || null,
+      follow_up_status: lead.follow_up_status || lead.followUpStatus || null,
+      next_meeting_date: lead.next_meeting_date || lead.nextMeetingDate || null,
+      meeting_date: lead.meeting_date || lead.meetingDate || null,
+      scheduled_date: lead.scheduled_date || lead.scheduledDate || null,
+      sales_status: lead.sales_status || lead.salesStatus || null,
+      sales_status_remark: lead.sales_status_remark || lead.salesStatusRemark || null,
+      updated_at: lead.updated_at || lead.updatedAt || null
+    }));
+    setLeadsData(leadsWithDates);
     if (response.pagination) {
       setTotal(Number(response.pagination.total) || 0);
     }
@@ -706,9 +880,22 @@ const LeadsSimplified = () => {
         // Use setTimeout to yield to UI thread and prevent blocking
         await new Promise(resolve => setTimeout(resolve, 0));
         const transformed = await leadService.fetchAllLeads();
-        setAllLeadsData(transformed);
-        allLeadsDataRef.current = transformed;
-        return transformed;
+        // Ensure date fields are preserved for Last Call filtering
+        const leadsWithDates = transformed.map(lead => ({
+          ...lead,
+          follow_up_date: lead.follow_up_date || lead.followUpDate || null,
+          follow_up_remark: lead.follow_up_remark || lead.followUpRemark || null,
+          follow_up_status: lead.follow_up_status || lead.followUpStatus || null,
+          next_meeting_date: lead.next_meeting_date || lead.nextMeetingDate || null,
+          meeting_date: lead.meeting_date || lead.meetingDate || null,
+          scheduled_date: lead.scheduled_date || lead.scheduledDate || null,
+          sales_status: lead.sales_status || lead.salesStatus || null,
+          sales_status_remark: lead.sales_status_remark || lead.salesStatusRemark || null,
+          updated_at: lead.updated_at || lead.updatedAt || null
+        }));
+        setAllLeadsData(leadsWithDates);
+        allLeadsDataRef.current = leadsWithDates;
+        return leadsWithDates;
       } catch (error) {
         throw error;
       } finally {
@@ -1440,6 +1627,17 @@ const LeadsSimplified = () => {
             <Package className="w-4 h-4" />
             Enquiry
           </button>
+          <button
+            onClick={() => setActiveTab('lastCall')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+              activeTab === 'lastCall'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Phone className="w-4 h-4" />
+            Last Call
+          </button>
         </nav>
       </div>
 
@@ -1603,6 +1801,166 @@ const LeadsSimplified = () => {
           </button>
         </div>
       </div>
+        </>
+      )}
+
+      {activeTab === 'lastCall' && (
+        <>
+          <SearchBar
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            onImportClick={() => setShowImportPopup(true)}
+            onAddCustomer={() => setShowAddCustomer(true)}
+            onAssignSelected={() => {
+              setAssigningLead(null);
+              setAssignForm({ salesperson: '', telecaller: '' });
+              setShowAssignModal(true);
+            }}
+            onBulkDelete={handleBulkDelete}
+            onExportExcel={handleExportToExcel}
+            selectedCount={selectedLeadIds.length}
+            onRefresh={handleManualRefresh}
+          />
+
+          {/* Last Call Leads - Grouped by Date */}
+          {groupedLastCallLeads.length > 0 ? (
+            <div className="space-y-6">
+              {groupedLastCallLeads.map((group) => {
+                // Filter leads in this group by search term
+                const filteredGroupLeads = group.leads.filter(lead => {
+                  if (!searchTerm) return true;
+                  const searchLower = searchTerm.toLowerCase();
+                  return (
+                    (lead.customer || '').toLowerCase().includes(searchLower) ||
+                    (lead.email || '').toLowerCase().includes(searchLower) ||
+                    (lead.business || '').toLowerCase().includes(searchLower) ||
+                    (lead.phone || '').toLowerCase().includes(searchLower)
+                  );
+                });
+
+                if (filteredGroupLeads.length === 0) return null;
+
+                const dateDisplay = group.dateKey === 'No Date' 
+                  ? 'No Date' 
+                  : formatDateShort(group.dateKey);
+                const dateFull = group.dateKey === 'No Date' 
+                  ? 'No Date' 
+                  : formatDateForGrouping(group.dateKey);
+                
+                return (
+                  <div key={group.dateKey} className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                            <Clock className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-900">
+                              {dateDisplay}
+                            </h3>
+                            <p className="text-sm text-gray-600">{dateFull}</p>
+                          </div>
+                        </div>
+                        <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                          {filteredGroupLeads.length} call{filteredGroupLeads.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="overflow-x-auto">
+                      <LeadTable
+                        filteredLeads={filteredGroupLeads}
+                        tableLoading={tableLoading}
+                        hasStatusFilter={false}
+                        visibleColumns={visibleColumns}
+                        isAllSelected={false}
+                        selectedLeadIds={[]}
+                        isLeadAssigned={isLeadAssigned}
+                        isValueAssigned={isValueAssigned}
+                        getStatusBadge={getStatusBadge}
+                        toggleSelectAll={() => {}}
+                        toggleSelectOne={() => {}}
+                        onEdit={handleEdit}
+                        onViewTimeline={(lead) => {
+                          setTimelineLead(lead);
+                          setShowCustomerTimeline(true);
+                        }}
+                        onAssign={openAssignModal}
+                        showCustomerTimeline={showCustomerTimeline}
+                        setShowColumnFilter={setShowColumnFilter}
+                        allLeadsData={allLeadsData}
+                        assignedSalespersonFilter=""
+                        assignedTelecallerFilter=""
+                        onAssignedSalespersonFilterChange={() => {}}
+                        onAssignedTelecallerFilterChange={() => {}}
+                        usernames={usernames}
+                        columnFilters={{}}
+                        onColumnFilterChange={() => {}}
+                        showColumnFilterRow={false}
+                        onToggleColumnFilterRow={() => {}}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+              <Clock className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No last call data</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                You don't have any last call activities at the moment.
+              </p>
+            </div>
+          )}
+
+          {showCustomerTimeline && timelineLead && (
+            <div style={{ position: 'fixed', top: 0, right: 0, width: 'fit-content', maxWidth: '349px', minWidth: '244px', height: '100vh', zIndex: 50, marginLeft: 0, marginRight: 0, paddingLeft: 0, paddingRight: 0, borderLeft: '1px solid #e5e7eb' }}>
+              <CustomerTimeline
+                lead={timelineLead}
+                onClose={() => {
+                  setShowCustomerTimeline(false);
+                  setTimelineLead(null);
+                }}
+                onReassign={(lead) => {
+                  openAssignModal(lead);
+                }}
+                onQuotationView={(quotation) => {
+                  if (quotation?.id) {
+                    handleViewQuotation(quotation.id);
+                  } else {
+                    toastManager.error('Quotation data is missing');
+                  }
+                }}
+                onApproveQuotation={(quotation) => {
+                  if (quotation?.id) {
+                    handleApproveQuotation(quotation.id);
+                  }
+                }}
+                onRejectQuotation={(quotation) => {
+                  if (quotation?.id) {
+                    handleRejectQuotation(quotation.id);
+                  }
+                }}
+                onPIView={(pi) => {
+                  if (pi?.id) {
+                    handleViewPI(pi.id);
+                  }
+                }}
+                onApprovePI={(pi) => {
+                  if (pi?.id) {
+                    handleApprovePI(pi.id);
+                  }
+                }}
+                onRejectPI={(pi) => {
+                  if (pi?.id) {
+                    handleRejectPI(pi.id);
+                  }
+                }}
+              />
+            </div>
+          )}
         </>
       )}
 

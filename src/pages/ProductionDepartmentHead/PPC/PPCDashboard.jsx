@@ -28,7 +28,11 @@ const PPCDashboard = ({ activeView, setActiveView }) => {
       case 'manpower-allotment':
         return <ManPowerAllotment />;
       case 'inventory-control':
-        return <InventoryControl />;
+      case 'inventory-items':
+      case 'inventory-stores':
+      case 'inventory-batch-code':
+      case 'inventory-approval':
+        return <InventoryControl activeView={activeView} setActiveView={setActiveView} />;
       default:
         return <Dashboard />;
     }
