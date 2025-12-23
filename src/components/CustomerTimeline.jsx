@@ -550,6 +550,9 @@ const CustomerTimeline = ({
                           } else if (payment.installment_number === 1 && paidAmount > 0) {
                             paymentType = 'Advance';
                           }
+                          
+                          // Debug: Log payment data to check structure
+                          // console.log('Payment data:', { quotation_id: payment.quotation_id, pi_id: payment.pi_id, payment });
 
                           const statusClass = isApproved
                             ? 'bg-green-100 text-green-800'
@@ -557,6 +560,39 @@ const CustomerTimeline = ({
                             ? 'bg-red-100 text-red-800'
                             : 'bg-yellow-100 text-yellow-800';
 
+                          // Get quotation_id and pi_id - check multiple possible property names
+                          // Try to find quotation by quotation_number if quotation_id is not available
+                          let quotationId = payment.quotation_id || payment.quotationId;
+                          if (!quotationId && payment.quotation_number) {
+                            const foundQuotation = allQuotations.find(q => 
+                              q.quotation_number === payment.quotation_number || 
+                              q.id === payment.quotation_number ||
+                              String(q.id).includes(String(payment.quotation_number))
+                            );
+                            quotationId = foundQuotation?.id;
+                          }
+                          
+                          // Get pi_id - check multiple property names
+                          let piId = payment.pi_id || payment.piId;
+                          // If pi_id doesn't exist, try to find PI from quotation's PIs
+                          if (!piId && quotationId) {
+                            const pis = pisByQuotationId[quotationId] || [];
+                            if (pis.length > 0) {
+                              // If payment has pi_number, try to match it
+                              if (payment.pi_number) {
+                                const foundPI = pis.find(p => 
+                                  p.pi_number === payment.pi_number || 
+                                  p.id === payment.pi_number ||
+                                  String(p.id).includes(String(payment.pi_number))
+                                );
+                                piId = foundPI?.id || pis[0]?.id; // Use found PI or first PI as fallback
+                              } else {
+                                // No pi_number in payment, use first PI from quotation
+                                piId = pis[0]?.id;
+                              }
+                            }
+                          }
+                          
                           return (
                             <div
                               key={payment.id || payment.payment_reference}
@@ -601,10 +637,83 @@ const CustomerTimeline = ({
                                 {payment.installment_number && (
                                   <div className="text-[8px] text-gray-500 mt-0.5">
                                     Installment #{payment.installment_number}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                                  </div>
+                                )}
+                                {/* View buttons for Quotation and PI - show if we have quotation or PI data */}
+                                {(quotationId || payment.quotation_number || piId || (quotationId && pisByQuotationId[quotationId]?.length > 0)) && (
+                                  <div className="mt-0.5 flex flex-wrap gap-1">
+                                    {(quotationId || payment.quotation_number) && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (onQuotationView) {
+                                            // Find quotation from allQuotations
+                                            const quotation = quotationId ? allQuotations.find(q => q.id === quotationId) : null;
+                                            if (quotation) {
+                                              onQuotationView(quotation);
+                                            } else if (quotationId) {
+                                              // Fallback: pass quotation ID directly
+                                              onQuotationView(quotationId);
+                                            } else if (payment.quotation_number) {
+                                              // Try to find by quotation_number
+                                              const foundQuotation = allQuotations.find(q => 
+                                                q.quotation_number === payment.quotation_number
+                                              );
+                                              if (foundQuotation) {
+                                                onQuotationView(foundQuotation);
+                                              }
+                                            }
+                                          }
+                                        }}
+                                        disabled={!onQuotationView}
+                                        className="px-1 py-0.5 text-[8px] rounded border border-blue-200 text-blue-700 hover:bg-blue-50 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                      >
+                                        View QT
+                                      </button>
+                                    )}
+                                    {/* Show View PI button if we have piId OR if quotation has any PIs */}
+                                    {(piId || (quotationId && pisByQuotationId[quotationId]?.length > 0)) && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (onPIView) {
+                                            // Find PI from pisByQuotationId
+                                            const pis = quotationId ? (pisByQuotationId[quotationId] || []) : [];
+                                            let pi = null;
+                                            
+                                            if (piId) {
+                                              // Try to find by piId
+                                              pi = pis.find(p => p.id === piId);
+                                            }
+                                            
+                                            // If not found and payment has pi_number, try to match
+                                            if (!pi && payment.pi_number) {
+                                              pi = pis.find(p => p.pi_number === payment.pi_number);
+                                            }
+                                            
+                                            // If still not found, use first PI
+                                            if (!pi && pis.length > 0) {
+                                              pi = pis[0];
+                                            }
+                                            
+                                            if (pi) {
+                                              onPIView(pi);
+                                            } else if (piId) {
+                                              // Fallback: pass PI ID directly
+                                              onPIView(piId);
+                                            }
+                                          }
+                                        }}
+                                        disabled={!onPIView}
+                                        className="px-1 py-0.5 text-[8px] rounded border border-orange-200 text-orange-700 hover:bg-orange-50 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                      >
+                                        View PI
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           );
                         })}
                     </div>

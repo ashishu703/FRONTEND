@@ -23,6 +23,8 @@ const AccountsPayInfo = ({ setActiveView }) => {
   const [alert, setAlert] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [tabCounts, setTabCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
+  const [installmentBreakdown, setInstallmentBreakdown] = useState(null);
+  const [loadingBreakdown, setLoadingBreakdown] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -145,6 +147,25 @@ const AccountsPayInfo = ({ setActiveView }) => {
       status: payment.approval_status || activeTab,
       notes: payment.approval_notes || ''
     });
+  };
+
+  const handleViewPayment = async (payment) => {
+    setViewPayment(payment);
+    // Load installment breakdown if quotation_id exists
+    if (payment.quotation_id) {
+      setLoadingBreakdown(true);
+      try {
+        const response = await paymentService.getInstallmentBreakdown(payment.quotation_id);
+        setInstallmentBreakdown(response?.data || null);
+      } catch (error) {
+        console.error('Failed to load installment breakdown:', error);
+        setInstallmentBreakdown(null);
+      } finally {
+        setLoadingBreakdown(false);
+      }
+    } else {
+      setInstallmentBreakdown(null);
+    }
   };
 
   const handleApprovalSubmit = async (event) => {
@@ -304,7 +325,7 @@ const AccountsPayInfo = ({ setActiveView }) => {
                           <Edit3 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => setViewPayment(payment)}
+                          onClick={() => handleViewPayment(payment)}
                           title="View details"
                           className="p-2 rounded-full hover:bg-slate-100 text-slate-500"
                         >
@@ -345,13 +366,16 @@ const AccountsPayInfo = ({ setActiveView }) => {
       {/* View Modal */}
       {viewPayment && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 px-4">
-          <div className="bg-white w-full max-w-xl rounded-lg shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white w-full max-w-6xl rounded-lg shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
               <div>
                 <p className="text-[10px] uppercase text-slate-400">Payment Preview</p>
                 <h3 className="text-sm font-semibold text-slate-900">Lead #{viewPayment.lead_id}</h3>
               </div>
-              <button onClick={() => setViewPayment(null)} className="text-slate-400 hover:text-slate-600 text-lg leading-none">
+              <button onClick={() => {
+                setViewPayment(null);
+                setInstallmentBreakdown(null);
+              }} className="text-slate-400 hover:text-slate-600 text-lg leading-none">
                 ✕
               </button>
             </div>
@@ -439,6 +463,163 @@ const AccountsPayInfo = ({ setActiveView }) => {
                 )}
               </div>
             </div>
+
+            {/* Detailed Installment Breakdown */}
+            {viewPayment.quotation_id && (
+              <div className="border-t border-slate-200 mt-4 pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-900">Installment Breakdown</h4>
+                    <p className="text-xs text-slate-500">Complete payment ledger with installment-wise details</p>
+                  </div>
+                  {loadingBreakdown && (
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                  )}
+                </div>
+
+                {loadingBreakdown ? (
+                  <div className="text-center py-8 text-sm text-slate-500">
+                    Loading installment details...
+                  </div>
+                ) : installmentBreakdown ? (
+                  <div className="space-y-4">
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                        <p className="text-[10px] text-slate-500 uppercase mb-1">Total Amount</p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {formatAmount(installmentBreakdown.summary?.total_quotation_amount)}
+                        </p>
+                      </div>
+                      <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                        <p className="text-[10px] text-emerald-600 uppercase mb-1">Total Approved</p>
+                        <p className="text-sm font-semibold text-emerald-700">
+                          {formatAmount(installmentBreakdown.summary?.total_approved)}
+                        </p>
+                      </div>
+                      <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                        <p className="text-[10px] text-amber-600 uppercase mb-1">Remaining</p>
+                        <p className="text-sm font-semibold text-amber-700">
+                          {formatAmount(installmentBreakdown.summary?.remaining_balance)}
+                        </p>
+                      </div>
+                      <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-200">
+                        <p className="text-[10px] text-indigo-600 uppercase mb-1">Installments</p>
+                        <p className="text-sm font-semibold text-indigo-700">
+                          {installmentBreakdown.summary?.approved_installments || 0} / {installmentBreakdown.summary?.total_installments || 0}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Installment Table */}
+                    {installmentBreakdown.installments && installmentBreakdown.installments.length > 0 ? (
+                      <div className="border border-slate-200 rounded-lg overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-slate-200">
+                            <thead className="bg-slate-50">
+                              <tr>
+                                <th className="px-4 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase">Inst #</th>
+                                <th className="px-4 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase">Date</th>
+                                <th className="px-4 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase">Amount</th>
+                                <th className="px-4 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase">Ledger Before</th>
+                                <th className="px-4 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase">Ledger After</th>
+                                <th className="px-4 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase">Cumulative Paid</th>
+                                <th className="px-4 py-2 text-right text-[10px] font-semibold text-slate-600 uppercase">Remaining</th>
+                                <th className="px-4 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase">Status</th>
+                                <th className="px-4 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase">Method</th>
+                                <th className="px-4 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase">Reference</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-slate-100">
+                              {installmentBreakdown.installments.map((inst, idx) => {
+                                const isApproved = inst.approval_status === 'approved';
+                                const isPending = inst.approval_status === 'pending';
+                                const isRejected = inst.approval_status === 'rejected';
+                                
+                                return (
+                                  <tr key={inst.payment_id || idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                                    <td className="px-4 py-2 text-xs font-semibold text-slate-900">
+                                      {inst.installment_number}
+                                    </td>
+                                    <td className="px-4 py-2 text-xs text-slate-600">
+                                      {inst.payment_date ? new Date(inst.payment_date).toLocaleDateString('en-IN') : 'N/A'}
+                                    </td>
+                                    <td className="px-4 py-2 text-xs font-semibold text-slate-900 text-right">
+                                      {formatAmount(inst.installment_amount)}
+                                    </td>
+                                    <td className="px-4 py-2 text-xs text-slate-600 text-right">
+                                      {formatAmount(inst.ledger_balance_before)}
+                                    </td>
+                                    <td className="px-4 py-2 text-xs text-slate-600 text-right">
+                                      {formatAmount(inst.ledger_balance_after)}
+                                    </td>
+                                    <td className="px-4 py-2 text-xs text-slate-600 text-right">
+                                      {formatAmount(inst.cumulative_approved)}
+                                    </td>
+                                    <td className="px-4 py-2 text-xs font-medium text-right">
+                                      <span className={inst.remaining_balance > 0 ? 'text-amber-600' : 'text-emerald-600'}>
+                                        {formatAmount(inst.remaining_balance)}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-2 text-xs">
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                        isApproved ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                        isPending ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                        'bg-rose-50 text-rose-700 border border-rose-200'
+                                      }`}>
+                                        {inst.approval_status?.toUpperCase() || 'PENDING'}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-2 text-xs text-slate-600">
+                                      {(inst.payment_method || 'N/A').replace(/_/g, ' ').toUpperCase()}
+                                    </td>
+                                    <td className="px-4 py-2 text-xs text-slate-500 font-mono">
+                                      {inst.payment_reference || '—'}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                            <tfoot className="bg-slate-100 border-t-2 border-slate-300">
+                              <tr>
+                                <td colSpan="2" className="px-4 py-2 text-xs font-semibold text-slate-900">
+                                  TOTAL
+                                </td>
+                                <td className="px-4 py-2 text-xs font-semibold text-slate-900 text-right">
+                                  {formatAmount(installmentBreakdown.summary?.total_paid_all)}
+                                </td>
+                                <td colSpan="2" className="px-4 py-2 text-xs text-slate-500 text-right">
+                                  Approved: {formatAmount(installmentBreakdown.summary?.total_approved)}
+                                </td>
+                                <td className="px-4 py-2 text-xs font-semibold text-slate-900 text-right">
+                                  {formatAmount(installmentBreakdown.summary?.total_approved)}
+                                </td>
+                                <td className="px-4 py-2 text-xs font-semibold text-right">
+                                  <span className={installmentBreakdown.summary?.remaining_balance > 0 ? 'text-amber-600' : 'text-emerald-600'}>
+                                    {formatAmount(installmentBreakdown.summary?.remaining_balance)}
+                                  </span>
+                                </td>
+                                <td colSpan="3" className="px-4 py-2 text-xs text-slate-500">
+                                  {installmentBreakdown.summary?.approved_installments || 0} approved, {installmentBreakdown.summary?.pending_installments || 0} pending, {installmentBreakdown.summary?.rejected_installments || 0} rejected
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-sm text-slate-500 border border-slate-200 rounded-lg">
+                        No installments found for this quotation
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-sm text-slate-500 border border-slate-200 rounded-lg">
+                    Unable to load installment breakdown
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

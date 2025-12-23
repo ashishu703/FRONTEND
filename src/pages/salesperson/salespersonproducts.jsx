@@ -12,6 +12,10 @@ import { API_ENDPOINTS } from '../../api/admin_api/api';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
 import { useAuth } from '../../hooks/useAuth';
 import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
+import { useViewQuotationPI } from '../../hooks/useViewQuotationPI';
+import CompanyBranchService from '../../services/CompanyBranchService';
+import QuotationPreview from '../../components/QuotationPreview';
+import PIPreview from '../../components/PIPreview';
 
 class DataExtractor {
   static extractArray(response) {
@@ -224,28 +228,43 @@ class PaymentTrackingService {
 
   async buildPaymentTrackingData(paymentMap) {
     const paymentTrackingData = [];
-
-    for (const [, { quotation, lead, payments }] of paymentMap.entries()) {
-      if (!quotation) continue;
-
-      // Fetch PI data for this quotation to get product names from PI
-      let pis = [];
-      try {
-        console.log('🔍 Fetching PI for quotation:', quotation.id);
-        const response = await this.proformaInvoiceService.getPIsByQuotation(quotation.id);
-        pis = DataExtractor.extractArray(response);
-        console.log('✅ PI data fetched:', pis);
-      } catch (error) {
-        console.warn(`❌ Failed to fetch PI for quotation ${quotation.id}:`, error);
+    
+    // OPTIMIZED: Collect all quotation IDs first for bulk operations
+    const quotationIds = [];
+    const quotationEntries = [];
+    for (const [key, { quotation, lead, payments }] of paymentMap.entries()) {
+      if (quotation?.id) {
+        quotationIds.push(quotation.id);
+        quotationEntries.push({ key, quotation, lead, payments });
       }
+    }
+
+    // OPTIMIZED: Parallel bulk fetch of PIs for all quotations
+    const bulkPIsResult = quotationIds.length > 0 
+      ? await this.proformaInvoiceService.getBulkPIsByQuotations(quotationIds).catch(() => ({ data: [] }))
+      : { data: [] };
+
+    // Build PI map by quotation ID
+    const pisByQuotationId = new Map();
+    const allPIs = DataExtractor.extractArray(bulkPIsResult);
+    allPIs.forEach(pi => {
+      if (pi.quotation_id) {
+        if (!pisByQuotationId.has(pi.quotation_id)) {
+          pisByQuotationId.set(pi.quotation_id, []);
+        }
+        pisByQuotationId.get(pi.quotation_id).push(pi);
+      }
+    });
+
+    // Process each quotation with pre-fetched data
+    for (const { quotation, lead, payments } of quotationEntries) {
+      // Get PIs from pre-fetched map
+      const pis = pisByQuotationId.get(quotation.id) || [];
 
       // Only include if PI exists
       if (pis.length === 0) {
-        console.log('⚠️ No PI found for quotation:', quotation.id, '- Skipping');
         continue;
       }
-      
-      console.log('✅ PI exists for quotation:', quotation.id, '- Processing payment tracking');
 
       const validPayments = payments.filter(PaymentValidator.isValid);
       const approvedPayments = validPayments.filter(PaymentValidator.isApproved);
@@ -268,20 +287,14 @@ class PaymentTrackingService {
 
       // Fetch product names from PI (via quotation items that PI references)
       let productNames = 'N/A';
-      console.log('🔍 Building payment tracking - Quotation ID:', quotation.id);
-      console.log('📦 Quotation data:', quotation);
-      console.log('📋 PI data:', pis);
       
       // Fetch quotation items if not already included
       let quotationItems = quotation?.items;
       if (!quotationItems || !Array.isArray(quotationItems) || quotationItems.length === 0) {
         try {
-          console.log('📥 Fetching quotation items for:', quotation.id);
           const quotationWithItems = await this.quotationService.getQuotation(quotation.id);
           quotationItems = quotationWithItems?.data?.items || quotationWithItems?.items || [];
-          console.log('✅ Quotation items fetched:', quotationItems);
         } catch (error) {
-          console.warn('⚠️ Failed to fetch quotation items:', error);
           quotationItems = [];
         }
       }
@@ -293,16 +306,11 @@ class PaymentTrackingService {
           .map(item => item.product_name || item.productName || item.description)
           .filter(Boolean)
           .join(', ');
-        console.log('✅ Product names from quotation items:', productNames);
       } else if (lead.product_type) {
         productNames = lead.product_type;
-        console.log('⚠️ Using lead product_type as fallback:', productNames);
       } else if (firstPayment?.product_name) {
         productNames = firstPayment.product_name;
-        console.log('⚠️ Using payment product_name as fallback:', productNames);
       }
-      
-      console.log('📝 Final product name for payment tracking:', productNames);
 
       paymentTrackingData.push({
         id: `${quotation.customer_id || lead.id}-${quotation.id}`,
@@ -323,7 +331,8 @@ class PaymentTrackingService {
           paid_amount: totalPaid,
           remaining_amount: remainingAmount,
           delivery_date: deliveryDate,
-          delivery_status: deliveryStatus
+          delivery_status: deliveryStatus,
+          pi_id: pis.length > 0 ? pis[0].id : null // Add PI ID for view button
         },
         paymentsData: validPayments,
         approvalSummary: {
@@ -1731,14 +1740,37 @@ export default function ProductsPage() {
   const currentUserId = user?.id;
   const lastUserIdRef = useRef(null);
 
+  // OPTIMIZED: Fetch company branches from DB
+  const [companyBranches, setCompanyBranches] = useState([]);
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const branches = await CompanyBranchService.fetchBranches();
+        setCompanyBranches(branches);
+      } catch (error) {
+        console.error('Error fetching company branches:', error);
+      }
+    };
+    fetchBranches();
+  }, []);
+
+  // Setup view hook for quotations and PIs (same pattern as DuePayment/AdvancePayment)
+  const viewHook = useViewQuotationPI(companyBranches, user);
+  
+  // Handle view quotation and PI using shared hook
+  const handleViewQuotation = viewHook?.handleViewQuotation || (() => {});
+  const handleViewPI = viewHook?.handleViewPI || (() => {});
+
   // Guard to avoid duplicate initial fetches (e.g. React StrictMode)
   const initialFetchDoneRef = useRef(false);
-  const paymentTrackingService = new PaymentTrackingService(
+  
+  // OPTIMIZED: Memoize payment tracking service instance
+  const paymentTrackingService = useMemo(() => new PaymentTrackingService(
     apiClient,
     paymentService,
     quotationService,
     proformaInvoiceService
-  );
+  ), []);
 
   const fetchPaymentTrackingData = async () => {
     try {
@@ -2222,7 +2254,20 @@ export default function ProductsPage() {
       {selectedProduct && (
         <SalespersonCustomerTimeline 
           item={selectedProduct} 
-          onClose={() => setSelectedProduct(null)} 
+          onClose={() => setSelectedProduct(null)}
+          onQuotationView={(quotation) => {
+            const quotationId = typeof quotation === 'object' ? quotation?.id : quotation;
+            if (quotationId) {
+              handleViewQuotation(quotationId);
+            }
+          }}
+          onPIView={(pi) => {
+            const piId = typeof pi === 'object' ? pi?.id : pi;
+            const quotation = typeof pi === 'object' ? pi?.quotation : selectedProduct?.quotationData;
+            if (piId) {
+              handleViewPI(piId, quotation);
+            }
+          }}
         />
       )}
       
@@ -2267,6 +2312,25 @@ export default function ProductsPage() {
         />
       )}
       
+      {/* Quotation Preview Modal */}
+      {viewHook.showQuotationModal && viewHook.quotationModalData && (
+        <QuotationPreview
+          quotationData={viewHook.quotationModalData}
+          companyBranches={companyBranches}
+          user={user}
+          onClose={viewHook.closeQuotationModal}
+        />
+      )}
+
+      {/* PI Preview Modal */}
+      {viewHook.showPIModal && viewHook.piModalData && (
+        <PIPreview
+          piData={viewHook.piModalData}
+          companyBranches={companyBranches}
+          user={user}
+          onClose={viewHook.closePIModal}
+        />
+      )}
     </div>
   );
 }

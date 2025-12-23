@@ -209,6 +209,7 @@ const PaymentInfo = () => {
           formattedPaymentDate: formattedPaymentDate,
           paymentLink: payment.payment_receipt_url || '',
           quotationId: payment.quotation_number || `QT-${String(payment.quotation_id || '').slice(-4)}`,
+          quotationIdRaw: payment.quotation_id || null, // Store raw quotation_id for grouping
           piId: payment.pi_number || `PI-${String(payment.pi_id || '').slice(-4)}`,
           purchaseOrderId: payment.purchase_order_id || 'N/A',
           deliveryDate: payment.delivery_date ? new Date(payment.delivery_date).toLocaleDateString('en-GB') : 'N/A',
@@ -266,7 +267,16 @@ const PaymentInfo = () => {
       payment.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.departmentHeadName?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'All Status' || payment.status === statusFilter;
+    let matchesStatus = true;
+    if (statusFilter !== 'All Status') {
+      if (statusFilter === 'Due') {
+        // For "Due" filter, check if payment has a due amount > 0
+        const dueAmount = Number(payment.quotationRemainingDue || payment.dueAmount || 0);
+        matchesStatus = dueAmount > 0 && payment.status !== 'Paid' && payment.status !== 'Rejected';
+      } else {
+        matchesStatus = payment.status === statusFilter;
+      }
+    }
     
     let matchesDateRange = true;
     if (dateRange.startDate || dateRange.endDate) {

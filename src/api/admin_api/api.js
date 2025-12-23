@@ -52,6 +52,7 @@ export const API_ENDPOINTS = {
   SALESPERSON_IMPORT_LEADS: () => `${LEADS_BASE}/assigned/salesperson/import`,
   LEAD_TRANSFER: (id) => `${LEADS_BASE}/${id}/transfer`,
   ENQUIRIES_DEPARTMENT_HEAD: () => `${LEADS_BASE}/enquiries/department-head`,
+  ENQUIRIES_SUPERADMIN: () => `${LEADS_BASE}/enquiries/superadmin`,
   ENQUIRY_UPDATE: (id) => `${LEADS_BASE}/enquiries/${id}`,
   ENQUIRY_DELETE: (id) => `${LEADS_BASE}/enquiries/${id}`,
 
