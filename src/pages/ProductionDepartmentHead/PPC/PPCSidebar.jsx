@@ -12,12 +12,25 @@ import {
   Users,
   DollarSign,
   HelpCircle,
-  Factory
+  Factory,
+  Store,
+  Barcode,
+  ClipboardCheck
 } from 'lucide-react';
 
 const PPCSidebar = ({ onLogout, activeView, setActiveView }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [expandedDropdowns, setExpandedDropdowns] = useState({});
+
+  // Auto-expand inventory-control dropdown if activeView is an inventory page
+  React.useEffect(() => {
+    if (activeView?.startsWith('inventory-')) {
+      setExpandedDropdowns(prev => ({
+        ...prev,
+        'inventory-control': true
+      }));
+    }
+  }, [activeView]);
 
   const toggleSidebar = () => {
     setIsExpanded(!isExpanded);
@@ -65,7 +78,29 @@ const PPCSidebar = ({ onLogout, activeView, setActiveView }) => {
       id: 'inventory-control',
       label: 'Inventory Control',
       icon: <Settings className="w-5 h-5" />,
-      hasDropdown: false
+      hasDropdown: true,
+      dropdownItems: [
+        {
+          id: 'inventory-items',
+          label: 'Items',
+          icon: <Package className="w-4 h-4" />
+        },
+        {
+          id: 'inventory-stores',
+          label: 'Stores',
+          icon: <Store className="w-4 h-4" />
+        },
+        {
+          id: 'inventory-batch-code',
+          label: 'Batch/Bar Code',
+          icon: <Barcode className="w-4 h-4" />
+        },
+        {
+          id: 'inventory-approval',
+          label: 'Inventory Approval',
+          icon: <ClipboardCheck className="w-4 h-4" />
+        }
+      ]
     }
   ];
 
