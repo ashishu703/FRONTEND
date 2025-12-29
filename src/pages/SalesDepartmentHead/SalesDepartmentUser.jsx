@@ -20,7 +20,7 @@ const calculateDaysFromToday = (targetDate) => {
 
 const SalesDepartmentUser = ({ setActiveView }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, refreshUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -940,6 +940,27 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                   
                   await departmentUserService.updateUser(editingUser.id, payload);
                   await fetchUsers();
+                  
+                  // If current logged-in user's username/email was updated, refresh auth context
+                  if (currentUser?.id === editingUser.id && (payload.username || payload.email)) {
+                    try {
+                      // Use refreshUser from AuthContext to update user data
+                      const refreshResult = await refreshUser();
+                      if (refreshResult?.success) {
+                        toastManager.info('User data updated. Refreshing page...');
+                        setTimeout(() => {
+                          window.location.reload();
+                        }, 500);
+                        return; // Exit early to prevent closing modal before reload
+                      } else {
+                        toastManager.warning('User updated but failed to refresh session. Please log out and log in again.');
+                      }
+                    } catch (refreshError) {
+                      console.error('Error refreshing user after update:', refreshError);
+                      toastManager.warning('User updated but failed to refresh session. Please log out and log in again.');
+                    }
+                  }
+                  
                   setShowEditModal(false);
                   setEditingUser(null);
                   toastManager.success('User updated successfully');

@@ -158,14 +158,26 @@ export const AuthProvider = ({ children }) => {
         sessionStorage.removeItem('impersonating');
         sessionStorage.removeItem('user');
         
-        const userData = response.data.user;
+        apiClient.setAuthToken(response.data.token);
+        
+        // Fetch latest user profile to ensure we have updated username/email
+        let userData = response.data.user;
+        try {
+          const profile = await apiClient.get(API_ENDPOINTS.PROFILE);
+          if (profile?.success && profile?.data?.user) {
+            userData = profile.data.user;
+          }
+        } catch (profileError) {
+          console.warn('Failed to fetch profile after login, using login response data:', profileError);
+          // Continue with login response data if profile fetch fails
+        }
+        
         // Ensure uiUserType is set if missing
         if (!userData.uiUserType && userData.role && userData.departmentType) {
           const { getUserTypeForRole } = await import('../constants/auth');
           userData.uiUserType = getUserTypeForRole(userData.role, userData.departmentType);
         }
         
-        apiClient.setAuthToken(response.data.token);
         localStorage.setItem('user', JSON.stringify(userData));
         
         dispatch({
@@ -254,6 +266,43 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
+  // Refresh user data from profile API (useful after username/email updates)
+  const refreshUser = async () => {
+    try {
+      const profile = await apiClient.get(API_ENDPOINTS.PROFILE);
+      if (profile?.success && profile?.data?.user) {
+        const userData = profile.data.user;
+        // Ensure uiUserType is set if missing
+        if (!userData.uiUserType && userData.role && userData.departmentType) {
+          const { getUserTypeForRole } = await import('../constants/auth');
+          userData.uiUserType = getUserTypeForRole(userData.role, userData.departmentType);
+        }
+        
+        // Update localStorage
+        const isImpersonating = sessionStorage.getItem('impersonating') === 'true';
+        if (isImpersonating) {
+          sessionStorage.setItem('user', JSON.stringify(userData));
+        } else {
+          localStorage.setItem('user', JSON.stringify(userData));
+        }
+        
+        // Update AuthContext
+        dispatch({
+          type: AUTH_ACTIONS.LOGIN_SUCCESS,
+          payload: {
+            user: userData,
+          },
+        });
+        
+        return { success: true, user: userData };
+      }
+      return { success: false, error: 'Failed to fetch profile' };
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+      return { success: false, error: error.message || 'Failed to refresh user' };
+    }
+  };
+
   // Context value
   const value = {
     // State
@@ -268,6 +317,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     clearError,
+    refreshUser,
   };
 
   return (

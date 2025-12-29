@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { FileText, Package, RefreshCw, Filter, Phone, Clock } from 'lucide-react';
+import { FileText, Package, RefreshCw, Filter, Phone, Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import AddCustomerModal from './AddCustomerModal';
 import QuotationPreview from '../../components/QuotationPreview';
 import PIPreview from '../../components/PIPreview';
@@ -40,10 +40,13 @@ const LeadsSimplified = () => {
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
   
-  // Enquiry state
+  // Enquiry state with pagination
   const [enquiries, setEnquiries] = useState([]);
   const [enquiriesGroupedByDate, setEnquiriesGroupedByDate] = useState({});
   const [enquiriesLoading, setEnquiriesLoading] = useState(false);
+  const [enquiryPage, setEnquiryPage] = useState(1);
+  const [enquiryLimit, setEnquiryLimit] = useState(50);
+  const [enquiryTotal, setEnquiryTotal] = useState(0);
   
   // Enquiry filters
   const [enquiryFilters, setEnquiryFilters] = useState({
@@ -153,6 +156,7 @@ const LeadsSimplified = () => {
     business: '',
     address: '',
     state: '',
+    division: '',
     leadSource: '',
     category: '',
     salesStatus: '',
@@ -180,6 +184,22 @@ const LeadsSimplified = () => {
   const allLeadsDataRef = useRef([]);
   const [showPIPreview, setShowPIPreview] = useState(false);
   const [piPreviewData, setPiPreviewData] = useState(null);
+  
+  // Last Call pagination state
+  const [lastCallPage, setLastCallPage] = useState(1);
+  const [lastCallLimit, setLastCallLimit] = useState(50);
+  const [lastCallTotal, setLastCallTotal] = useState(0);
+  const [lastCallLeadsData, setLastCallLeadsData] = useState([]);
+  const [lastCallLoading, setLastCallLoading] = useState(false);
+  const [lastCallInitialLoading, setLastCallInitialLoading] = useState(false);
+  
+  // Cache for enquiries and last call
+  const enquiriesCacheRef = useRef(new Map());
+  const lastCallCacheRef = useRef(new Map());
+  const ENQUIRIES_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+  const LAST_CALL_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+  const fetchEnquiriesAbortControllerRef = useRef(null);
+  const fetchLastCallAbortControllerRef = useRef(null);
 
   const importFileInputRef = useRef(null);
 
@@ -189,39 +209,244 @@ const LeadsSimplified = () => {
   const quotationServiceInstance = useMemo(() => new QuotationService(), []);
   const leadsFilterService = useMemo(() => new LeadsFilterService(apiClient), []);
 
-  // Fetch enquiries
-  const fetchEnquiries = useCallback(async () => {
+  // Helper function to transform leads (DRY principle) - with proper field mapping
+  const transformLeads = useCallback((leads) => {
+    return leads.map(lead => {
+      // Transform using leadService first to get standard fields
+      const transformed = leadService.transformApiData([lead])[0] || {};
+      
+      // Get all possible field name variations
+      const followUpStatus = lead.follow_up_status || lead.followUpStatus || transformed.follow_up_status || transformed.followUpStatus || null;
+      const followUpRemark = lead.follow_up_remark || lead.followUpRemark || transformed.follow_up_remark || transformed.followUpRemark || null;
+      const salesStatus = lead.sales_status || lead.salesStatus || transformed.sales_status || transformed.salesStatus || null;
+      const salesStatusRemark = lead.sales_status_remark || lead.salesStatusRemark || transformed.sales_status_remark || transformed.salesStatusRemark || null;
+      
+      return {
+        ...lead,
+        ...transformed,
+        productNames: lead.productNamesText || lead.product_names || transformed.productNames || '',
+        updatedAt: lead.updated_at || lead.created_at || transformed.updatedAt || '',
+        assignedSalesperson: lead.assignedSalesperson || lead.assigned_salesperson || transformed.assignedSalesperson || 'Unassigned',
+        assignedTelecaller: lead.assignedTelecaller || lead.assigned_telecaller || transformed.assignedTelecaller || 'Unassigned',
+        // Preserve date fields for Last Call filtering (snake_case)
+        follow_up_date: lead.follow_up_date || lead.followUpDate || transformed.follow_up_date || null,
+        follow_up_remark: followUpRemark,
+        follow_up_status: followUpStatus,
+        next_meeting_date: lead.next_meeting_date || lead.nextMeetingDate || transformed.next_meeting_date || null,
+        meeting_date: lead.meeting_date || lead.meetingDate || transformed.meeting_date || null,
+        scheduled_date: lead.scheduled_date || lead.scheduledDate || transformed.scheduled_date || null,
+        sales_status: salesStatus,
+        sales_status_remark: salesStatusRemark,
+        updated_at: lead.updated_at || lead.updatedAt || transformed.updated_at || null,
+        // Map to camelCase for LeadTable component (required for display)
+        followUpStatus: followUpStatus,
+        followUpRemark: followUpRemark,
+        salesStatus: salesStatus,
+        salesStatusRemark: salesStatusRemark
+      };
+    });
+  }, [leadService]);
+
+  // Fetch enquiries with pagination and parallel API calls
+  const fetchEnquiries = useCallback(async (forceRefresh = false, page = enquiryPage, limit = enquiryLimit) => {
     if (activeTab !== 'enquiry') return;
+    
+    // Cancel previous request
+    if (fetchEnquiriesAbortControllerRef.current) {
+      fetchEnquiriesAbortControllerRef.current.abort();
+    }
+    fetchEnquiriesAbortControllerRef.current = new AbortController();
+    
+    // Create cache key from page, limit, and filters
+    const cacheKey = JSON.stringify({ page, limit, filters: enquiryFilters });
+    const now = Date.now();
+    
+    // Check cache
+    const cached = enquiriesCacheRef.current.get(cacheKey);
+    if (!forceRefresh && cached && cached.timestamp && (now - cached.timestamp) < ENQUIRIES_CACHE_DURATION) {
+      setEnquiries(cached.data.enquiries || []);
+      setEnquiriesGroupedByDate(cached.data.groupedByDate || {});
+      setEnquiryTotal(cached.data.total || 0);
+      return;
+    }
     
     setEnquiriesLoading(true);
     try {
-      const response = await apiClient.get(API_ENDPOINTS.ENQUIRIES_DEPARTMENT_HEAD());
-      if (response.success) {
-        setEnquiries(response.data?.enquiries || []);
-        setEnquiriesGroupedByDate(response.data?.groupedByDate || {});
+      // Build query params
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', limit.toString());
+      if (enquiryFilters.enquiry_date) params.append('enquiryDate', enquiryFilters.enquiry_date);
+      
+      // Fetch paginated data and grouped data in parallel
+      const groupedParams = new URLSearchParams();
+      if (enquiryFilters.enquiry_date) groupedParams.append('enquiryDate', enquiryFilters.enquiry_date);
+      
+      const [paginatedResponse, groupedResponse] = await Promise.all([
+        apiClient.get(`${API_ENDPOINTS.ENQUIRIES_DEPARTMENT_HEAD()}?${params.toString()}`),
+        apiClient.get(`${API_ENDPOINTS.ENQUIRIES_DEPARTMENT_HEAD()}?${groupedParams.toString()}`)
+      ]);
+      
+      if (paginatedResponse.success && groupedResponse.success) {
+        const enquiriesData = {
+          enquiries: paginatedResponse.data?.enquiries || [],
+          groupedByDate: groupedResponse.data?.groupedByDate || {},
+          total: paginatedResponse.data?.pagination?.total || 0
+        };
+        
+        // Update cache
+        enquiriesCacheRef.current.set(cacheKey, {
+          data: enquiriesData,
+          timestamp: now
+        });
+        
+        setEnquiries(enquiriesData.enquiries);
+        setEnquiriesGroupedByDate(enquiriesData.groupedByDate);
+        setEnquiryTotal(enquiriesData.total);
       }
     } catch (error) {
-      console.error('Error fetching enquiries:', error);
-      apiErrorHandler.handleError(error, 'fetch enquiries');
+      if (error.name !== 'AbortError') {
+        console.error('Error fetching enquiries:', error);
+        apiErrorHandler.handleError(error, 'fetch enquiries');
+      }
     } finally {
       setEnquiriesLoading(false);
+      fetchEnquiriesAbortControllerRef.current = null;
     }
-  }, [activeTab]);
+  }, [activeTab, enquiryPage, enquiryLimit, enquiryFilters]);
 
-  // Fetch enquiries when tab changes
+  // Fetch enquiries when tab changes or pagination/filters change
   useEffect(() => {
     if (activeTab === 'enquiry') {
-      fetchEnquiries();
+      fetchEnquiries(false, enquiryPage, enquiryLimit);
     }
-  }, [activeTab, fetchEnquiries]);
+  }, [activeTab, enquiryPage, enquiryLimit, fetchEnquiries]);
 
-  // Fetch all leads when Last Call tab is active
-  useEffect(() => {
-    if (activeTab === 'lastCall' && allLeadsData.length === 0) {
-      // Load all leads for filtering
-      loadAllLeadsForFilters(true).catch(() => {});
+  // Define loadAllLeadsForFilters before fetchLastCallLeads to avoid initialization error
+  const loadAllLeadsForFiltersRef = useRef(null);
+  
+  // Fetch last call leads with pagination, caching and parallel API calls
+  const fetchLastCallLeads = useCallback(async (forceRefresh = false, page = lastCallPage, limit = lastCallLimit) => {
+    if (activeTab !== 'lastCall') return;
+    
+    // Cancel previous request
+    if (fetchLastCallAbortControllerRef.current) {
+      fetchLastCallAbortControllerRef.current.abort();
     }
-  }, [activeTab, allLeadsData.length]);
+    fetchLastCallAbortControllerRef.current = new AbortController();
+    
+    // Create cache key
+    const cacheKey = `page-${page}-limit-${limit}`;
+    const now = Date.now();
+    
+    // Check cache
+    const cached = lastCallCacheRef.current.get(cacheKey);
+    if (!forceRefresh && cached && cached.timestamp && (now - cached.timestamp) < LAST_CALL_CACHE_DURATION) {
+      setLastCallLeadsData(cached.data);
+      setLastCallTotal(cached.total);
+      return cached.data;
+    }
+
+    try {
+      setLastCallLoading(true);
+      if (page === 1) {
+        setLastCallInitialLoading(true);
+      }
+      
+      // Load all leads for filtering (use existing function via ref)
+      const loadAllLeadsFn = loadAllLeadsForFiltersRef.current;
+      if (!loadAllLeadsFn) {
+        console.error('loadAllLeadsForFilters not available');
+        return [];
+      }
+      const allLeads = await loadAllLeadsFn(true);
+      
+      // Transform leads with proper field mapping
+      const transformedLeads = transformLeads(allLeads);
+      
+      // Filter for last call leads only
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      
+      const allLastCallLeads = transformedLeads.filter(lead => {
+        if (!lead) return false;
+        
+        const hasFollowUpStatus = lead.follow_up_status && lead.follow_up_status.trim() !== '';
+        const hasFollowUpRemark = lead.follow_up_remark && lead.follow_up_remark.trim() !== '';
+        
+        const hasFollowUpDate = lead.follow_up_date && lead.follow_up_date !== 'N/A' && lead.follow_up_date !== '';
+        const hasNextMeetingDate = lead.next_meeting_date && lead.next_meeting_date !== 'N/A' && lead.next_meeting_date !== '';
+        const hasMeetingDate = lead.meeting_date && lead.meeting_date !== 'N/A' && lead.meeting_date !== '';
+        const hasScheduledDate = lead.scheduled_date && lead.scheduled_date !== 'N/A' && lead.scheduled_date !== '';
+        const hasNextMeetingStatus = lead.sales_status === 'next_meeting' && lead.sales_status_remark;
+        
+        const hasScheduledDateOrTime = hasFollowUpDate || hasNextMeetingDate || hasMeetingDate || hasScheduledDate || hasNextMeetingStatus;
+        
+        if (!hasFollowUpStatus && !hasFollowUpRemark && !hasScheduledDateOrTime) {
+          return false;
+        }
+        
+        let callDate = null;
+        if (lead.follow_up_date) {
+          callDate = new Date(lead.follow_up_date);
+        } else if (lead.next_meeting_date) {
+          callDate = new Date(lead.next_meeting_date);
+        } else if (lead.meeting_date) {
+          callDate = new Date(lead.meeting_date);
+        } else if (lead.scheduled_date) {
+          callDate = new Date(lead.scheduled_date);
+        } else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
+          const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
+          if (dateMatch) {
+            callDate = new Date(dateMatch[1]);
+          }
+        } else if (lead.updated_at) {
+          callDate = new Date(lead.updated_at);
+        }
+        
+        if (!callDate || isNaN(callDate.getTime())) {
+          return false;
+        }
+        
+        callDate.setHours(0, 0, 0, 0);
+        return callDate <= today;
+      });
+      
+      // Apply pagination
+      const total = allLastCallLeads.length;
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      const paginatedLeads = allLastCallLeads.slice(startIndex, endIndex);
+      
+      // Update cache
+      lastCallCacheRef.current.set(cacheKey, {
+        data: paginatedLeads,
+        total,
+        timestamp: now
+      });
+      
+      setLastCallLeadsData(paginatedLeads);
+      setLastCallTotal(total);
+      return paginatedLeads;
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error('Error fetching last call leads:', err);
+        apiErrorHandler.handleError(err, 'fetch last call leads');
+      }
+      return [];
+    } finally {
+      setLastCallLoading(false);
+      setLastCallInitialLoading(false);
+      fetchLastCallAbortControllerRef.current = null;
+    }
+  }, [activeTab, transformLeads, lastCallPage, lastCallLimit]);
+
+  // Fetch last call leads when Last Call tab is active or pagination changes
+  useEffect(() => {
+    if (activeTab === 'lastCall') {
+      fetchLastCallLeads(false, lastCallPage, lastCallLimit);
+    }
+  }, [activeTab, lastCallPage, lastCallLimit, fetchLastCallLeads]);
 
   // Extract unique values from enquiries for filter dropdowns
   const enquiryFilterOptions = useMemo(() => {
@@ -272,71 +497,17 @@ const LeadsSimplified = () => {
     }
   }, []);
 
-  // Filter leads for Last Call tab - use allLeadsData if available, otherwise leadsData
+  // Filter last call leads - use paginated lastCallLeadsData
   const filteredLastCallLeads = useMemo(() => {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999); // Set to end of today for comparison (like salesperson)
-    
-    // Use allLeadsData if available (has more data), otherwise fallback to leadsData
-    const dataSource = allLeadsData.length > 0 ? allLeadsData : leadsData;
-    
-    return dataSource.filter(lead => {
-      if (!lead) return false;
-      
-      const hasFollowUpStatus = lead.follow_up_status && lead.follow_up_status.trim() !== '';
-      const hasFollowUpRemark = lead.follow_up_remark && lead.follow_up_remark.trim() !== '';
-      
-      // Check for scheduled dates
-      const hasFollowUpDate = lead.follow_up_date && lead.follow_up_date !== 'N/A' && lead.follow_up_date !== '';
-      const hasNextMeetingDate = lead.next_meeting_date && lead.next_meeting_date !== 'N/A' && lead.next_meeting_date !== '';
-      const hasMeetingDate = lead.meeting_date && lead.meeting_date !== 'N/A' && lead.meeting_date !== '';
-      const hasScheduledDate = lead.scheduled_date && lead.scheduled_date !== 'N/A' && lead.scheduled_date !== '';
-      const hasNextMeetingStatus = lead.sales_status === 'next_meeting' && lead.sales_status_remark;
-      
-      const hasScheduledDateOrTime = hasFollowUpDate || hasNextMeetingDate || hasMeetingDate || hasScheduledDate || hasNextMeetingStatus;
-      
-      // Include leads that have follow-up status/remark OR scheduled dates
-      if (!hasFollowUpStatus && !hasFollowUpRemark && !hasScheduledDateOrTime) {
-        return false;
-      }
-      
-      // Check if the follow-up/scheduled date is <= today
-      let callDate = null;
-      
-      // Priority: follow_up_date > next_meeting_date > meeting_date > scheduled_date
-      if (lead.follow_up_date) {
-        callDate = new Date(lead.follow_up_date);
-      } else if (lead.next_meeting_date) {
-        callDate = new Date(lead.next_meeting_date);
-      } else if (lead.meeting_date) {
-        callDate = new Date(lead.meeting_date);
-      } else if (lead.scheduled_date) {
-        callDate = new Date(lead.scheduled_date);
-      } else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
-        // Extract date from remark format like "2025-10-28 AT 19:10"
-        const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
-        if (dateMatch) {
-          callDate = new Date(dateMatch[1]);
-        }
-      } else if (lead.updated_at) {
-        callDate = new Date(lead.updated_at);
-      }
-      
-      // If no date is available, exclude the lead
-      if (!callDate || isNaN(callDate.getTime())) {
-        return false;
-      }
-      
-      // Only include if call/scheduled date is <= today
-      callDate.setHours(0, 0, 0, 0);
-      return callDate <= today;
-    });
-  }, [allLeadsData, leadsData]);
+    // Use paginated lastCallLeadsData
+    return lastCallLeadsData;
+  }, [lastCallLeadsData]);
 
-  // Group leads by date (last call date)
+  // Group leads by date (last call date) - using paginated data
   const groupedLastCallLeads = useMemo(() => {
     const groups = {};
     
+    // Use paginated lastCallLeadsData
     filteredLastCallLeads.forEach(lead => {
       // Priority: follow_up_date > next_meeting_date > meeting_date > scheduled_date > updated_at
       let dateObj = null;
@@ -393,27 +564,34 @@ const LeadsSimplified = () => {
     }));
   }, [filteredLastCallLeads]);
 
-  // Filter enquiries based on selected filters
+  // Filter enquiries based on selected filters - OPTIMIZED (client-side filtering on paginated data)
   const filteredEnquiries = useMemo(() => {
-    const allEnquiries = Object.values(enquiriesGroupedByDate).flat();
-    if (allEnquiries.length === 0 && enquiries.length > 0) {
-      allEnquiries.push(...enquiries);
-    }
+    // Use paginated enquiries directly (server-side pagination)
+    if (!enquiries.length) return [];
     
-    return allEnquiries.filter(enquiry => {
+    // Apply client-side filters on paginated data
+    const hasFilters = Object.values(enquiryFilters).some(v => v && v !== 'enquiry_date'); // Exclude enquiry_date as it's handled server-side
+    if (!hasFilters) return enquiries;
+    
+    return enquiries.filter(enquiry => {
       if (enquiryFilters.salesperson && enquiry.salesperson !== enquiryFilters.salesperson) return false;
       if (enquiryFilters.telecaller && enquiry.telecaller !== enquiryFilters.telecaller) return false;
       if (enquiryFilters.state && enquiry.state !== enquiryFilters.state) return false;
       if (enquiryFilters.division && enquiry.division !== enquiryFilters.division) return false;
       if (enquiryFilters.follow_up_status && enquiry.follow_up_status !== enquiryFilters.follow_up_status) return false;
       if (enquiryFilters.sales_status && enquiry.sales_status !== enquiryFilters.sales_status) return false;
-      if (enquiryFilters.enquiry_date && enquiry.enquiry_date !== enquiryFilters.enquiry_date) return false;
       return true;
     });
-  }, [enquiries, enquiriesGroupedByDate, enquiryFilters]);
+  }, [enquiries, enquiryFilters]);
 
-  // Group filtered enquiries by date
+  // Group filtered enquiries by date - use server-side grouped data
   const filteredEnquiriesGroupedByDate = useMemo(() => {
+    // Use server-side grouped data if available, otherwise group client-side
+    if (Object.keys(enquiriesGroupedByDate).length > 0) {
+      return enquiriesGroupedByDate;
+    }
+    
+    // Fallback: group client-side
     const grouped = {};
     filteredEnquiries.forEach(enquiry => {
       const dateKey = enquiry.enquiry_date;
@@ -423,7 +601,7 @@ const LeadsSimplified = () => {
       grouped[dateKey].push(enquiry);
     });
     return grouped;
-  }, [filteredEnquiries]);
+  }, [filteredEnquiries, enquiriesGroupedByDate]);
 
   // Export enquiries to CSV
   const handleExportEnquiries = () => {
@@ -510,8 +688,9 @@ const LeadsSimplified = () => {
       const response = await apiClient.delete(API_ENDPOINTS.ENQUIRY_DELETE(enquiryId));
       if (response.success) {
         toastManager.success('Enquiry deleted successfully');
-        // Refresh enquiries
-        await fetchEnquiries();
+        // Clear cache and refetch
+        enquiriesCacheRef.current.clear();
+        await fetchEnquiries(true, enquiryPage, enquiryLimit);
       }
     } catch (error) {
       console.error('Error deleting enquiry:', error);
@@ -907,6 +1086,11 @@ const LeadsSimplified = () => {
     allLeadsFetchPromiseRef.current = fetchPromise;
     return fetchPromise;
   };
+
+  // Set ref for fetchLastCallLeads to access (after function is defined)
+  useEffect(() => {
+    loadAllLeadsForFiltersRef.current = loadAllLeadsForFilters;
+  }, []);
 
   const fetchLeads = async () => {
     try {
@@ -1538,11 +1722,12 @@ const LeadsSimplified = () => {
   const handleEdit = (lead) => {
     setEditingLead(lead);
     setEditFormData({
-      customer: lead.customer || '',
-      email: lead.email || '',
-      business: lead.business || '',
-      address: lead.address || '',
-      state: lead.state || '',
+      customer: lead.customer && lead.customer !== 'N/A' ? lead.customer : '',
+      email: lead.email && lead.email !== 'N/A' ? lead.email : '',
+      business: lead.business && lead.business !== 'N/A' ? lead.business : '',
+      address: lead.address && lead.address !== 'N/A' ? lead.address : '',
+      state: lead.state && lead.state !== 'N/A' ? lead.state : '',
+      division: lead.division && lead.division !== 'N/A' ? lead.division : '',
       leadSource: lead.leadSource || '',
       category: lead.category || '',
       salesStatus: lead.salesStatus || '',
@@ -1806,32 +1991,37 @@ const LeadsSimplified = () => {
 
       {activeTab === 'lastCall' && (
         <>
-          <SearchBar
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            onImportClick={() => setShowImportPopup(true)}
-            onAddCustomer={() => setShowAddCustomer(true)}
-            onAssignSelected={() => {
-              setAssigningLead(null);
-              setAssignForm({ salesperson: '', telecaller: '' });
-              setShowAssignModal(true);
-            }}
-            onBulkDelete={handleBulkDelete}
-            onExportExcel={handleExportToExcel}
-            selectedCount={selectedLeadIds.length}
-            onRefresh={handleManualRefresh}
-          />
+          {/* Show skeleton loader on initial load */}
+          {lastCallInitialLoading ? (
+            <DashboardSkeleton />
+          ) : (
+            <>
+              <SearchBar
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                onImportClick={() => setShowImportPopup(true)}
+                onAddCustomer={() => setShowAddCustomer(true)}
+                onAssignSelected={() => {
+                  setAssigningLead(null);
+                  setAssignForm({ salesperson: '', telecaller: '' });
+                  setShowAssignModal(true);
+                }}
+                onBulkDelete={handleBulkDelete}
+                onExportExcel={handleExportToExcel}
+                selectedCount={selectedLeadIds.length}
+                onRefresh={() => fetchLastCallLeads(true)}
+              />
 
-          {/* Last Call Leads - Grouped by Date */}
-          {groupedLastCallLeads.length > 0 ? (
+              {/* Last Call Leads - Grouped by Date */}
+              {groupedLastCallLeads.length > 0 ? (
             <div className="space-y-6">
               {groupedLastCallLeads.map((group) => {
-                // Filter leads in this group by search term
+                // Filter leads in this group by search term (on paginated data)
                 const filteredGroupLeads = group.leads.filter(lead => {
                   if (!searchTerm) return true;
                   const searchLower = searchTerm.toLowerCase();
                   return (
-                    (lead.customer || '').toLowerCase().includes(searchLower) ||
+                    (lead.customer || lead.name || '').toLowerCase().includes(searchLower) ||
                     (lead.email || '').toLowerCase().includes(searchLower) ||
                     (lead.business || '').toLowerCase().includes(searchLower) ||
                     (lead.phone || '').toLowerCase().includes(searchLower)
@@ -1871,7 +2061,7 @@ const LeadsSimplified = () => {
                     <div className="overflow-x-auto">
                       <LeadTable
                         filteredLeads={filteredGroupLeads}
-                        tableLoading={tableLoading}
+                        tableLoading={lastCallLoading}
                         hasStatusFilter={false}
                         visibleColumns={visibleColumns}
                         isAllSelected={false}
@@ -1889,7 +2079,7 @@ const LeadsSimplified = () => {
                         onAssign={openAssignModal}
                         showCustomerTimeline={showCustomerTimeline}
                         setShowColumnFilter={setShowColumnFilter}
-                        allLeadsData={allLeadsData}
+                        allLeadsData={lastCallLeadsData}
                         assignedSalespersonFilter=""
                         assignedTelecallerFilter=""
                         onAssignedSalespersonFilterChange={() => {}}
@@ -1912,6 +2102,94 @@ const LeadsSimplified = () => {
               <p className="mt-1 text-sm text-gray-500">
                 You don't have any last call activities at the moment.
               </p>
+            </div>
+          )}
+          
+          {/* Last Call Pagination */}
+          {lastCallTotal > 0 && (
+            <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm mt-4">
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <span>Rows per page:</span>
+                <select
+                  value={lastCallLimit}
+                  onChange={(e) => {
+                    setLastCallPage(1);
+                    setLastCallLimit(Number(e.target.value));
+                  }}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={200}>200</option>
+                </select>
+                <span>Showing {Math.min(((lastCallPage - 1) * lastCallLimit) + 1, lastCallTotal)} to {Math.min(lastCallPage * lastCallLimit, lastCallTotal)} of {lastCallTotal} calls</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setLastCallPage(1)}
+                  disabled={lastCallPage === 1}
+                  className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="First page"
+                >
+                  <ChevronsLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setLastCallPage(p => Math.max(1, p - 1))}
+                  disabled={lastCallPage === 1}
+                  className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Previous page"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, Math.ceil(lastCallTotal / lastCallLimit)) }, (_, i) => {
+                    let pageNum;
+                    const totalPages = Math.ceil(lastCallTotal / lastCallLimit);
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (lastCallPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (lastCallPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = lastCallPage - 2 + i;
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setLastCallPage(pageNum)}
+                        className={`px-3 py-1 text-sm rounded-md border ${
+                          lastCallPage === pageNum
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="text-sm text-gray-600 px-2">
+                  Page {lastCallPage} of {Math.ceil(lastCallTotal / lastCallLimit) || 1}
+                </span>
+                <button
+                  onClick={() => setLastCallPage(p => p < Math.ceil(lastCallTotal / lastCallLimit) ? p + 1 : p)}
+                  disabled={lastCallPage >= Math.ceil(lastCallTotal / lastCallLimit)}
+                  className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Next page"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setLastCallPage(Math.ceil(lastCallTotal / lastCallLimit))}
+                  disabled={lastCallPage >= Math.ceil(lastCallTotal / lastCallLimit)}
+                  className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Last page"
+                >
+                  <ChevronsRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
 
@@ -1960,6 +2238,8 @@ const LeadsSimplified = () => {
                 }}
               />
             </div>
+          )}
+            </>
           )}
         </>
       )}
@@ -2125,19 +2405,109 @@ const LeadsSimplified = () => {
           </div>
           )}
 
-          {enquiriesLoading ? (
+          {enquiriesLoading && enquiryPage === 1 ? (
             <DashboardSkeleton />
           ) : (
-            <EnquiryTable 
-              enquiries={filteredEnquiries} 
-              loading={enquiriesLoading}
-              groupedByDate={filteredEnquiriesGroupedByDate}
-              onRefresh={fetchEnquiries}
-              onEdit={handleEditEnquiry}
-              onDelete={handleDeleteEnquiry}
-              visibleColumns={enquiryVisibleColumns}
-              onToggleColumnVisibility={() => setShowEnquiryColumnModal(true)}
-            />
+            <>
+              <EnquiryTable 
+                enquiries={filteredEnquiries} 
+                loading={enquiriesLoading}
+                groupedByDate={filteredEnquiriesGroupedByDate}
+                onRefresh={() => fetchEnquiries(true)}
+                onEdit={handleEditEnquiry}
+                onDelete={handleDeleteEnquiry}
+                visibleColumns={enquiryVisibleColumns}
+                onToggleColumnVisibility={() => setShowEnquiryColumnModal(true)}
+              />
+              
+              {/* Enquiry Pagination */}
+              {enquiryTotal > 0 && (
+                <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm mt-4">
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <span>Rows per page:</span>
+                    <select
+                      value={enquiryLimit}
+                      onChange={(e) => {
+                        setEnquiryPage(1);
+                        setEnquiryLimit(Number(e.target.value));
+                      }}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    >
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value={200}>200</option>
+                    </select>
+                    <span>Showing {Math.min(((enquiryPage - 1) * enquiryLimit) + 1, enquiryTotal)} to {Math.min(enquiryPage * enquiryLimit, enquiryTotal)} of {enquiryTotal} enquiries</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setEnquiryPage(1)}
+                      disabled={enquiryPage === 1}
+                      className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="First page"
+                    >
+                      <ChevronsLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setEnquiryPage(p => Math.max(1, p - 1))}
+                      disabled={enquiryPage === 1}
+                      className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Previous page"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, Math.ceil(enquiryTotal / enquiryLimit)) }, (_, i) => {
+                        let pageNum;
+                        const totalPages = Math.ceil(enquiryTotal / enquiryLimit);
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (enquiryPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (enquiryPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = enquiryPage - 2 + i;
+                        }
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setEnquiryPage(pageNum)}
+                            className={`px-3 py-1 text-sm rounded-md border ${
+                              enquiryPage === pageNum
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <span className="text-sm text-gray-600 px-2">
+                      Page {enquiryPage} of {Math.ceil(enquiryTotal / enquiryLimit) || 1}
+                    </span>
+                    <button
+                      onClick={() => setEnquiryPage(p => p < Math.ceil(enquiryTotal / enquiryLimit) ? p + 1 : p)}
+                      disabled={enquiryPage >= Math.ceil(enquiryTotal / enquiryLimit)}
+                      className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Next page"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setEnquiryPage(Math.ceil(enquiryTotal / enquiryLimit))}
+                      disabled={enquiryPage >= Math.ceil(enquiryTotal / enquiryLimit)}
+                      className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Last page"
+                    >
+                      <ChevronsRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
           
           {/* Column Visibility Modal */}

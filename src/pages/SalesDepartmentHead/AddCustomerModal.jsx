@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import departmentUserService from '../../api/admin_api/departmentUserService';
+import { findIndiaStateByName, getIndiaDivisionsForStateIso, getIndiaStates } from '../../utils/indiaLocation';
 
 const TagInput = ({ values, onAdd, onRemove, placeholder }) => {
   const [inputValue, setInputValue] = useState('');
@@ -57,6 +58,22 @@ export default function AddCustomerModal({ onClose, onSave, editingCustomer }) {
     division: editingCustomer?.division || ''
   });
 
+  const indiaStates = useMemo(() => getIndiaStates(), []);
+  const [selectedStateIso, setSelectedStateIso] = useState(() => {
+    const found = findIndiaStateByName(editingCustomer?.state);
+    return found?.isoCode || '';
+  });
+
+  const divisionOptions = useMemo(() => {
+    return getIndiaDivisionsForStateIso(selectedStateIso);
+  }, [selectedStateIso]);
+
+  // Keep selectedStateIso in sync when editingCustomer changes
+  useEffect(() => {
+    const found = findIndiaStateByName(editingCustomer?.state);
+    setSelectedStateIso(found?.isoCode || '');
+  }, [editingCustomer?.state]);
+
   const [usernames, setUsernames] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [usersError, setUsersError] = useState('');
@@ -81,6 +98,18 @@ export default function AddCustomerModal({ onClose, onSave, editingCustomer }) {
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleStateSelect = (isoCode) => {
+    const stateObj = indiaStates.find((s) => s.isoCode === isoCode);
+    const stateName = stateObj?.name || '';
+    setSelectedStateIso(isoCode || '');
+    setFormData((prev) => ({
+      ...prev,
+      state: stateName,
+      // Reset division if state changes
+      division: ''
+    }));
   };
 
   const addProduct = (value) => handleChange('productNames', [...formData.productNames, value]);
@@ -185,11 +214,34 @@ export default function AddCustomerModal({ onClose, onSave, editingCustomer }) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-              <input type="text" value={formData.state} onChange={(e) => handleChange('state', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+              <select
+                value={selectedStateIso}
+                onChange={(e) => handleStateSelect(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select state</option>
+                {indiaStates.map((s) => (
+                  <option key={`st-${s.isoCode}`} value={s.isoCode}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Division</label>
-              <input type="text" value={formData.division} onChange={(e) => handleChange('division', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter division" />
+              <select
+                value={formData.division}
+                onChange={(e) => handleChange('division', e.target.value)}
+                disabled={!selectedStateIso}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+              >
+                <option value="">{selectedStateIso ? 'Select division' : 'Select state first'}</option>
+                {divisionOptions.map((d) => (
+                  <option key={`dv-${selectedStateIso}-${d.name}`} value={d.name}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>

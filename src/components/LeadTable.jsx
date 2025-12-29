@@ -631,8 +631,13 @@ const LeadTable = ({
                 </td>
               </tr>
             ) : (
-              filteredLeads.map((lead, index) => (
-                <tr key={lead.id != null ? `lead-${lead.id}` : `lead-${index}`} className="hover:bg-gray-50">
+              filteredLeads.map((lead, index) => {
+                // Generate unique key: use ID + index to ensure uniqueness even if IDs are duplicated
+                const uniqueKey = lead.id != null 
+                  ? `lead-${lead.id}-${index}${lead._renderIndex != null ? `-${lead._renderIndex}` : ''}` 
+                  : `lead-no-id-${index}`;
+                return (
+                <tr key={uniqueKey} className="hover:bg-gray-50">
                   <td className="px-4 py-4">
                     <input
                       type="checkbox"
@@ -775,7 +780,8 @@ const LeadTable = ({
                     </div>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>

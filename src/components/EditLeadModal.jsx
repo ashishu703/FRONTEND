@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { X } from 'lucide-react';
+import { findIndiaStateByName, getIndiaDivisionsForStateIso, getIndiaStates } from '../utils/indiaLocation';
 
 const EditLeadModal = ({
   isOpen,
@@ -12,6 +13,25 @@ const EditLeadModal = ({
   usersError
 }) => {
   if (!isOpen) return null;
+
+  const indiaStates = useMemo(() => getIndiaStates(), []);
+  const selectedStateIso = useMemo(() => {
+    const found = findIndiaStateByName(editFormData?.state);
+    return found?.isoCode || '';
+  }, [editFormData?.state]);
+
+  const divisionOptions = useMemo(() => {
+    return getIndiaDivisionsForStateIso(selectedStateIso);
+  }, [selectedStateIso]);
+
+  const handleStateSelect = (isoCode) => {
+    const st = indiaStates.find((s) => s.isoCode === isoCode);
+    onFormChange({
+      ...editFormData,
+      state: st?.name || '',
+      division: ''
+    });
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -171,12 +191,34 @@ const EditLeadModal = ({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-              <input
-                type="text"
-                value={editFormData.state}
-                onChange={(e) => onFormChange({ ...editFormData, state: e.target.value })}
+              <select
+                value={selectedStateIso}
+                onChange={(e) => handleStateSelect(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+              >
+                <option value="">Select state</option>
+                {indiaStates.map((s) => (
+                  <option key={`st-${s.isoCode}`} value={s.isoCode}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Division</label>
+              <select
+                value={editFormData.division || ''}
+                onChange={(e) => onFormChange({ ...editFormData, division: e.target.value })}
+                disabled={!selectedStateIso}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+              >
+                <option value="">{selectedStateIso ? 'Select division' : 'Select state first'}</option>
+                {divisionOptions.map((d) => (
+                  <option key={`dv-${selectedStateIso}-${d.name}`} value={d.name}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           
