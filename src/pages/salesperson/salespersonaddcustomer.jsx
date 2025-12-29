@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { X, User, Phone, MessageCircle, Mail, Building2, FileText, MapPin, Globe, Package } from "lucide-react"
 import departmentUserService from "../../api/admin_api/departmentUserService"
 import apiClient from "../../utils/apiClient"
 import { API_ENDPOINTS } from "../../api/admin_api/api"
+import { findIndiaStateByName, getIndiaDivisionsForStateIso, getIndiaStates } from "../../utils/indiaLocation"
 
 function Card({ className, children }) {
   return <div className={`rounded-lg border bg-white shadow-sm ${className || ''}`}>{children}</div>
@@ -60,7 +61,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     productName: editingCustomer?.productName || "",
     gstNumber: editingCustomer?.gstNo === "N/A" ? "" : editingCustomer?.gstNo || "",
     address: editingCustomer?.address || "",
-    state: editingCustomer?.state || "",
+    state: editingCustomer?.state === "N/A" ? "" : (editingCustomer?.state || ""),
     customerType: editingCustomer?.customerType || "",
     leadSource: editingCustomer?.enquiryBy || "",
     salesStatus: editingCustomer?.salesStatus || '',
@@ -73,8 +74,23 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     callRecordingFile: null,
     transferredTo: editingCustomer?.transferredTo || '',
     date: new Date().toISOString().split('T')[0],
-    division: editingCustomer?.division || '',
+    division: editingCustomer?.division === "N/A" ? "" : (editingCustomer?.division || ''),
   })
+
+  const indiaStates = useMemo(() => getIndiaStates(), [])
+  const [selectedStateIso, setSelectedStateIso] = useState(() => {
+    const found = findIndiaStateByName(editingCustomer?.state === 'N/A' ? '' : editingCustomer?.state)
+    return found?.isoCode || ''
+  })
+
+  useEffect(() => {
+    const found = findIndiaStateByName(editingCustomer?.state === 'N/A' ? '' : editingCustomer?.state)
+    setSelectedStateIso(found?.isoCode || '')
+  }, [editingCustomer?.state])
+
+  const divisionOptions = useMemo(() => {
+    return getIndiaDivisionsForStateIso(selectedStateIso)
+  }, [selectedStateIso])
 
   // Fetch salespersons when form opens
   useEffect(() => {
@@ -149,7 +165,7 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
               users = res.users
             }
             
-            console.log('Fetched users by head ID:', headUserId, 'Count:', users.length)
+            // fetched users by head ID
           } catch (headErr) {
             console.error('Failed to fetch by head ID:', headErr)
             // Fallback: try to get from listUsers (may only return current user)
@@ -195,7 +211,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
           )
         })
         
-        console.log('Final salespersons list:', filteredUsers.length, filteredUsers)
         setSalespersons(filteredUsers)
       } catch (error) {
         console.error('Failed to fetch salespersons:', error)
@@ -211,6 +226,16 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
+    }))
+  }
+
+  const handleStateSelect = (isoCode) => {
+    const st = indiaStates.find((s) => s.isoCode === isoCode)
+    setSelectedStateIso(isoCode || '')
+    setFormData((prev) => ({
+      ...prev,
+      state: st?.name || '',
+      division: ''
     }))
   }
 
@@ -353,13 +378,18 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                   <Globe className="h-4 w-4 text-red-500" />
                   State
                 </label>
-                <input
-                  type="text"
-                  value={formData.state}
-                  onChange={(e) => handleInputChange("state", e.target.value)}
+                <select
+                  value={selectedStateIso}
+                  onChange={(e) => handleStateSelect(e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter state"
-                />
+                >
+                  <option value="">Select state</option>
+                  {indiaStates.map((s) => (
+                    <option key={`st-${s.isoCode}`} value={s.isoCode}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-2">
@@ -367,13 +397,19 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
                   <Building2 className="h-4 w-4 text-indigo-500" />
                   Division
                 </label>
-                <input
-                  type="text"
+                <select
                   value={formData.division}
                   onChange={(e) => handleInputChange("division", e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter division"
-                />
+                  disabled={!selectedStateIso}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
+                >
+                  <option value="">{selectedStateIso ? 'Select division' : 'Select state first'}</option>
+                  {divisionOptions.map((d) => (
+                    <option key={`dv-${selectedStateIso}-${d.name}`} value={d.name}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-2">
