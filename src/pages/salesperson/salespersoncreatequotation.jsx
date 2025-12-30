@@ -1177,7 +1177,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                 <div className="w-80 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Subtotal:</span>
-                    <span>₹{quotationData.subtotal.toFixed(2)}</span>
+                    <span>₹{(Number(quotationData.subtotal) || 0).toFixed(2)}</span>
                   </div>
               <div className="flex justify-between text-sm items-center gap-2">
                 <span>Discount (%):</span>
@@ -1191,16 +1191,16 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     onChange={(e) => handleInputChange('discountRate', e.target.value)}
                     className="w-20 px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 text-right"
                   />
-                  <span className="text-gray-600">₹{quotationData.discountAmount.toFixed(2)}</span>
+                  <span className="text-gray-600">₹{(Number(quotationData.discountAmount) || 0).toFixed(2)}</span>
                 </div>
               </div>
               <div className="flex justify-between text-sm">
                 <span>GST (18%):</span>
-                <span>₹{quotationData.taxAmount.toFixed(2)}</span>
+                <span>₹{(Number(quotationData.taxAmount) || 0).toFixed(2)}</span>
               </div>
                   <div className="flex justify-between text-lg font-semibold border-t pt-2">
                     <span>Total:</span>
-                    <span>₹{quotationData.total.toFixed(2)}</span>
+                    <span>₹{(Number(quotationData.total) || 0).toFixed(2)}</span>
                   </div>
                 </div>
               </div>

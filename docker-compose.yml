@@ -1,20 +1,12 @@
 version: '3.8'
 
 services:
-  # Service ka naam
   frontend-app:
-    
-    # Isko 'my-frontend-app' naam dega
     container_name: my-frontend-app
     
-    # Humesha isi directory mein maujood Dockerfile se build karega
     build: .
     
-    # Ports mapping:
-    # "<Host_Port>:<Container_Port>"
-    # Aapke VPS ke 3200 port ko container ke 80 port se jodein
     ports:
       - "3200:80"
       
-    # Server restart hone par container ko automatically start kar dega
     restart: unless-stopped

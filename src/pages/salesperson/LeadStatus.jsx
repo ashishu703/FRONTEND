@@ -10,7 +10,7 @@ import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 import { getProducts } from '../../constants/products';
 
 // Edit Lead Status Modal Component
-const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
+export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   // Parse enquired products from lead - support both old format (array of strings) and new format (array of objects)
   const parseEnquiredProducts = () => {
     if (!lead?.enquired_products) return [];

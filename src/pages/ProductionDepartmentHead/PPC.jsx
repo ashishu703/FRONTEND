@@ -14,10 +14,16 @@ import {
   DollarSign,
   Package
 } from 'lucide-react';
+import salesOrderService from '../../services/SalesOrderService';
 
 const PPC = ({ activeView, setActiveView }) => {
   const [selectedTab, setSelectedTab] = useState('production-schedule');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [salesOrders, setSalesOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   const tabs = [
     { id: 'production-schedule', label: 'Sales Orders', icon: <FileText className="w-4 h-4" /> },
@@ -34,45 +40,54 @@ const PPC = ({ activeView, setActiveView }) => {
     }
   }, [activeView]);
 
-  // Sample data
-  const productionSchedule = [
-    {
-      id: 1,
-      orderId: 'SO-2024-001',
-      customer: 'Acme Industries',
-      product: 'Cable Assembly A',
-      quantity: 500,
-      unitPrice: 1250,
-      orderDate: '2024-01-12',
-      deliveryDate: '2024-01-20',
-      status: 'Confirmed',
-      paymentStatus: 'Paid'
-    },
-    {
-      id: 2,
-      orderId: 'SO-2024-002',
-      customer: 'Bright Cables Pvt',
-      product: 'Cable Assembly B',
-      quantity: 300,
-      unitPrice: 980,
-      orderDate: '2024-01-14',
-      deliveryDate: '2024-01-22',
-      status: 'Pending',
-      paymentStatus: 'Pending'
-    },
-    {
-      id: 3,
-      orderId: 'SO-2024-003',
-      customer: 'Zenith Systems',
-      product: 'Cable Assembly C',
-      quantity: 800,
-      unitPrice: 1100,
-      orderDate: '2024-01-18',
-      deliveryDate: '2024-01-30',
-      status: 'Shipped',
-      paymentStatus: 'Overdue'
+  // Fetch sales orders when component mounts or filters change
+  useEffect(() => {
+    if (selectedTab === 'production-schedule') {
+      fetchSalesOrders();
     }
-  ];
+  }, [selectedTab, statusFilter, searchTerm]);
+
+  const fetchSalesOrders = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const filters = {};
+      if (statusFilter) filters.status = statusFilter;
+      if (searchTerm) filters.search = searchTerm;
+      
+      const response = await salesOrderService.getAllSalesOrders(filters);
+      if (response.success) {
+        setSalesOrders(response.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching sales orders:', err);
+      setError(err.message || 'Failed to load sales orders');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteSalesOrder = async (id) => {
+    if (!confirm('Are you sure you want to delete this sales order?')) return;
+    
+    try {
+      await salesOrderService.deleteSalesOrder(id);
+      fetchSalesOrders(); // Refresh list
+    } catch (err) {
+      console.error('Error deleting sales order:', err);
+      alert('Failed to delete sales order');
+    }
+  };
+
+  const handleUpdateStatus = async (id, newStatus) => {
+    try {
+      await salesOrderService.updateSalesOrder(id, { status: newStatus });
+      fetchSalesOrders(); // Refresh list
+    } catch (err) {
+      console.error('Error updating status:', err);
+      alert('Failed to update status');
+    }
+  };
 
   const workOrders = [
     {
@@ -180,68 +195,165 @@ const PPC = ({ activeView, setActiveView }) => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold text-gray-900">Sales Orders</h2>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Sales Order
-        </button>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales Order</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {productionSchedule.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.orderId}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.customer}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.product}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.quantity}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{item.unitPrice.toLocaleString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.orderDate}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.deliveryDate}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPaymentColor(item.paymentStatus)}`}>
-                      {item.paymentStatus}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button className="text-orange-600 hover:text-orange-900">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button className="text-red-600 hover:text-red-900">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex gap-3 items-center">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search orders..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+          >
+            <option value="">All Status</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="in_production">In Production</option>
+            <option value="quality_check">Quality Check</option>
+            <option value="completed">Completed</option>
+            <option value="shipped">Shipped</option>
+            <option value="revised">Revised</option>
+            <option value="deleted">Deleted</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <button
+            onClick={fetchSalesOrders}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Refresh
+          </button>
         </div>
       </div>
+
+      {loading ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading sales orders...</p>
+        </div>
+      ) : error ? (
+        <div className="bg-white rounded-xl shadow-sm border border-red-200 p-12 text-center">
+          <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+          <p className="text-red-600">{error}</p>
+          <button
+            onClick={fetchSalesOrders}
+            className="mt-4 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : salesOrders.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+          <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600">No sales orders found</p>
+          <p className="text-sm text-gray-500 mt-2">Sales orders will appear here automatically when work orders are created</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales Order</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Work Order</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Delivery Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {salesOrders.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900">{item.sales_order_number}</span>
+                        {item.status === 'revised' && item.revised_at && (
+                          <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
+                            REVISED
+                          </span>
+                        )}
+                        {item.status === 'deleted' && item.deleted_at && (
+                          <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                            DELETED
+                          </span>
+                        )}
+                      </div>
+                      {item.revised_at && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Revised: {new Date(item.revised_at).toLocaleDateString('en-IN')}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{item.work_order_number || 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.customer_name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.product_name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{Number(item.quantity).toLocaleString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {salesOrderService.formatCurrency(item.unit_price)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(item.order_date).toLocaleDateString('en-IN')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {item.delivery_date ? new Date(item.delivery_date).toLocaleDateString('en-IN') : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <select
+                        value={item.status}
+                        onChange={(e) => handleUpdateStatus(item.id, e.target.value)}
+                        disabled={item.status === 'deleted'}
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${salesOrderService.getStatusColor(item.status)} border-0 cursor-pointer ${item.status === 'deleted' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <option value="confirmed">Confirmed</option>
+                        <option value="in_production">In Production</option>
+                        <option value="quality_check">Quality Check</option>
+                        <option value="completed">Completed</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="revised">Revised</option>
+                        <option value="deleted">Deleted</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${salesOrderService.getPaymentStatusColor(item.payment_status)}`}>
+                        {salesOrderService.formatPaymentStatus(item.payment_status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button 
+                          onClick={() => alert('Edit functionality coming soon')}
+                          className="text-orange-600 hover:text-orange-900"
+                          title="Edit"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteSalesOrder(item.id)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 

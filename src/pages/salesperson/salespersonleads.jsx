@@ -22,6 +22,7 @@ import { StatusConverter } from '../../utils/StatusConverter'
 import { Search, RefreshCw, Plus, Filter, Eye, Pencil, FileText, Upload, Settings, Tag, X } from 'lucide-react'
 import { apiClient, API_ENDPOINTS, quotationService } from '../../utils/globalImports'
 import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton'
+import { EditLeadStatusModal } from './LeadStatus'
 
 const getUserData = () => {
   try {
@@ -68,6 +69,10 @@ export default function CustomerListContent({ isDarkMode = false }) {
 
   // Import leads modal
   const [showImportModal, setShowImportModal] = React.useState(false)
+
+  // Edit Lead Status Modal
+  const [showEditLeadStatusModal, setShowEditLeadStatusModal] = React.useState(false)
+  const [selectedCustomerForLeadStatus, setSelectedCustomerForLeadStatus] = React.useState(null)
 
   // Column visibility - all fields from edit modal
   const defaultColumns = React.useMemo(() => ({
@@ -131,15 +136,11 @@ export default function CustomerListContent({ isDarkMode = false }) {
       initialLoadRef.current = true
       handleRefresh()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // OPTIMIZED: Prevent duplicate refresh calls
   const refreshingRef = React.useRef(false)
   
-  // OPTIMIZED: Refresh leads
   const handleRefresh = async () => {
-    // Prevent duplicate calls
     if (refreshingRef.current) {
       console.log('Already refreshing, skipping duplicate call')
       return
@@ -192,6 +193,87 @@ export default function CustomerListContent({ isDarkMode = false }) {
     setShowCreateQuotation(true)
   }
 
+  const handleEditLeadStatus = (customer) => {
+    const leadFormat = {
+      id: customer.id,
+      sales_status: customer.salesStatus || '',
+      sales_status_remark: customer.salesStatusRemark || '',
+      follow_up_status: customer.followUpStatus || '',
+      follow_up_remark: customer.followUpRemark || '',
+      follow_up_date: customer.followUpDate || '',
+      follow_up_time: customer.followUpTime || '',
+      enquired_products: customer.enquired_products || customer.enquiredProducts || [],
+      other_product: customer.other_product || customer.otherProduct || ''
+    }
+    setSelectedCustomerForLeadStatus(leadFormat)
+    setShowEditLeadStatusModal(true)
+  }
+
+  const handleUpdateLeadStatus = async (leadId, statusData) => {
+    try {
+      const enquiredProducts = statusData.enquired_products || [];
+      const enquiredProductsStr = Array.isArray(enquiredProducts) 
+        ? JSON.stringify(enquiredProducts) 
+        : enquiredProducts;
+      
+      const payload = {
+        sales_status: statusData.sales_status ?? statusData.salesStatus ?? '',
+        sales_status_remark: statusData.sales_status_remark ?? statusData.salesStatusRemark ?? '',
+        follow_up_status: statusData.follow_up_status ?? statusData.followUpStatus ?? '',
+        follow_up_remark: statusData.follow_up_remark ?? statusData.followUpRemark ?? '',
+        follow_up_date: statusData.follow_up_date ?? statusData.followUpDate ?? '',
+        follow_up_time: statusData.follow_up_time ?? statusData.followUpTime ?? '',
+        enquired_products: enquiredProductsStr,
+        other_product: statusData.other_product || '',
+      }
+      const fd = new FormData()
+      Object.entries(payload).forEach(([k, v]) => fd.append(k, v == null ? '' : v))
+      const response = await apiClient.putFormData(API_ENDPOINTS.SALESPERSON_LEAD_BY_ID(leadId), fd);
+      
+      if (response.success) {
+        let formattedProductsForState = [];
+        try {
+          formattedProductsForState = typeof enquiredProductsStr === 'string' 
+            ? JSON.parse(enquiredProductsStr) 
+            : enquiredProducts;
+        } catch {
+          formattedProductsForState = enquiredProducts;
+        }
+        
+        // Update the customers list
+        const updatedCustomers = leadsHook.customers.map(customer => 
+          customer.id === leadId 
+            ? { 
+                ...customer, 
+                salesStatus: payload.sales_status,
+                salesStatusRemark: payload.sales_status_remark,
+                followUpStatus: payload.follow_up_status,
+                followUpRemark: payload.follow_up_remark,
+                followUpDate: payload.follow_up_date,
+                followUpTime: payload.follow_up_time,
+                enquired_products: formattedProductsForState,
+                enquiredProducts: formattedProductsForState,
+                other_product: payload.other_product,
+                otherProduct: payload.other_product,
+                updated_at: new Date().toISOString() 
+              }
+            : customer
+        );
+        
+        leadsHook.setCustomers(updatedCustomers)
+        setCustomers(updatedCustomers)
+        
+        Toast.success('Lead status updated successfully!')
+        setShowEditLeadStatusModal(false)
+        setSelectedCustomerForLeadStatus(null)
+      }
+    } catch (error) {
+      console.error('Error updating lead status:', error)
+      Toast.error('Failed to update lead status')
+      throw error
+    }
+  }
+
   const handleToggleLeadForTag = (leadId) => {
     setSelectedLeadsForTag(prev => prev.includes(leadId) ? prev.filter(id => id !== leadId) : [...prev, leadId])
   }
@@ -213,7 +295,6 @@ export default function CustomerListContent({ isDarkMode = false }) {
     
     setIsCreatingTag(true)
     try {
-      // Use the same logic as TagManager component
       const updatePromises = selectedLeadsForTag.map(async (leadId) => {
         const lead = leadsHook.customers.find(c => c.id === leadId)
         if (!lead) return null
@@ -760,6 +841,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
                     <div className="flex items-center gap-2">
                       <button onClick={() => handleView(customer)} className="p-1 text-blue-600 hover:text-blue-700" title="View"><Eye className="h-4 w-4" /></button>
                       <button onClick={() => handleEdit(customer)} className="p-1 text-green-600 hover:text-green-700" title="Edit"><Pencil className="h-4 w-4" /></button>
+                      <button onClick={() => handleEditLeadStatus(customer)} className="p-1 text-orange-600 hover:text-orange-700" title="Update Lead Status & Follow Up"><Settings className="h-4 w-4" /></button>
                       <button onClick={() => handleQuotation(customer)} className="p-1 text-purple-600 hover:text-purple-700" title="Create Quotation"><FileText className="h-4 w-4" /></button>
                     </div>
                   </td>
@@ -978,6 +1060,18 @@ export default function CustomerListContent({ isDarkMode = false }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit Lead Status Modal */}
+      {showEditLeadStatusModal && selectedCustomerForLeadStatus && (
+        <EditLeadStatusModal
+          lead={selectedCustomerForLeadStatus}
+          onClose={() => {
+            setShowEditLeadStatusModal(false);
+            setSelectedCustomerForLeadStatus(null);
+          }}
+          onSave={handleUpdateLeadStatus}
+        />
       )}
     </main>
   )

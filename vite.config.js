@@ -1,14 +1,9 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
-  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '')
   
-  // Get API base URL from env or default to localhost:4500
-  // If env points to port 3000 (frontend port), use 4500 (backend port) instead
   let apiBaseUrl = env.VITE_API_BASE_URL || 'http://localhost:4500'
   if (apiBaseUrl.includes(':3000')) {
     apiBaseUrl = apiBaseUrl.replace(':3000', ':4500')

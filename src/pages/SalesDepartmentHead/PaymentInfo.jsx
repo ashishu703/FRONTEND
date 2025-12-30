@@ -1,21 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Download, User, DollarSign, Clock, Calendar, Link, Copy, Eye, MoreHorizontal, CreditCard, AlertCircle, CheckCircle, XCircle, ChevronDown, Edit, Package, FileText, RotateCw, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Search, Filter, User, DollarSign, Clock, Calendar, Link, Eye, CreditCard, AlertCircle, CheckCircle, XCircle, ChevronDown, Edit, FileText, RotateCw, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Trash2 } from 'lucide-react';
 import paymentService from '../../api/admin_api/paymentService';
-import WorkOrderFormat from './WorkOrderFormat';
+import workOrderService from '../../services/WorkOrderService';
+import DynamicWorkOrderRenderer from '../../components/WorkOrder/DynamicWorkOrderRenderer';
 import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 
 const PaymentsDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingPayment, setEditingPayment] = useState(null);
-  const [editFormData, setEditFormData] = useState({});
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingPayment, setViewingPayment] = useState(null);
   const [isModalAnimating, setIsModalAnimating] = useState(false);
   const [showWorkOrder, setShowWorkOrder] = useState(false);
   const [selectedPaymentForWorkOrder, setSelectedPaymentForWorkOrder] = useState(null);
+  const [workOrderData, setWorkOrderData] = useState(null);
+  const [workOrderLoading, setWorkOrderLoading] = useState(false);
+  const [workOrderError, setWorkOrderError] = useState(null);
+  const [showWorkOrderView, setShowWorkOrderView] = useState(false);
+  const [showWorkOrderDelete, setShowWorkOrderDelete] = useState(false);
+  const [selectedWorkOrder, setSelectedWorkOrder] = useState(null);
+  const [workOrders, setWorkOrders] = useState({});
   
   // Date range filter
   const [dateRange, setDateRange] = useState({
@@ -24,51 +29,35 @@ const PaymentsDashboard = () => {
   });
   const [showDateRangeFilter, setShowDateRangeFilter] = useState(false);
   
-  const [payments, setPayments] = useState([]);
-  const [allPaymentsData, setAllPaymentsData] = useState([]); // Store all payments before filtering
+  const [allPaymentsData, setAllPaymentsData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 10, // Items per page
-    total: 0,
-    pages: 0
+    limit: 10
   });
 
-  // Fetch all payments directly from payment API (fetch all at once for client-side pagination)
   const fetchAllPayments = async () => {
     try {
       setLoading(true);
-      console.log('=== PAYMENT INFO: Fetching all payments ===');
-      
-      // Fetch all payments with a large limit to get all data for client-side pagination
       const response = await paymentService.getAllPayments({
         page: 1,
-        limit: 10000 // Large limit to fetch all payments
+        limit: 10000
       });
       
       const paymentsData = response?.data || [];
-      const paginationData = response?.pagination || { page: 1, limit: 50, total: 0, pages: 0 };
-      
-      console.log(`✅ Fetched ${paymentsData.length} payments (total available: ${paginationData.total || paymentsData.length})`);
-      
-      // Transform payment data to match UI format
       const transformedPayments = paymentsData.map(payment => {
         const paymentAmount = Number(payment.installment_amount || payment.paid_amount || 0);
-        // Use quotation-level totals for status calculation
         const quotationTotal = Number(payment.quotation_total_amount || payment.total_quotation_amount || 0);
         const quotationTotalPaid = Number(payment.quotation_total_paid || 0);
         const quotationRemainingDue = Number(payment.quotation_remaining_due || 0);
         
-        // Check approval status first - if rejected, show Rejected
         const approvalStatus = (payment.approval_status || '').toLowerCase();
         let displayStatus = 'Due';
         
         if (approvalStatus === 'rejected') {
           displayStatus = 'Rejected';
-        } else {
-          // Determine payment status based on quotation-level cumulative payments
-          if (quotationTotal > 0) {
+        } else if (quotationTotal > 0) {
             if (quotationTotalPaid >= quotationTotal) {
               displayStatus = 'Paid';
             } else if (quotationTotalPaid > 0) {
@@ -76,10 +65,8 @@ const PaymentsDashboard = () => {
             }
           } else if (quotationTotalPaid > 0) {
             displayStatus = 'Advance';
-          }
         }
         
-        // Format payment date
         const paymentDateObj = payment.payment_date ? new Date(payment.payment_date) : (payment.created_at ? new Date(payment.created_at) : null);
         const formattedPaymentDate = paymentDateObj ? paymentDateObj.toLocaleDateString('en-GB') : 'N/A';
         
@@ -95,12 +82,10 @@ const PaymentsDashboard = () => {
           productName: payment.product_name_from_quotation || payment.product_name || 'N/A',
           address: payment.address || 'N/A',
           salespersonName: payment.salesperson_name || payment.salespersonName || 'N/A',
-          amount: paymentAmount, // Individual payment amount
-          // Quotation-level totals (for display)
+          amount: paymentAmount,
           quotationTotal: quotationTotal,
           quotationTotalPaid: quotationTotalPaid,
           quotationRemainingDue: quotationRemainingDue,
-          // Legacy fields for backward compatibility
           totalAmount: quotationTotal,
           paidAmount: quotationTotalPaid,
           dueAmount: quotationRemainingDue,
@@ -112,7 +97,7 @@ const PaymentsDashboard = () => {
           formattedPaymentDate: formattedPaymentDate,
           paymentLink: payment.payment_receipt_url || '',
           quotationId: payment.quotation_number || `QT-${String(payment.quotation_id || '').slice(-4)}`,
-          quotationIdRaw: payment.quotation_id || null, // Store raw quotation_id for grouping
+          quotationIdRaw: payment.quotation_id || null,
           piId: payment.pi_number || `PI-${String(payment.pi_id || '').slice(-4)}`,
           purchaseOrderId: payment.purchase_order_id || 'N/A',
           deliveryDate: payment.delivery_date ? new Date(payment.delivery_date).toLocaleDateString('en-GB') : 'N/A',
@@ -122,36 +107,72 @@ const PaymentsDashboard = () => {
       });
       
       setAllPaymentsData(transformedPayments);
-      setPayments(transformedPayments);
-      // Don't update pagination from API, we'll use client-side pagination
-      // Keep the current pagination state for client-side pagination
-      
-      console.log('✅ Payment data loaded successfully');
     } catch (e) {
-      console.error('❌ Failed to load payments:', e);
+      console.error('Failed to load payments:', e);
       setAllPaymentsData([]);
-      setPayments([]);
-      setPagination({ page: 1, limit: 50, total: 0, pages: 0 });
+      setPagination({ page: 1, limit: 50 });
     } finally {
       setInitialLoading(false);
       setLoading(false);
     }
   };
 
-  // Load all payments on component mount
-  useEffect(() => {
-    fetchAllPayments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fetchWorkOrderForPayment = React.useCallback(async (payment) => {
+    const quotationId = payment.quotationId || payment.orderId || payment.quotation_number;
+    if (!quotationId) return null;
+    
+    try {
+      const response = await workOrderService.checkQuotationWorkOrder(quotationId);
+      if (response?.success && response.exists && response.data && !response.data.is_deleted) {
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching work order:', error);
+      return null;
+    }
   }, []);
 
-  // Reset to page 1 when filters change
+  useEffect(() => {
+    fetchAllPayments();
+  }, []);
+
+  useEffect(() => {
+    const fetchWorkOrders = async () => {
+      if (allPaymentsData.length === 0) return;
+      
+      const workOrdersMap = {};
+      const uniqueQuotationIds = new Set();
+      
+      allPaymentsData.forEach(payment => {
+        const quotationId = payment.quotationId || payment.orderId || payment.quotation_number;
+        if (quotationId) uniqueQuotationIds.add(quotationId);
+      });
+      
+      const promises = Array.from(uniqueQuotationIds).map(async (quotationId) => {
+        try {
+          const mockPayment = { quotationId, orderId: quotationId, quotation_number: quotationId };
+          const wo = await fetchWorkOrderForPayment(mockPayment);
+          if (wo && !wo.is_deleted && (wo.work_order_number || wo.id)) {
+            workOrdersMap[quotationId] = wo;
+          }
+        } catch (error) {
+          console.error('Error fetching work order:', error);
+        }
+      });
+      
+      await Promise.all(promises);
+      setWorkOrders(workOrdersMap);
+    };
+
+    fetchWorkOrders();
+  }, [allPaymentsData, fetchWorkOrderForPayment]);
+
   useEffect(() => {
     setPagination(prev => ({ ...prev, page: 1 }));
   }, [searchTerm, statusFilter, dateRange.startDate, dateRange.endDate]);
 
-  // Client-side filtering based on search, status, and date range
   const filteredPayments = allPaymentsData.filter(payment => {
-    // Search filter
     const matchesSearch = !searchTerm || 
       payment.leadIdDisplay?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -160,11 +181,9 @@ const PaymentsDashboard = () => {
       payment.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.quotationId?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Status filter
     let matchesStatus = true;
     if (statusFilter !== 'All Status') {
       if (statusFilter === 'Due') {
-        // For "Due" filter, check if payment has a due amount > 0
         const dueAmount = Number(payment.quotationRemainingDue || payment.dueAmount || 0);
         matchesStatus = dueAmount > 0 && payment.status !== 'Paid' && payment.status !== 'Rejected';
       } else {
@@ -172,7 +191,6 @@ const PaymentsDashboard = () => {
       }
     }
     
-    // Date range filter
     let matchesDateRange = true;
     if (dateRange.startDate || dateRange.endDate) {
       if (!payment.paymentDate) {
@@ -184,17 +202,13 @@ const PaymentsDashboard = () => {
         if (dateRange.startDate) {
           const startDate = new Date(dateRange.startDate);
           startDate.setHours(0, 0, 0, 0);
-          if (paymentDate < startDate) {
-            matchesDateRange = false;
-          }
+          if (paymentDate < startDate) matchesDateRange = false;
         }
         
         if (dateRange.endDate) {
           const endDate = new Date(dateRange.endDate);
           endDate.setHours(23, 59, 59, 999);
-          if (paymentDate > endDate) {
-            matchesDateRange = false;
-          }
+          if (paymentDate > endDate) matchesDateRange = false;
         }
       }
     }
@@ -202,11 +216,9 @@ const PaymentsDashboard = () => {
     return matchesSearch && matchesStatus && matchesDateRange;
   });
 
-  // Calculate pagination for filtered results
   const totalFiltered = filteredPayments.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / pagination.limit));
   
-  // Validate and adjust current page if needed
   useEffect(() => {
     if (totalPages > 0 && pagination.page > totalPages) {
       setPagination(prev => ({ ...prev, page: totalPages }));
@@ -218,12 +230,10 @@ const PaymentsDashboard = () => {
   const endIndex = Math.min(startIndex + pagination.limit, totalFiltered);
   const paginatedPayments = filteredPayments.slice(startIndex, endIndex);
 
-  // Pagination handlers
   const goToPage = (page) => {
     const validPage = Math.max(1, Math.min(page, totalPages));
     if (validPage >= 1 && validPage <= totalPages && validPage !== pagination.page) {
       setPagination(prev => ({ ...prev, page: validPage }));
-      // Scroll to top of table when page changes
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -240,7 +250,7 @@ const PaymentsDashboard = () => {
   
   filteredPayments.forEach(payment => {
     // Use quotation_id if available, otherwise use quotationId as fallback
-    const quotationKey = payment.quotationIdRaw || payment.quotationId || payment.id;
+    const quotationKey = payment.quotationIdRaw || payment.quotationId;
     
     if (!quotationMap.has(quotationKey)) {
       quotationMap.set(quotationKey, {
@@ -279,22 +289,20 @@ const PaymentsDashboard = () => {
   const dueQuotations = uniqueQuotations.filter(q => {
     const dueAmount = Number(q.quotationRemainingDue || 0);
     const status = q.status || '';
-    // Count if there's a due amount and status is not 'Paid' or 'Rejected'
     return dueAmount > 0 && status !== 'Paid' && status !== 'Rejected';
   });
   
-  // Count unique quotations by status
   const paidQuotations = uniqueQuotations.filter(q => q.status === 'Paid').length;
   const advanceQuotations = uniqueQuotations.filter(q => q.status === 'Advance').length;
   const rejectedQuotations = uniqueQuotations.filter(q => q.status === 'Rejected').length;
   
   const stats = {
-    allPayments: filteredPayments.length, // Total payment installments
+    allPayments: filteredPayments.length,
     totalValue: filteredPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0),
-    paid: paidQuotations, // Unique quotations that are fully paid
-    advance: advanceQuotations, // Unique quotations with advance payments
-    due: dueQuotations.length, // Unique quotations with due amount
-    rejected: rejectedQuotations // Unique quotations that are rejected
+    paid: paidQuotations,
+    advance: advanceQuotations,
+    due: dueQuotations.length,
+    rejected: rejectedQuotations
   };
 
   const getStatusColor = (status) => {
@@ -341,10 +349,8 @@ const PaymentsDashboard = () => {
   };
 
   const handleViewPayment = (payment) => {
-    console.log('View payment:', payment);
     setViewingPayment(payment);
     setShowViewModal(true);
-    // Trigger animation after modal is shown
     setTimeout(() => {
       setIsModalAnimating(true);
     }, 10);
@@ -352,232 +358,203 @@ const PaymentsDashboard = () => {
 
   const closeViewModal = () => {
     setIsModalAnimating(false);
-    // Wait for animation to complete before hiding modal
     setTimeout(() => {
       setShowViewModal(false);
       setViewingPayment(null);
     }, 300);
   };
 
-  const handleGenerateWorkOrder = (payment) => {
+  const handleGenerateWorkOrder = async (payment) => {
     setSelectedPaymentForWorkOrder(payment);
     setShowWorkOrder(true);
+    setWorkOrderLoading(true);
+    setWorkOrderError(null);
+    setWorkOrderData(null);
+
+    try {
+      const quotationId = payment.quotationId || payment.orderId || payment.quotation_number;
+      
+      if (quotationId) {
+        const checkResponse = await workOrderService.checkQuotationWorkOrder(quotationId);
+        if (checkResponse?.success && checkResponse.exists && checkResponse.data) {
+          const woData = checkResponse.data;
+          setWorkOrderData(woData);
+          setWorkOrders(prev => ({ ...prev, [quotationId]: woData }));
+          setWorkOrderLoading(false);
+          setShowWorkOrder(true);
+          alert(`Work order already exists: ${woData.work_order_number}`);
+          return;
+        }
+      }
+
+      const woData = workOrderService.buildWorkOrderFromPayment(payment);
+      const saveResponse = await workOrderService.saveWorkOrder(woData, payment);
+      
+      if (saveResponse?.success && saveResponse.data) {
+        setWorkOrderData(saveResponse.data);
+        if (quotationId) {
+          setWorkOrders(prev => ({ ...prev, [quotationId]: saveResponse.data }));
+        }
+        alert('Work order created successfully!');
+      } else if (saveResponse?.error?.includes('already exists')) {
+        if (quotationId) {
+          const checkResponse = await workOrderService.checkQuotationWorkOrder(quotationId);
+          if (checkResponse?.success && checkResponse.exists && checkResponse.data) {
+            const existingWO = checkResponse.data;
+            setWorkOrderData(existingWO);
+            setShowWorkOrder(true);
+            if (quotationId) {
+              setWorkOrders(prev => ({ ...prev, [quotationId]: existingWO }));
+            }
+            alert(`Work order already exists: ${existingWO.work_order_number}`);
+            setWorkOrderLoading(false);
+            return;
+          }
+        }
+        setWorkOrderError(saveResponse.error);
+        alert('Work order already exists. Please refresh the page.');
+      } else {
+        setWorkOrderError(saveResponse?.error || 'Failed to create work order');
+        alert(saveResponse?.error || 'Failed to create work order');
+      }
+    } catch (error) {
+      console.error('Error generating work order:', error);
+      setWorkOrderError(error.message || 'Failed to generate work order');
+    } finally {
+      setWorkOrderLoading(false);
+    }
   };
 
   const handleWorkOrderClose = () => {
     setShowWorkOrder(false);
     setSelectedPaymentForWorkOrder(null);
+    setWorkOrderData(null);
+    setWorkOrderError(null);
   };
 
-  const handleWorkOrderSave = (workOrderData) => {
-    console.log('Work order saved:', workOrderData);
-    // You can add additional logic here, like updating payment status
-  };
-
-  const handleEditPayment = (payment) => {
-    setEditingPayment(payment);
-    setEditFormData({
-      customerId: payment.customerId,
-      customerName: payment.customer.name,
-      customerEmail: payment.customer.email,
-      customerPhone: payment.customer.phone,
-      amount: payment.amount,
-      totalAmount: payment.totalAmount,
-      dueAmount: payment.dueAmount,
-      status: payment.status,
-      paymentLink: payment.paymentLink
-    });
-    setShowEditModal(true);
-  };
-
-  const closeEditModal = () => {
-    setShowEditModal(false);
-    setEditingPayment(null);
-    setEditFormData({});
-  };
-
-  const handleFormChange = (field, value) => {
-    setEditFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleSaveEdit = () => {
-    if (editingPayment) {
-      // Update the payment data (in a real app, this would be an API call)
-      const paymentIndex = payments.findIndex(payment => payment.id === editingPayment.id);
-      
-      if (paymentIndex !== -1) {
-        // Update the payment data
-        const updatedPayment = {
-          ...payments[paymentIndex],
-          customerId: editFormData.customerId,
-          customer: {
-            name: editFormData.customerName,
-            email: editFormData.customerEmail,
-            phone: editFormData.customerPhone
-          },
-          amount: editFormData.amount,
-          totalAmount: editFormData.totalAmount,
-          dueAmount: editFormData.dueAmount,
-          status: editFormData.status,
-          paymentLink: editFormData.paymentLink
-        };
-        
-        // In a real application, you would update the state or make an API call
-        console.log('Updated payment:', updatedPayment);
-        alert(`Payment ${editFormData.customerId} updated successfully!`);
-      }
+  const handleViewWorkOrder = async (payment) => {
+    const quotationId = payment.quotationId || payment.orderId || payment.quotation_number;
+    if (!quotationId) {
+      alert('No quotation ID found for this payment');
+      return;
     }
-    closeEditModal();
+
+    setWorkOrderLoading(true);
+    try {
+      // Check if already in state, otherwise fetch
+      let wo = workOrders[quotationId];
+      if (!wo) {
+        wo = await fetchWorkOrderForPayment(payment);
+        if (wo) {
+          // Update state for future use
+          setWorkOrders(prev => ({ ...prev, [quotationId]: wo }));
+        }
+      }
+      
+      if (wo) {
+        setSelectedWorkOrder(wo);
+        setWorkOrderData(wo);
+        setShowWorkOrderView(true);
+      } else {
+        alert('Work order not found for this quotation');
+      }
+    } catch (error) {
+      console.error('Error viewing work order:', error);
+      alert('Failed to load work order');
+    } finally {
+      setWorkOrderLoading(false);
+    }
+  };
+
+  const handleEditWorkOrder = async (payment) => {
+    const quotationId = payment.quotationId || payment.orderId || payment.quotation_number;
+    if (!quotationId) {
+      alert('No quotation ID found for this payment');
+      return;
+    }
+
+    setWorkOrderLoading(true);
+    setWorkOrderError(null);
+    try {
+      const wo = await fetchWorkOrderForPayment(payment);
+      if (wo) {
+        setSelectedWorkOrder(wo);
+        setWorkOrderData(wo);
+        setSelectedPaymentForWorkOrder(payment);
+        setShowWorkOrder(true);
+      } else {
+        alert('Work order not found. Please create one first.');
+      }
+    } catch (error) {
+      console.error('Error editing work order:', error);
+      setWorkOrderError('Failed to load work order');
+      alert('Failed to load work order');
+    } finally {
+      setWorkOrderLoading(false);
+    }
+  };
+
+  const handleDeleteWorkOrder = async (payment) => {
+    const quotationId = payment.quotationId || payment.orderId || payment.quotation_number;
+    if (!quotationId) {
+      alert('No quotation ID found for this payment');
+      return;
+    }
+
+    setWorkOrderLoading(true);
+    try {
+      let wo = workOrders[quotationId];
+      if (!wo) {
+        wo = await fetchWorkOrderForPayment(payment);
+        if (wo) {
+          setWorkOrders(prev => ({ ...prev, [quotationId]: wo }));
+        }
+      }
+      
+      if (wo) {
+        setSelectedWorkOrder(wo);
+        setShowWorkOrderDelete(true);
+      } else {
+        alert('Work order not found');
+      }
+    } catch (error) {
+      console.error('Error loading work order:', error);
+      alert('Failed to load work order');
+    } finally {
+      setWorkOrderLoading(false);
+    }
+  };
+
+  const confirmDeleteWorkOrder = async () => {
+    if (!selectedWorkOrder || selectedWorkOrder.is_deleted) return;
+
+    try {
+      const response = await workOrderService.deleteWorkOrder(selectedWorkOrder.id);
+      if (response?.success !== false) {
+        alert('Work order deleted successfully');
+        setShowWorkOrderDelete(false);
+        setSelectedWorkOrder(null);
+        
+        const quotationId = selectedWorkOrder.bna_number || selectedWorkOrder.quotation_id;
+        if (quotationId) {
+          setWorkOrders(prev => {
+            const updated = { ...prev };
+            delete updated[quotationId];
+            return updated;
+          });
+        }
+        
+        fetchAllPayments();
+      } else {
+        alert(response?.message || 'Failed to delete work order');
+      }
+    } catch (error) {
+      console.error('Error deleting work order:', error);
+      alert(error?.message || 'Failed to delete work order');
+    }
   };
 
 
-  const handleDownloadInvoice = (payment) => {
-    // Create HTML content for PDF
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Invoice - ${payment.customerId}</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            color: #333;
-          }
-          .header {
-            text-align: center;
-            border-bottom: 2px solid #2563eb;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-          }
-          .header h1 {
-            color: #2563eb;
-            margin: 0;
-            font-size: 28px;
-          }
-          .invoice-details {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-          }
-          .customer-info, .invoice-info {
-            flex: 1;
-          }
-          .customer-info h3, .invoice-info h3 {
-            color: #374151;
-            margin-bottom: 10px;
-            font-size: 16px;
-          }
-          .info-item {
-            margin-bottom: 5px;
-            font-size: 14px;
-          }
-          .payment-details {
-            background-color: #f8fafc;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-          }
-          .payment-details h3 {
-            color: #374151;
-            margin-bottom: 15px;
-            font-size: 18px;
-          }
-          .amount-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #e5e7eb;
-          }
-          .amount-row:last-child {
-            border-bottom: none;
-            font-weight: bold;
-            font-size: 16px;
-            color: #dc2626;
-          }
-          .amount-label {
-            color: #6b7280;
-          }
-          .amount-value {
-            color: #111827;
-            font-weight: 500;
-          }
-          .footer {
-            margin-top: 40px;
-            text-align: center;
-            color: #6b7280;
-            font-size: 12px;
-            border-top: 1px solid #e5e7eb;
-            padding-top: 20px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>INVOICE</h1>
-        </div>
-        
-        <div class="invoice-details">
-          <div class="customer-info">
-            <h3>Customer Information</h3>
-            <div class="info-item"><strong>Customer ID:</strong> ${payment.customerId}</div>
-            <div class="info-item"><strong>Name:</strong> ${payment.customer.name}</div>
-            <div class="info-item"><strong>Email:</strong> ${payment.customer.email}</div>
-            <div class="info-item"><strong>Phone:</strong> ${payment.customer.phone}</div>
-          </div>
-          
-          <div class="invoice-info">
-            <h3>Invoice Information</h3>
-            <div class="info-item"><strong>Status:</strong> ${payment.status}</div>
-            <div class="info-item"><strong>Created:</strong> ${payment.created}</div>
-            <div class="info-item"><strong>Invoice Date:</strong> ${new Date().toLocaleDateString()}</div>
-          </div>
-        </div>
-        
-        <div class="payment-details">
-          <h3>Payment Details</h3>
-          <div class="amount-row">
-            <span class="amount-label">Amount Paid:</span>
-            <span class="amount-value">${formatCurrency(payment.amount)}</span>
-          </div>
-          <div class="amount-row">
-            <span class="amount-label">Total Amount:</span>
-            <span class="amount-value">${formatCurrency(payment.totalAmount)}</span>
-          </div>
-          <div class="amount-row">
-            <span class="amount-label">Due Amount:</span>
-            <span class="amount-value">${formatCurrency(payment.dueAmount)}</span>
-          </div>
-        </div>
-        
-        <div class="footer">
-          <p>Payment Link: ${payment.paymentLink}</p>
-          <p>Generated on ${new Date().toLocaleString()}</p>
-        </div>
-      </body>
-      </html>
-    `;
-
-    // Create a new window to generate PDF
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    
-    // Wait for content to load, then trigger print
-    printWindow.onload = function() {
-      setTimeout(() => {
-        printWindow.print();
-        // Close the window after printing
-        setTimeout(() => {
-          printWindow.close();
-        }, 1000);
-      }, 500);
-    };
-  };
 
   // Handle click outside to close filter dropdowns
   useEffect(() => {
@@ -837,14 +814,21 @@ const PaymentsDashboard = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
-                  <tr>
-                    <td colSpan="9" className="px-6 py-8 text-center text-gray-500">
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-                        Loading payments...
-                      </div>
-                    </td>
+                  Array.from({ length: pagination.limit }).map((_, idx) => (
+                    <tr key={`skeleton-${idx}`} className="animate-pulse">
+                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
+                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
+                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-28"></div></td>
+                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-36"></div></td>
+                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
+                      <td className="px-6 py-4"><div className="h-6 bg-gray-200 rounded-full w-20"></div></td>
+                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                      <td className="px-6 py-4"><div className="flex gap-2"><div className="h-8 w-8 bg-gray-200 rounded"></div><div className="h-8 w-8 bg-gray-200 rounded"></div></div></td>
                   </tr>
+                  ))
                 ) : filteredPayments.length === 0 ? (
                   <tr>
                     <td colSpan="11" className="px-6 py-8 text-center">
@@ -940,6 +924,13 @@ const PaymentsDashboard = () => {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
+                        {(() => {
+                          const quotationId = payment.quotationId || payment.orderId || payment.quotation_number;
+                          const wo = quotationId ? workOrders[quotationId] : null;
+                          const isDeleted = wo?.is_deleted;
+                          
+                          if (!wo) {
+                            return (
                         <button
                           onClick={() => handleGenerateWorkOrder(payment)}
                           className="w-8 h-8 flex items-center justify-center text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
@@ -947,6 +938,44 @@ const PaymentsDashboard = () => {
                         >
                           <FileText className="w-4 h-4" />
                         </button>
+                            );
+                          }
+                          
+                          return (
+                            <>
+                              <button
+                                onClick={() => handleViewWorkOrder(payment)}
+                                className="w-8 h-8 flex items-center justify-center text-green-600 border border-green-200 rounded-lg hover:bg-green-50 transition-colors"
+                                title={`View Work Order: ${wo.work_order_number || ''}`}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              {!isDeleted && (
+                                <>
+                                  <button
+                                    onClick={() => handleEditWorkOrder(payment)}
+                                    className="w-8 h-8 flex items-center justify-center text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors"
+                                    title="Edit Work Order"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteWorkOrder(payment)}
+                                    className="w-8 h-8 flex items-center justify-center text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                                    title="Delete Work Order"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                              {isDeleted && (
+                                <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                                  DELETED
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </td>
                   </tr>
@@ -1080,141 +1109,6 @@ const PaymentsDashboard = () => {
           )}
         </div>
       </div>
-
-      {/* Edit Payment Modal */}
-      {showEditModal && editingPayment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Edit Payment</h2>
-                <button
-                  onClick={closeEditModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <XCircle className="w-6 h-6" />
-                </button>
-              </div>
-              
-              <div className="space-y-6">
-                {/* Customer Information Form */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Customer ID</label>
-                      <input
-                        type="text"
-                        value={editFormData.customerId || ''}
-                        onChange={(e) => handleFormChange('customerId', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
-                      <input
-                        type="text"
-                        value={editFormData.customerName || ''}
-                        onChange={(e) => handleFormChange('customerName', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                      <input
-                        type="email"
-                        value={editFormData.customerEmail || ''}
-                        onChange={(e) => handleFormChange('customerEmail', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                      <input
-                        type="tel"
-                        value={editFormData.customerPhone || ''}
-                        onChange={(e) => handleFormChange('customerPhone', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Payment Information Form */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Information</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Amount Paid (₹)</label>
-                      <input
-                        type="number"
-                        value={editFormData.amount || ''}
-                        onChange={(e) => handleFormChange('amount', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount (₹)</label>
-                      <input
-                        type="number"
-                        value={editFormData.totalAmount || ''}
-                        onChange={(e) => handleFormChange('totalAmount', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Due Amount (₹)</label>
-                      <input
-                        type="number"
-                        value={editFormData.dueAmount || ''}
-                        onChange={(e) => handleFormChange('dueAmount', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                      <select
-                        value={editFormData.status || ''}
-                        onChange={(e) => handleFormChange('status', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="Paid">Paid</option>
-                        <option value="Expired">Expired</option>
-                        <option value="Created">Created</option>
-                      </select>
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Link</label>
-                      <input
-                        type="url"
-                        value={editFormData.paymentLink || ''}
-                        onChange={(e) => handleFormChange('paymentLink', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  onClick={closeEditModal}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveEdit}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Payment Overview Modal */}
       {showViewModal && viewingPayment && (
@@ -1372,13 +1266,122 @@ const PaymentsDashboard = () => {
         </div>
       )}
 
-      {/* Work Order Modal */}
+      {/* Work Order Modal - Dynamic Renderer with Template */}
       {showWorkOrder && selectedPaymentForWorkOrder && (
-        <WorkOrderFormat
-          paymentData={selectedPaymentForWorkOrder}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+            {workOrderLoading ? (
+              <div className="flex-1 p-6 animate-pulse">
+                <div className="space-y-4">
+                  <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="h-20 bg-gray-200 rounded"></div>
+                    <div className="h-20 bg-gray-200 rounded"></div>
+                  </div>
+                  <div className="h-32 bg-gray-200 rounded"></div>
+                  <div className="h-24 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            ) : workOrderError ? (
+              <div className="flex-1 flex items-center justify-center p-12">
+                <div className="text-center">
+                  <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Error</h3>
+                  <p className="text-red-600 mb-4">{workOrderError}</p>
+                  <button
+                    onClick={handleWorkOrderClose}
+                    className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : workOrderData ? (
+              <div className="flex-1 overflow-auto">
+                <DynamicWorkOrderRenderer
+                  workOrderData={workOrderData}
           onClose={handleWorkOrderClose}
-          onSave={handleWorkOrderSave}
-        />
+                />
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center p-12">
+                <p className="text-gray-600">No work order data available</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Work Order View Modal */}
+      {showWorkOrderView && selectedWorkOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Work Order Details</h2>
+              <button
+                onClick={() => {
+                  setShowWorkOrderView(false);
+                  setSelectedWorkOrder(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              <DynamicWorkOrderRenderer
+                workOrderData={selectedWorkOrder}
+                workOrderId={selectedWorkOrder.id}
+                onClose={() => {
+                  setShowWorkOrderView(false);
+                  setSelectedWorkOrder(null);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Work Order Delete Confirmation Modal */}
+      {showWorkOrderDelete && selectedWorkOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Delete Work Order</h2>
+                <p className="text-sm text-gray-600">This action cannot be undone</p>
+              </div>
+            </div>
+            <div className="mb-6">
+              <p className="text-gray-700 mb-2">
+                Are you sure you want to delete work order <span className="font-semibold">{selectedWorkOrder.work_order_number}</span>?
+              </p>
+              <p className="text-sm text-gray-500">
+                The work order will be marked as deleted and the corresponding sales order will also be updated.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowWorkOrderDelete(false);
+                  setSelectedWorkOrder(null);
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteWorkOrder}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
