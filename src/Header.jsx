@@ -1,101 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun, BarChart3, Clock, User, Factory, Wrench, HelpCircle, Activity, Server, Settings, Shield, Link, Ticket } from 'lucide-react';
+import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun, BarChart3, Clock, User, Factory, Wrench, HelpCircle, Activity, Server, Settings, Shield, Link, CheckCheck, Circle, FileText } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
+import { useNotifications } from './hooks/useNotifications';
 
 const ASHVAY_LOGO = "https://res.cloudinary.com/dngojnptn/image/upload/v1764139419/ChatGPT_Image_Nov_26_2025_11_50_20_AM_qkwcqe.png";
 
 const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onToggleMobileView, isMobileView = false, isDarkMode = false, onToggleDarkMode, onProfileClick }) => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const { notifications, unreadCount, isConnected, markAsRead, markAsUnread, markAllAsRead } = useNotifications();
+  
   const [showNotifications, setShowNotifications] = useState(false);
   const [showNotificationHistory, setShowNotificationHistory] = useState(false);
+  const [expandedNotificationId, setExpandedNotificationId] = useState(null);
+  const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+  
   const notificationRef = useRef(null);
   const notificationHistoryRef = useRef(null);
 
-  const [notifications, setNotifications] = useState([]);
-  const [loadingNotifications, setLoadingNotifications] = useState(false);
-  const [notificationsError, setNotificationsError] = useState(null);
 
-  const [notificationHistory, setNotificationHistory] = useState([]);
-  const [expandedNotificationId, setExpandedNotificationId] = useState(null);
-  const [expandedHistoryId, setExpandedHistoryId] = useState(null);
-  const notificationIdsRef = useRef(new Set());
-  const playNotificationSound = () => {
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(880, ctx.currentTime);
-      gainNode.gain.setValueAtTime(0.0001, ctx.currentTime);
-
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      gainNode.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
-
-      oscillator.start(ctx.currentTime);
-      oscillator.stop(ctx.currentTime + 0.4);
-
-      setTimeout(() => ctx.close(), 500);
-    } catch (error) {
-      console.warn('Notification sound failed:', error);
-    }
-  };
-
-  // Fetch notifications periodically
-  useEffect(() => {
-    let isMounted = true;
-    let intervalId = null;
-
-    const fetchNotifications = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        // Skip polling when not authenticated to avoid 401 spam in dev
-        return;
-      }
-      try {
-        setLoadingNotifications(true);
-        setNotificationsError(null);
-        const res = await fetch('/api/notifications', { headers: { 'Authorization': `Bearer ${token}` } });
-        const json = await res.json();
-        if (!json?.success) throw new Error(json?.message || 'Failed');
-        if (!isMounted) return;
-        const newIds = new Set(json.data.map(n => n.id));
-        let hasNew = false;
-        json.data.forEach(n => {
-          if (!notificationIdsRef.current.has(n.id)) {
-            hasNew = true;
-          }
-        });
-        if (hasNew && notificationIdsRef.current.size) {
-          playNotificationSound();
-        }
-        notificationIdsRef.current = newIds;
-        setNotifications(json.data.slice(0, 6));
-        setNotificationHistory(json.data);
-      } catch (e) {
-        if (!isMounted) return;
-        setNotificationsError(e.message);
-      } finally {
-        if (isMounted) setLoadingNotifications(false);
-      }
-    };
-
-    fetchNotifications();
-    intervalId = setInterval(fetchNotifications, 30000); // 30s polling
-
-    return () => {
-      isMounted = false;
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, []);
-
-
-  // Close popups when clicking outside
+  // Click outside to close dropdowns
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target)) {
@@ -112,16 +35,37 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
     };
   }, []);
 
-
   const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'transfer': return <ArrowRightLeft className="w-4 h-4 text-purple-500" />;
-      case 'lead': return <Users className="w-4 h-4 text-blue-500" />;
-      case 'reminder': return <Calendar className="w-4 h-4 text-orange-500" />;
-      case 'success': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'info': return <TrendingUp className="w-4 h-4 text-purple-500" />;
-      default: return <Bell className="w-4 h-4 text-gray-500" />;
-    }
+    const iconMap = {
+      lead_assigned: <Users className="w-4 h-4 text-blue-500" />,
+      lead_transferred: <Users className="w-4 h-4 text-purple-500" />,
+      lead_activity: <Activity className="w-4 h-4 text-indigo-500" />,
+      payment_activity: <DollarSign className="w-4 h-4 text-green-500" />,
+      quotation_activity: <FileText className="w-4 h-4 text-orange-500" />,
+      meeting_activity: <Calendar className="w-4 h-4 text-blue-500" />,
+      followup_activity: <Clock className="w-4 h-4 text-yellow-500" />,
+      activity: <Activity className="w-4 h-4 text-purple-500" />
+    };
+    return iconMap[type] || <Bell className="w-4 h-4 text-gray-500" />;
+  };
+
+  // Format time for display
+  const formatTime = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString();
   };
 
   // Page-specific header content
@@ -664,10 +608,13 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
               }`}
             >
               <Bell className={`w-5 h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
-              {notifications?.length > 0 && (
+              {unreadCount > 0 && (
                 <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-600 text-white text-[10px] leading-[18px] rounded-full text-center">
-                  {Math.min(99, notifications.length)}
+                  {Math.min(99, unreadCount)}
                 </div>
+              )}
+              {isConnected && (
+                <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-green-500 rounded-full border border-white"></div>
               )}
             </button>
 
@@ -690,66 +637,122 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
                   </div>
                 </div>
                 <div className="max-h-96 overflow-y-auto">
-                  {notifications.map((notification) => (
-                    <div 
-                      key={notification.id}
-                      className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
-                        notification.unread ? 'bg-blue-50' : ''
-                      }`}
-                    >
-                      <div className="flex items-start space-x-3">
-                        <div className="flex-shrink-0 mt-1">
-                          {getNotificationIcon(notification.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <p className={`text-sm font-medium ${
-                              notification.unread ? 'text-gray-900' : 'text-gray-700'
-                            }`}>
-                              {notification.title}
-                            </p>
-                            {notification.unread && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                            )}
+                  {notifications.slice(0, 6).length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">
+                      <Bell className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                      <p>No notifications yet</p>
+                    </div>
+                  ) : (
+                    notifications.slice(0, 6).map((notification) => (
+                      <div 
+                        key={notification.id}
+                        className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-100'} ${
+                          isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                        } ${notification.unread ? (isDarkMode ? 'bg-blue-900/30' : 'bg-blue-50') : ''}`}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className="flex-shrink-0 mt-1">
+                            {getNotificationIcon(notification.type)}
                           </div>
-                          <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                          {notification.details && (
-                            <div className="mt-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className={`text-sm font-medium ${
+                                notification.unread 
+                                  ? (isDarkMode ? 'text-white' : 'text-gray-900')
+                                  : (isDarkMode ? 'text-gray-300' : 'text-gray-700')
+                              }`}>
+                                {notification.title}
+                              </p>
                               <button
-                                onClick={() => setExpandedNotificationId(expandedNotificationId === notification.id ? null : notification.id)}
-                                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  notification.unread ? markAsRead(notification.id) : markAsUnread(notification.id);
+                                }}
+                                className={`p-1 rounded hover:bg-gray-200 ${isDarkMode ? 'hover:bg-gray-600' : ''}`}
+                                title={notification.unread ? 'Mark as read' : 'Mark as unread'}
                               >
-                                {expandedNotificationId === notification.id ? 'Hide Details' : 'View Details'}
+                                {notification.unread ? (
+                                  <Circle className="w-3 h-3 text-blue-500 fill-blue-500" />
+                                ) : (
+                                  <CheckCheck className="w-3 h-3 text-gray-400" />
+                                )}
                               </button>
-                              {expandedNotificationId === notification.id && (
-                                <div className="mt-2 text-xs text-gray-600 space-y-1">
-                                  <div><span className="font-semibold">Customer:</span> {notification.details.customer || 'N/A'}</div>
-                                  <div><span className="font-semibold">Business:</span> {notification.details.business || 'N/A'}</div>
-                                  <div><span className="font-semibold">Product:</span> {notification.details.product || 'N/A'}</div>
-                                  <div><span className="font-semibold">Phone:</span> {notification.details.phone || 'N/A'}</div>
-                                  <div><span className="font-semibold">Email:</span> {notification.details.email || 'N/A'}</div>
-                                  <div><span className="font-semibold">Address:</span> {notification.details.address || 'N/A'}</div>
-                                  <div><span className="font-semibold">Transferred From:</span> {notification.details.transferredFrom || 'N/A'}</div>
-                                </div>
-                              )}
                             </div>
-                          )}
-                          <p className="text-xs text-gray-500 mt-2">{notification.time}</p>
+                            <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                              {notification.message}
+                            </p>
+                            {notification.details && (
+                              <div className="mt-2">
+                                <button
+                                  onClick={() => setExpandedNotificationId(expandedNotificationId === notification.id ? null : notification.id)}
+                                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                >
+                                  {expandedNotificationId === notification.id ? 'Hide Details' : 'View Details'}
+                                </button>
+                                {expandedNotificationId === notification.id && (
+                                  <div className={`mt-2 text-xs space-y-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    {notification.details.customer && (
+                                      <div><span className="font-semibold">Customer:</span> {notification.details.customer}</div>
+                                    )}
+                                    {notification.details.business && (
+                                      <div><span className="font-semibold">Business:</span> {notification.details.business}</div>
+                                    )}
+                                    {notification.details.product && (
+                                      <div><span className="font-semibold">Product:</span> {notification.details.product}</div>
+                                    )}
+                                    {notification.details.phone && (
+                                      <div><span className="font-semibold">Phone:</span> {notification.details.phone}</div>
+                                    )}
+                                    {notification.details.email && (
+                                      <div><span className="font-semibold">Email:</span> {notification.details.email}</div>
+                                    )}
+                                    {notification.details.address && (
+                                      <div><span className="font-semibold">Address:</span> {notification.details.address}</div>
+                                    )}
+                                    {notification.details.transferredFrom && (
+                                      <div><span className="font-semibold">Transferred From:</span> {notification.details.transferredFrom}</div>
+                                    )}
+                                    {notification.details.amount && (
+                                      <div><span className="font-semibold">Amount:</span> ₹{Number(notification.details.amount).toLocaleString()}</div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                              {formatTime(notification.time)}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
-                <div className="p-3 border-t border-gray-200">
-                  <button 
-                    onClick={() => {
-                      setShowNotifications(false);
-                      setShowNotificationHistory(true);
-                    }}
-                    className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    View All Notifications
-                  </button>
+                <div className={`p-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        markAllAsRead();
+                      }}
+                      className={`flex-1 text-sm font-medium py-2 rounded ${
+                        isDarkMode 
+                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      disabled={unreadCount === 0}
+                    >
+                      Mark All Read
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setShowNotifications(false);
+                        setShowNotificationHistory(true);
+                      }}
+                      className="flex-1 text-sm text-blue-600 hover:text-blue-700 font-medium py-2"
+                    >
+                      View All
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -826,98 +829,138 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
                     <Bell className="w-4 h-4 text-blue-600" />
                     <span className="text-sm text-blue-600 font-medium">Total</span>
                   </div>
-                  <p className="text-2xl font-bold text-blue-700 mt-1">{notificationHistory.length}</p>
+                  <p className="text-2xl font-bold text-blue-700 mt-1">{notifications.length}</p>
                 </div>
                 <div className="bg-orange-50 p-4 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-orange-600" />
+                    <Bell className="w-4 h-4 text-orange-600" />
                     <span className="text-sm text-orange-600 font-medium">Unread</span>
                   </div>
-                  <p className="text-2xl font-bold text-orange-700 mt-1">
-                    {notificationHistory.filter(n => n.unread).length}
-                  </p>
+                  <p className="text-2xl font-bold text-orange-700 mt-1">{unreadCount}</p>
                 </div>
                 <div className="bg-green-50 p-4 rounded-lg">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span className="text-sm text-green-600 font-medium">Success</span>
+                    <span className="text-sm text-green-600 font-medium">Read</span>
                   </div>
                   <p className="text-2xl font-bold text-green-700 mt-1">
-                    {notificationHistory.filter(n => n.type === 'success').length}
+                    {notifications.length - unreadCount}
                   </p>
                 </div>
                 <div className="bg-purple-50 p-4 rounded-lg">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-purple-600" />
-                    <span className="text-sm text-purple-600 font-medium">Reminders</span>
+                    <span className="text-sm text-purple-600 font-medium">This Week</span>
                   </div>
                   <p className="text-2xl font-bold text-purple-700 mt-1">
-                    {notificationHistory.filter(n => n.type === 'reminder').length}
+                    {notifications.filter(n => {
+                      const date = new Date(n.time);
+                      const weekAgo = new Date();
+                      weekAgo.setDate(weekAgo.getDate() - 7);
+                      return date >= weekAgo;
+                    }).length}
                   </p>
                 </div>
               </div>
 
               {/* Notification List */}
               <div className="space-y-3 max-h-96 overflow-y-auto">
-                {notificationHistory.map((notification) => (
-                  <div 
-                    key={notification.id}
-                    className={`p-4 rounded-lg border transition-colors hover:bg-gray-50 ${
-                      notification.unread ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-1">
-                        {getNotificationIcon(notification.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h4 className={`text-sm font-medium ${
-                            notification.unread ? 'text-gray-900' : 'text-gray-700'
-                          }`}>
-                            {notification.title}
-                          </h4>
-                          <div className="flex items-center gap-2">
-                            {notification.unread && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                            )}
-                            <span className="text-xs text-gray-500">{notification.time}</span>
-                          </div>
+                {notifications.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    <Bell className="w-16 h-16 mx-auto mb-3 text-gray-300" />
+                    <p className="text-lg font-medium">No notifications yet</p>
+                    <p className="text-sm mt-1">You're all caught up!</p>
+                  </div>
+                ) : (
+                  notifications.map((notification) => (
+                    <div 
+                      key={notification.id}
+                      className={`p-4 rounded-lg border transition-colors hover:bg-gray-50 ${
+                        notification.unread ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-1">
+                          {getNotificationIcon(notification.type)}
                         </div>
-                        <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                        {notification.details && (
-                          <div className="mt-2">
-                            <button
-                              onClick={() => setExpandedHistoryId(expandedHistoryId === notification.id ? null : notification.id)}
-                              className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                            >
-                              {expandedHistoryId === notification.id ? 'Hide Details' : 'View Details'}
-                            </button>
-                            {expandedHistoryId === notification.id && (
-                              <div className="mt-2 text-xs text-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
-                                <div><span className="font-semibold">Customer:</span> {notification.details.customer || 'N/A'}</div>
-                                <div><span className="font-semibold">Business:</span> {notification.details.business || 'N/A'}</div>
-                                <div><span className="font-semibold">Product:</span> {notification.details.product || 'N/A'}</div>
-                                <div><span className="font-semibold">Phone:</span> {notification.details.phone || 'N/A'}</div>
-                                <div><span className="font-semibold">Email:</span> {notification.details.email || 'N/A'}</div>
-                                <div><span className="font-semibold">State:</span> {notification.details.state || 'N/A'}</div>
-                                <div className="sm:col-span-2"><span className="font-semibold">Address:</span> {notification.details.address || 'N/A'}</div>
-                                <div className="sm:col-span-2"><span className="font-semibold">Transferred From:</span> {notification.details.transferredFrom || 'N/A'}</div>
-                                <div className="sm:col-span-2"><span className="font-semibold">Transferred At:</span> {notification.details.transferredAt ? new Date(notification.details.transferredAt).toLocaleString() : 'N/A'}</div>
-                              </div>
-                            )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <h4 className={`text-sm font-medium ${
+                              notification.unread ? 'text-gray-900' : 'text-gray-700'
+                            }`}>
+                              {notification.title}
+                            </h4>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  notification.unread ? markAsRead(notification.id) : markAsUnread(notification.id);
+                                }}
+                                className="p-1 rounded hover:bg-gray-200"
+                                title={notification.unread ? 'Mark as read' : 'Mark as unread'}
+                              >
+                                {notification.unread ? (
+                                  <Circle className="w-3 h-3 text-blue-500 fill-blue-500" />
+                                ) : (
+                                  <CheckCheck className="w-3 h-3 text-gray-400" />
+                                )}
+                              </button>
+                              <span className="text-xs text-gray-500">{formatTime(notification.time)}</span>
+                            </div>
                           </div>
-                        )}
+                          <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                          {notification.details && (
+                            <div className="mt-2">
+                              <button
+                                onClick={() => setExpandedHistoryId(expandedHistoryId === notification.id ? null : notification.id)}
+                                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                              >
+                                {expandedHistoryId === notification.id ? 'Hide Details' : 'View Details'}
+                              </button>
+                              {expandedHistoryId === notification.id && (
+                                <div className="mt-2 text-xs text-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                                  {notification.details.customer && (
+                                    <div><span className="font-semibold">Customer:</span> {notification.details.customer}</div>
+                                  )}
+                                  {notification.details.business && (
+                                    <div><span className="font-semibold">Business:</span> {notification.details.business}</div>
+                                  )}
+                                  {notification.details.product && (
+                                    <div><span className="font-semibold">Product:</span> {notification.details.product}</div>
+                                  )}
+                                  {notification.details.phone && (
+                                    <div><span className="font-semibold">Phone:</span> {notification.details.phone}</div>
+                                  )}
+                                  {notification.details.email && (
+                                    <div><span className="font-semibold">Email:</span> {notification.details.email}</div>
+                                  )}
+                                  {notification.details.state && (
+                                    <div><span className="font-semibold">State:</span> {notification.details.state}</div>
+                                  )}
+                                  {notification.details.address && (
+                                    <div className="sm:col-span-2"><span className="font-semibold">Address:</span> {notification.details.address}</div>
+                                  )}
+                                  {notification.details.transferredFrom && (
+                                    <div className="sm:col-span-2"><span className="font-semibold">Transferred From:</span> {notification.details.transferredFrom}</div>
+                                  )}
+                                  {notification.details.amount && (
+                                    <div><span className="font-semibold">Amount:</span> ₹{Number(notification.details.amount).toLocaleString()}</div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
 
               {/* Modal Footer */}
               <div className="flex items-center justify-between pt-6 border-t border-gray-200 mt-6">
                 <div className="text-sm text-gray-500">
-                  Showing {notificationHistory.length} notifications
+                  Showing {notifications.length} notifications ({unreadCount} unread)
                 </div>
                 <div className="flex gap-3">
                   <button 
@@ -926,7 +969,13 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
                   >
                     Close
                   </button>
-                  <button className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+                  <button 
+                    onClick={() => {
+                      markAllAsRead();
+                    }}
+                    disabled={unreadCount === 0}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
                     Mark All as Read
                   </button>
                 </div>
