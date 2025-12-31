@@ -81,16 +81,17 @@ const LeadTable = ({
   }, []);
   return (
     <div
-      className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+      className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden"
       style={{
         marginRight: 0,
         marginLeft: 0,
         width: '100%',
         maxWidth: '100%',
         boxSizing: 'border-box',
-        borderTopRightRadius: showCustomerTimeline ? 0 : '0.5rem',
-        borderBottomRightRadius: showCustomerTimeline ? 0 : '0.5rem',
-        borderRight: showCustomerTimeline ? 'none' : '1px solid #e5e7eb'
+        borderTopRightRadius: showCustomerTimeline ? 0 : '1rem',
+        borderBottomRightRadius: showCustomerTimeline ? 0 : '1rem',
+        borderRight: showCustomerTimeline ? 'none' : '1px solid rgba(229, 231, 235, 0.5)',
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
       }}
     >
       <div
@@ -104,7 +105,7 @@ const LeadTable = ({
         }}
       >
         <table className="w-full" style={{ width: '100%', tableLayout: 'auto', borderCollapse: 'collapse', margin: 0 }}>
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-gradient-to-r from-slate-50 to-gray-50 border-b-2 border-gray-200">
             <tr>
               <th className="px-4 py-3">
                 <input
@@ -114,73 +115,91 @@ const LeadTable = ({
                 />
               </th>
               {visibleColumns.customerId && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[130px]">
+                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[130px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
-                    <Hash className="w-4 h-4 text-purple-600" />
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                      <Hash className="w-4 h-4 text-white" />
+                    </div>
                     <span>Customer ID</span>
                   </div>
                 </th>
               )}
               {visibleColumns.customer && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[220px]">
+                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[220px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
-                    <User className="w-4 h-4 text-blue-600" />
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                      <User className="w-4 h-4 text-white" />
+                    </div>
                     <span>Customer</span>
                   </div>
                 </th>
               )}
               {visibleColumns.business && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">
+                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[200px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
-                    <Building className="w-4 h-4 text-indigo-600" />
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                      <Building className="w-4 h-4 text-white" />
+                    </div>
                     <span>Business</span>
                   </div>
                 </th>
               )}
               {visibleColumns.address && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">
+                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[200px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
-                    <Building className="w-4 h-4 text-indigo-600" />
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+                      <Building className="w-4 h-4 text-white" />
+                    </div>
                     <span>Address</span>
                   </div>
                 </th>
               )}
               {visibleColumns.state && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
+                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[120px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
-                    <Building className="w-4 h-4 text-green-600" />
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                      <Building className="w-4 h-4 text-white" />
+                    </div>
                     <span>State</span>
                   </div>
                 </th>
               )}
               {visibleColumns.division && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
+                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[120px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
-                    <Building className="w-4 h-4 text-teal-600" />
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
+                      <Building className="w-4 h-4 text-white" />
+                    </div>
                     <span>Division</span>
                   </div>
                 </th>
               )}
               {visibleColumns.followUpStatus && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
+                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[140px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4 text-amber-600" />
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                      <Clock className="w-4 h-4 text-white" />
+                    </div>
                     <span>Follow Up Status</span>
                   </div>
                 </th>
               )}
               {visibleColumns.salesStatus && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
+                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[140px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4 text-amber-600" />
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-500 to-amber-500 flex items-center justify-center">
+                      <Clock className="w-4 h-4 text-white" />
+                    </div>
                     <span>Sales Status</span>
                   </div>
                 </th>
               )}
               {visibleColumns.assignedSalesperson && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
+                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[160px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2 relative" ref={salespersonFilterRef}>
-                    <User className="w-4 h-4 text-sky-600" />
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-blue-500 flex items-center justify-center">
+                      <User className="w-4 h-4 text-white" />
+                    </div>
                     <span>Assigned Salesperson</span>
                     <button
                       onClick={(e) => {
@@ -188,12 +207,14 @@ const LeadTable = ({
                         setShowSalespersonFilter(!showSalespersonFilter);
                         setShowTelecallerFilter(false);
                       }}
-                      className={`ml-1 p-1 rounded hover:bg-gray-200 transition-colors ${
-                        assignedSalespersonFilter ? 'text-blue-600' : 'text-gray-400'
+                      className={`ml-1 p-1.5 rounded-lg transition-all duration-200 ${
+                        assignedSalespersonFilter 
+                          ? 'bg-gradient-to-br from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-md' 
+                          : 'bg-gradient-to-br from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400'
                       }`}
                       title="Filter by Salesperson"
                     >
-                      <Filter className="w-3 h-3" />
+                      <Filter className={`w-3.5 h-3.5 ${assignedSalespersonFilter ? 'text-white' : 'text-gray-600'}`} />
                     </button>
                     {showSalespersonFilter && (
                       <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[200px] max-h-[300px] overflow-y-auto">
@@ -259,9 +280,11 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.assignedTelecaller && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
+                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[160px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2 relative" ref={telecallerFilterRef}>
-                    <Phone className="w-4 h-4 text-cyan-600" />
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center">
+                      <Phone className="w-4 h-4 text-white" />
+                    </div>
                     <span>Assigned Telecaller</span>
                     <button
                       onClick={(e) => {
@@ -269,12 +292,14 @@ const LeadTable = ({
                         setShowTelecallerFilter(!showTelecallerFilter);
                         setShowSalespersonFilter(false);
                       }}
-                      className={`ml-1 p-1 rounded hover:bg-gray-200 transition-colors ${
-                        assignedTelecallerFilter ? 'text-blue-600' : 'text-gray-400'
+                      className={`ml-1 p-1.5 rounded-lg transition-all duration-200 ${
+                        assignedTelecallerFilter 
+                          ? 'bg-gradient-to-br from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 shadow-md' 
+                          : 'bg-gradient-to-br from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400'
                       }`}
                       title="Filter by Telecaller"
                     >
-                      <Filter className="w-3 h-3" />
+                      <Filter className={`w-3.5 h-3.5 ${assignedTelecallerFilter ? 'text-white' : 'text-gray-600'}`} />
                     </button>
                     {showTelecallerFilter && (
                       <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[200px] max-h-[300px] overflow-y-auto">
@@ -403,22 +428,11 @@ const LeadTable = ({
                   </div>
                 </th>
               )}
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">
+              <th className="px-4 py-4 text-right text-xs font-bold text-gray-800 uppercase tracking-wider w-[120px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                 <div className="flex items-center justify-end space-x-2">
-                  <button
-                    onClick={() => setShowColumnFilter(true)}
-                    className="text-gray-600 hover:text-gray-900"
-                    title="Column Visibility"
-                  >
-                    <Settings className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={onToggleColumnFilterRow}
-                    className={`text-gray-600 hover:text-gray-900 ${showColumnFilterRow ? 'text-blue-600' : ''}`}
-                    title="Toggle Column Filters"
-                  >
-                    <Filter className="w-4 h-4" />
-                  </button>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-500 to-slate-500 flex items-center justify-center">
+                    <Settings className="w-4 h-4 text-white" />
+                  </div>
                   <span>Actions</span>
                 </div>
               </th>
@@ -612,7 +626,7 @@ const LeadTable = ({
               </tr>
             )}
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-gray-100">
             {tableLoading ? (
               <tr>
                 <td colSpan={Object.values(visibleColumns).filter(Boolean).length + 2} className="px-4 py-8 text-center text-gray-500">
@@ -637,7 +651,7 @@ const LeadTable = ({
                   ? `lead-${lead.id}-${index}${lead._renderIndex != null ? `-${lead._renderIndex}` : ''}` 
                   : `lead-no-id-${index}`;
                 return (
-                <tr key={uniqueKey} className="hover:bg-gray-50">
+                <tr key={uniqueKey} className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-200 border-b border-gray-100">
                   <td className="px-4 py-4">
                     <input
                       type="checkbox"

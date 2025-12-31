@@ -1776,7 +1776,7 @@ const MobileProducts = () => {
 
       {/* Mobile Detail Modal for Aerial Bunch Cable and ACSR */}
       {selectedProduct && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-[110] bg-black/50 flex items-end sm:items-center justify-center">
           <div className="w-full sm:max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">

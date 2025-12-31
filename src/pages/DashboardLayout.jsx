@@ -7,7 +7,10 @@ import AshvayChat from '../components/AshvayChat';
 const DashboardLayout = ({ children, onLogout, activeView, setActiveView }) => {
   return (
     <CompanyProvider>
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen" style={{ 
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        backgroundAttachment: 'fixed'
+      }}>
         {/* Sidebar */}
         <SuperAdminSidebar onLogout={onLogout} activeView={activeView} setActiveView={setActiveView} />
         
@@ -17,7 +20,9 @@ const DashboardLayout = ({ children, onLogout, activeView, setActiveView }) => {
           <FixedHeader userType="superadmin" currentPage={activeView} />
           
           {/* Main Content */}
-          <main className="flex-1 overflow-y-auto">
+          <main className="flex-1 overflow-y-auto" style={{ 
+            background: 'transparent'
+          }}>
             {children}
           </main>
         </div>

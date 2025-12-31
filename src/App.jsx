@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './hooks/useAuth'
+import { useFirebasePush } from './hooks/useFirebasePush'
 import LoginPage from './pages/Auth/LoginPage.jsx'
 import AnocabLanding from './pages/landingpage.jsx'
 import SupportPage from './pages/support.jsx'
@@ -32,6 +33,8 @@ function AppContent() {
   const { isAuthenticated, user, logout } = useAuth()
   const [activeView, setActiveView] = useState('dashboard')
   const [currentPath, setCurrentPath] = useState(window.location.pathname)
+  
+  useFirebasePush()
   
   useEffect(() => {
     const handleLocationChange = () => {

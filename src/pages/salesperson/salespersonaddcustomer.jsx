@@ -1,14 +1,14 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { X, User, Phone, MessageCircle, Mail, Building2, FileText, MapPin, Globe, Package } from "lucide-react"
+import { X, User, Phone, MessageCircle, Mail, Building2, FileText, MapPin, Globe, Package, UserPlus } from "lucide-react"
 import departmentUserService from "../../api/admin_api/departmentUserService"
 import apiClient from "../../utils/apiClient"
 import { API_ENDPOINTS } from "../../api/admin_api/api"
 import { findIndiaStateByName, getIndiaDivisionsForStateIso, getIndiaStates } from "../../utils/indiaLocation"
 
 function Card({ className, children }) {
-  return <div className={`rounded-lg border bg-white shadow-sm ${className || ''}`}>{children}</div>
+  return <div className={`rounded-xl border bg-white shadow-xl ${className || ''}`}>{children}</div>
 }
 
 function CardContent({ className, children }) {
@@ -21,31 +21,6 @@ function CardHeader({ className, children }) {
 
 function CardTitle({ className, children }) {
   return <h3 className={`text-lg font-semibold ${className || ''}`}>{children}</h3>
-}
-
-function Button({ children, onClick, type = "button", variant = "default", size = "default", className = "" }) {
-  const baseClasses = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none"
-  
-  const variants = {
-    default: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
-    outline: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-500",
-    ghost: "text-gray-700 hover:bg-gray-100 focus:ring-blue-500"
-  }
-  
-  const sizes = {
-    default: "h-10 py-2 px-4",
-    icon: "h-10 w-10"
-  }
-  
-  return (
-    <button
-      type={type}
-      onClick={onClick}
-      className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
-    >
-      {children}
-    </button>
-  )
 }
 
 export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
@@ -112,7 +87,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
             currentEmail = (profileUser.email || '').toLowerCase()
           }
         } catch (profileErr) {
-          console.error('Failed to fetch profile for salesperson:', profileErr)
         }
 
         // Fallback: read from localStorage
@@ -123,7 +97,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
             currentUsername = currentUsername || (userData.username || userData.name || '').toLowerCase()
             currentEmail = currentEmail || (userData.email || '').toLowerCase()
           } catch (e) {
-            console.error('Failed to parse user data from localStorage:', e)
           }
         }
         
@@ -139,7 +112,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
               currentEmail = currentEmail || (currentUser.email || '').toLowerCase()
             }
           } catch (err) {
-            console.error('Failed to get current user record via listUsers:', err)
           }
         }
         
@@ -167,38 +139,30 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
             
             // fetched users by head ID
           } catch (headErr) {
-            console.error('Failed to fetch by head ID:', headErr)
-            // Fallback: try to get from listUsers (may only return current user)
             try {
               const res = await departmentUserService.listUsers({ page: 1, limit: 1000 })
               const payload = res?.data || res
               users = payload.users || []
             } catch (listErr) {
-              console.error('Failed to fetch users:', listErr)
             }
           }
         } else {
-          console.warn('No headUserId found, trying listUsers (may return limited results)')
-          // Fallback: try listUsers (may only return current user for salesperson)
           try {
             const res = await departmentUserService.listUsers({ page: 1, limit: 1000 })
             const payload = res?.data || res
             users = payload.users || []
           } catch (listErr) {
-            console.error('Failed to fetch users:', listErr)
           }
         }
         
-        // Map users to the format we need, filtering out any null/undefined values
         const mappedUsers = users
-          .filter(u => u && (u.username || u.email)) // Filter out invalid entries
+          .filter(u => u && (u.username || u.email))
           .map(u => ({
             id: u.id,
             username: u.username || u.name || u.email?.split('@')[0] || 'Unknown',
             email: u.email || ''
           }))
           .filter((u, index, self) => 
-            // Remove duplicates based on username
             index === self.findIndex((user) => user.username === u.username)
           )
 
@@ -213,8 +177,6 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
         
         setSalespersons(filteredUsers)
       } catch (error) {
-        console.error('Failed to fetch salespersons:', error)
-        console.error('Error details:', error.response || error.message)
       } finally {
         setLoadingSalespersons(false)
       }
@@ -242,14 +204,12 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     
-    // Validate only phone number (required field)
     if (!formData.mobileNumber || !formData.mobileNumber.trim()) {
       alert('Please enter mobile number')
       return
     }
     
     if (!onSave) {
-      console.error('onSave function is not provided')
       alert('Error: Save handler is not configured. Please contact support.')
       return
     }
@@ -257,32 +217,29 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
     onSave(formData)
   }
 
-  
-
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[110] p-4" onClick={onClose}>
+      <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-              <User className="h-5 w-5 text-white" />
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+              <UserPlus className="h-6 w-6 text-white" />
             </div>
             <div>
-              <CardTitle className="text-xl font-semibold">
+              <CardTitle className="text-xl font-bold text-gray-900">
                 {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
               </CardTitle>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 mt-0.5">
                 {editingCustomer ? 'Update the customer details below' : 'Fill in the customer details below'}
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
+          <button onClick={onClose} className="p-2 hover:bg-white/50 rounded-lg transition-colors text-gray-500 hover:text-gray-700">
+            <X className="h-5 w-5" />
+          </button>
         </CardHeader>
 
-        <CardContent className="p-6">
+        <CardContent className="p-6 overflow-y-auto flex-1">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Personal Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -581,13 +538,13 @@ export default function AddCustomerForm({ onClose, onSave, editingCustomer }) {
             
 
             {/* Form Actions */}
-            <div className="flex items-center justify-end gap-3 pt-6 border-t">
-              <Button type="button" variant="outline" onClick={onClose}>
+            <div className="flex items-center justify-end gap-3 pt-6 border-t bg-gray-50 -mx-6 -mb-6 px-6 pb-6">
+              <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                 Cancel
-              </Button>
-              <Button type="submit" className="bg-blue-500 hover:bg-blue-600 text-white">
+              </button>
+              <button type="submit" className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md">
                 {editingCustomer ? 'Update Customer' : 'Add Customer'}
-              </Button>
+              </button>
             </div>
           </form>
         </CardContent>

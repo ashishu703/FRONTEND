@@ -1,12 +1,13 @@
 import React from 'react'
-import { X, Upload, Download, FileText, CheckCircle, XCircle } from 'lucide-react'
+import { X, Upload, Download, Info } from 'lucide-react'
 import { apiClient, API_ENDPOINTS } from '../../utils/globalImports'
 import Toast from '../../utils/Toast'
 
 export default function ImportLeadsModal({ show, onClose, onImportSuccess }) {
   const [importFile, setImportFile] = React.useState(null)
-  const [importPreview, setImportPreview] = React.useState([])
   const [importing, setImporting] = React.useState(false)
+  const [isDragging, setIsDragging] = React.useState(false)
+  const [showInfoTooltip, setShowInfoTooltip] = React.useState(false)
   const fileInputRef = React.useRef(null)
 
   const parseCSVLine = (line) => {
@@ -48,25 +49,34 @@ export default function ImportLeadsModal({ show, onClose, onImportSuccess }) {
     return data
   }
 
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0]
-    if (file && file.type === 'text/csv') {
+  const handleFileSelect = (file) => {
+    if (file && (file.type === 'text/csv' || file.name.endsWith('.csv'))) {
       setImportFile(file)
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        try {
-          const csvText = e.target.result
-          const parsedData = parseCSV(csvText)
-          setImportPreview(parsedData.slice(0, 10))
-          Toast.info(`Preview: ${parsedData.length} rows found`)
-        } catch (error) {
-          Toast.error('Failed to parse CSV file')
-        }
-      }
-      reader.readAsText(file)
     } else {
       Toast.error('Please select a valid CSV file')
     }
+  }
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0]
+    if (file) handleFileSelect(file)
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFileSelect(file)
   }
 
   const handleDownloadTemplate = () => {
@@ -117,7 +127,6 @@ export default function ImportLeadsModal({ show, onClose, onImportSuccess }) {
             onImportSuccess?.()
             onClose()
             setImportFile(null)
-            setImportPreview([])
             if (fileInputRef.current) fileInputRef.current.value = ''
           } else {
             Toast.error('Failed to import leads')
@@ -138,67 +147,104 @@ export default function ImportLeadsModal({ show, onClose, onImportSuccess }) {
   if (!show) return null
 
   return (
-    <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Import Leads from CSV</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1" disabled={importing}>
-            <X className="h-4 w-4" />
+    <div className="fixed inset-0 z-50 overflow-auto bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="p-4 sm:p-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 rounded-lg flex items-center justify-center shadow-lg">
+              <Upload className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+            </div>
+            <h2 className="text-base sm:text-lg font-bold text-gray-900">Import Leads</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 sm:p-2 hover:bg-white/50 rounded-lg transition-colors text-gray-500 hover:text-gray-700" disabled={importing}>
+            <X className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
-        <div className="p-4">
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select CSV File</label>
-            <div className="space-y-2">
-              <input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="csv-upload" disabled={importing} />
-              <label htmlFor="csv-upload" className="block w-full px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer text-center text-sm disabled:opacity-50" style={{ pointerEvents: importing ? 'none' : 'auto' }}>
-                <Upload className="h-4 w-4 inline mr-2" /> Choose File
-              </label>
-              {importFile && <p className="text-xs text-gray-600 truncate">{importFile.name}</p>}
-              <button onClick={handleDownloadTemplate} className="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 flex items-center justify-center gap-2 text-sm" disabled={importing}>
+        <div className="p-4 sm:p-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="relative flex-1">
+              <button 
+                onClick={handleDownloadTemplate} 
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 flex items-center justify-center gap-2 text-sm font-medium transition-all duration-200 shadow-md disabled:opacity-50" 
+                disabled={importing}
+              >
                 <Download className="h-4 w-4" /> Download Template
               </button>
             </div>
-          </div>
-          {importPreview.length > 0 && (
-            <div className="mb-4">
-              <h3 className="text-xs font-medium text-gray-700 mb-2">Preview ({importPreview.length} rows)</h3>
-              <div className="border border-gray-200 rounded overflow-auto max-h-48">
-                <table className="w-full text-xs">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      {Object.keys(importPreview[0] || {}).slice(0, 5).map(key => (
-                        <th key={key} className="px-2 py-1 text-left font-medium text-gray-500">{key}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {importPreview.slice(0, 5).map((row, idx) => (
-                      <tr key={idx}>
-                        {Object.values(row).slice(0, 5).map((val, vIdx) => (
-                          <td key={vIdx} className="px-2 py-1 text-gray-700 truncate max-w-[100px]">{String(val).substring(0, 20)}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="relative">
+              <Info 
+                className="h-5 w-5 text-blue-500 cursor-help hover:text-blue-600 transition-colors" 
+                onMouseEnter={() => setShowInfoTooltip(true)}
+                onMouseLeave={() => setShowInfoTooltip(false)}
+              />
+              {showInfoTooltip && (
+                <div className="absolute right-0 top-8 z-10 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl">
+                  Upload a CSV file with lead data. Make sure the format matches the template.
+                </div>
+              )}
             </div>
-          )}
+          </div>
+
+          <div 
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`border-2 border-dashed rounded-xl p-6 sm:p-10 text-center transition-all duration-200 ${
+              isDragging 
+                ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-blue-100' 
+                : importFile 
+                  ? 'border-green-400 bg-gradient-to-br from-green-50 to-emerald-50' 
+                  : 'border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 hover:border-blue-400 hover:from-blue-50 hover:to-purple-50'
+            }`}
+          >
+            <input 
+              ref={fileInputRef} 
+              type="file" 
+              accept=".csv" 
+              onChange={handleFileUpload} 
+              className="hidden" 
+              id="csv-upload" 
+              disabled={importing} 
+            />
+            <label htmlFor="csv-upload" className="cursor-pointer block" style={{ pointerEvents: importing ? 'none' : 'auto' }}>
+              <div className="flex flex-col items-center gap-3 sm:gap-4">
+                <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all duration-200 ${
+                  isDragging 
+                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 scale-110' 
+                    : importFile 
+                      ? 'bg-gradient-to-br from-green-500 to-emerald-600' 
+                      : 'bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500'
+                } shadow-xl`}>
+                  <Upload className="h-5 w-5 sm:h-7 sm:w-7 text-white" />
+                </div>
+                {importFile ? (
+                  <div>
+                    <p className="text-xs sm:text-sm font-semibold text-gray-900 mb-1 break-words px-2">{importFile.name}</p>
+                    <p className="text-xs text-gray-500">Click to change file</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-xs sm:text-sm font-semibold text-gray-900 mb-1">Click to upload CSV file</p>
+                    <p className="text-xs text-gray-500">or drag and drop</p>
+                  </div>
+                )}
+              </div>
+            </label>
+          </div>
         </div>
-        <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
-          <button onClick={onClose} disabled={importing} className="px-3 py-1.5 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50">
+        <div className="p-4 sm:p-5 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
+          <button onClick={onClose} disabled={importing} className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
             Cancel
           </button>
-          <button onClick={handleImportLeads} disabled={!importFile || importing} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+          <button onClick={handleImportLeads} disabled={!importFile || importing} className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-all duration-200 shadow-md">
             {importing ? (
               <>
-                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                 Importing...
               </>
             ) : (
               <>
-                <Upload className="h-3 w-3" />
+                <Upload className="h-4 w-4" />
                 Import Leads
               </>
             )}

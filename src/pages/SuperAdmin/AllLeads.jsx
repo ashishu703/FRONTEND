@@ -1128,7 +1128,10 @@ const AllLeads = () => {
   // Show skeleton loader on initial load
   if (initialLoading) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="p-6 min-h-screen" style={{ 
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        backgroundAttachment: 'fixed'
+      }}>
         <div className="mb-6">
           <div className="h-8 bg-gray-200 rounded w-48 mb-4 animate-pulse"></div>
         </div>
@@ -1148,38 +1151,44 @@ const AllLeads = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 min-h-screen" style={{ 
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      backgroundAttachment: 'fixed'
+    }}>
       {/* Tabs */}
       <div className="mb-6">
-        <div className="border-b border-gray-200">
+        <div className="border-b-2 border-gray-200 bg-white/80 backdrop-blur-sm rounded-t-xl px-4">
           <nav className="-mb-px flex space-x-8">
             <button
               onClick={() => setActiveTab('leads')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-4 px-3 border-b-3 font-semibold text-sm transition-all duration-200 ${
                 activeTab === 'leads'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-blue-600 text-blue-600 bg-gradient-to-t from-blue-50 to-transparent'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
+              style={{ fontFamily: 'Inter, sans-serif' }}
             >
               Leads
             </button>
             <button
               onClick={() => setActiveTab('enquiry')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`py-4 px-3 border-b-3 font-semibold text-sm transition-all duration-200 ${
                 activeTab === 'enquiry'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-purple-600 text-purple-600 bg-gradient-to-t from-purple-50 to-transparent'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
+              style={{ fontFamily: 'Inter, sans-serif' }}
             >
               Enquiry
             </button>
             <button
               onClick={() => setActiveTab('lastCall')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+              className={`py-4 px-3 border-b-3 font-semibold text-sm flex items-center gap-2 transition-all duration-200 ${
                 activeTab === 'lastCall'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-green-600 text-green-600 bg-gradient-to-t from-green-50 to-transparent'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
+              style={{ fontFamily: 'Inter, sans-serif' }}
             >
               <Phone className="w-4 h-4" />
               Last Call
@@ -1191,28 +1200,35 @@ const AllLeads = () => {
       {activeTab === 'leads' && (
         <>
       {/* Search and Action Bar */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+      <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 p-5 mb-6" style={{
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+      }}>
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 max-w-xl">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
                 placeholder="Search by name, email, or business..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-white/90 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none placeholder:text-gray-400 text-sm font-medium shadow-sm transition-all duration-200"
+                style={{ fontFamily: 'Inter, sans-serif' }}
               />
             </div>
           </div>
           
           <div className="flex items-center space-x-3">
             <button
-              className={`px-6 py-3 rounded-lg transition-colors flex items-center space-x-2 text-base ${
+              className={`px-5 py-3 rounded-xl transition-all duration-200 flex items-center space-x-2 text-sm font-semibold shadow-md ${
                 hasActiveFilters
-                  ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white border-2 border-blue-500 hover:from-blue-700 hover:to-purple-700'
+                  : 'bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
               }`}
+              style={{
+                boxShadow: hasActiveFilters ? '0 4px 15px rgba(99, 102, 241, 0.4)' : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                fontFamily: 'Inter, sans-serif'
+              }}
               onClick={() => setShowColumnFilterRow(!showColumnFilterRow)}
             >
               <Filter className="w-4 h-4" />
@@ -1220,20 +1236,20 @@ const AllLeads = () => {
             </button>
             
             <button
-              className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              className="p-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 shadow-sm"
               onClick={() => setShowColumnFilter(true)}
               title="Toggle Columns"
             >
-              <Eye className="w-4 h-4 text-gray-600" />
+              <Eye className="w-4 h-4" />
             </button>
             
             <button 
-              className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" 
+              className="p-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 shadow-sm" 
                   onClick={() => fetchLeads(true)}
               disabled={loading}
               title="Refresh"
             >
-              <RefreshCw className={`w-4 h-4 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
@@ -1241,7 +1257,9 @@ const AllLeads = () => {
 
       {/* Active Filters Summary */}
       {hasActiveFilters && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-xl p-4 mb-6 shadow-md" style={{
+          boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.2)'
+        }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Filter className="w-4 h-4 text-blue-600" />
@@ -1356,16 +1374,19 @@ const AllLeads = () => {
               </div>
               
       {/* Pagination */}
-      <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm border border-gray-200 mt-4">
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <span>Rows per page:</span>
+      <div className="flex items-center justify-between p-5 border-t-2 border-gray-200 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 mt-4" style={{
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+      }}>
+        <div className="flex items-center space-x-2 text-sm font-semibold" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <span className="text-gray-700">Rows per page:</span>
                 <select
             value={limit}
             onChange={(e) => {
               setPage(1);
               setLimit(Number(e.target.value));
             }}
-            className="border border-gray-300 rounded px-2 py-1 text-sm"
+            className="border-2 border-gray-300 rounded-xl px-3 py-1.5 text-sm font-medium bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            style={{ fontFamily: 'Inter, sans-serif' }}
           >
             <option value={10}>10</option>
             <option value={20}>20</option>
@@ -1373,31 +1394,33 @@ const AllLeads = () => {
             <option value={100}>100</option>
             <option value={200}>200</option>
                 </select>
-          <span>Showing {filteredLeads.length} of {total} leads</span>
+          <span className="text-gray-700">Showing <span className="text-blue-600">{filteredLeads.length}</span> of <span className="text-purple-600">{total}</span> leads</span>
               </div>
         <div className="flex items-center space-x-2">
                 <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className={`px-3 py-1 border rounded ${
+            className={`px-4 py-2 border-2 rounded-xl font-medium transition-all duration-200 shadow-sm ${
               page === 1
-                ? 'text-gray-300 border-gray-200 cursor-not-allowed'
-                : 'text-gray-700 border-gray-300 hover:bg-gray-50'
+                ? 'text-gray-300 border-gray-200 cursor-not-allowed bg-gray-50'
+                : 'text-gray-700 border-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-400 hover:text-blue-600'
             }`}
+            style={{ fontFamily: 'Inter, sans-serif' }}
           >
             Prev
                 </button>
-          <span className="text-sm text-gray-600">
-            Page {page} of {totalPages || 1}
+          <span className="text-sm font-semibold text-gray-700 px-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+            Page <span className="text-blue-600">{page}</span> of <span className="text-purple-600">{totalPages || 1}</span>
           </span>
                 <button
             onClick={() => setPage((p) => (p < totalPages ? p + 1 : p))}
             disabled={page >= totalPages || total === 0}
-            className={`px-3 py-1 border rounded ${
+            className={`px-4 py-2 border-2 rounded-xl font-medium transition-all duration-200 shadow-sm ${
               page >= totalPages || total === 0
-                ? 'text-gray-300 border-gray-200 cursor-not-allowed'
-                : 'text-gray-700 border-gray-300 hover:bg-gray-50'
+                ? 'text-gray-300 border-gray-200 cursor-not-allowed bg-gray-50'
+                : 'text-gray-700 border-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-400 hover:text-blue-600'
             }`}
+            style={{ fontFamily: 'Inter, sans-serif' }}
           >
             Next
                 </button>
@@ -1414,37 +1437,40 @@ const AllLeads = () => {
           ) : (
         <>
           {/* Search and Action Bar */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 p-5 mb-6" style={{
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          }}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex-1 max-w-xl">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type="text"
                     placeholder="Search by name, email, or business..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-white/90 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none placeholder:text-gray-400 text-sm font-medium shadow-sm transition-all duration-200"
+                    style={{ fontFamily: 'Inter, sans-serif' }}
                   />
                 </div>
               </div>
               
               <div className="flex items-center space-x-3">
                 <button
-                  className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="p-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 shadow-sm"
                   onClick={() => setShowColumnFilter(true)}
                   title="Toggle Columns"
                 >
-                  <Eye className="w-4 h-4 text-gray-600" />
+                  <Eye className="w-4 h-4" />
                 </button>
                 
                 <button 
-                  className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" 
+                  className="p-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 shadow-sm" 
                       onClick={() => fetchLastCallLeads(true)}
                       disabled={lastCallLoading}
                   title="Refresh"
                 >
-                      <RefreshCw className={`w-4 h-4 text-gray-600 ${lastCallLoading ? 'animate-spin' : ''}`} />
+                      <RefreshCw className={`w-4 h-4 ${lastCallLoading ? 'animate-spin' : ''}`} />
                 </button>
               </div>
             </div>
@@ -1810,7 +1836,9 @@ const AllLeads = () => {
               
               {/* Enquiry Pagination */}
               {enquiryTotal > 0 && (
-                <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm mt-4">
+                <div className="flex items-center justify-between p-5 border-t-2 border-gray-200 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 mt-4" style={{
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                }}>
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <span>Rows per page:</span>
                     <select
@@ -1832,7 +1860,7 @@ const AllLeads = () => {
                     <button
                       onClick={() => setEnquiryPage(1)}
                       disabled={enquiryPage === 1}
-                      className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-2.5 rounded-xl border-2 border-gray-300 text-gray-500 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-400 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
                       title="First page"
                     >
                       <ChevronsLeft className="w-4 h-4" />
@@ -1840,7 +1868,7 @@ const AllLeads = () => {
                     <button
                       onClick={() => setEnquiryPage(p => Math.max(1, p - 1))}
                       disabled={enquiryPage === 1}
-                      className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-2.5 rounded-xl border-2 border-gray-300 text-gray-500 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-400 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
                       title="Previous page"
                     >
                       <ChevronLeft className="w-4 h-4" />
@@ -1862,11 +1890,12 @@ const AllLeads = () => {
                           <button
                             key={pageNum}
                             onClick={() => setEnquiryPage(pageNum)}
-                            className={`px-3 py-1 text-sm rounded-md border ${
+                            className={`px-4 py-2 text-sm font-semibold rounded-xl border-2 transition-all duration-200 shadow-sm ${
                               enquiryPage === pageNum
-                                ? 'bg-blue-600 text-white border-blue-600'
-                                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white border-blue-600'
+                                : 'border-gray-300 text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-400 hover:text-blue-600'
                             }`}
+                            style={{ fontFamily: 'Inter, sans-serif' }}
                           >
                             {pageNum}
                           </button>
@@ -1879,7 +1908,7 @@ const AllLeads = () => {
                     <button
                       onClick={() => setEnquiryPage(p => p < Math.ceil(enquiryTotal / enquiryLimit) ? p + 1 : p)}
                       disabled={enquiryPage >= Math.ceil(enquiryTotal / enquiryLimit)}
-                      className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-2.5 rounded-xl border-2 border-gray-300 text-gray-500 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-400 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
                       title="Next page"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -1887,7 +1916,7 @@ const AllLeads = () => {
                     <button
                       onClick={() => setEnquiryPage(Math.ceil(enquiryTotal / enquiryLimit))}
                       disabled={enquiryPage >= Math.ceil(enquiryTotal / enquiryLimit)}
-                      className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-2.5 rounded-xl border-2 border-gray-300 text-gray-500 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-400 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
                       title="Last page"
                     >
                       <ChevronsRight className="w-4 h-4" />

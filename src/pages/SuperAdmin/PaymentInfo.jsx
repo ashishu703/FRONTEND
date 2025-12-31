@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Download, User, DollarSign, Clock, Calendar, Link, Copy, Eye, MoreHorizontal, CreditCard, AlertCircle, CheckCircle, XCircle, ChevronDown, Edit, Package, RotateCw, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Building2, Users } from 'lucide-react';
+import { Search, Filter, Download, User, DollarSign, Clock, Calendar, Link, Copy, Eye, MoreHorizontal, CreditCard, AlertCircle, CheckCircle, XCircle, ChevronDown, Edit, Package, RotateCw, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Building2, Users, Hash, MapPin, FileText, ShoppingCart, Truck, Settings } from 'lucide-react';
 import paymentService from '../../api/admin_api/paymentService';
 import departmentHeadService from '../../api/admin_api/departmentHeadService';
 import PaymentInfoTable from '../../components/payment/PaymentInfoTable';
@@ -421,25 +421,42 @@ const PaymentInfo = () => {
     };
   }, [showFilterDropdown, showDateRangeFilter]);
 
-  const StatCard = ({ title, value, subtitle, color, bgColor, icon: Icon }) => (
-    <div className={`${bgColor} rounded-lg border p-4 shadow-sm`}>
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <Icon className={`w-5 h-5 ${color}`} />
-          <h3 className="text-sm font-medium text-gray-700">{title}</h3>
+  const StatCard = ({ title, value, subtitle, color, bgColor, icon: Icon }) => {
+    const gradientMap = {
+      'text-blue-600': 'from-blue-500 to-cyan-500',
+      'text-green-600': 'from-green-500 to-emerald-500',
+      'text-purple-600': 'from-purple-500 to-pink-500',
+      'text-red-600': 'from-red-500 to-rose-500'
+    };
+    const gradient = gradientMap[color] || 'from-blue-500 to-cyan-500';
+    
+    return (
+      <div className={`${bgColor} rounded-2xl border-2 p-5 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1`} style={{
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+      }}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg`}>
+              <Icon className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-sm font-bold text-gray-800" style={{ fontFamily: 'Poppins, sans-serif' }}>{title}</h3>
+          </div>
+        </div>
+        <div className="mt-3">
+          <p className={`text-3xl font-bold bg-gradient-to-r ${gradient} bg-clip-text text-transparent`} style={{ fontFamily: 'Poppins, sans-serif' }}>{value}</p>
+          <p className="text-xs text-gray-600 mt-2 font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>{subtitle}</p>
         </div>
       </div>
-      <div className="mb-1">
-        <span className={`text-2xl font-bold ${color}`}>{value}</span>
-      </div>
-      <p className="text-xs text-gray-600">{subtitle}</p>
-    </div>
-  );
+    );
+  };
 
   // Show skeleton loader while initial data is loading
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen p-6" style={{ 
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        backgroundAttachment: 'fixed'
+      }}>
         {/* Header skeleton */}
         <div className="mb-6">
           <div className="h-8 bg-gray-200 rounded w-48 mb-2 animate-pulse"></div>
@@ -471,10 +488,21 @@ const PaymentInfo = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen p-6" style={{ 
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      backgroundAttachment: 'fixed'
+    }}>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Payment Info</h1>
+        <div className="flex items-center space-x-3">
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+            <DollarSign className="w-7 h-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent" style={{ fontFamily: 'Poppins, sans-serif' }}>Payment Info</h1>
+            <p className="text-sm text-gray-600 mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>View payment details from all companies and department heads</p>
+          </div>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -514,16 +542,19 @@ const PaymentInfo = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+      <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/50 p-6 shadow-xl" style={{
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+      }}>
         <div className="flex items-center justify-between mb-6">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
               placeholder="Search by Lead ID, customer, company, department head..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-colors text-gray-700"
+              className="w-full pl-12 pr-4 py-3 bg-white/90 backdrop-blur-sm border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-700 font-medium shadow-sm"
+              style={{ fontFamily: 'Inter, sans-serif' }}
             />
           </div>
           
@@ -532,12 +563,13 @@ const PaymentInfo = () => {
             <div className="relative date-range-filter">
               <button
                 onClick={() => setShowDateRangeFilter(!showDateRangeFilter)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-300 transition-all duration-200 shadow-sm font-medium"
+                style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 <Calendar className="w-4 h-4" />
                 <span>Date Range</span>
                 {(dateRange.startDate || dateRange.endDate) && (
-                  <span className="bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full">●</span>
+                  <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-2 py-0.5 rounded-full shadow-sm">●</span>
                 )}
               </button>
               
@@ -585,7 +617,8 @@ const PaymentInfo = () => {
             <div className="relative filter-dropdown">
               <button
                 onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-300 transition-all duration-200 shadow-sm font-medium"
+                style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 <Filter className="w-4 h-4" />
                 <span>Filters</span>
@@ -634,7 +667,8 @@ const PaymentInfo = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none cursor-pointer min-w-[140px]"
+              className="px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 appearance-none cursor-pointer min-w-[140px] font-medium shadow-sm"
+              style={{ fontFamily: 'Inter, sans-serif' }}
             >
               <option value="All Status">All Status</option>
               <option value="Paid">Paid</option>
@@ -652,7 +686,11 @@ const PaymentInfo = () => {
                   fetchAllPayments();
                 });
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg font-semibold"
+              style={{
+                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)',
+                fontFamily: 'Inter, sans-serif'
+              }}
               title="Refresh payments"
             >
               <RotateCw className="w-4 h-4" />
@@ -662,59 +700,120 @@ const PaymentInfo = () => {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden" style={{
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+        }}>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-gradient-to-r from-slate-50 to-gray-50 border-b-2 border-gray-200">
                 <tr>
                   <th className="px-6 py-4 text-left">
-                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Lead ID</span>
-                  </th>
-                  <th className="px-6 py-4 text-left">
-                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Customer Name</span>
-                  </th>
-                  <th className="px-6 py-4 text-left">
                     <div className="flex items-center space-x-2">
-                      <Building2 className="w-4 h-4 text-blue-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Company</span>
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                        <Hash className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>Lead ID</span>
                     </div>
                   </th>
                   <th className="px-6 py-4 text-left">
                     <div className="flex items-center space-x-2">
-                      <Users className="w-4 h-4 text-purple-600" />
-                      <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Department Head</span>
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                        <User className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>Customer Name</span>
                     </div>
                   </th>
                   <th className="px-6 py-4 text-left">
-                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Salesperson</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                        <Building2 className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>Company</span>
+                    </div>
                   </th>
                   <th className="px-6 py-4 text-left">
-                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Product Name</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                        <Users className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>Department Head</span>
+                    </div>
                   </th>
                   <th className="px-6 py-4 text-left">
-                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Address</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                        <User className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>Salesperson</span>
+                    </div>
                   </th>
                   <th className="px-6 py-4 text-left">
-                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Quotation ID</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+                        <Package className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>Product Name</span>
+                    </div>
                   </th>
                   <th className="px-6 py-4 text-left">
-                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Payment Status</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center">
+                        <MapPin className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>Address</span>
+                    </div>
                   </th>
                   <th className="px-6 py-4 text-left">
-                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Payment Date</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
+                        <FileText className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>Quotation ID</span>
+                    </div>
                   </th>
                   <th className="px-6 py-4 text-left">
-                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Purchase Order</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                        <CreditCard className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>Payment Status</span>
+                    </div>
                   </th>
                   <th className="px-6 py-4 text-left">
-                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Delivery Date</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                        <Calendar className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>Payment Date</span>
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-left">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                        <ShoppingCart className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>Purchase Order</span>
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-left">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center">
+                        <Truck className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>Delivery Date</span>
+                    </div>
                   </th>
                   <th className="px-6 py-4 text-center">
-                    <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Action</span>
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-500 to-slate-600 flex items-center justify-center">
+                        <Settings className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>Action</span>
+                    </div>
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-100">
                 {loading ? (
                   <tr>
                     <td colSpan="13" className="px-6 py-8 text-center text-gray-500">

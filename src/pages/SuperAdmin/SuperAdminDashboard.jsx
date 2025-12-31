@@ -438,16 +438,16 @@ const SuperAdminDashboard = () => {
     ]);
   }, [fetchSalesData, fetchAccountsData, fetchITData, fetchRevenueTargets]);
 
-  // OPTIMIZED: Memoized chart data calculation
+  // OPTIMIZED: Memoized chart data calculation with vibrant colors
   const leadStatusChartData = useMemo(() => {
     return [
-      { label: 'Pending', value: salesData.leads.pending || 0, color: '#8b5cf6' },
-      { label: 'Running', value: salesData.leads.running || 0, color: '#3b82f6' },
-      { label: 'Converted', value: salesData.leads.converted || 0, color: '#10b981' },
-      { label: 'Interested', value: salesData.leads.interested || 0, color: '#f59e0b' },
-      { label: 'Win/Closed', value: salesData.leads.winClosed || 0, color: '#10b981' },
-      { label: 'Closed', value: salesData.leads.closed || 0, color: '#6366f1' },
-      { label: 'Lost', value: salesData.leads.lost || 0, color: '#ef4444' }
+      { label: 'Pending', value: salesData.leads.pending || 0, color: '#667eea' },
+      { label: 'Running', value: salesData.leads.running || 0, color: '#4facfe' },
+      { label: 'Converted', value: salesData.leads.converted || 0, color: '#43e97b' },
+      { label: 'Interested', value: salesData.leads.interested || 0, color: '#fa709a' },
+      { label: 'Win/Closed', value: salesData.leads.winClosed || 0, color: '#38f9d7' },
+      { label: 'Closed', value: salesData.leads.closed || 0, color: '#764ba2' },
+      { label: 'Lost', value: salesData.leads.lost || 0, color: '#f5576c' }
     ].filter(item => item.value > 0);
   }, [salesData.leads]);
 
@@ -501,28 +501,32 @@ const SuperAdminDashboard = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 min-h-screen bg-gray-50">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-4">
             <button
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 shadow-lg transition-all duration-200 font-medium"
+              style={{
+                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)'
+              }}
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              <span>Refresh</span>
+              <span style={{ fontFamily: 'Inter, sans-serif' }}>Refresh</span>
             </button>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-gray-600">Live Updates</span>
+            <div className="flex items-center space-x-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200/50 shadow-sm">
+              <div className="w-2.5 h-2.5 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full animate-pulse shadow-lg"></div>
+              <span className="text-sm text-gray-700 font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Live Updates</span>
             </div>
             <select
               value={selectedPeriod}
               onChange={(e) => {
                 setSelectedPeriod(e.target.value);
               }}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/90 backdrop-blur-sm shadow-sm font-medium"
+              style={{ fontFamily: 'Inter, sans-serif' }}
             >
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
@@ -533,12 +537,15 @@ const SuperAdminDashboard = () => {
               <button
                 type="button"
                 onClick={() => setShowDatePicker((v) => !v)}
-                className="bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-60 text-left"
+                className="bg-white/90 backdrop-blur-sm border border-gray-300 rounded-xl px-4 py-2.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-60 text-left shadow-sm font-medium hover:bg-white transition-all duration-200"
+                style={{ fontFamily: 'Inter, sans-serif' }}
               >
                 {dateRange}
               </button>
               {showDatePicker && (
-                <div className="absolute z-20 mt-2 right-0 bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-64">
+                <div className="absolute z-20 mt-2 right-0 bg-white/95 backdrop-blur-md border border-gray-200 rounded-2xl shadow-2xl p-5 w-64" style={{
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                }}>
                   <div className="space-y-4">
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Start</label>
@@ -560,9 +567,9 @@ const SuperAdminDashboard = () => {
                     </div>
                   </div>
                   <div className="flex items-center justify-end space-x-2 mt-4">
-                    <button onClick={clearDateRange} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800">Clear</button>
-                    <button onClick={() => setShowDatePicker(false)} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
-                    <button onClick={applyDateRange} className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Apply</button>
+                    <button onClick={clearDateRange} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium rounded-lg transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>Clear</button>
+                    <button onClick={() => setShowDatePicker(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium rounded-lg transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>Cancel</button>
+                    <button onClick={applyDateRange} className="px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 font-medium shadow-md transition-all duration-200" style={{ fontFamily: 'Inter, sans-serif' }}>Apply</button>
                   </div>
                 </div>
               )}
@@ -572,9 +579,14 @@ const SuperAdminDashboard = () => {
       </div>
 
       <div className="mb-8">
-        <div className="flex items-center space-x-2 mb-4">
-          <BarChart3 className="w-6 h-6 text-purple-600" />
-          <h2 className="text-2xl font-bold text-purple-600">Sales Department</h2>
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg">
+            <BarChart3 className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent" style={{ fontFamily: 'Poppins, sans-serif' }}>Sales Department</h2>
+            <p className="text-sm text-gray-600 mt-0.5">Performance metrics and analytics</p>
+          </div>
         </div>
         
         <LeadStatusCards leads={salesData.leads} />
@@ -598,9 +610,14 @@ const SuperAdminDashboard = () => {
       </div>
 
       <div className="mb-8">
-        <div className="flex items-center space-x-2 mb-4">
-          <DollarSign className="w-6 h-6 text-green-600" />
-          <h2 className="text-2xl font-bold text-green-600">Accounts Department</h2>
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+            <DollarSign className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent" style={{ fontFamily: 'Poppins, sans-serif' }}>Accounts Department</h2>
+            <p className="text-sm text-gray-600 mt-0.5">Payment tracking and financial overview</p>
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <StatCard 
@@ -628,9 +645,14 @@ const SuperAdminDashboard = () => {
       </div>
 
       <div className="mb-8">
-        <div className="flex items-center space-x-2 mb-4">
-          <Server className="w-6 h-6 text-cyan-600" />
-          <h2 className="text-2xl font-bold text-cyan-600">IT Department</h2>
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
+            <Server className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent" style={{ fontFamily: 'Poppins, sans-serif' }}>IT Department</h2>
+            <p className="text-sm text-gray-600 mt-0.5">System health and ticket management</p>
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard 

@@ -16,6 +16,8 @@ export function useSalespersonLeads(initialCustomers = []) {
     tag: false, followUpStatus: false, salesStatus: false, state: false, leadSource: false, productType: false, dateRange: false
   })
   const [filters, setFilters] = useState({ salesStatus: '' })
+  const [sortBy, setSortBy] = useState('none')
+  const [sortOrder, setSortOrder] = useState('asc')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
@@ -56,13 +58,19 @@ export function useSalespersonLeads(initialCustomers = []) {
   }, [searchQuery]);
 
   const tags = useMemo(() => {
-    const uniqueTypes = [...new Set(customers.map(c => c.customerType).filter(t => t && t !== 'N/A'))]
+    const uniqueTypes = [...new Set(customers.map(c => {
+      const type = c.customerType
+      return type && type !== 'N/A' ? type.toLowerCase() : null
+    }).filter(Boolean))]
     return uniqueTypes.sort()
   }, [customers])
 
   const getUniqueFilterOptions = useMemo(() => {
     return {
-      tags: [...new Set(customers.map(c => c.customerType).filter(Boolean))].sort(),
+      tags: [...new Set(customers.map(c => {
+        const type = c.customerType
+        return type && type !== 'N/A' ? type.toLowerCase() : null
+      }).filter(Boolean))].sort(),
       followUpStatuses: [...new Set(customers.map(c => c.followUpStatus).filter(Boolean))].sort(),
       salesStatuses: [...new Set(customers.map(c => c.salesStatus).filter(Boolean))].sort(),
       states: [...new Set(customers.map(c => c.state).filter(s => s && s !== 'N/A'))].sort(),
@@ -94,7 +102,10 @@ export function useSalespersonLeads(initialCustomers = []) {
     }
 
     if (selectedTag && selectedTag !== 'all') {
-      filtered = filtered.filter(c => c.customerType === selectedTag)
+      filtered = filtered.filter(c => {
+        const customerType = c.customerType ? c.customerType.toLowerCase() : ''
+        return customerType === selectedTag.toLowerCase()
+      })
     }
 
     if (filters.salesStatus) {
@@ -114,8 +125,29 @@ export function useSalespersonLeads(initialCustomers = []) {
       }
     })
 
+    // Apply sorting
+    if (sortBy && sortBy !== 'none') {
+      filtered = [...filtered].sort((a, b) => {
+        let aVal = a[sortBy]
+        let bVal = b[sortBy]
+        
+        // Handle different data types
+        if (sortBy === 'date') {
+          aVal = aVal ? new Date(aVal).getTime() : 0
+          bVal = bVal ? new Date(bVal).getTime() : 0
+        } else if (typeof aVal === 'string') {
+          aVal = aVal.toLowerCase()
+          bVal = (bVal || '').toLowerCase()
+        }
+        
+        if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1
+        if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1
+        return 0
+      })
+    }
+
     return filtered
-  }, [customers, debouncedSearchQuery, selectedTag, filters, advancedFilters, enabledFilters])
+  }, [customers, debouncedSearchQuery, selectedTag, filters, advancedFilters, enabledFilters, sortBy, sortOrder])
 
   const paginatedCustomers = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage
@@ -135,6 +167,17 @@ export function useSalespersonLeads(initialCustomers = []) {
 
   const handleAdvancedFilterChange = (filterKey, value) => {
     setAdvancedFilters(prev => ({ ...prev, [filterKey]: value }))
+    setCurrentPage(1)
+  }
+
+  const handleSortChange = (newSortBy) => {
+    setSortBy(newSortBy)
+    setCurrentPage(1)
+  }
+
+  const handleSortOrderChange = (newSortOrder) => {
+    setSortOrder(newSortOrder)
+    setCurrentPage(1)
   }
 
   const clearAdvancedFilters = () => {
@@ -158,6 +201,7 @@ export function useSalespersonLeads(initialCustomers = []) {
     showFilterPanel, setShowFilterPanel, advancedFilters, setAdvancedFilters, enabledFilters, setEnabledFilters, filters,
     tags, getUniqueFilterOptions, filteredCustomers, paginatedCustomers,
     currentPage, setCurrentPage, itemsPerPage, setItemsPerPage,
-    handleFilterChange, handleAdvancedFilterChange, clearAdvancedFilters, toggleFilterSection
+    handleFilterChange, handleAdvancedFilterChange, clearAdvancedFilters, toggleFilterSection,
+    sortBy, setSortBy, sortOrder, setSortOrder, handleSortChange, handleSortOrderChange
   }
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Package, Eye, X, Edit, Clock, CheckCircle, MessageCircle, Mail, CreditCard, XCircle, AlertCircle } from 'lucide-react';
+import { Package, Eye, X, Edit, Clock, CheckCircle, MessageCircle, Mail, CreditCard, XCircle, AlertCircle, MoreHorizontal, User, Building2, MapPin, FileText, Calendar } from 'lucide-react';
 import Toolbar, { ProductPagination } from './PaymentTracking';
 import apiClient from '../../utils/apiClient';
 import quotationService from '../../api/admin_api/quotationService';
@@ -564,7 +564,7 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
   if (!item) return null;
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-[110]">
       <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
       <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl flex flex-col">
         <div className="flex justify-between items-center px-6 py-4 border-b">
@@ -875,6 +875,7 @@ export default function DuePaymentPage({ isDarkMode = false }) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPaymentItem, setSelectedPaymentItem] = useState(null);
   const [companyBranches, setCompanyBranches] = useState({});
+  const [actionMenuOpen, setActionMenuOpen] = useState(null);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredPaymentTracking.length / itemsPerPage);
@@ -937,6 +938,17 @@ export default function DuePaymentPage({ isDarkMode = false }) {
     fetchPaymentTracking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId]);
+
+  // Close action menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (actionMenuOpen && !event.target.closest('.action-menu-container')) {
+        setActionMenuOpen(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [actionMenuOpen]);
 
   // Load company branches from database
   useEffect(() => {
@@ -1068,17 +1080,17 @@ export default function DuePaymentPage({ isDarkMode = false }) {
     const statusLower = (status || '').toLowerCase();
     switch (statusLower) {
       case 'paid':
-        return <CheckCircle className="w-4 h-4" />;
+        return <CheckCircle className="w-3 h-3" />;
       case 'advance':
-        return <Clock className="w-4 h-4" />;
+        return <Clock className="w-3 h-3" />;
       case 'due':
-        return <XCircle className="w-4 h-4" />;
+        return <XCircle className="w-3 h-3" />;
       case 'rejected':
-        return <XCircle className="w-4 h-4" />;
+        return <XCircle className="w-3 h-3" />;
       case 'pending':
-        return <Clock className="w-4 h-4" />;
+        return <Clock className="w-3 h-3" />;
       default:
-        return <AlertCircle className="w-4 h-4" />;
+        return <AlertCircle className="w-3 h-3" />;
     }
   };
 
@@ -1090,7 +1102,7 @@ export default function DuePaymentPage({ isDarkMode = false }) {
 
     if (hasRejectedPayment) {
       return (
-        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor('Rejected')}`}>
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${getStatusColor('Rejected')}`}>
           {getStatusIcon('Rejected')}
           Rejected
         </span>
@@ -1100,7 +1112,7 @@ export default function DuePaymentPage({ isDarkMode = false }) {
     // Always show "Due" for items in this page since they have remaining amount
     const isOverdue = item.daysOverdue > 0;
     return (
-      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor('Due')}`}>
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${getStatusColor('Due')}`}>
         {getStatusIcon('Due')}
         {isOverdue ? `Overdue (${item.daysOverdue} days)` : 'Due'}
       </span>
@@ -1193,31 +1205,55 @@ export default function DuePaymentPage({ isDarkMode = false }) {
                 {/* Table for this date group */}
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-200">
+                    <thead className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 border-b-2 border-blue-200">
                       <tr>
                         <th className="px-6 py-4 text-left">
-                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Lead ID</span>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-blue-600" />
+                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Lead ID</span>
+                          </div>
                         </th>
                         <th className="px-6 py-4 text-left">
-                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Customer Name</span>
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-purple-600" />
+                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Customer Name</span>
+                          </div>
                         </th>
                         <th className="px-6 py-4 text-left">
-                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Product Name</span>
+                          <div className="flex items-center gap-2">
+                            <Package className="h-4 w-4 text-violet-500" />
+                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Product Name</span>
+                          </div>
                         </th>
                         <th className="px-6 py-4 text-left">
-                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Address</span>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-red-500" />
+                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Address</span>
+                          </div>
                         </th>
                         <th className="px-6 py-4 text-left">
-                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Quotation ID</span>
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-indigo-500" />
+                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Quotation ID</span>
+                          </div>
                         </th>
                         <th className="px-6 py-4 text-left">
-                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Payment Status</span>
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4 text-emerald-600" />
+                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Payment Status</span>
+                          </div>
                         </th>
                         <th className="px-6 py-4 text-left">
-                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Due Amount</span>
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="h-4 w-4 text-red-500" />
+                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Due Amount</span>
+                          </div>
                         </th>
                         <th className="px-6 py-4 text-center">
-                          <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Action</span>
+                          <div className="flex items-center gap-2 justify-center">
+                            <MoreHorizontal className="h-4 w-4 text-gray-500" />
+                            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Action</span>
+                          </div>
                         </th>
                       </tr>
                     </thead>
@@ -1256,17 +1292,17 @@ export default function DuePaymentPage({ isDarkMode = false }) {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className="text-sm text-gray-900">{item.productName || 'N/A'}</span>
+                            <span className="text-sm text-gray-900 truncate max-w-[200px] block" title={item.productName || 'N/A'}>{item.productName || 'N/A'}</span>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="flex flex-col gap-0.5">
-                              {formatAddress(item.address).map((part, idx) => (
-                                <span key={idx} className="text-sm text-gray-700">{part}</span>
-                              ))}
+                            <div className="flex flex-col gap-0.5 max-w-[250px]">
+                              <span className="text-sm text-gray-700 truncate" title={item.address || 'N/A'}>
+                                {item.address || 'N/A'}
+                              </span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className="text-sm text-gray-900 font-mono">{item.quotationId || 'N/A'}</span>
+                            <span className="text-sm font-bold text-gray-900 font-mono">{item.quotationId || 'N/A'}</span>
                           </td>
                           <td className="px-6 py-4">
                             {getPaymentStatusBadge(item.paymentStatus, item)}

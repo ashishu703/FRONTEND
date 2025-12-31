@@ -199,7 +199,7 @@ export default function PIPreviewModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-auto bg-white flex items-center justify-center">
+    <div className="fixed inset-0 z-[110] overflow-auto bg-white flex items-center justify-center">
       <div className="w-full h-full flex flex-col">
         <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
           {/* Show Save button only when creating new PI (approvedQuotationId exists) */}

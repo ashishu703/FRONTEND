@@ -48,10 +48,24 @@ const BusinessMetrics = ({ quotations, proformaInvoices, payments }) => {
     ? paymentChartData.reduce((sum, item) => sum + item.value, 0)
     : paymentTotal;
 
+  // Format large numbers for display
+  const formatAmount = (amount) => {
+    if (amount >= 10000000) {
+      return `₹${(amount / 10000000).toFixed(2)}Cr`;
+    } else if (amount >= 100000) {
+      return `₹${(amount / 100000).toFixed(2)}L`;
+    } else if (amount >= 1000) {
+      return `₹${(amount / 1000).toFixed(1)}K`;
+    }
+    return `₹${amount.toLocaleString('en-IN')}`;
+  };
+
   return (
     <div className="mb-6">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">Business Metrics</h3>
-      <p className="text-sm text-gray-600 mb-4">Track your quotations, PIs, payments, and orders</p>
+      <div className="mb-6">
+        <h3 className="text-xl font-semibold text-gray-800 mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>Business Metrics</h3>
+        <p className="text-sm text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>Track your quotations, PIs, payments, and orders</p>
+      </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <ColorfulPieChart
@@ -75,30 +89,30 @@ const BusinessMetrics = ({ quotations, proformaInvoices, payments }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <div className="text-sm font-medium text-blue-600 mb-1">Total Quotation</div>
-          <div className="text-2xl font-bold text-blue-600">{quotations?.total ?? 0}</div>
-          <div className="text-xs text-gray-500 mt-1">All quotations created</div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
+          <div className="text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wide" style={{ fontFamily: 'Inter, sans-serif' }}>Total Quotation</div>
+          <div className="text-2xl font-bold text-gray-800 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>{quotations?.total ?? 0}</div>
+          <div className="text-xs text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>All quotations created</div>
         </div>
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <div className="text-sm font-medium text-blue-600 mb-1">Total PI</div>
-          <div className="text-2xl font-bold text-blue-600">{proformaInvoices?.total ?? 0}</div>
-          <div className="text-xs text-gray-500 mt-1">All proforma invoices</div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
+          <div className="text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wide" style={{ fontFamily: 'Inter, sans-serif' }}>Total PI</div>
+          <div className="text-2xl font-bold text-gray-800 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>{proformaInvoices?.total ?? 0}</div>
+          <div className="text-xs text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>All proforma invoices</div>
         </div>
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-          <div className="text-sm font-medium text-green-600 mb-1">Total Sale Order</div>
-          <div className="text-2xl font-bold text-green-600">{payments?.totalSaleOrder ?? 0}</div>
-          <div className="text-xs text-gray-500 mt-1">Leads with advance payment</div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
+          <div className="text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wide" style={{ fontFamily: 'Inter, sans-serif' }}>Total Sale Order</div>
+          <div className="text-2xl font-bold text-gray-800 mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>{payments?.totalSaleOrder ?? 0}</div>
+          <div className="text-xs text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>Leads with advance payment</div>
         </div>
-        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-          <div className="text-sm font-medium text-purple-600 mb-1">Total Received Payment</div>
-          <div className="text-2xl font-bold text-purple-600">₹{(payments?.totalReceived ?? 0).toLocaleString('en-IN')}</div>
-          <div className="text-xs text-gray-500 mt-1">Total payments received</div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
+          <div className="text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wide" style={{ fontFamily: 'Inter, sans-serif' }}>Total Received Payment</div>
+          <div className="text-xl font-bold text-gray-800 mb-1 break-words" style={{ fontFamily: 'Inter, sans-serif' }}>{formatAmount(payments?.totalReceived ?? 0)}</div>
+          <div className="text-xs text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>Total payments received</div>
         </div>
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <div className="text-sm font-medium text-red-600 mb-1">Due Payment</div>
-          <div className="text-2xl font-bold text-red-600">₹{(payments?.duePayment ?? 0).toLocaleString('en-IN')}</div>
-          <div className="text-xs text-gray-500 mt-1">Pending payment amount</div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
+          <div className="text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wide" style={{ fontFamily: 'Inter, sans-serif' }}>Due Payment</div>
+          <div className="text-xl font-bold text-gray-800 mb-1 break-words" style={{ fontFamily: 'Inter, sans-serif' }}>{formatAmount(payments?.duePayment ?? 0)}</div>
+          <div className="text-xs text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>Pending payment amount</div>
         </div>
       </div>
     </div>

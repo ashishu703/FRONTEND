@@ -448,4 +448,3 @@ export const useMarketingSharedData = () => {
   return context;
 };
 
-export default MarketingSharedDataContext;

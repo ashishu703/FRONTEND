@@ -1,12 +1,10 @@
 "use client"
 
 import React from "react"
-import { Search, RefreshCw, User, Mail, Building2, Pencil, Eye, Plus, Download, Filter, Wallet, MessageCircle, Package, MapPin, Map, BadgeCheck, XCircle, FileText, Globe, X, Clock, Check, Clock as ClockIcon, ArrowRightLeft } from "lucide-react"
+import { Search, RefreshCw, User, Mail, Building2, Pencil, Eye, Plus, Download, Filter, Wallet, MessageCircle, Package, MapPin, Map, BadgeCheck, FileText, Globe, X, Clock, ArrowRightLeft } from "lucide-react"
 import html2pdf from 'html2pdf.js'
-import Quotation from './salespersonquotation.jsx'
 import AddCustomerForm from './salespersonaddcustomer.jsx'
 import CreateQuotationForm from './salespersoncreatequotation.jsx'
-import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton'
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")
@@ -21,13 +19,11 @@ function CardContent({ className, children }) {
 }
 
 export default function CustomerListContent() {
-  const [initialLoading, setInitialLoading] = React.useState(true)
   const [viewingCustomer, setViewingCustomer] = React.useState(null)
   const [modalTab, setModalTab] = React.useState('details')
   const [showAddCustomer, setShowAddCustomer] = React.useState(false)
   const [showCreateQuotation, setShowCreateQuotation] = React.useState(false)
   const [selectedCustomerForQuotation, setSelectedCustomerForQuotation] = React.useState(null)
-  const [quotationData, setQuotationData] = React.useState(null)
   const [lastQuotationData, setLastQuotationData] = React.useState(null)
   const [isRefreshing, setIsRefreshing] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState('')
@@ -38,66 +34,8 @@ export default function CustomerListContent() {
   const [selectedCustomer, setSelectedCustomer] = React.useState(null)
   const [paymentHistory, setPaymentHistory] = React.useState([])
   const [totalAmount, setTotalAmount] = React.useState(0)
-  
-  // Quotations data
-  const [quotations, setQuotations] = React.useState([
-    {
-      id: 'QTN-2025-001',
-      date: '2025-09-10T14:30:00',
-      amount: 15000,
-      status: 'sent',
-      remarks: 'Initial quotation for 100m cable',
-      documentUrl: '/quotation-1.pdf',
-      items: [
-        { description: '100m Copper Cable', quantity: 100, rate: 100, amount: 10000 },
-        { description: 'Installation Charges', quantity: 1, rate: 5000, amount: 5000 }
-      ],
-      total: 15000,
-      customerNotes: 'Customer requested discount on bulk order',
-      validity: '2025-10-10',
-      terms: '50% advance, 50% on delivery',
-      preparedBy: 'John Doe'
-    },
-    {
-      id: 'QTN-2025-002',
-      date: '2025-09-15T11:20:00',
-      amount: 25000,
-      status: 'revised',
-      remarks: 'Revised quotation with additional items',
-      documentUrl: '/quotation-2.pdf',
-      items: [
-        { description: '150m Copper Cable', quantity: 150, rate: 100, amount: 15000 },
-        { description: 'Installation Charges', quantity: 1, rate: 5000, amount: 5000 },
-        { description: 'Additional Wiring', quantity: 1, rate: 5000, amount: 5000 }
-      ],
-      total: 25000,
-      customerNotes: 'Customer approved the revised quote',
-      validity: '2025-10-15',
-      terms: '30% advance, 70% on completion',
-      preparedBy: 'John Doe',
-      revisionOf: 'QTN-2025-001'
-    },
-    {
-      id: 'QTN-2025-003',
-      date: '2025-09-20T16:45:00',
-      amount: 12000,
-      status: 'accepted',
-      remarks: 'Follow-up quotation for additional work',
-      documentUrl: '/quotation-3.pdf',
-      items: [
-        { description: 'Additional Wiring', quantity: 1, rate: 7000, amount: 7000 },
-        { description: 'Labor Charges', quantity: 1, rate: 5000, amount: 5000 }
-      ],
-      total: 12000,
-      customerNotes: 'Customer requested urgent completion',
-      validity: '2025-10-20',
-      terms: 'Full payment on completion',
-      preparedBy: 'John Doe'
-    }
-  ])
-  const [showPdfViewer, setShowPdfViewer] = React.useState(false)
-  const [currentPdfUrl, setCurrentPdfUrl] = React.useState('')
   // Available options for dropdowns
+  // TODO: Fetch these from API instead of hardcoding
   const productTypes = ['Conductor', 'Cable', 'AAAC', 'Aluminium', 'Copper', 'PVC', 'Wire'];
   const customerTypes = ['Business', 'Corporate', 'Individual', 'Reseller', 'Government'];
   const leadSources = ['Phone', 'Marketing', 'FB Ads', 'Google Ads', 'Referral', 'Webinar', 'Website', 'Email', 'Other'];
@@ -141,227 +79,7 @@ export default function CustomerListContent() {
     }));
   };
 
-  const clearFilters = () => {
-    setFilters({
-      customer: '',
-      business: '',
-      gstNo: '',
-      address: '',
-      state: '',
-      productType: '',
-      customerType: '',
-      enquiryBy: '',
-      date: '',
-      connectedStatus: '',
-      finalStatus: ''
-    });
-  };
-  const [customers, setCustomers] = React.useState([
-    {
-      id: 1,
-      name: "Raj Koshta",
-      phone: "9340662655",
-      email: "telesalesuser@gmail.com",
-      business: "Tech Team",
-      location: "Jabalpur",
-      gstNo: "27ABCDE1234F1Z5",
-      address: "KHASRA NO. 805/5, IT PARK, BARGI HILLS",
-      state: "Madhya Pradesh",
-      enquiryBy: "Phone",
-      productType: "Conductor",
-      customerType: "Business",
-      date: "2025-09-10",
-      connected: { status: "Connected", remark: "Spoke with Raj, requested quote", datetime: "2025-09-10 11:15 AM" },
-      finalStatus: "Hot",
-      finalInfo: { status: "next_meeting", datetime: "2025-09-12 03:30 PM", remark: "Interested" },
-      latestQuotationUrl: "#",
-      quotationsSent: 0,
-      followUpLink: "https://calendar.google.com/",
-      whatsapp: "+919340662655",
-      transferredLeads: [
-        { from: "John Doe", to: "Sarah Wilson", date: "2025-09-08", reason: "Geographic reassignment" },
-        { from: "John Doe", to: "Mike Johnson", date: "2025-09-09", reason: "Product specialization" }
-      ],
-    },
-    {
-      id: 2,
-      name: "Ankit",
-      phone: "7879431560",
-      email: "telesalesuser@gmail.com",
-      business: "Anit MBG",
-      location: "Jabalpur, MP",
-      gstNo: "27AABCU9603R1ZV",
-      address: "Anit MBG Campus, Jabalpur",
-      state: "Madhya Pradesh",
-      enquiryBy: "Marketing",
-      productType: "Cable",
-      customerType: "Corporate",
-      date: "2025-09-09",
-      connected: { status: "Follow Up", remark: "Call back tomorrow", datetime: "2025-09-09 05:30 PM" },
-      finalStatus: "Warm",
-      finalInfo: { status: "next_meeting", datetime: "2025-09-11 11:00 AM", remark: "Interested" },
-      latestQuotationUrl: "#",
-      quotationsSent: 1,
-      followUpLink: "https://calendar.google.com/",
-      whatsapp: "+917879431560",
-      transferredLeads: [],
-    },
-    {
-      id: 3,
-      name: "Mohit Patel",
-      phone: "7879431560",
-      email: "telesalesuser@gmail.com",
-      business: "Mbg Card",
-      location: "Jabalpur, MP",
-      gstNo: "27BBBCU9603R2ZA",
-      address: "Mbg Card Office, Jabalpur",
-      state: "Madhya Pradesh",
-      enquiryBy: "FB Ads",
-      productType: "AAAC",
-      customerType: "Individual",
-      date: "2025-09-08",
-      connected: { status: "Not Connected", remark: "No answer", datetime: "2025-09-08 02:10 PM" },
-      finalStatus: "Cold",
-      finalInfo: { status: "next_meeting", datetime: "2025-09-13 02:00 PM", remark: "Not Interested" },
-      latestQuotationUrl: "#",
-      quotationsSent: 0,
-      followUpLink: "https://calendar.google.com/",
-      whatsapp: "+917879431560",
-      transferredLeads: [
-        { from: "Alex Brown", to: "Mohit Patel", date: "2025-09-07", reason: "Workload distribution" }
-      ],
-    },
-    {
-      id: 4,
-      name: "Ankit",
-      phone: "7879431560",
-      email: "telesalesuser@gmail.com",
-      business: "Anit MBG",
-      location: "Jabalpur, MP",
-      gstNo: "27ABCDE1234F1Z5",
-      address: "Street 12, Jabalpur",
-      state: "Madhya Pradesh",
-      enquiryBy: "Marketing",
-      productType: "Aluminium",
-      connected: { status: "Connected", remark: "Negotiation in progress", datetime: "2025-09-07 03:45 PM" },
-      finalStatus: "Hot",
-      finalInfo: { status: "closed", datetime: "2025-09-07 04:00 PM", remark: "Interested" },
-      latestQuotationUrl: "#",
-      quotationsSent: 2,
-      followUpLink: "https://calendar.google.com/",
-      whatsapp: "+917879431560",
-      transferredLeads: [],
-    },
-    {
-      id: 5,
-      name: "Mohit Patel Test Name",
-      phone: "7879431560",
-      email: "test@gmail.com",
-      business: "Test Business MBG Card ndia PVT LTD Jabalpur",
-      location: "Jabalpur, MP",
-      gstNo: "27TEST1234F1Z5",
-      address: "Industrial Area, Jabalpur",
-      state: "Madhya Pradesh",
-      enquiryBy: "Referral",
-      productType: "Copper",
-      connected: { status: "Connected", remark: "Sent brochure via email", datetime: "2025-09-06 10:00 AM" },
-      finalStatus: "Warm",
-      finalInfo: { status: "next_meeting", datetime: "2025-09-15 10:30 AM", remark: "Interested" },
-      latestQuotationUrl: "#",
-      quotationsSent: 3,
-      followUpLink: "https://calendar.google.com/",
-      whatsapp: "+917879431560",
-      transferredLeads: [],
-    },
-    {
-      id: 6,
-      name: "Mohit Patel Test Name",
-      phone: "7879431560",
-      email: "test@gmail.com",
-      business: "Test Business MBG Card ndia PVT LTD Jabalpur",
-      location: "Jabalpur, MP",
-      gstNo: "27TEST5678F1Z5",
-      address: "Industrial Park, Jabalpur",
-      state: "Madhya Pradesh",
-      enquiryBy: "Marketing",
-      productType: "PVC",
-      connected: { status: "Follow Up", remark: "Awaiting requirement list", datetime: "2025-09-05 01:20 PM" },
-      finalStatus: "Warm",
-      finalInfo: { status: "next_meeting", datetime: "2025-09-14 05:00 PM", remark: "Interested" },
-      latestQuotationUrl: "#",
-      quotationsSent: 0,
-      followUpLink: "https://calendar.google.com/",
-      whatsapp: "+917879431560",
-      transferredLeads: [],
-    },
-    {
-      id: 7,
-      name: "Abid",
-      phone: "7845416535",
-      email: "N/A",
-      business: "MBG SALES",
-      location: "Pune",
-      gstNo: "27ABIDA1234F1Z5",
-      address: "MG Road, Pune",
-      state: "Maharashtra",
-      enquiryBy: "Google Ads",
-      productType: "Cable",
-      connected: { status: "Connected", remark: "Shared price list", datetime: "2025-09-04 04:00 PM" },
-      finalStatus: "Hot",
-      finalInfo: { status: "closed", datetime: "2025-09-04 04:30 PM", remark: "Interested" },
-      latestQuotationUrl: "#",
-      quotationsSent: 1,
-      followUpLink: "https://calendar.google.com/",
-      whatsapp: "+917845416535",
-      transferredLeads: [
-        { from: "David Lee", to: "Abid", date: "2025-09-03", reason: "Regional expertise" },
-        { from: "Emma Davis", to: "Abid", date: "2025-09-04", reason: "Product knowledge" },
-        { from: "Tom Wilson", to: "Abid", date: "2025-09-05", reason: "Customer relationship" }
-      ],
-    },
-    {
-      id: 8,
-      name: "Naman",
-      phone: "9340662655",
-      email: "N/A",
-      business: "FINANCE",
-      location: "Delhi",
-      gstNo: "07NAMAN1234F1Z5",
-      address: "Connaught Place, Delhi",
-      state: "Delhi",
-      enquiryBy: "Webinar",
-      productType: "Wire",
-      connected: { status: "Not Interested", remark: "Budget constraints", datetime: "2025-09-03 12:30 PM" },
-      finalStatus: "Lost",
-      finalInfo: { status: "closed", datetime: "2025-09-03 01:00 PM", remark: "Not Interested" },
-      latestQuotationUrl: "#",
-      quotationsSent: 0,
-      followUpLink: "https://calendar.google.com/",
-      whatsapp: "+919340662655",
-      transferredLeads: [],
-    },
-    {
-      id: 9,
-      name: "Gourav",
-      phone: "9340662655",
-      email: "N/A",
-      business: "MBG SALES",
-      location: "Pune",
-      gstNo: "27GOURA1234F1Z5",
-      address: "Baner, Pune",
-      state: "Maharashtra",
-      enquiryBy: "Facebook",
-      productType: "Conductor",
-      connected: { status: "Connected", remark: "Site visit scheduled", datetime: "2025-09-02 09:45 AM" },
-      finalStatus: "Warm",
-      finalInfo: { status: "next_meeting", datetime: "2025-09-16 09:45 AM", remark: "Interested" },
-      latestQuotationUrl: "#",
-      quotationsSent: 0,
-      followUpLink: "https://calendar.google.com/",
-      whatsapp: "+919340662655",
-      transferredLeads: [],
-    },
-  ])
+  const [customers, setCustomers] = React.useState([])
 
   const handleEdit = (customer) => {
     setEditingCustomer(customer)
@@ -386,7 +104,6 @@ export default function CustomerListContent() {
   }
 
   const handleSaveQuotation = (newQuotationData) => {
-    setQuotationData(newQuotationData)
     setLastQuotationData(newQuotationData) // Store the last created quotation
     
     // Update customer's quotation count and latest quotation flag
@@ -410,47 +127,20 @@ export default function CustomerListContent() {
   const handleViewLatestQuotation = async (customer) => {
     try {
       if (lastQuotationData && lastQuotationData.customer?.id === customer.id) {
-        // Generate PDF and show in modal
-        const pdfBlob = await generateQuotationPDF(lastQuotationData, customer, true)
-        const pdfUrl = URL.createObjectURL(pdfBlob)
-        setCurrentPdfUrl(pdfUrl)
-        setShowPdfViewer(true)
+        // Generate PDF and download
+        await generateQuotationPDF(lastQuotationData, customer, false)
       }
     } catch (error) {
       console.error('Error viewing quotation:', error)
-      // You might want to show an error message to the user here
       alert('Failed to generate PDF. Please try again.')
     }
   }
 
   const handleWalletClick = async (customer) => {
-    // Sample payment history data
-    const sampleHistory = [
-      {
-        id: 1,
-        date: '2025-09-10',
-        amount: 12500.00,
-        receiptNo: 'RCPT-' + Math.floor(100000 + Math.random() * 900000),
-        paymentMethod: 'Bank Transfer',
-        status: 'Completed',
-        description: 'Final Payment for Order #ORD-2025-0098'
-      },
-      {
-        id: 2,
-        date: '2025-08-25',
-        amount: 8750.00,
-        receiptNo: 'RCPT-' + Math.floor(100000 + Math.random() * 900000),
-        paymentMethod: 'UPI',
-        status: 'Completed',
-        description: 'Advance Payment for Order #ORD-2025-0098'
-      }
-    ]
-    
-    // Calculate total amount (in a real app, this would come from the order/quote)
-    const customerTotal = 30000.00 // Example total amount
-    
-    setPaymentHistory(sampleHistory)
-    setTotalAmount(customerTotal)
+    // TODO: Fetch payment history from API
+    // For now, initialize with empty data
+    setPaymentHistory([])
+    setTotalAmount(0)
     setSelectedCustomer({
       id: customer.id,
       name: customer.name,
@@ -460,31 +150,6 @@ export default function CustomerListContent() {
     setShowPaymentDetails(true)
   }
 
-  const handleDownloadReceipt = () => {
-    // In a real app, this would generate a PDF receipt
-    // For now, we'll create a simple download link
-    const receiptText = `
-      PAYMENT RECEIPT
-      ----------------------------
-      Receipt No: ${selectedPayment.receiptNo}
-      Date: ${selectedPayment.date}
-      Customer: ${selectedPayment.customerName}
-      Amount: ${selectedPayment.amount}
-      Payment Method: ${selectedPayment.paymentMethod}
-      Status: ${selectedPayment.status}
-      
-      Thank you for your payment!
-      ANODE ELECTRIC PVT. LTD.
-    `
-    
-    const element = document.createElement('a')
-    const file = new Blob([receiptText], {type: 'text/plain'})
-    element.href = URL.createObjectURL(file)
-    element.download = `payment-receipt-${selectedPayment.receiptNo}.txt`
-    document.body.appendChild(element)
-    element.click()
-    document.body.removeChild(element)
-  }
 
   const handleExportLeads = async () => {
     try {
@@ -621,6 +286,33 @@ export default function CustomerListContent() {
     tempDiv.style.zIndex = '9999'
     tempDiv.style.visibility = 'hidden'
     
+    // Build items rows HTML
+    let itemsRowsHtml = ''
+    if (quotationData?.items && quotationData.items.length > 0) {
+      itemsRowsHtml = quotationData.items.map((item, index) => {
+        const quantity = item.quantity || 1
+        const rate = item.rate || item.price || 0
+        const amount = item.amount || (quantity * rate) || 0
+        return `
+          <tr>
+            <td style="border: 1px solid black; padding: 8px;">${index + 1}</td>
+            <td style="border: 1px solid black; padding: 8px;">${item.description || item.product || 'N/A'}</td>
+            <td style="border: 1px solid black; padding: 8px; text-align: center;">${quantity}</td>
+            <td style="border: 1px solid black; padding: 8px; text-align: right;">${rate.toFixed(2)}</td>
+            <td style="border: 1px solid black; padding: 8px; text-align: right;">${amount.toFixed(2)}</td>
+          </tr>
+        `
+      }).join('')
+    } else {
+      itemsRowsHtml = `
+        <tr>
+          <td colspan="5" style="border: 1px solid black; padding: 8px; text-align: center;">No items</td>
+        </tr>
+      `
+    }
+    
+    const totalAmount = quotationData?.total || quotationData?.totalAmount || 0
+    
     // Simple test content
     tempDiv.innerHTML = `
       <div style="width: 100%; background: white; padding: 20px;">
@@ -663,16 +355,10 @@ export default function CustomerListContent() {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td style="border: 1px solid black; padding: 8px;">1</td>
-              <td style="border: 1px solid black; padding: 8px;">Sample Product</td>
-              <td style="border: 1px solid black; padding: 8px; text-align: center;">1</td>
-              <td style="border: 1px solid black; padding: 8px; text-align: right;">1000.00</td>
-              <td style="border: 1px solid black; padding: 8px; text-align: right;">1000.00</td>
-            </tr>
+            ${itemsRowsHtml}
             <tr style="background-color: #f0f0f0;">
               <td style="border: 1px solid black; padding: 8px;" colspan="4"><strong>Total</strong></td>
-              <td style="border: 1px solid black; padding: 8px; text-align: right;"><strong>1000.00</strong></td>
+              <td style="border: 1px solid black; padding: 8px; text-align: right;"><strong>${totalAmount.toFixed(2)}</strong></td>
             </tr>
           </tbody>
         </table>
@@ -803,9 +489,9 @@ export default function CustomerListContent() {
           datetime: "", 
           remark: newCustomerData.finalStatus 
         },
-        latestQuotationUrl: "#",
+        latestQuotationUrl: null,
         quotationsSent: 0,
-        followUpLink: "https://calendar.google.com/",
+        followUpLink: null,
         whatsapp: newCustomerData.whatsappNumber ? `+91${newCustomerData.whatsappNumber}` : null,
       }
       
@@ -819,38 +505,17 @@ export default function CustomerListContent() {
   const handleRefresh = async () => {
     setIsRefreshing(true)
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // In a real application, you would fetch fresh data from your API
-    // For now, we'll simulate refreshing by updating timestamps and connection status
-    setCustomers(prevCustomers => 
-      prevCustomers.map(customer => ({
-        ...customer,
-        connected: {
-          ...customer.connected,
-          datetime: new Date().toLocaleString()
-        },
-        // Randomly update some connection statuses to simulate real-time changes
-        ...(Math.random() > 0.7 && {
-          connected: {
-            ...customer.connected,
-            status: ['Connected', 'Follow Up', 'Not Connected'][Math.floor(Math.random() * 3)],
-            datetime: new Date().toLocaleString()
-          }
-        })
-      }))
-    )
-    
-    setIsRefreshing(false)
-    
-    // Show success feedback
-    const refreshButton = document.querySelector('[data-refresh-btn]')
-    if (refreshButton) {
-      refreshButton.style.transform = 'scale(1.1)'
-      setTimeout(() => {
-        refreshButton.style.transform = 'scale(1)'
-      }, 200)
+    try {
+      // TODO: Fetch fresh data from API
+      // const response = await apiClient.get(API_ENDPOINTS.SALESPERSON_CUSTOMERS_ME())
+      // setCustomers(response.data || [])
+      
+      // For now, just reset refreshing state
+      await new Promise(resolve => setTimeout(resolve, 500))
+    } catch (error) {
+      console.error('Error refreshing customers:', error)
+    } finally {
+      setIsRefreshing(false)
     }
   }
 
@@ -1157,11 +822,7 @@ export default function CustomerListContent() {
                         className="mt-1 w-full text-xs p-1 border rounded bg-white"
                       >
                         <option value="">All Statuses</option>
-                        <option value="Hot">Hot</option>
-                        <option value="Warm">Warm</option>
-                        <option value="Cold">Cold</option>
-                        <option value="Lost">Lost</option>
-                        <option value="Won">Won</option>
+                        {/* TODO: Fetch status options from API */}
                       </select>
                     )}
                   </th>
@@ -1445,7 +1106,7 @@ export default function CustomerListContent() {
         </div>
       )}
       {viewingCustomer && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[110]">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-0">
             <div className="px-6 pt-5">
               <h2 className="text-lg font-semibold text-gray-900">{viewingCustomer.name}</h2>
@@ -1493,145 +1154,10 @@ export default function CustomerListContent() {
                     </div>
                   </div>
 
-                  {/* Invoice Details Box - Exact positioning */}
-                  <div style={{marginBottom: '20px'}}>
-                    <div style={{border: '2px solid #000', padding: '15px', backgroundColor: '#f5f5f5', float: 'right', width: '300px'}}>
-                      <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px'}}>
-                        <div><strong>Voucher No.:</strong> 415</div>
-                        <div><strong>Dated:</strong> {new Date().toLocaleDateString('en-GB')}</div>
-                        <div><strong>Mode/Terms of Payment:</strong> ADVANCE</div>
-                        <div><strong>Buyer's Ref./Order No.:</strong> 415</div>
-                        <div><strong>Other References:</strong> DIRECT SALE</div>
-                        <div><strong>Dispatched through:</strong> BY TRANSPORT</div>
-                        <div><strong>Destination:</strong> Chandrapur Transport</div>
-                        <div><strong>Terms of Delivery:</strong> Delivery :- FOR upto Chandrapur Transport</div>
-                      </div>
-                    </div>
-                    <div style={{clear: 'both'}}></div>
-                  </div>
-
-                  {/* Company Details - 3 column layout exactly like your PI */}
-                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px'}}>
-                    {/* Seller Details */}
-                    <div>
-                      <div style={{fontSize: '16px', fontWeight: 'bold', marginBottom: '8px'}}>ANODE ELECTRIC PVT. LTD.</div>
-                      <div style={{fontSize: '11px', lineHeight: '1.3'}}>
-                        <div>Plot No.FA-42, Ghugus Road, Chinchala</div>
-                        <div>Sai Mobile Training Institute, Additional Chandrapur</div>
-                        <div>Maharashtra - 442406, India</div>
-                        <div><strong>GSTIN/UIN:</strong> 27AADCF6974E1ZF</div>
-                        <div><strong>State Name:</strong> Maharashtra, Code: 27</div>
-                        <div><strong>Contact:</strong> +91-9876543210</div>
-                        <div><strong>E-Mail:</strong> info@anodeelectric.com</div>
-                      </div>
-                    </div>
-
-                    {/* Consignee Details */}
-                    <div>
-                      <div style={{fontSize: '12px', fontWeight: '600', marginBottom: '5px'}}>Consignee (Ship to)</div>
-                      <div style={{fontSize: '11px', lineHeight: '1.3'}}>
-                        <div style={{fontWeight: '600'}}>FORSICA SHIND ELECTRICALS PRIVATE LIMITED</div>
-                        <div>Chandrapur Transport, Chandrapur</div>
-                        <div>Maharashtra - 442406, India</div>
-                        <div><strong>GSTIN/UIN:</strong> 27AADCF6974E1ZF</div>
-                        <div><strong>PAN/IT No.:</strong> AADCF6974E</div>
-                        <div><strong>State Name:</strong> Maharashtra, Code: 27</div>
-                      </div>
-                    </div>
-
-                    {/* Bill To Details */}
-                    <div>
-                      <div style={{fontSize: '12px', fontWeight: '600', marginBottom: '5px'}}>Bill To</div>
-                      <div style={{fontSize: '11px', lineHeight: '1.3'}}>
-                        <div style={{fontWeight: '600'}}>ANODE AND ELECTRICALS PRIVATE LIMITED</div>
-                        <div>Plot No.FA-42, Ghugus Road, Chinchala</div>
-                        <div>Sai Mobile Training Institute, Additional Chandrapur</div>
-                        <div>Maharashtra - 442406, India</div>
-                        <div><strong>GSTIN/UIN:</strong> 27AADCF6974E1ZF</div>
-                        <div><strong>PAN/IT No.:</strong> AADCF6974E</div>
-                        <div><strong>State Name:</strong> Maharashtra, Code: 27</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Items Table - Exact structure */}
-                  <div style={{marginBottom: '20px'}}>
-                    <table style={{width: '100%', borderCollapse: 'collapse', border: '1px solid #000'}}>
-                      <thead>
-                        <tr style={{backgroundColor: '#f0f0f0'}}>
-                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>S.No.</th>
-                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>Description of Goods</th>
-                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>HSN/SAC</th>
-                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>Due on</th>
-                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>Quantity</th>
-                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>Rate</th>
-                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>per</th>
-                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>Disc.%</th>
-                          <th style={{border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '10px', fontWeight: '600'}}>Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>1</td>
-                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>
-                            <div style={{fontWeight: '600'}}>COVERED CONDUCTOR 34 SQMM</div>
-                            <div style={{fontSize: '10px', color: '#666'}}>COVERED CONDUCTOR 34SQMM XLPE 3 LAYER</div>
-                          </td>
-                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>76141000</td>
-                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>{new Date().toLocaleDateString('en-GB')}</td>
-                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>600 MTR</td>
-                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>48.00</td>
-                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>MTR</td>
-                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>-</td>
-                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>28,800.00</td>
-                        </tr>
-                        <tr>
-                          <td colSpan="8" style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px', textAlign: 'right', fontWeight: '600'}}>IGST:</td>
-                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}>5,184.00</td>
-                        </tr>
-                        <tr style={{backgroundColor: '#f0f0f0'}}>
-                          <td colSpan="4" style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px', fontWeight: '600'}}>Total</td>
-                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px', fontWeight: '600'}}>600 MTR</td>
-                          <td colSpan="3" style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px'}}></td>
-                          <td style={{border: '1px solid #000', padding: '4px 6px', fontSize: '11px', fontWeight: '600'}}>33,984.00</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Footer Section - Exact positioning */}
-                  <div>
-                    <div style={{fontSize: '11px', marginBottom: '15px'}}>
-                      <strong>Amount Chargeable (in words):</strong> INR Thirty Three Thousand Nine Hundred Eighty Four Only
-                    </div>
-                    
-                    <div style={{border: '1px solid #000', padding: '15px', backgroundColor: '#f5f5f5', marginBottom: '15px'}}>
-                      <div style={{fontSize: '12px', fontWeight: '600', marginBottom: '8px'}}>Company's Bank Details</div>
-                      <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', fontSize: '11px'}}>
-                        <div>
-                          <div><strong>A/c Holder's Name:</strong> ANODE ELECTRIC PVT. LTD.</div>
-                          <div><strong>Bank Name:</strong> ICICI BANK 36601</div>
-                        </div>
-                        <div>
-                          <div><strong>A/c No.:</strong> 777705336601</div>
-                          <div><strong>Branch & IFS Code:</strong> NIWARGANJ & ICIC0007345</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '10px'}}>
-                      <div style={{fontSize: '11px'}}>
-                        <div style={{textAlign: 'right'}}>E. & O.E</div>
-                      </div>
-                      <div style={{textAlign: 'center'}}>
-                        <div style={{fontSize: '11px', fontWeight: '600'}}>for ANODE ELECTRIC PVT. LTD.</div>
-                        <div style={{marginTop: '30px', fontSize: '11px'}}>Authorised Signatory</div>
-                      </div>
-                    </div>
-
-                    <div style={{textAlign: 'center', fontSize: '10px', color: '#666'}}>
-                      This is a Computer Generated Document
-                    </div>
+                  {/* TODO: Fetch Proforma Invoice data from API and display here */}
+                  <div style={{padding: '20px', textAlign: 'center', color: '#666'}}>
+                    <p>Proforma Invoice data will be displayed here</p>
+                    <p style={{fontSize: '11px', marginTop: '10px'}}>This section requires API integration to fetch PI details</p>
                   </div>
                 </div>
               )}
@@ -1719,7 +1245,7 @@ export default function CustomerListContent() {
 
       {/* Payment Details Modal */}
       {showPaymentDetails && selectedCustomer && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[110] overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 flex-1 overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
@@ -1797,8 +1323,8 @@ export default function CustomerListContent() {
                 type="button"
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 onClick={() => {
-                  // In a real app, this would open a form to add a new payment
-                  alert('Add new payment functionality would open here');
+                  // TODO: Open form to add a new payment
+                  console.log('Add payment functionality - to be implemented')
                 }}
               >
                 Add Payment

@@ -115,15 +115,15 @@ export default function ProductToolbar({ onSearch, onAddProduct, onFilterChange,
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
         {/* Left side - Search */}
         <div className="relative w-full sm:w-80">
-          <div className="flex">
+          <div className="flex shadow-lg rounded-xl overflow-hidden">
             <input
               type="text"
-              className="flex-1 px-4 py-2 border border-blue-500 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              className="flex-1 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white border-gray-200 text-gray-900 placeholder-gray-500"
               placeholder="Search by customer, quotation ID (QT), lead ID..."
               value={searchQuery}
               onChange={handleSearch}
             />
-            <button className="px-4 py-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md">
               <Search className="h-4 w-4" />
             </button>
           </div>
@@ -132,19 +132,22 @@ export default function ProductToolbar({ onSearch, onAddProduct, onFilterChange,
         {/* Right side - Filters and Actions */}
         <div className="flex items-center gap-3">
           {/* Quotation ID Filter */}
-          <input
-            type="text"
-            placeholder="Filter by Quotation ID (QT...)"
-            value={filters.quotationId}
-            onChange={(e) => handleFilterChange('quotationId', e.target.value)}
-            className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-48"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Filter by Quotation ID (QT...)"
+              value={filters.quotationId}
+              onChange={(e) => handleFilterChange('quotationId', e.target.value)}
+              className="px-4 py-2.5 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-gray-900 placeholder-gray-500 transition-all duration-200 hover:border-purple-300 w-48 shadow-sm"
+            />
+            <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-0 hover:opacity-10 pointer-events-none transition-opacity duration-200"></div>
+          </div>
 
           {/* Payment Type Filter */}
           <select
             value={filters.paymentType}
             onChange={(e) => handleFilterChange('paymentType', e.target.value)}
-            className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="px-4 py-2.5 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-gray-900 transition-all duration-200 hover:border-purple-300 shadow-sm"
           >
             <option value="">All Payments</option>
             <option value="advance">Advance Payment</option>
@@ -157,7 +160,7 @@ export default function ProductToolbar({ onSearch, onAddProduct, onFilterChange,
 
           <button
             onClick={onRefresh}
-            className="px-3 py-2 rounded-md bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 inline-flex items-center gap-2"
+            className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 inline-flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
             title="Refresh"
           >
             <RotateCw className="h-4 w-4" />
@@ -200,7 +203,7 @@ export default function ProductToolbar({ onSearch, onAddProduct, onFilterChange,
 
       {/* Add/Edit Item Modal */}
       {showAddItemModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110]">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
@@ -359,7 +362,7 @@ export function ProductPagination({
   const goToLastPage = () => onPageChange(totalPages);
 
   return (
-    <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-lg border border-gray-200">
+    <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 px-4 py-4 border-t-2 border-blue-200 bg-gradient-to-r from-blue-50/50 to-purple-50/50">
       {/* Items per page selector */}
       <div className="flex items-center gap-2">
         <span className="text-sm text-gray-700">Show:</span>

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Eye, Edit, Mail, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCcw } from 'lucide-react';
+import { Eye, Edit, Mail, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCcw, Clock, Calendar, MessageSquare, TrendingUp, FileText, Package, CalendarDays, MoreHorizontal, User, Building2, MapPin, Globe } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
@@ -11,7 +11,6 @@ import { getProducts } from '../../constants/products';
 
 // Edit Lead Status Modal Component
 export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
-  // Parse enquired products from lead - support both old format (array of strings) and new format (array of objects)
   const parseEnquiredProducts = () => {
     if (!lead?.enquired_products) return [];
     
@@ -149,28 +148,35 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   const showDateTimeFields = ['appointment scheduled', 'interested', 'negotiation', 'call back request'].includes(formData.follow_up_status);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 my-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Update Lead Status & Follow Up</h3>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[110] overflow-y-auto p-3 sm:p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-auto my-4 max-h-[95vh] overflow-hidden flex flex-col">
+        <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 p-4 sm:p-5 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+              <Edit className="h-5 w-5 text-white" />
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-white">Update Lead Status & Follow Up</h3>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="p-1.5 sm:p-2 hover:bg-white/20 rounded-lg transition-colors text-white hover:text-gray-100"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
-
-        <div className="space-y-4">
+        
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+          <div className="space-y-4 sm:space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-blue-500" />
               Follow Up Status
             </label>
             <select
               name="follow_up_status"
               value={formData.follow_up_status}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-gray-900 transition-all duration-200 hover:border-purple-300"
             >
               {followUpOptions.map(option => (
                 <option key={option.value} value={option.value}>
@@ -181,28 +187,30 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-purple-500" />
               Follow Up Remark
             </label>
             <textarea
               name="follow_up_remark"
               value={formData.follow_up_remark}
               onChange={handleInputChange}
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              rows={3}
+              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-gray-900 transition-all duration-200 hover:border-purple-300 resize-none"
               placeholder="Enter any remarks about the follow up..."
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Lead Status *
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-pink-500" />
+              Lead Status <span className="text-red-500">*</span>
             </label>
             <select
               name="sales_status"
               value={formData.sales_status}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 bg-white text-gray-900 transition-all duration-200 hover:border-pink-300"
             >
               {statusOptions.map(option => (
                 <option key={option.value} value={option.value}>
@@ -213,26 +221,28 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <FileText className="h-4 w-4 text-indigo-500" />
               Lead Status Remark
             </label>
             <textarea
               name="sales_status_remark"
               value={formData.sales_status_remark}
               onChange={handleInputChange}
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              rows={3}
+              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 transition-all duration-200 hover:border-indigo-300 resize-none"
               placeholder="Enter any remarks about the lead status..."
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <Package className="h-4 w-4 text-emerald-500" />
               Enquired Products
             </label>
             <select
               onChange={handleProductSelect}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-gray-900 transition-all duration-200 hover:border-emerald-300"
               defaultValue=""
             >
               <option value="">Select Product</option>
@@ -246,39 +256,39 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
             
             {/* Display selected products */}
             {formData.enquired_products.length > 0 && (
-              <div className="mt-2 max-h-64 overflow-y-auto space-y-2 pr-1">
+              <div className="mt-3 max-h-64 overflow-y-auto space-y-3 pr-1">
                 {formData.enquired_products.map((item, index) => (
-                  <div key={index} className="bg-blue-50 px-3 py-3 rounded-md border border-blue-100">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-800 flex-1 break-words pr-2">
+                  <div key={index} className="bg-gradient-to-br from-emerald-50 to-teal-50 px-4 py-4 rounded-lg border-2 border-emerald-200 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-semibold text-gray-800 flex-1 break-words pr-2">
                         {item.product === 'Other' ? formData.other_product || 'Other' : item.product}
                       </span>
                       <button
                         type="button"
                         onClick={() => handleRemoveProduct(index)}
-                        className="text-red-600 hover:text-red-800 text-sm font-medium flex-shrink-0"
+                        className="px-3 py-1 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded-md transition-colors flex-shrink-0"
                       >
                         Remove
                       </button>
                     </div>
                     <div className="space-y-2">
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">Quantity</label>
                         <input
                           type="text"
                           value={item.quantity}
                           onChange={(e) => handleProductQuantityChange(index, e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
                           placeholder="Enter quantity..."
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Remark</label>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">Remark</label>
                         <textarea
                           value={item.remark}
                           onChange={(e) => handleProductRemarkChange(index, e.target.value)}
                           rows={2}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white resize-none"
                           placeholder="Enter remark..."
                         />
                       </div>
@@ -289,8 +299,9 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
             )}
             
             {showOtherInput && (
-              <div className="mt-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="mt-3">
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <Package className="h-4 w-4 text-emerald-500" />
                   Other Product Name
                 </label>
                 <input
@@ -298,7 +309,7 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
                   name="other_product"
                   value={formData.other_product}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white transition-all duration-200 hover:border-emerald-300"
                   placeholder="Enter other product name..."
                 />
               </div>
@@ -308,47 +319,53 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
           {showDateTimeFields && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Follow Up Date *
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-cyan-500" />
+                  Follow Up Date <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="date"
                   name="follow_up_date"
                   value={formData.follow_up_date}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 bg-white transition-all duration-200 hover:border-cyan-300"
                   required={showDateTimeFields}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Follow Up Time *
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-cyan-500" />
+                  Follow Up Time <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="time"
                   name="follow_up_time"
                   value={formData.follow_up_time}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 bg-white transition-all duration-200 hover:border-cyan-300"
                   required={showDateTimeFields}
                 />
-                <p className="text-xs text-gray-500 mt-1">Time will be saved in Indian Standard Time (IST)</p>
+                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Time will be saved in Indian Standard Time (IST)
+                </p>
               </div>
             </>
           )}
+          </div>
         </div>
 
-        <div className="flex justify-end space-x-3 mt-6">
+        <div className="p-4 sm:p-6 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 flex flex-col sm:flex-row justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
+            className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all duration-200"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-lg hover:shadow-xl transition-all duration-200"
           >
             Update Status & Follow Up
           </button>
@@ -375,6 +392,7 @@ export default function LeadStatusPage() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
+  const [openActionMenu, setOpenActionMenu] = useState(null); // Track which action menu is open
   const [timelineLead, setTimelineLead] = useState(null);
   const [showCustomerTimeline, setShowCustomerTimeline] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -561,6 +579,17 @@ export default function LeadStatusPage() {
       fetchLeads(1, true);
     }
   }, [searchQuery, statusFilter, followUpFilter, quotationFilter, piFilter]);
+
+  // Close action menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openActionMenu && !event.target.closest('.action-menu-container')) {
+        setOpenActionMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openActionMenu]);
 
   const handleSearch = (query) => {
     setSearchQuery(query);
@@ -752,14 +781,28 @@ export default function LeadStatusPage() {
   const getStatusBadge = (status) => {
     const statusLower = status?.toLowerCase() || '';
     const statusClasses = {
-      'win': 'bg-green-100 text-green-800 border border-green-200',
+      'pending': 'bg-yellow-100 text-yellow-800 border border-yellow-200',
+      'running': 'bg-blue-100 text-blue-800 border border-blue-200',
+      'converted': 'bg-green-100 text-green-800 border border-green-200',
+      'interested': 'bg-purple-100 text-purple-800 border border-purple-200',
+      'win/closed': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+      'win': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+      'closed': 'bg-gray-100 text-gray-800 border border-gray-200',
+      'lost': 'bg-red-100 text-red-800 border border-red-200',
       'loose': 'bg-red-100 text-red-800 border border-red-200',
       'follow up': 'bg-yellow-100 text-yellow-800 border border-yellow-200',
       'not interested': 'bg-gray-100 text-gray-800 border border-gray-200',
     };
 
     const statusText = {
+      'pending': 'Pending',
+      'running': 'Running',
+      'converted': 'Converted',
+      'interested': 'Interested',
+      'win/closed': 'Win/Closed',
       'win': 'Win',
+      'closed': 'Closed',
+      'lost': 'Lost',
       'loose': 'Loose',
       'follow up': 'Follow Up',
       'not interested': 'Not Interested',
@@ -776,6 +819,7 @@ export default function LeadStatusPage() {
 
   // Get follow up badge
   const getFollowUpBadge = (status) => {
+    const statusLower = status?.toLowerCase() || '';
     const followUpClasses = {
       'appointment scheduled': 'bg-blue-100 text-blue-800 border border-blue-200',
       'not interested': 'bg-red-100 text-red-800 border border-red-200',
@@ -788,6 +832,7 @@ export default function LeadStatusPage() {
       'unreachable/call not connected': 'bg-red-100 text-red-800 border border-red-200',
       'currently not required': 'bg-gray-100 text-gray-800 border border-gray-200',
       'not relevant': 'bg-gray-100 text-gray-800 border border-gray-200',
+      'pending': 'bg-yellow-100 text-yellow-800 border border-yellow-200',
     };
 
     const followUpText = {
@@ -802,13 +847,14 @@ export default function LeadStatusPage() {
       'unreachable/call not connected': 'Unreachable',
       'currently not required': 'Not Required',
       'not relevant': 'Not Relevant',
+      'pending': 'Pending',
     };
 
     return (
       <span
-        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${followUpClasses[status] || 'bg-gray-100 text-gray-800 border border-gray-200'}`}
+        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${followUpClasses[statusLower] || 'bg-gray-100 text-gray-800 border border-gray-200'}`}
       >
-        {followUpText[status] || status || 'Pending'}
+        {followUpText[statusLower] || status || 'Pending'}
       </span>
     );
   };
@@ -845,18 +891,20 @@ export default function LeadStatusPage() {
   return (
     <div className={`pt-6 pb-6 pl-6 pr-0 transition-all duration-300 ${showCustomerTimeline ? 'pr-[360px]' : ''}`}>
       {/* Search and Filters */}
-      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 mb-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex-1 flex items-center gap-2">
-            <div className="relative w-full sm:w-96">
-              <input
-                type="text"
-                placeholder="Search by customer name, phone, email, business, lead id..."
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      <div className="mb-6">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="flex shadow-lg rounded-xl overflow-hidden">
+              <input 
+                type="text" 
+                placeholder="Search items..." 
+                value={searchQuery} 
+                onChange={(e) => handleSearch(e.target.value)} 
+                className="px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 bg-white border-gray-200 text-gray-900 placeholder-gray-500" 
               />
-              <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+              <button className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md">
+                <Search className="h-4 w-4" />
+              </button>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -970,26 +1018,44 @@ export default function LeadStatusPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Lead ID
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer Name
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-blue-600" />
+                      <span>CUSTOMER</span>
+                    </div>
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Business Name
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-purple-600" />
+                      <span>BUSINESS</span>
+                    </div>
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[200px]">
-                    Address
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider max-w-[200px]">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-red-600" />
+                      <span>ADDRESS</span>
+                    </div>
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Follow Up
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-teal-600" />
+                      <span>FOLLOW UP</span>
+                    </div>
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Lead Status
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                      <span>SALES STATUS</span>
+                    </div>
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Action
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    <div className="flex items-center gap-2">
+                      <MoreHorizontal className="h-4 w-4 text-gray-600" />
+                      <span>ACTION</span>
+                    </div>
                   </th>
                 </tr>
               </thead>
@@ -1002,34 +1068,32 @@ export default function LeadStatusPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div>
-                          <div className="font-medium text-sm text-gray-900">{lead.name}</div>
-                          <div className="text-xs text-gray-500">{lead.phone}</div>
+                          <div className="font-semibold text-sm text-gray-900 truncate max-w-[200px]" title={lead.name}>{lead.name}</div>
+                          <div className="text-xs text-gray-500 truncate max-w-[200px]" title={lead.phone}>{lead.phone}</div>
                           {lead.email && lead.email !== "N/A" && (
-                            <div className="text-xs mt-1 text-cyan-600">
+                            <div className="text-xs mt-1 text-cyan-600 truncate max-w-[200px]">
                               <button 
                                 onClick={() => window.open(`mailto:${lead.email}?subject=Follow up from ANOCAB&body=Dear ${lead.name},%0D%0A%0D%0AThank you for your interest in our products.%0D%0A%0D%0ABest regards,%0D%0AANOCAB Team`, '_blank')}
-                                className="inline-flex items-center gap-1 transition-colors hover:text-cyan-700"
-                                title="Send Email"
+                                className="inline-flex items-center gap-1 transition-colors hover:text-cyan-700 truncate"
+                                title={lead.email}
                               >
-                                <Mail className="h-3 w-3" /> {lead.email}
+                                <Mail className="h-3 w-3 flex-shrink-0" /> <span className="truncate">{lead.email}</span>
                               </button>
                             </div>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {lead.business || 'N/A'}
+                      <td className="px-6 py-4 text-sm text-gray-500 max-w-[150px]">
+                        <div className="truncate" title={lead.business || 'N/A'}>{lead.business || 'N/A'}</div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 max-w-[200px] align-top">
-                        <div className="break-words whitespace-normal" style={{ wordBreak: 'break-word', maxWidth: '200px', lineHeight: '1.4em' }}>
-                        {lead.address || 'N/A'}
-                        </div>
+                      <td className="px-6 py-4 text-sm text-gray-500 max-w-[200px]">
+                        <div className="truncate" title={lead.address || 'N/A'}>{lead.address || 'N/A'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="space-y-1">
                           {getFollowUpBadge(lead.follow_up_status)}
                           {lead.follow_up_remark && (
-                            <div className="text-xs text-gray-600 italic">
+                            <div className="text-xs text-gray-600 italic truncate max-w-[200px]" title={lead.follow_up_remark}>
                               "{lead.follow_up_remark}"
                             </div>
                           )}
@@ -1039,36 +1103,55 @@ export default function LeadStatusPage() {
                         <div className="space-y-1">
                           {getStatusBadge(lead.sales_status)}
                           {lead.sales_status_remark && (
-                            <div className="text-xs text-gray-600 italic">
+                            <div className="text-xs text-gray-600 italic truncate max-w-[200px]" title={lead.sales_status_remark}>
                               "{lead.sales_status_remark}"
                             </div>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center space-x-2">
-                          <Tooltip text="View Details">
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePreview(lead);
-                              }}
-                              className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                          </Tooltip>
-                          <Tooltip text="Edit Status">
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(lead);
-                              }}
-                              className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-50"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                          </Tooltip>
+                        <div className="relative action-menu-container">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenActionMenu(openActionMenu === lead.id ? null : lead.id);
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                          >
+                            <MoreHorizontal className="h-4 w-4 text-gray-600" />
+                          </button>
+                          {openActionMenu === lead.id && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                              <div className="py-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePreview(lead);
+                                    setOpenActionMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                >
+                                  <div className="p-1 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-md">
+                                    <Eye className="h-3.5 w-3.5 text-white" />
+                                  </div>
+                                  View Details
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEdit(lead);
+                                    setOpenActionMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                >
+                                  <div className="p-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-md">
+                                    <Edit className="h-3.5 w-3.5 text-white" />
+                                  </div>
+                                  Edit Status
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1085,7 +1168,7 @@ export default function LeadStatusPage() {
           </div>
 
           {/* Pagination */}
-          <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-lg border border-gray-200">
+          <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 px-4 py-4 border-t-2 border-blue-200 bg-gradient-to-r from-blue-50/50 to-purple-50/50">
             {/* Items per page selector */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-700">Show:</span>

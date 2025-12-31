@@ -16,6 +16,8 @@ export const API_ENDPOINTS = {
   LOGOUT: `${API_BASE_URL}/api/auth/logout`,
   REGISTER: `${API_BASE_URL}/api/auth/register`,
   PROFILE: `${API_BASE_URL}/api/auth/profile`,
+  PROFILE_UPDATE: () => `${API_BASE_URL}/api/auth/profile`,
+  CHANGE_PASSWORD: () => `${API_BASE_URL}/api/auth/change-password`,
   
   // Department heads
   DEPARTMENT_HEADS_BASE: DEPT_HEADS_BASE,

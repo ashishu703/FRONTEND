@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Eye, Edit, MessageCircle, Mail, Search, Filter, Download, ChevronDown, X, Save, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckCircle, Clock, FileText, Receipt, CreditCard, Phone, Calendar } from 'lucide-react';
+import { Eye, Edit, Mail, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Clock, FileText, Receipt, CreditCard, Phone, Calendar, MoreHorizontal, RefreshCcw, User, Building2, MapPin } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import quotationService from '../../api/admin_api/quotationService';
@@ -72,7 +72,7 @@ const LeadStatusPreview = ({ lead, onClose }) => {
   }, [lead?.id]);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-end z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-end z-[110]">
       <div className="bg-white w-full max-w-md h-full overflow-y-auto">
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Customer Timeline</h3>
@@ -340,7 +340,7 @@ const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   const showDateTimeFields = ['appointment scheduled', 'interested', 'negotiation', 'call back request'].includes(formData.follow_up_status);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110]">
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Update Lead Status & Follow Up</h3>
@@ -470,15 +470,6 @@ const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   );
 };
 
-// Tooltip component for action buttons
-const Tooltip = ({ children, text }) => (
-  <div className="relative group">
-    {children}
-    <span className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute z-10 left-1/2 transform -translate-x-1/2 -translate-y-8 px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap">
-      {text}
-    </span>
-  </div>
-);
 
 export default function LastCall() {
   const [leads, setLeads] = useState([]);
@@ -487,6 +478,7 @@ export default function LastCall() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
+  const [openActionMenu, setOpenActionMenu] = useState(null);
   const [timelineLead, setTimelineLead] = useState(null);
   const [showCustomerTimeline, setShowCustomerTimeline] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -495,11 +487,8 @@ export default function LastCall() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
-  // Search and filter state
+  // Search state
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [followUpFilter, setFollowUpFilter] = useState('');
-  const [showFilterPanel, setShowFilterPanel] = useState(false);
 
   // Get current user for role-based filtering
   const { user } = useAuth();
@@ -609,37 +598,30 @@ export default function LastCall() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId]);
 
-  // Close filter panel when clicking outside
+  // Close action menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showFilterPanel && !event.target.closest('.filter-panel-container')) {
-        setShowFilterPanel(false);
+      if (openActionMenu && !event.target.closest('.action-menu-container')) {
+        setOpenActionMenu(null);
       }
     };
-
-    if (showFilterPanel) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showFilterPanel]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openActionMenu]);
 
   // Handle search
   const handleSearch = (query) => {
     setSearchQuery(query);
     
     if (!query.trim()) {
-      // When search is cleared, apply existing filters
-      applyFilters(statusFilter, followUpFilter);
+      setFilteredLeads(leads);
       setCurrentPage(1);
       return;
     }
     
     const lowercasedQuery = query.toLowerCase();
     const queryStr = query.trim();
-    let filtered = leads.filter(
+    const filtered = leads.filter(
       (lead) =>
         lead.name?.toLowerCase().includes(lowercasedQuery) ||
         String(lead.phone || '').includes(queryStr) ||
@@ -653,72 +635,8 @@ export default function LastCall() {
         lead.id?.toString().includes(queryStr)
     );
     
-    // Apply filters on top of search results
-    if (statusFilter) {
-      filtered = filtered.filter(lead => lead.sales_status?.toLowerCase() === statusFilter.toLowerCase());
-    }
-    if (followUpFilter) {
-      filtered = filtered.filter(lead => {
-        const leadFollowUp = lead.follow_up_status?.toLowerCase() || '';
-        return leadFollowUp === followUpFilter.toLowerCase();
-      });
-    }
-    
     setFilteredLeads(filtered);
     setCurrentPage(1);
-  };
-
-  // Handle status filter
-  const handleStatusFilter = (status) => {
-    setStatusFilter(status);
-    applyFilters(status, followUpFilter);
-    setCurrentPage(1);
-  };
-
-  // Handle follow-up filter
-  const handleFollowUpFilter = (followUp) => {
-    setFollowUpFilter(followUp);
-    applyFilters(statusFilter, followUp);
-    setCurrentPage(1);
-  };
-
-  // Apply both filters
-  const applyFilters = (status, followUp) => {
-    let filtered = leads;
-    
-    // Apply search query first if exists
-    if (searchQuery.trim()) {
-      const lowercasedQuery = searchQuery.toLowerCase();
-      const queryStr = searchQuery.trim();
-      filtered = filtered.filter(
-        (lead) =>
-          lead.name?.toLowerCase().includes(lowercasedQuery) ||
-          String(lead.phone || '').includes(queryStr) ||
-          lead.email?.toLowerCase().includes(lowercasedQuery) ||
-          lead.business?.toLowerCase().includes(lowercasedQuery) ||
-          lead.address?.toLowerCase().includes(lowercasedQuery) ||
-          lead.product_type?.toLowerCase().includes(lowercasedQuery) ||
-          lead.lead_source?.toLowerCase().includes(lowercasedQuery) ||
-          lead.sales_status?.toLowerCase().includes(lowercasedQuery) ||
-          lead.follow_up_status?.toLowerCase().includes(lowercasedQuery) ||
-          lead.id?.toString().includes(queryStr)
-      );
-    }
-    
-    // Apply sales status filter
-    if (status) {
-      filtered = filtered.filter(lead => lead.sales_status?.toLowerCase() === status.toLowerCase());
-    }
-    
-    // Apply follow-up status filter
-    if (followUp) {
-      filtered = filtered.filter(lead => {
-        const leadFollowUp = lead.follow_up_status?.toLowerCase() || '';
-        return leadFollowUp === followUp.toLowerCase();
-      });
-    }
-    
-    setFilteredLeads(filtered);
   };
 
   // Handle lead status update
@@ -806,6 +724,7 @@ export default function LastCall() {
 
   // Get follow up badge
   const getFollowUpBadge = (status) => {
+    const statusLower = status?.toLowerCase() || '';
     const followUpClasses = {
       'appointment scheduled': 'bg-blue-100 text-blue-800 border border-blue-200',
       'not interested': 'bg-red-100 text-red-800 border border-red-200',
@@ -818,6 +737,7 @@ export default function LastCall() {
       'unreachable/call not connected': 'bg-red-100 text-red-800 border border-red-200',
       'currently not required': 'bg-gray-100 text-gray-800 border border-gray-200',
       'not relevant': 'bg-gray-100 text-gray-800 border border-gray-200',
+      'pending': 'bg-yellow-100 text-yellow-800 border border-yellow-200',
     };
 
     const followUpText = {
@@ -832,13 +752,14 @@ export default function LastCall() {
       'unreachable/call not connected': 'Unreachable',
       'currently not required': 'Not Required',
       'not relevant': 'Not Relevant',
+      'pending': 'Pending',
     };
 
     return (
       <span
-        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${followUpClasses[status] || 'bg-gray-100 text-gray-800 border border-gray-200'}`}
+        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${followUpClasses[statusLower] || 'bg-gray-100 text-gray-800 border border-gray-200'}`}
       >
-        {followUpText[status] || status || 'Pending'}
+        {followUpText[statusLower] || status || 'Pending'}
       </span>
     );
   };
@@ -948,123 +869,70 @@ export default function LastCall() {
   return (
     <div className={`p-6 transition-all duration-300 ${showCustomerTimeline ? 'pr-[360px]' : ''}`}>
 
-      {/* Search and Filter Bar */}
+      {/* Search and Filters */}
       <div className="mb-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-          {/* Left side - Search */}
-          <div className="relative w-full sm:w-80">
-            <div className="flex">
-              <input
-                type="text"
-                className="flex-1 px-4 py-2 border border-blue-500 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                placeholder="Search by customer name, phone, email..."
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="flex shadow-lg rounded-xl overflow-hidden">
+              <input 
+                type="text" 
+                placeholder="Search items..." 
+                value={searchQuery} 
+                onChange={(e) => handleSearch(e.target.value)} 
+                className="px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 bg-white border-gray-200 text-gray-900 placeholder-gray-500" 
               />
-              <button className="px-4 py-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <button className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md">
                 <Search className="h-4 w-4" />
               </button>
             </div>
           </div>
-
-          {/* Right side - Filters */}
-          <div className="flex items-center gap-3 relative filter-panel-container">
-            {/* Filter Button */}
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowFilterPanel(!showFilterPanel)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-                statusFilter || followUpFilter
-                  ? 'bg-blue-500 text-white border-blue-500 hover:bg-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-              }`}
+              onClick={async () => {
+                try {
+                  setLoading(true);
+                  setError(null);
+                  const response = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME());
+                  const leadsData = response?.data || [];
+                  const today = new Date();
+                  today.setHours(23, 59, 59, 999);
+                  const lastCallLeads = leadsData.filter(lead => {
+                    const hasFollowUpStatus = lead.follow_up_status && lead.follow_up_status.trim() !== '';
+                    const hasFollowUpRemark = lead.follow_up_remark && lead.follow_up_remark.trim() !== '';
+                    const hasFollowUpDate = lead.follow_up_date && lead.follow_up_date !== 'N/A' && lead.follow_up_date !== '';
+                    const hasNextMeetingDate = lead.next_meeting_date && lead.next_meeting_date !== 'N/A' && lead.next_meeting_date !== '';
+                    const hasMeetingDate = lead.meeting_date && lead.meeting_date !== 'N/A' && lead.meeting_date !== '';
+                    const hasScheduledDate = lead.scheduled_date && lead.scheduled_date !== 'N/A' && lead.scheduled_date !== '';
+                    const hasScheduledDateOrTime = hasFollowUpDate || hasNextMeetingDate || hasMeetingDate || hasScheduledDate;
+                    if (!hasFollowUpStatus && !hasFollowUpRemark && !hasScheduledDateOrTime) return false;
+                    let callDate = null;
+                    if (lead.follow_up_date) callDate = new Date(lead.follow_up_date);
+                    else if (lead.next_meeting_date) callDate = new Date(lead.next_meeting_date);
+                    else if (lead.meeting_date) callDate = new Date(lead.meeting_date);
+                    else if (lead.scheduled_date) callDate = new Date(lead.scheduled_date);
+                    else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
+                      const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
+                      if (dateMatch) callDate = new Date(dateMatch[1]);
+                    } else if (lead.updated_at) callDate = new Date(lead.updated_at);
+                    if (!callDate || isNaN(callDate.getTime())) return false;
+                    return callDate <= today;
+                  });
+                  setLeads(lastCallLeads);
+                  setFilteredLeads(lastCallLeads);
+                } catch (err) {
+                  console.error('Error refreshing leads:', err);
+                  setError('Failed to refresh last call data');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+              className="px-3 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 inline-flex items-center gap-2"
+              title="Refresh"
             >
-              <Filter className="h-4 w-4" />
-              <span className="text-sm font-medium">Filters</span>
-              {(statusFilter || followUpFilter) && (
-                <span className="ml-1 px-2 py-0.5 bg-white text-blue-600 rounded-full text-xs font-semibold">
-                  {[statusFilter, followUpFilter].filter(Boolean).length}
-                </span>
-              )}
+              <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
-
-            {/* Filter Panel */}
-            {showFilterPanel && (
-              <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
-                <div className="p-4">
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold text-gray-900">Filter Leads</h3>
-                    {(statusFilter || followUpFilter) && (
-                      <button
-                        onClick={() => {
-                          setStatusFilter('');
-                          setFollowUpFilter('');
-                          applyFilters('', '');
-                        }}
-                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        Clear All
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Lead Status Filter */}
-                  <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                      Lead Status
-                    </label>
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => handleStatusFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">All Lead Status</option>
-                      <option value="pending">Pending</option>
-                      <option value="running">Running</option>
-                      <option value="converted">Converted</option>
-                      <option value="lost/closed">Lost/Closed</option>
-                      <option value="interested">Interested</option>
-                      <option value="win lead">Win Lead</option>
-                    </select>
-                  </div>
-
-                  {/* Follow Up Status Filter */}
-                  <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                      Follow Up Status
-                    </label>
-                    <select
-                      value={followUpFilter}
-                      onChange={(e) => handleFollowUpFilter(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">All Follow Up Status</option>
-                      <option value="pending">Pending</option>
-                      <option value="next meeting">Next Meeting</option>
-                      <option value="appointment scheduled">Appointment Scheduled</option>
-                      <option value="not interested">Not Interested</option>
-                      <option value="interested">Interested</option>
-                      <option value="quotation sent">Quotation Sent</option>
-                      <option value="negotiation">Negotiation</option>
-                      <option value="close order">Close Order</option>
-                      <option value="closed/lost">Closed/Lost</option>
-                      <option value="call back request">Call Back Request</option>
-                      <option value="unreachable/call not connected">Unreachable/Call Not Connected</option>
-                      <option value="currently not required">Currently Not Required</option>
-                      <option value="not relevant">Not Relevant</option>
-                    </select>
-                  </div>
-
-                  {/* Apply Button */}
-                  <button
-                    onClick={() => setShowFilterPanel(false)}
-                    className="w-full px-4 py-2 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
-                  >
-                    Apply Filters
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -1115,14 +983,44 @@ export default function LastCall() {
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LEAD ID</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CUSTOMER NAME</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">BUSINESS NAME</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ADDRESS</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">FOLLOW UP STATUS & REMARK</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LEAD STATUS & REMARK</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LAST CALL</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACTION</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">LEAD ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-blue-600" />
+                            <span>CUSTOMER</span>
+                          </div>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-purple-600" />
+                            <span>BUSINESS</span>
+                          </div>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-red-600" />
+                            <span>ADDRESS</span>
+                          </div>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-teal-600" />
+                            <span>FOLLOW UP</span>
+                          </div>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-yellow-600" />
+                            <span>SALES STATUS</span>
+                          </div>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">LAST CALL</th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center gap-2">
+                            <MoreHorizontal className="h-4 w-4 text-gray-600" />
+                            <span>ACTION</span>
+                          </div>
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -1131,46 +1029,37 @@ export default function LastCall() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {lead.id}
                           </td>
-                          <td className="px-6 py-4 whitespace-normal break-words text-sm text-gray-900">
+                          <td className="px-6 py-4 text-sm text-gray-900 max-w-[200px]">
                             <div>
-                              <div className="font-medium">{lead.name}</div>
-                              <div className="text-xs text-gray-500 flex items-center gap-1">
-                                <Phone className="h-3 w-3" />
-                                {lead.phone}
+                              <div className="font-semibold truncate" title={lead.name}>{lead.name}</div>
+                              <div className="text-xs text-gray-500 flex items-center gap-1 truncate" title={lead.phone}>
+                                <Phone className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">{lead.phone}</span>
                               </div>
                               {lead.email && lead.email !== "N/A" && (
-                                <div className="text-xs mt-1 text-cyan-600">
+                                <div className="text-xs mt-1 text-cyan-600 truncate">
                                   <button 
                                     onClick={() => window.open(`mailto:${lead.email}?subject=Follow up from ANOCAB&body=Dear ${lead.name},%0D%0A%0D%0AThank you for your interest in our products.%0D%0A%0D%0ABest regards,%0D%0AANOCAB Team`, '_blank')}
-                                    className="inline-flex items-center gap-1 transition-colors hover:text-cyan-700"
-                                    title="Send Email"
+                                    className="inline-flex items-center gap-1 transition-colors hover:text-cyan-700 truncate"
+                                    title={lead.email}
                                   >
-                                    <Mail className="h-3 w-3" /> {lead.email}
+                                    <Mail className="h-3 w-3 flex-shrink-0" /> <span className="truncate">{lead.email}</span>
                                   </button>
                                 </div>
                               )}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {lead.business || 'N/A'}
+                          <td className="px-6 py-4 text-sm text-gray-500 max-w-[150px]">
+                            <div className="truncate" title={lead.business || 'N/A'}>{lead.business || 'N/A'}</div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">
-                            <div className="flex flex-col gap-0.5 max-w-xs">
-                              {(() => {
-                                const address = lead.address || 'N/A';
-                                if (!address || address === 'N/A') return <span>N/A</span>;
-                                const parts = address.split(',').map(part => part.trim()).filter(part => part);
-                                return parts.length > 0 ? parts.map((part, idx) => (
-                                  <span key={idx}>{part}</span>
-                                )) : <span>N/A</span>;
-                              })()}
-                            </div>
+                          <td className="px-6 py-4 text-sm text-gray-500 max-w-[200px]">
+                            <div className="truncate" title={lead.address || 'N/A'}>{lead.address || 'N/A'}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <div className="space-y-1">
                               {getFollowUpBadge(lead.follow_up_status)}
                               {lead.follow_up_remark && (
-                                <div className="text-xs text-gray-600 italic">
+                                <div className="text-xs text-gray-600 italic truncate max-w-[200px]" title={lead.follow_up_remark}>
                                   "{lead.follow_up_remark}"
                                 </div>
                               )}
@@ -1180,7 +1069,7 @@ export default function LastCall() {
                             <div className="space-y-1">
                               {getStatusBadge(lead.sales_status)}
                               {lead.sales_status_remark && (
-                                <div className="text-xs text-gray-600 italic">
+                                <div className="text-xs text-gray-600 italic truncate max-w-[200px]" title={lead.sales_status_remark}>
                                   "{lead.sales_status_remark}"
                                 </div>
                               )}
@@ -1215,29 +1104,48 @@ export default function LastCall() {
                             })()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex items-center space-x-2">
-                              <Tooltip text="View Details">
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePreview(lead);
-                                  }}
-                                  className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </button>
-                              </Tooltip>
-                              <Tooltip text="Edit Status">
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEdit(lead);
-                                  }}
-                                  className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-50"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </button>
-                              </Tooltip>
+                            <div className="relative action-menu-container">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenActionMenu(openActionMenu === lead.id ? null : lead.id);
+                                }}
+                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                              >
+                                <MoreHorizontal className="h-4 w-4 text-gray-600" />
+                              </button>
+                              {openActionMenu === lead.id && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                                  <div className="py-1">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePreview(lead);
+                                        setOpenActionMenu(null);
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                    >
+                                      <div className="p-1 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-md">
+                                        <Eye className="h-3.5 w-3.5 text-white" />
+                                      </div>
+                                      View Details
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEdit(lead);
+                                        setOpenActionMenu(null);
+                                      }}
+                                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                    >
+                                      <div className="p-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-md">
+                                        <Edit className="h-3.5 w-3.5 text-white" />
+                                      </div>
+                                      Edit Status
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1250,7 +1158,7 @@ export default function LastCall() {
           })}  
           
           {/* Pagination */}
-          <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-lg border border-gray-200">
+          <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 px-4 py-4 border-t-2 border-blue-200 bg-gradient-to-r from-blue-50/50 to-purple-50/50">
             {/* Items per page selector */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-700">Show:</span>

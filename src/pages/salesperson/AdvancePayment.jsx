@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Package, Eye, X, Edit, Clock, CheckCircle, MessageCircle, Mail, DollarSign, CreditCard, XCircle, AlertCircle } from 'lucide-react';
+import { Package, Eye, X, Edit, Clock, CheckCircle, MessageCircle, Mail, DollarSign, CreditCard, XCircle, AlertCircle, MoreHorizontal, User, Building2, MapPin, FileText, Calendar } from 'lucide-react';
 import Toolbar, { ProductPagination } from './PaymentTracking';
 import apiClient from '../../utils/apiClient';
 import quotationService from '../../api/admin_api/quotationService';
@@ -675,7 +675,7 @@ const PaymentTimelineSidebar = ({ item, onClose, refreshKey = 0, companyBranches
   ], [customerQuotations, pisByQuotationId, paymentTimeline, hasPendingAmount, dueDate, paymentSummary, item.paymentsData, item.leadData?.created_at, item.leadId]);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-[110] flex justify-end">
       <div className="bg-white w-96 h-full overflow-y-auto shadow-xl">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 p-4">
@@ -1016,7 +1016,7 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
   if (!item) return null;
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-[110]">
       <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
       <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl flex flex-col">
         <div className="flex justify-between items-center px-6 py-4 border-b">
@@ -1327,6 +1327,7 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPaymentItem, setSelectedPaymentItem] = useState(null);
   const [companyBranches, setCompanyBranches] = useState({});
+  const [actionMenuOpen, setActionMenuOpen] = useState(null);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredPaymentTracking.length / itemsPerPage);
@@ -1389,6 +1390,17 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
     fetchPaymentTracking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId]);
+
+  // Close action menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (actionMenuOpen && !event.target.closest('.action-menu-container')) {
+        setActionMenuOpen(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [actionMenuOpen]);
 
   // Load company branches from database
   useEffect(() => {
@@ -1520,17 +1532,17 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
     const statusLower = (status || '').toLowerCase();
     switch (statusLower) {
       case 'paid':
-        return <CheckCircle className="w-4 h-4" />;
+        return <CheckCircle className="w-3 h-3" />;
       case 'advance':
-        return <Clock className="w-4 h-4" />;
+        return <Clock className="w-3 h-3" />;
       case 'due':
-        return <XCircle className="w-4 h-4" />;
+        return <XCircle className="w-3 h-3" />;
       case 'rejected':
-        return <XCircle className="w-4 h-4" />;
+        return <XCircle className="w-3 h-3" />;
       case 'pending':
-        return <Clock className="w-4 h-4" />;
+        return <Clock className="w-3 h-3" />;
       default:
-        return <AlertCircle className="w-4 h-4" />;
+        return <AlertCircle className="w-3 h-3" />;
     }
   };
 
@@ -1542,7 +1554,7 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
 
     if (hasRejectedPayment) {
       return (
-        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor('Rejected')}`}>
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${getStatusColor('Rejected')}`}>
           {getStatusIcon('Rejected')}
           Rejected
         </span>
@@ -1551,7 +1563,7 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
 
     const statusText = item.remainingAmount > 0 ? 'Advance' : 'Paid';
     return (
-      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(statusText)}`}>
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${getStatusColor(statusText)}`}>
         {getStatusIcon(statusText)}
         {statusText}
       </span>
@@ -1596,34 +1608,64 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-4 text-left">
-                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Lead ID</span>
+                  <div className="flex items-center gap-2">
+                    <User className="h-3 w-3 text-blue-600" />
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Lead ID</span>
+                  </div>
                 </th>
                 <th className="px-6 py-4 text-left">
-                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Customer Name</span>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-3 w-3 text-purple-600" />
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Customer Name</span>
+                  </div>
                 </th>
                 <th className="px-6 py-4 text-left">
-                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Product Name</span>
+                  <div className="flex items-center gap-2">
+                    <Package className="h-3 w-3 text-violet-500" />
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Product Name</span>
+                  </div>
                 </th>
                 <th className="px-6 py-4 text-left">
-                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Address</span>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-3 w-3 text-red-500" />
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Address</span>
+                  </div>
                 </th>
                 <th className="px-6 py-4 text-left">
-                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Quotation ID</span>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-3 w-3 text-indigo-500" />
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Quotation ID</span>
+                  </div>
                 </th>
                 <th className="px-6 py-4 text-left">
-                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Payment Status</span>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-3 w-3 text-emerald-600" />
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Payment Status</span>
+                  </div>
                 </th>
                 <th className="px-6 py-4 text-left">
-                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Advance Amount</span>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-3 w-3 text-green-500" />
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Advance Amount</span>
+                  </div>
                 </th>
                 <th className="px-6 py-4 text-left">
-                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Remaining Amount</span>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-3 w-3 text-blue-500" />
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Remaining Amount</span>
+                  </div>
                 </th>
                 <th className="px-6 py-4 text-left">
-                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Delivery Date</span>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-3 w-3 text-yellow-500" />
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Delivery Date</span>
+                  </div>
                 </th>
                 <th className="px-6 py-4 text-center">
-                  <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Action</span>
+                  <div className="flex items-center gap-2 justify-center">
+                    <MoreHorizontal className="h-3 w-3 text-gray-500" />
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Action</span>
+                  </div>
                 </th>
               </tr>
             </thead>
@@ -1638,9 +1680,11 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
                     </td>
                     <td className="px-6 py-4">
                       <div>
-                        <div className="font-medium text-gray-900 text-sm">{item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}</div>
+                        <div className="font-semibold text-sm text-gray-900 truncate max-w-[200px]" title={item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}>
+                          {item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}
+                        </div>
                         {item.leadData?.phone && (
-                          <div className="text-xs text-gray-600 mt-1">{item.leadData.phone}</div>
+                          <div className="text-xs font-semibold text-gray-600 mt-1 truncate max-w-[200px]" title={item.leadData.phone}>{item.leadData.phone}</div>
                         )}
                         {item.leadData?.whatsapp && (
                           <div className="text-xs mt-1 text-green-600">
@@ -1650,30 +1694,30 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
                           </div>
                         )}
                         {item.leadData?.email && item.leadData.email !== "N/A" && (
-                          <div className="text-xs mt-1 text-cyan-600">
+                          <div className="text-xs mt-1 text-cyan-600 truncate max-w-[200px]">
                             <button 
                               onClick={() => window.open(`mailto:${item.leadData.email}?subject=Advance Payment Follow up from ANOCAB&body=Dear ${item.customerName},%0D%0A%0D%0AThank you for your advance payment.%0D%0A%0D%0ABest regards,%0D%0AANOCAB Team`, '_blank')}
-                              className="inline-flex items-center gap-1 transition-colors hover:text-cyan-700"
-                              title="Send Email"
+                              className="inline-flex items-center gap-1 transition-colors hover:text-cyan-700 truncate"
+                              title={item.leadData.email}
                             >
-                              <Mail className="h-3 w-3" /> {item.leadData.email}
+                              <Mail className="h-3 w-3 flex-shrink-0" /> <span className="truncate font-semibold">{item.leadData.email}</span>
                             </button>
                           </div>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900">{item.productName || 'N/A'}</span>
+                      <span className="text-xs text-gray-900 truncate max-w-[150px] block" title={item.productName || 'N/A'}>{item.productName || 'N/A'}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-col gap-0.5">
-                        {formatAddress(item.address).map((part, idx) => (
-                          <span key={idx} className="text-sm text-gray-700">{part}</span>
-                        ))}
+                      <div className="max-w-[180px]">
+                        <span className="text-xs text-gray-700 truncate block" title={item.address || 'N/A'}>
+                          {item.address || 'N/A'}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900 font-mono">{item.quotationId || 'N/A'}</span>
+                      <span className="text-sm font-bold text-gray-900 font-mono">{item.quotationId || 'N/A'}</span>
                     </td>
                     <td className="px-6 py-4">
                       {getPaymentStatusBadge(item.paymentStatus, item)}
@@ -1697,7 +1741,7 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-sm text-gray-900">
+                        <span className="text-sm font-bold text-gray-900">
                           {item.dueDate ? 
                             new Date(item.dueDate).toLocaleDateString('en-GB') : 
                             'N/A'
@@ -1705,35 +1749,54 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
                         </span>
                         {item.deliveryStatus && (
                           <span className="text-xs text-gray-600 mt-1">
-                            {item.deliveryStatus}
+                            "{item.deliveryStatus}"
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Tooltip text="View Details">
-                          <button 
+                      <div className="flex items-center justify-center">
+                        <div className="relative action-menu-container">
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
-                                handleViewPayment(item);
+                              setActionMenuOpen(actionMenuOpen === item.id ? null : item.id);
                             }}
-                            className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50"
+                            className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 transition-colors"
                           >
-                            <Eye className="h-4 w-4" />
+                            <MoreHorizontal className="h-4 w-4" />
                           </button>
-                        </Tooltip>
-                          <Tooltip text="Add Payment">
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddPayment(item);
-                              }}
-                              className="text-purple-600 hover:text-purple-900 p-1 rounded-full hover:bg-purple-50"
-                            >
-                              <CreditCard className="h-4 w-4" />
-                          </button>
-                        </Tooltip>
+                          {actionMenuOpen === item.id && (
+                            <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewPayment(item);
+                                  setActionMenuOpen(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <div className="p-1 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-md">
+                                  <Eye className="h-3.5 w-3.5 text-white" />
+                                </div>
+                                View Details
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddPayment(item);
+                                  setActionMenuOpen(null);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <div className="p-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-md">
+                                  <CreditCard className="h-3.5 w-3.5 text-white" />
+                                </div>
+                                Add Payment
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
