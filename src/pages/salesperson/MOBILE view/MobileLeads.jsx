@@ -836,7 +836,7 @@ const MobileLeads = () => {
 
       {/* Import Modal */}
       {showImportModal && (
-        <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[110] overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
             <div className="p-4">
               <div className="flex justify-between items-center mb-4">

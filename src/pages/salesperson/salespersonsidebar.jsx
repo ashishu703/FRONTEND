@@ -57,82 +57,101 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen
       {/* Sidebar */}
       <div
         className={cx(
-          "fixed top-0 left-0 h-screen z-40 shadow-lg border-r transition-all duration-300 flex flex-col",
-          isDarkMode 
-            ? "bg-gray-800 border-gray-700" 
-            : "bg-white border-gray-200",
+          "fixed top-0 left-0 h-screen z-40 shadow-2xl border-r transition-all duration-300 flex flex-col",
+          "bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 border-slate-700/50",
           sidebarOpen ? "w-64" : "w-16",
         )}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        style={{
+          background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+          boxShadow: '4px 0 20px rgba(0, 0, 0, 0.3)'
+        }}
       >
-        <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="p-4 border-b border-slate-700/50 bg-gradient-to-r from-blue-600/20 to-purple-600/20">
           <div className="flex items-center justify-between">
             {sidebarOpen ? (
               <div className="flex items-center space-x-3">
-                <img
-                  src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
-                  alt="ANOCAB Logo"
-                  className="w-8 h-8 object-contain"
-                />
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 p-1.5 shadow-lg">
+                  <img
+                    src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
+                    alt="ANOCAB Logo"
+                    className="w-full h-full object-contain rounded-lg"
+                  />
+                </div>
                 <div>
-                  <h1 className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>ANOCAB</h1>
-                  <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Salesperson</p>
+                  <h1 className="font-bold text-white text-lg tracking-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>ANOCAB</h1>
+                  <p className="text-xs text-slate-400">Salesperson</p>
                 </div>
               </div>
             ) : (
               <div className="flex justify-center w-full">
-                <img
-                  src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
-                  alt="ANOCAB Logo"
-                  className="w-8 h-8 object-contain"
-                />
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 p-1.5 shadow-lg">
+                  <img
+                    src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
+                    alt="ANOCAB Logo"
+                    className="w-full h-full object-contain rounded-lg"
+                  />
+                </div>
               </div>
             )}
             <button
               onClick={handleToggle}
-              className={`p-1 rounded transition-colors ${
-                isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-              }`}
+              className="p-2 hover:bg-slate-700/50 rounded-lg transition-all duration-200 text-slate-300 hover:text-white"
             >
-              {sidebarOpen ? <X className={`w-4 h-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} /> : <Menu className={`w-4 h-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />}
+              {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-2">
-          <ul className="space-y-1">
-            {/* Notifications item removed as requested */}
+        <nav className="flex-1 p-3 overflow-y-auto">
+          <ul className="space-y-1.5">
             <li>
-              <button
+              <div
                 className={cx(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors",
-                  currentPage === "dashboard" 
-                    ? (isDarkMode ? "bg-blue-900 text-blue-300" : "bg-blue-50 text-blue-700")
-                    : (isDarkMode ? "hover:bg-gray-700 text-gray-300" : "hover:bg-gray-50 text-gray-700"),
+                  "flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200",
+                  currentPage === "dashboard"
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                    : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
                 )}
                 onClick={() => onNavigate("dashboard")}
+                style={{
+                  transform: currentPage === "dashboard" ? 'translateX(4px)' : 'none',
+                }}
               >
-                <span className="flex items-center space-x-3">
-                  <LayoutDashboard className={cx("h-5 w-5", currentPage === "dashboard" ? (isDarkMode ? "text-blue-400" : "text-blue-600") : (isDarkMode ? "text-gray-400" : "text-gray-500"))} />
-                  {sidebarOpen && <span className="text-sm font-medium">Dashboard</span>}
-                </span>
-              </button>
+                <div className="flex items-center space-x-3">
+                  <div className={currentPage === "dashboard" ? 'text-white' : 'text-slate-400'}>
+                    <LayoutDashboard className="w-5 h-5" />
+                  </div>
+                  {sidebarOpen && (
+                    <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Dashboard</span>
+                  )}
+                </div>
+              </div>
             </li>
             <li>
-              <button
+              <div
                 className={cx(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors",
-                  currentPage === "customers" ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50 text-gray-700",
+                  "flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200",
+                  currentPage === "customers"
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                    : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
                 )}
                 onClick={() => onNavigate("customers")}
+                style={{
+                  transform: currentPage === "customers" ? 'translateX(4px)' : 'none',
+                }}
               >
-                <span className="flex items-center space-x-3">
-                  <Users className={cx("h-5 w-5", currentPage === "customers" ? "text-blue-600" : "text-gray-500")} />
-                  {sidebarOpen && <span className="text-sm font-medium">Leads</span>}
-                </span>
-              </button>
+                <div className="flex items-center space-x-3">
+                  <div className={currentPage === "customers" ? 'text-white' : 'text-slate-400'}>
+                    <Users className="w-5 h-5" />
+                  </div>
+                  {sidebarOpen && (
+                    <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Leads</span>
+                  )}
+                </div>
+              </div>
             </li>
             <LeadStatusDropdown 
               currentPage={currentPage} 
@@ -147,55 +166,73 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen
               isDarkMode={isDarkMode}
             />
             <li>
-              <button
+              <div
                 className={cx(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors",
-                  currentPage === "toolbox" ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50 text-gray-700",
+                  "flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200",
+                  currentPage === "toolbox"
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                    : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
                 )}
                 onClick={() => onNavigate("toolbox")}
+                style={{
+                  transform: currentPage === "toolbox" ? 'translateX(4px)' : 'none',
+                }}
               >
-                <span className="flex items-center space-x-3">
-                  <Wrench className={cx("h-5 w-5", currentPage === "toolbox" ? "text-blue-600" : "text-gray-500")} />
-                  {sidebarOpen && <span className="text-sm font-medium">Toolbox Interface</span>}
-                </span>
-              </button>
+                <div className="flex items-center space-x-3">
+                  <div className={currentPage === "toolbox" ? 'text-white' : 'text-slate-400'}>
+                    <Wrench className="w-5 h-5" />
+                  </div>
+                  {sidebarOpen && (
+                    <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Toolbox Interface</span>
+                  )}
+                </div>
+              </div>
             </li>
             <li>
-              <button
+              <div
                 className={cx(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors",
-                  currentPage === "stock" ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50 text-gray-700",
+                  "flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200",
+                  currentPage === "stock"
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                    : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
                 )}
                 onClick={() => onNavigate("stock")}
+                style={{
+                  transform: currentPage === "stock" ? 'translateX(4px)' : 'none',
+                }}
               >
-                <span className="flex items-center space-x-3">
-                  <Package className={cx("h-5 w-5", currentPage === "stock" ? "text-blue-600" : "text-gray-500")} />
-                  {sidebarOpen && <span className="text-sm font-medium">Available Stock</span>}
-                </span>
-              </button>
+                <div className="flex items-center space-x-3">
+                  <div className={currentPage === "stock" ? 'text-white' : 'text-slate-400'}>
+                    <Package className="w-5 h-5" />
+                  </div>
+                  {sidebarOpen && (
+                    <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Available Stock</span>
+                  )}
+                </div>
+              </div>
             </li>
           </ul>
         </nav>
         
         {/* Support */}
-        <div className={`p-4 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-          <button
-            className={cx("w-full flex items-center justify-start gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50", !sidebarOpen && "px-2", isDarkMode && "hover:bg-gray-700 text-gray-300")}
+        <div className="p-3 border-t border-slate-700/50 bg-slate-800/30">
+          <button 
             onClick={() => window.location.href = '/support'}
+            className="w-full flex items-center space-x-3 px-3 py-2.5 text-slate-300 hover:bg-slate-700/50 hover:text-white rounded-xl transition-all duration-200"
           >
-            <HelpCircle className="h-5 w-5" />
-            {sidebarOpen && <span className="text-sm font-medium">Support</span>}
+            <HelpCircle className="w-5 h-5" />
+            {sidebarOpen && <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Support</span>}
           </button>
         </div>
 
         {/* Logout */}
-        <div className={`p-4 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} mt-auto`}>
-          <button
-            className={cx("w-full flex items-center justify-start gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50", !sidebarOpen && "px-2")}
+        <div className="p-3 border-t border-slate-700/50 bg-slate-800/30">
+          <button 
             onClick={onLogout}
+            className="w-full flex items-center space-x-3 px-3 py-2.5 text-red-400 hover:bg-red-500/20 hover:text-red-300 rounded-xl transition-all duration-200"
           >
-            <LogOut className="h-5 w-5" />
-            {sidebarOpen && <span className="text-sm font-medium">Logout</span>}
+            <LogOut className="w-5 h-5" />
+            {sidebarOpen && <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Logout</span>}
           </button>
         </div>
       </div>

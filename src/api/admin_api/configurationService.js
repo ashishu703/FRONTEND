@@ -181,6 +181,39 @@ class ConfigurationService {
       throw error;
     }
   }
+
+  // Get push notification configuration
+  async getPushNotificationConfig() {
+    try {
+      const response = await apiClient.get('/api/configuration/push-notification');
+      return response;
+    } catch (error) {
+      console.error('Error fetching push notification config:', error);
+      throw error;
+    }
+  }
+
+  // Save push notification configuration
+  async savePushNotificationConfig(config) {
+    try {
+      const response = await apiClient.post('/api/configuration/push-notification', config);
+      return response;
+    } catch (error) {
+      console.error('Error saving push notification config:', error);
+      throw error;
+    }
+  }
+
+  // Get public VAPID key
+  async getPublicVapidKey() {
+    try {
+      const response = await apiClient.get('/api/configuration/push-notification/vapid-key');
+      return response;
+    } catch (error) {
+      console.error('Error fetching VAPID key:', error);
+      throw error;
+    }
+  }
 }
 
 export default new ConfigurationService();

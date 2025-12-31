@@ -19,7 +19,7 @@ import CreatePIForm from './CreatePIForm.jsx'
 import Toast from '../../utils/Toast'
 import { QuotationHelper } from '../../utils/QuotationHelper'
 import { StatusConverter } from '../../utils/StatusConverter'
-import { Search, RefreshCw, Plus, Filter, Eye, Pencil, FileText, Upload, Settings, Tag, X } from 'lucide-react'
+import { Search, RefreshCw, Plus, Filter, Eye, Pencil, FileText, Upload, Settings, Tag, X, User, Mail, Building2, Package, Hash, MapPin, Globe, Users, TrendingUp, Calendar, Clock, MoreHorizontal } from 'lucide-react'
 import { apiClient, API_ENDPOINTS, quotationService } from '../../utils/globalImports'
 import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton'
 import { EditLeadStatusModal } from './LeadStatus'
@@ -73,24 +73,21 @@ export default function CustomerListContent({ isDarkMode = false }) {
   // Edit Lead Status Modal
   const [showEditLeadStatusModal, setShowEditLeadStatusModal] = React.useState(false)
   const [selectedCustomerForLeadStatus, setSelectedCustomerForLeadStatus] = React.useState(null)
+  const [actionMenuOpen, setActionMenuOpen] = React.useState(null)
 
-  // Column visibility - all fields from edit modal
   const defaultColumns = React.useMemo(() => ({
     namePhone: true,
-    email: false,
-    whatsapp: false,
+    email: true,
     business: true,
-    productType: true,
+    productType: false,
     gstNo: false,
     address: true,
     state: true,
     division: false,
     customerType: false,
     leadSource: false,
-    salesStatus: false,
-    salesStatusRemark: false,
+    salesStatus: true,
     followUpStatus: true,
-    followUpRemark: false,
     followUpDate: false,
     followUpTime: false,
     date: false
@@ -142,7 +139,6 @@ export default function CustomerListContent({ isDarkMode = false }) {
   
   const handleRefresh = async () => {
     if (refreshingRef.current) {
-      console.log('Already refreshing, skipping duplicate call')
       return
     }
     
@@ -268,7 +264,6 @@ export default function CustomerListContent({ isDarkMode = false }) {
         setSelectedCustomerForLeadStatus(null)
       }
     } catch (error) {
-      console.error('Error updating lead status:', error)
       Toast.error('Failed to update lead status')
       throw error
     }
@@ -336,7 +331,6 @@ export default function CustomerListContent({ isDarkMode = false }) {
       setBulkTagValue('')
       setShowBulkActions(false)
     } catch (error) {
-      console.error('Error creating tag:', error)
       Toast.error('Failed to create tag. Please try again.')
     } finally {
       setIsCreatingTag(false)
@@ -398,7 +392,6 @@ export default function CustomerListContent({ isDarkMode = false }) {
       setBulkSkuValue('')
       setShowBulkActions(false)
     } catch (error) {
-      console.error('Error updating SKU:', error)
       Toast.error('Failed to update SKU')
     } finally {
       setIsCreatingTag(false)
@@ -453,7 +446,6 @@ export default function CustomerListContent({ isDarkMode = false }) {
             })
             Toast.success(`Customer updated and transferred to ${customerData.transferredTo} successfully!`)
           } catch (transferErr) {
-            console.error('Failed to transfer lead:', transferErr)
             Toast.warning('Customer updated but transfer failed. Please try again.')
           }
         } else {
@@ -533,11 +525,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
         setEditingCustomer(null)
       }
     } catch (error) {
-      console.error('Error saving customer:', error)
-      
-      // Check if error is due to duplicate (409 status) - in case it wasn't caught above
       if (error.status === 409 || error.data?.isDuplicate) {
-        // Extract duplicate info from error response
         const duplicateInfo = error.data?.duplicateLead || error.duplicateLead
         if (duplicateInfo) {
           setDuplicateLeadInfo(duplicateInfo)
@@ -547,7 +535,6 @@ export default function CustomerListContent({ isDarkMode = false }) {
         }
       }
       
-      // Only show generic error if it's not a duplicate error
       const errorMessage = error.data?.message || error.message || 'Failed to add customer. Please try again.'
       Toast.error(editingCustomer ? 'Failed to update customer. Please try again.' : errorMessage)
     }
@@ -568,7 +555,6 @@ export default function CustomerListContent({ isDarkMode = false }) {
         Toast.error('Failed to load quotation for editing')
       }
     } catch (error) {
-      console.error('Error loading quotation for edit:', error)
       Toast.error('Failed to load quotation for editing')
     }
   }
@@ -596,22 +582,12 @@ export default function CustomerListContent({ isDarkMode = false }) {
     }
   }
 
-  // View quotation with global component - Fetch full details first
   const handleViewQuotation = async (quotationSummary) => {
-    console.log('🔍 handleViewQuotation called with:', quotationSummary)
     try {
-      // Fetch full quotation details to ensure we have items, terms, and all fields
-      console.log('📡 Fetching quotation with ID:', quotationSummary.id)
       const response = await quotationService.getQuotation(quotationSummary.id);
-      console.log('✅ Quotation response:', response)
       
       if (response?.success && response?.data) {
         const dbQuotation = response.data;
-        console.log('📦 Full DB Quotation Data:', dbQuotation);
-        console.log('🎨 Template field from DB:', dbQuotation.template);
-        console.log('🔑 All DB fields:', Object.keys(dbQuotation));
-        
-        // EXACT data from database - NO FALLBACKS
         const normalized = {
           id: dbQuotation.id,
           quotationNumber: dbQuotation.quotation_number,
@@ -682,65 +658,233 @@ export default function CustomerListContent({ isDarkMode = false }) {
             ? JSON.parse(dbQuotation.terms_sections) 
             : dbQuotation.terms_sections,
           
-          // Status
           status: dbQuotation.status
         };
         
-        console.log('🎯 Normalized quotation for display:', normalized);
         await quotationHook.handleViewQuotation(normalized);
       } else {
-        // Only show error if fetch fails - NO FALLBACK to summary
-        console.error('Failed to fetch full quotation details');
         Toast.error('Failed to load full quotation details. Please try again.');
       }
     } catch (error) {
-      console.error('Error fetching quotation details:', error);
       Toast.error('Failed to load quotation details');
     }
   }
 
-  // Pagination
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (actionMenuOpen && !event.target.closest('.action-menu-container')) {
+        setActionMenuOpen(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [actionMenuOpen])
+
+  // Get unique color for Sales Status
+  const getSalesStatusColor = (status) => {
+    if (!status) return 'bg-gray-100 text-gray-800 border-gray-200'
+    const statusLower = String(status).toLowerCase()
+    const colorMap = {
+      'pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      'approved': 'bg-green-100 text-green-800 border-green-200',
+      'connected': 'bg-blue-100 text-blue-800 border-blue-200',
+      'not_connected': 'bg-red-100 text-red-800 border-red-200',
+      'not connected': 'bg-red-100 text-red-800 border-red-200',
+      'follow_up': 'bg-orange-100 text-orange-800 border-orange-200',
+      'follow up': 'bg-orange-100 text-orange-800 border-orange-200',
+      'next_meeting': 'bg-purple-100 text-purple-800 border-purple-200',
+      'next meeting': 'bg-purple-100 text-purple-800 border-purple-200',
+      'order_confirmed': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      'order confirmed': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      'closed': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      'open': 'bg-cyan-100 text-cyan-800 border-cyan-200',
+      'win': 'bg-lime-100 text-lime-800 border-lime-200',
+      'loose': 'bg-rose-100 text-rose-800 border-rose-200',
+      'not interested': 'bg-slate-100 text-slate-800 border-slate-200',
+      'not_interested': 'bg-slate-100 text-slate-800 border-slate-200',
+      'running': 'bg-amber-100 text-amber-800 border-amber-200',
+      'converted': 'bg-teal-100 text-teal-800 border-teal-200',
+      'interested': 'bg-pink-100 text-pink-800 border-pink-200'
+    }
+    return colorMap[statusLower] || 'bg-gray-100 text-gray-800 border-gray-200'
+  }
+
+  // Get unique color for Follow Up Status
+  const getFollowUpStatusColor = (status) => {
+    if (!status) return 'bg-gray-100 text-gray-800 border-gray-200'
+    const statusLower = String(status).toLowerCase()
+    const colorMap = {
+      'pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      'unreachable': 'bg-red-100 text-red-800 border-red-200',
+      'unreachable/call not connected': 'bg-red-100 text-red-800 border-red-200',
+      'inactive': 'bg-gray-100 text-gray-800 border-gray-200',
+      'interested': 'bg-green-100 text-green-800 border-green-200',
+      'not interested': 'bg-rose-100 text-rose-800 border-rose-200',
+      'appointment scheduled': 'bg-blue-100 text-blue-800 border-blue-200',
+      'quotation sent': 'bg-purple-100 text-purple-800 border-purple-200',
+      'negotiation': 'bg-orange-100 text-orange-800 border-orange-200',
+      'close order': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      'closed/lost': 'bg-slate-100 text-slate-800 border-slate-200',
+      'call back request': 'bg-amber-100 text-amber-800 border-amber-200',
+      'currently not required': 'bg-gray-100 text-gray-800 border-gray-200',
+      'not required': 'bg-gray-100 text-gray-800 border-gray-200',
+      'not relevant': 'bg-gray-100 text-gray-800 border-gray-200',
+      'connected': 'bg-cyan-100 text-cyan-800 border-cyan-200',
+      'follow up': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      'follow_up': 'bg-indigo-100 text-indigo-800 border-indigo-200'
+    }
+    return colorMap[statusLower] || 'bg-gray-100 text-gray-800 border-gray-200'
+  }
+
+  // Get dark mode color for Sales Status
+  const getSalesStatusColorDark = (status) => {
+    if (!status) return 'bg-gray-800/30 text-gray-300 border-gray-700'
+    const statusLower = String(status).toLowerCase()
+    const colorMap = {
+      'pending': 'bg-yellow-900/30 text-yellow-300 border-yellow-700',
+      'approved': 'bg-green-900/30 text-green-300 border-green-700',
+      'connected': 'bg-blue-900/30 text-blue-300 border-blue-700',
+      'not_connected': 'bg-red-900/30 text-red-300 border-red-700',
+      'not connected': 'bg-red-900/30 text-red-300 border-red-700',
+      'follow_up': 'bg-orange-900/30 text-orange-300 border-orange-700',
+      'follow up': 'bg-orange-900/30 text-orange-300 border-orange-700',
+      'next_meeting': 'bg-purple-900/30 text-purple-300 border-purple-700',
+      'next meeting': 'bg-purple-900/30 text-purple-300 border-purple-700',
+      'order_confirmed': 'bg-emerald-900/30 text-emerald-300 border-emerald-700',
+      'order confirmed': 'bg-emerald-900/30 text-emerald-300 border-emerald-700',
+      'closed': 'bg-indigo-900/30 text-indigo-300 border-indigo-700',
+      'open': 'bg-cyan-900/30 text-cyan-300 border-cyan-700',
+      'win': 'bg-lime-900/30 text-lime-300 border-lime-700',
+      'loose': 'bg-rose-900/30 text-rose-300 border-rose-700',
+      'not interested': 'bg-slate-900/30 text-slate-300 border-slate-700',
+      'not_interested': 'bg-slate-900/30 text-slate-300 border-slate-700',
+      'running': 'bg-amber-900/30 text-amber-300 border-amber-700',
+      'converted': 'bg-teal-900/30 text-teal-300 border-teal-700',
+      'interested': 'bg-pink-900/30 text-pink-300 border-pink-700'
+    }
+    return colorMap[statusLower] || 'bg-gray-800/30 text-gray-300 border-gray-700'
+  }
+
+  // Get dark mode color for Follow Up Status
+  const getFollowUpStatusColorDark = (status) => {
+    if (!status) return 'bg-gray-800/30 text-gray-300 border-gray-700'
+    const statusLower = String(status).toLowerCase()
+    const colorMap = {
+      'pending': 'bg-yellow-900/30 text-yellow-300 border-yellow-700',
+      'unreachable': 'bg-red-900/30 text-red-300 border-red-700',
+      'unreachable/call not connected': 'bg-red-900/30 text-red-300 border-red-700',
+      'inactive': 'bg-gray-800/30 text-gray-300 border-gray-700',
+      'interested': 'bg-green-900/30 text-green-300 border-green-700',
+      'not interested': 'bg-rose-900/30 text-rose-300 border-rose-700',
+      'appointment scheduled': 'bg-blue-900/30 text-blue-300 border-blue-700',
+      'quotation sent': 'bg-purple-900/30 text-purple-300 border-purple-700',
+      'negotiation': 'bg-orange-900/30 text-orange-300 border-orange-700',
+      'close order': 'bg-emerald-900/30 text-emerald-300 border-emerald-700',
+      'closed/lost': 'bg-slate-900/30 text-slate-300 border-slate-700',
+      'call back request': 'bg-amber-900/30 text-amber-300 border-amber-700',
+      'currently not required': 'bg-gray-800/30 text-gray-300 border-gray-700',
+      'not required': 'bg-gray-800/30 text-gray-300 border-gray-700',
+      'not relevant': 'bg-gray-800/30 text-gray-300 border-gray-700',
+      'connected': 'bg-cyan-900/30 text-cyan-300 border-cyan-700',
+      'follow up': 'bg-indigo-900/30 text-indigo-300 border-indigo-700',
+      'follow_up': 'bg-indigo-900/30 text-indigo-300 border-indigo-700'
+    }
+    return colorMap[statusLower] || 'bg-gray-800/30 text-gray-300 border-gray-700'
+  }
+
+  const truncateText = (text, maxLength = 30) => {
+    if (!text || text === 'N/A' || text === '-') return text === 'N/A' || text === '-' ? '-' : (text || '-')
+    if (text.length <= maxLength) return text
+    return text.substring(0, maxLength) + '...'
+  }
+
   const totalPages = Math.ceil(leadsHook.filteredCustomers.length / leadsHook.itemsPerPage)
   const goToPreviousPage = () => leadsHook.setCurrentPage(prev => Math.max(1, prev - 1))
   const goToNextPage = () => leadsHook.setCurrentPage(prev => Math.min(totalPages, prev + 1))
 
-  // Show skeleton loader on initial load (after all hooks)
   if (initialLoading) {
     return <DashboardSkeleton />;
   }
 
   return (
     <main className={`flex-1 overflow-auto p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      {/* Header */}
+      {/* Search and Action Bar */}
       <div className="mb-6">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex">
-              <input type="text" placeholder="Search items..." value={leadsHook.searchQuery} onChange={(e) => leadsHook.setSearchQuery(e.target.value)} className="px-4 py-2 border border-blue-300 rounded-l-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64" />
-              <button className="px-3 py-2 bg-blue-500 text-white rounded-r-md hover:bg-blue-600"><Search className="h-4 w-4" /></button>
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="flex shadow-lg rounded-xl overflow-hidden">
+              <input 
+                type="text" 
+                placeholder="Search items..." 
+                value={leadsHook.searchQuery} 
+                onChange={(e) => leadsHook.setSearchQuery(e.target.value)} 
+                className={`px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 ${
+                  isDarkMode 
+                    ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' 
+                    : 'bg-white border-gray-200 text-gray-900 placeholder-gray-500'
+                }`} 
+              />
+              <button className={`px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md`}>
+                <Search className="h-4 w-4" />
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => leadsHook.setShowFilterPanel(!leadsHook.showFilterPanel)} className={`p-2 rounded-md border inline-flex items-center relative ${leadsHook.showFilterPanel ? 'bg-blue-100 border-blue-300' : 'bg-white border-gray-200'}`} id="filter-button">
-              <Filter className="h-4 w-4" />
-              {Object.values(leadsHook.enabledFilters).some(Boolean) && <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-4 h-4 text-[10px] font-medium text-white bg-blue-500 rounded-full">{Object.values(leadsHook.enabledFilters).filter(Boolean).length}</span>}
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => leadsHook.setShowFilterPanel(!leadsHook.showFilterPanel)} 
+              className={`p-2.5 rounded-xl border-2 inline-flex items-center relative transition-all duration-200 shadow-md ${
+                leadsHook.showFilterPanel 
+                  ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-blue-300 shadow-blue-200/50' 
+                  : isDarkMode 
+                    ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' 
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+              }`} 
+              id="filter-button"
+            >
+              <Filter className={`h-4 w-4 ${leadsHook.showFilterPanel ? 'text-blue-600' : isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
+              {Object.values(leadsHook.enabledFilters).some(Boolean) && (
+                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-gradient-to-r from-blue-500 to-purple-500 rounded-full shadow-lg">
+                  {Object.values(leadsHook.enabledFilters).filter(Boolean).length}
+                </span>
+              )}
             </button>
-            <button onClick={handleRefresh} disabled={isRefreshing} className="p-2 rounded-md border bg-white border-gray-200 hover:bg-gray-50" data-refresh-btn>
+            <button 
+              onClick={handleRefresh} 
+              disabled={isRefreshing} 
+              className={`p-2.5 rounded-xl border-2 transition-all duration-200 shadow-md ${
+                isDarkMode 
+                  ? 'bg-gray-800 border-gray-700 hover:bg-gray-700 text-gray-300' 
+                  : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-600'
+              } disabled:opacity-50`} 
+              data-refresh-btn
+            >
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
-            <button onClick={() => setShowAddCustomer(true)} className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" title="Add Lead">
+            <button 
+              onClick={() => setShowAddCustomer(true)} 
+              className="p-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg shadow-blue-500/30" 
+              title="Add Lead"
+            >
               <Plus className="h-4 w-4" />
             </button>
-            <button onClick={() => setShowImportModal(true)} className="p-2 bg-purple-600 text-white rounded-md hover:bg-purple-700" title="Import Leads">
+            <button 
+              onClick={() => setShowImportModal(true)} 
+              className="p-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-lg shadow-purple-500/30" 
+              title="Import Leads"
+            >
               <Upload className="h-4 w-4" />
             </button>
-            <button onClick={() => setShowCreateTagModal(true)} className="p-2 bg-green-600 text-white rounded-md hover:bg-green-700" title="Create Tag">
+            <button 
+              onClick={() => setShowCreateTagModal(true)} 
+              className="p-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg shadow-green-500/30" 
+              title="Create Tag"
+            >
               <Tag className="h-4 w-4" />
             </button>
             {selectedLeadsForTag.length > 0 && (
               <button 
                 onClick={() => setShowBulkActions(true)} 
-                className="px-3 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium"
+                className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 text-sm font-semibold transition-all duration-200 shadow-lg shadow-indigo-500/30"
                 title="Bulk Actions"
               >
                 Bulk Actions ({selectedLeadsForTag.length})
@@ -750,99 +894,412 @@ export default function CustomerListContent({ isDarkMode = false }) {
         </div>
 
         {/* Tags */}
-        <div className="mt-4 flex items-center gap-2 flex-wrap">
-          <button onClick={() => handleTagSelect('all')} className={`px-3 py-1 rounded-full text-sm ${leadsHook.selectedTag === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}>All</button>
-          {leadsHook.tags.map(tag => (
-            <button key={tag} onClick={() => handleTagSelect(tag)} className={`px-3 py-1 rounded-full text-sm ${leadsHook.selectedTag === tag ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}>{tag}</button>
-          ))}
+        <div className="mt-4 flex items-center gap-1.5 flex-wrap">
+          <button 
+            onClick={() => handleTagSelect('all')} 
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+              leadsHook.selectedTag === 'all' 
+                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md' 
+                : isDarkMode 
+                  ? 'bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700' 
+                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            All
+          </button>
+          {(() => {
+            const tagMap = new Map()
+            leadsHook.customers.forEach(c => {
+              if (c.customerType && c.customerType !== 'N/A') {
+                const lowerTag = c.customerType.toLowerCase()
+                if (!tagMap.has(lowerTag)) {
+                  tagMap.set(lowerTag, c.customerType)
+                }
+              }
+            })
+            return leadsHook.tags.map(tag => {
+              const displayTag = tagMap.get(tag) || tag
+              return (
+                <button 
+                  key={tag} 
+                  onClick={() => handleTagSelect(tag)} 
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+                    leadsHook.selectedTag.toLowerCase() === tag
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md' 
+                      : isDarkMode 
+                        ? 'bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700' 
+                        : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {displayTag}
+                </button>
+              )
+            })
+          })()}
         </div>
       </div>
 
       {/* Filters */}
-      <LeadFilters {...leadsHook} />
+      <LeadFilters {...leadsHook} sortBy={leadsHook.sortBy} setSortBy={leadsHook.setSortBy} sortOrder={leadsHook.sortOrder} setSortOrder={leadsHook.setSortOrder} handleSortChange={leadsHook.handleSortChange} handleSortOrderChange={leadsHook.handleSortOrderChange} />
 
       {/* Customer Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className={`rounded-xl shadow-xl overflow-hidden ${
+        isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+      }`}>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className={`bg-gradient-to-r from-blue-50 via-purple-50 to-blue-50 border-b-2 ${
+              isDarkMode ? 'from-gray-800 via-gray-750 to-gray-800 border-gray-700' : 'border-blue-200'
+            }`}>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
+                <th className="px-4 py-4 text-left text-xs font-bold uppercase w-12">
                   <input
                     type="checkbox"
                     checked={selectedLeadsForTag.length > 0 && selectedLeadsForTag.length === leadsHook.paginatedCustomers.length}
                     onChange={handleSelectAllLeadsForTag}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    className={`w-4 h-4 rounded border-2 focus:ring-2 focus:ring-blue-500 ${
+                      isDarkMode 
+                        ? 'text-blue-500 bg-gray-700 border-gray-600' 
+                        : 'text-blue-600 bg-white border-gray-300'
+                    }`}
                   />
                 </th>
-                {columnVisibility.namePhone && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name/Phone</th>}
-                {columnVisibility.email && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>}
-                {columnVisibility.whatsapp && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">WhatsApp</th>}
-                {columnVisibility.business && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Business</th>}
-                {columnVisibility.productType && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product Type</th>}
-                {columnVisibility.gstNo && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">GST No</th>}
-                {columnVisibility.address && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Address</th>}
-                {columnVisibility.state && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">State</th>}
-                {columnVisibility.division && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Division</th>}
-                {columnVisibility.customerType && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer Type</th>}
-                {columnVisibility.leadSource && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lead Source</th>}
-                {columnVisibility.salesStatus && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sales Status</th>}
-                {columnVisibility.salesStatusRemark && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sales Remark</th>}
-                {columnVisibility.followUpStatus && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Follow Up</th>}
-                {columnVisibility.followUpRemark && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Follow Up Remark</th>}
-                {columnVisibility.followUpDate && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Follow Up Date</th>}
-                {columnVisibility.followUpTime && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Follow Up Time</th>}
-                {columnVisibility.date && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>}
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                {(columnVisibility.namePhone || columnVisibility.email) && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-blue-600" />
+                      <span>CUSTOMER</span>
+                    </div>
+                  </th>
+                )}
+                {columnVisibility.business && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-purple-600" />
+                      <span>BUSINESS</span>
+                    </div>
+                  </th>
+                )}
+                {columnVisibility.productType && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-green-600" />
+                      <span>Product Type</span>
+                    </div>
+                  </th>
+                )}
+                {columnVisibility.gstNo && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <Hash className="h-4 w-4 text-orange-600" />
+                      <span>GST No</span>
+                    </div>
+                  </th>
+                )}
+                {columnVisibility.address && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-red-600" />
+                      <span>ADDRESS</span>
+                    </div>
+                  </th>
+                )}
+                {columnVisibility.state && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-indigo-600" />
+                      <span>STATE</span>
+                    </div>
+                  </th>
+                )}
+                {columnVisibility.division && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-cyan-600" />
+                      <span>Division</span>
+                    </div>
+                  </th>
+                )}
+                {columnVisibility.customerType && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-pink-600" />
+                      <span>Customer Type</span>
+                    </div>
+                  </th>
+                )}
+                {columnVisibility.leadSource && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-emerald-600" />
+                      <span>Lead Source</span>
+                    </div>
+                  </th>
+                )}
+                {columnVisibility.salesStatus && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                      <span>SALES STATUS</span>
+                    </div>
+                  </th>
+                )}
+                {columnVisibility.followUpStatus && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-teal-600" />
+                      <span>FOLLOW UP STATUS</span>
+                    </div>
+                  </th>
+                )}
+                {columnVisibility.followUpDate && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      <span>Follow Up Date</span>
+                    </div>
+                  </th>
+                )}
+                {columnVisibility.followUpTime && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      <span>Follow Up Time</span>
+                    </div>
+                  </th>
+                )}
+                {columnVisibility.date && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      <span>Date</span>
+                    </div>
+                  </th>
+                )}
+                <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => setShowColumnModal(true)} className="p-1 rounded hover:bg-gray-200" title="Column Settings">
-                      <Settings className="h-4 w-4 text-gray-600" />
-                    </button>
+                    <MoreHorizontal className="h-4 w-4" />
                     <span>Actions</span>
+                    <button 
+                      onClick={() => setShowColumnModal(true)} 
+                      className={`p-1.5 rounded-lg transition-all duration-200 ${
+                        isDarkMode 
+                          ? 'hover:bg-gray-700 text-gray-300' 
+                          : 'hover:bg-gray-100 text-gray-600'
+                      }`} 
+                      title="Column Settings"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </button>
                   </div>
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
               {leadsHook.paginatedCustomers.map((customer) => (
-                <tr key={customer.id} className="hover:bg-gray-50">
+                <tr key={customer.id} className={`transition-colors duration-150 ${
+                  isDarkMode ? 'hover:bg-gray-700/50' : 'hover:bg-blue-50/50'
+                }`}>
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
                       checked={selectedLeadsForTag.includes(customer.id)}
                       onChange={() => handleToggleLeadForTag(customer.id)}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                      className={`w-4 h-4 rounded border-2 focus:ring-2 focus:ring-blue-500 ${
+                        isDarkMode 
+                          ? 'text-blue-500 bg-gray-700 border-gray-600' 
+                          : 'text-blue-600 bg-white border-gray-300'
+                      }`}
                     />
                   </td>
-                  {columnVisibility.namePhone && (
+                  {(columnVisibility.namePhone || columnVisibility.email) && (
                     <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{customer.name}</div>
-                      <div className="text-sm text-gray-500">{customer.phone}</div>
+                      <div className="space-y-1">
+                        {columnVisibility.namePhone && (
+                          <div className={`font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`} title={customer.name}>
+                            {truncateText(customer.name, 30)}
+                          </div>
+                        )}
+                        {columnVisibility.namePhone && (
+                          <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} title={customer.phone}>
+                            {truncateText(customer.phone, 15)}
+                          </div>
+                        )}
+                        {columnVisibility.email && customer.email !== 'N/A' && (
+                          <div className="flex items-center gap-1">
+                            <Mail className={`h-3 w-3 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                            <a 
+                              href={`mailto:${customer.email}`} 
+                              className={`text-sm ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                              title={customer.email}
+                            >
+                              {truncateText(customer.email, 25)}
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     </td>
                   )}
-                  {columnVisibility.email && <td className="px-4 py-3 text-sm text-gray-500">{customer.email !== 'N/A' ? customer.email : '-'}</td>}
-                  {columnVisibility.whatsapp && <td className="px-4 py-3 text-sm text-gray-500">{customer.whatsapp || '-'}</td>}
-                  {columnVisibility.business && <td className="px-4 py-3 text-sm text-gray-900">{customer.business}</td>}
-                  {columnVisibility.productType && <td className="px-4 py-3 text-sm text-gray-500">{customer.productName !== 'N/A' ? customer.productName : '-'}</td>}
-                  {columnVisibility.gstNo && <td className="px-4 py-3 text-sm text-gray-500">{customer.gstNo !== 'N/A' ? customer.gstNo : '-'}</td>}
-                  {columnVisibility.address && <td className="px-4 py-3 text-sm text-gray-500">{customer.address}</td>}
-                  {columnVisibility.state && <td className="px-4 py-3 text-sm text-gray-500">{customer.state}</td>}
-                  {columnVisibility.division && <td className="px-4 py-3 text-sm text-gray-500">{customer.division || '-'}</td>}
-                  {columnVisibility.customerType && <td className="px-4 py-3"><span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">{customer.customerType}</span></td>}
-                  {columnVisibility.leadSource && <td className="px-4 py-3 text-sm text-gray-500">{customer.enquiryBy !== 'N/A' ? customer.enquiryBy : '-'}</td>}
-                  {columnVisibility.salesStatus && <td className="px-4 py-3 text-sm text-gray-500">{StatusConverter.toTitleStatus(customer.salesStatus)}</td>}
-                  {columnVisibility.salesStatusRemark && <td className="px-4 py-3 text-sm text-gray-500">{customer.salesStatusRemark || '-'}</td>}
-                  {columnVisibility.followUpStatus && <td className="px-4 py-3 text-sm text-gray-500">{StatusConverter.toTitleStatus(customer.followUpStatus)}</td>}
-                  {columnVisibility.followUpRemark && <td className="px-4 py-3 text-sm text-gray-500">{customer.followUpRemark || '-'}</td>}
-                  {columnVisibility.followUpDate && <td className="px-4 py-3 text-sm text-gray-500">{customer.followUpDate || '-'}</td>}
-                  {columnVisibility.followUpTime && <td className="px-4 py-3 text-sm text-gray-500">{customer.followUpTime || '-'}</td>}
-                  {columnVisibility.date && <td className="px-4 py-3 text-sm text-gray-500">{customer.date ? new Date(customer.date).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</td>}
+                  {columnVisibility.business && (
+                    <td className={`px-4 py-3 text-sm font-medium ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`} title={customer.business}>
+                      {truncateText(customer.business, 30)}
+                    </td>
+                  )}
+                  {columnVisibility.productType && (
+                    <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} title={customer.productName !== 'N/A' ? customer.productName : ''}>
+                      {customer.productName !== 'N/A' ? truncateText(customer.productName, 20) : '-'}
+                    </td>
+                  )}
+                  {columnVisibility.gstNo && (
+                    <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} title={customer.gstNo !== 'N/A' ? customer.gstNo : ''}>
+                      {customer.gstNo !== 'N/A' ? truncateText(customer.gstNo, 15) : '-'}
+                    </td>
+                  )}
+                  {columnVisibility.address && (
+                    <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} title={customer.address}>
+                      <div className="whitespace-pre-line">{truncateText(customer.address, 60)}</div>
+                    </td>
+                  )}
+                  {columnVisibility.state && (
+                    <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} title={customer.state}>
+                      {truncateText(customer.state, 20)}
+                    </td>
+                  )}
+                  {columnVisibility.division && (
+                    <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} title={customer.division || ''}>
+                      {customer.division ? truncateText(customer.division, 20) : '-'}
+                    </td>
+                  )}
+                  {columnVisibility.customerType && (
+                    <td className="px-4 py-3">
+                      <span className={`px-3 py-1 text-xs font-medium rounded-full bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 border border-blue-200 shadow-sm ${
+                        isDarkMode ? 'from-blue-900/50 to-purple-900/50 text-blue-200 border-blue-700' : ''
+                      }`} title={customer.customerType}>
+                        {truncateText(customer.customerType, 15)}
+                      </span>
+                    </td>
+                  )}
+                  {columnVisibility.leadSource && (
+                    <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} title={customer.enquiryBy !== 'N/A' ? customer.enquiryBy : ''}>
+                      {customer.enquiryBy !== 'N/A' ? truncateText(customer.enquiryBy, 20) : '-'}
+                    </td>
+                  )}
+                  {columnVisibility.salesStatus && (
+                    <td className="px-4 py-3">
+                      <div className="space-y-1">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
+                          isDarkMode 
+                            ? getSalesStatusColorDark(customer.salesStatus)
+                            : getSalesStatusColor(customer.salesStatus)
+                        }`}>
+                          {StatusConverter.toTitleStatus(customer.salesStatus)}
+                        </span>
+                        {customer.salesStatusRemark && (
+                          <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} title={customer.salesStatusRemark}>
+                            "{truncateText(customer.salesStatusRemark, 40)}"
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                  {columnVisibility.followUpStatus && (
+                    <td className="px-4 py-3">
+                      <div className="space-y-1">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
+                          isDarkMode 
+                            ? getFollowUpStatusColorDark(customer.followUpStatus)
+                            : getFollowUpStatusColor(customer.followUpStatus)
+                        }`}>
+                          {StatusConverter.toTitleStatus(customer.followUpStatus)}
+                        </span>
+                        {customer.followUpRemark && (
+                          <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} title={customer.followUpRemark}>
+                            "{truncateText(customer.followUpRemark, 40)}"
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                  {columnVisibility.followUpDate && (
+                    <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      {customer.followUpDate || '-'}
+                    </td>
+                  )}
+                  {columnVisibility.followUpTime && (
+                    <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      {customer.followUpTime || '-'}
+                    </td>
+                  )}
+                  {columnVisibility.date && (
+                    <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      {customer.date ? new Date(customer.date).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
+                    </td>
+                  )}
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => handleView(customer)} className="p-1 text-blue-600 hover:text-blue-700" title="View"><Eye className="h-4 w-4" /></button>
-                      <button onClick={() => handleEdit(customer)} className="p-1 text-green-600 hover:text-green-700" title="Edit"><Pencil className="h-4 w-4" /></button>
-                      <button onClick={() => handleEditLeadStatus(customer)} className="p-1 text-orange-600 hover:text-orange-700" title="Update Lead Status & Follow Up"><Settings className="h-4 w-4" /></button>
-                      <button onClick={() => handleQuotation(customer)} className="p-1 text-purple-600 hover:text-purple-700" title="Create Quotation"><FileText className="h-4 w-4" /></button>
+                    <div className="relative action-menu-container">
+                      <button 
+                        onClick={() => setActionMenuOpen(actionMenuOpen === customer.id ? null : customer.id)} 
+                        className={`p-2 rounded-lg transition-all duration-200 shadow-sm ${
+                          isDarkMode 
+                            ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`} 
+                        title="Actions"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                      {actionMenuOpen === customer.id && (
+                        <div className={`absolute right-0 top-full mt-1 z-50 rounded-lg shadow-xl border min-w-[180px] ${
+                          isDarkMode 
+                            ? 'bg-gray-800 border-gray-700' 
+                            : 'bg-white border-gray-200'
+                        }`} style={{ boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+                          <button 
+                            onClick={() => { handleView(customer); setActionMenuOpen(null) }} 
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                              isDarkMode 
+                                ? 'hover:bg-gray-700 text-gray-300' 
+                                : 'hover:bg-blue-50 text-gray-700'
+                            }`}
+                          >
+                            <Eye className="h-4 w-4 text-blue-600" />
+                            <span>View</span>
+                          </button>
+                          <button 
+                            onClick={() => { handleEdit(customer); setActionMenuOpen(null) }} 
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                              isDarkMode 
+                                ? 'hover:bg-gray-700 text-gray-300' 
+                                : 'hover:bg-green-50 text-gray-700'
+                            }`}
+                          >
+                            <Pencil className="h-4 w-4 text-green-600" />
+                            <span>Edit</span>
+                          </button>
+                          <button 
+                            onClick={() => { handleEditLeadStatus(customer); setActionMenuOpen(null) }} 
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                              isDarkMode 
+                                ? 'hover:bg-gray-700 text-gray-300' 
+                                : 'hover:bg-orange-50 text-gray-700'
+                            }`}
+                          >
+                            <Settings className="h-4 w-4 text-orange-600" />
+                            <span>Update Status</span>
+                          </button>
+                          <button 
+                            onClick={() => { handleQuotation(customer); setActionMenuOpen(null) }} 
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                              isDarkMode 
+                                ? 'hover:bg-gray-700 text-gray-300' 
+                                : 'hover:bg-purple-50 text-gray-700'
+                            }`}
+                          >
+                            <FileText className="h-4 w-4 text-purple-600" />
+                            <span>Create Quotation</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -852,20 +1309,72 @@ export default function CustomerListContent({ isDarkMode = false }) {
         </div>
 
         {/* Pagination */}
-        <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-700">Page {leadsHook.currentPage} of {totalPages}</span>
-            <select value={leadsHook.itemsPerPage} onChange={(e) => { leadsHook.setItemsPerPage(Number(e.target.value)); leadsHook.setCurrentPage(1) }} className="ml-2 px-2 py-1 border border-gray-300 rounded text-sm">
+        <div className={`px-4 py-4 border-t-2 flex items-center justify-between ${
+          isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-blue-200 bg-gradient-to-r from-blue-50/50 to-purple-50/50'
+        }`}>
+          <div className="flex items-center gap-3">
+            <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              Page <span className="font-bold text-blue-600">{leadsHook.currentPage}</span> of <span className="font-bold text-purple-600">{totalPages}</span>
+            </span>
+            <select 
+              value={leadsHook.itemsPerPage} 
+              onChange={(e) => { leadsHook.setItemsPerPage(Number(e.target.value)); leadsHook.setCurrentPage(1) }} 
+              className={`ml-2 px-3 py-1.5 border-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                isDarkMode 
+                  ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' 
+                  : 'bg-white border-gray-300 text-gray-700 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500'
+              }`}
+            >
               <option value={10}>10</option>
               <option value={25}>25</option>
               <option value={50}>50</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => leadsHook.setCurrentPage(1)} disabled={leadsHook.currentPage === 1} className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50">First</button>
-            <button onClick={goToPreviousPage} disabled={leadsHook.currentPage === 1} className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50">Previous</button>
-            <button onClick={goToNextPage} disabled={leadsHook.currentPage === totalPages} className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50">Next</button>
-            <button onClick={() => leadsHook.setCurrentPage(totalPages)} disabled={leadsHook.currentPage === totalPages} className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50">Last</button>
+            <button 
+              onClick={() => leadsHook.setCurrentPage(1)} 
+              disabled={leadsHook.currentPage === 1} 
+              className={`px-4 py-2 border-2 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                isDarkMode 
+                  ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 disabled:hover:bg-gray-700' 
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-400 disabled:hover:bg-white'
+              }`}
+            >
+              First
+            </button>
+            <button 
+              onClick={goToPreviousPage} 
+              disabled={leadsHook.currentPage === 1} 
+              className={`px-4 py-2 border-2 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                isDarkMode 
+                  ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 disabled:hover:bg-gray-700' 
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-400 disabled:hover:bg-white'
+              }`}
+            >
+              Previous
+            </button>
+            <button 
+              onClick={goToNextPage} 
+              disabled={leadsHook.currentPage === totalPages} 
+              className={`px-4 py-2 border-2 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                isDarkMode 
+                  ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 disabled:hover:bg-gray-700' 
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-purple-50 hover:border-purple-400 disabled:hover:bg-white'
+              }`}
+            >
+              Next
+            </button>
+            <button 
+              onClick={() => leadsHook.setCurrentPage(totalPages)} 
+              disabled={leadsHook.currentPage === totalPages} 
+              className={`px-4 py-2 border-2 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                isDarkMode 
+                  ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 disabled:hover:bg-gray-700' 
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-purple-50 hover:border-purple-400 disabled:hover:bg-white'
+              }`}
+            >
+              Last
+            </button>
           </div>
         </div>
       </div>
@@ -876,7 +1385,7 @@ export default function CustomerListContent({ isDarkMode = false }) {
       
       {/* Duplicate Lead Modal */}
       {showDuplicateModal && duplicateLeadInfo && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110]">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -958,12 +1467,12 @@ export default function CustomerListContent({ isDarkMode = false }) {
         />
       )}
       <ImportLeadsModal show={showImportModal} onClose={() => setShowImportModal(false)} onImportSuccess={handleImportSuccess} />
-      <ColumnVisibilityModal show={showColumnModal} onClose={() => setShowColumnModal(false)} columns={{ namePhone: 'Name/Phone', email: 'Email', whatsapp: 'WhatsApp', business: 'Business', productType: 'Product Type', gstNo: 'GST No', address: 'Address', state: 'State', division: 'Division', customerType: 'Customer Type', leadSource: 'Lead Source', salesStatus: 'Sales Status', salesStatusRemark: 'Sales Status Remark', followUpStatus: 'Follow Up Status', followUpRemark: 'Follow Up Remark', followUpDate: 'Follow Up Date', followUpTime: 'Follow Up Time', date: 'Date' }} visibleColumns={columnVisibility} onToggleColumn={handleToggleColumn} />
+      <ColumnVisibilityModal show={showColumnModal} onClose={() => setShowColumnModal(false)} columns={{ namePhone: 'Name/Phone', email: 'Email', business: 'Business', productType: 'Product Type', gstNo: 'GST No', address: 'Address', state: 'State', division: 'Division', customerType: 'Customer Type', leadSource: 'Lead Source', salesStatus: 'Sales Status', followUpStatus: 'Follow Up Status', followUpDate: 'Follow Up Date', followUpTime: 'Follow Up Time', date: 'Date' }} visibleColumns={columnVisibility} onToggleColumn={handleToggleColumn} />
       <TagManager showCreateTagModal={showCreateTagModal} setShowCreateTagModal={setShowCreateTagModal} newTagName={newTagName} setNewTagName={setNewTagName} selectedLeadsForTag={selectedLeadsForTag} setSelectedLeadsForTag={setSelectedLeadsForTag} customers={leadsHook.customers} setCustomers={leadsHook.setCustomers} isCreatingTag={isCreatingTag} setIsCreatingTag={setIsCreatingTag} handleToggleLeadForTag={handleToggleLeadForTag} handleSelectAllLeadsForTag={handleSelectAllLeadsForTag} />
       
       {/* Bulk Actions Modal */}
       {showBulkActions && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110]">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">

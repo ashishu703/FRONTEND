@@ -77,8 +77,19 @@ const authReducer = (state, action) => {
   }
 };
 
-// Create context
-export const AuthContext = createContext();
+// Create context with default value to prevent "must be used within AuthProvider" errors
+export const AuthContext = createContext({
+  user: null,
+  isAuthenticated: false,
+  isLoading: true,
+  error: null,
+  login: async () => ({ success: false, error: 'Not initialized' }),
+  impersonate: async () => ({ success: false, error: 'Not initialized' }),
+  register: async () => ({ success: false, error: 'Not initialized' }),
+  logout: async () => ({ success: false }),
+  clearError: () => {},
+  refreshUser: async () => ({ success: false, error: 'Not initialized' }),
+});
 
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);

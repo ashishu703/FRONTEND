@@ -782,7 +782,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
 
   if (showPreview) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
         <div className="w-full max-w-5xl max-h-[90vh] overflow-y-auto relative bg-white rounded-lg shadow-xl">
           {/* Header with Template Selector */}
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
@@ -870,18 +870,18 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
 
   const formContent = (
     <>
-      <CardHeader className={`flex flex-row items-center justify-between space-y-0 pb-4 border-b ${standalone ? 'pt-6' : ''}`}>
+      <CardHeader className={`flex flex-row items-center justify-between space-y-0 pb-3 border-b ${standalone ? 'pt-6' : ''}`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-sm">
               <FileText className="h-5 w-5 text-white" />
             </div>
             <div>
-              <CardTitle className="text-xl font-semibold">{existingQuotation ? 'Edit Quotation' : 'Create Quotation'}</CardTitle>
+              <CardTitle className="text-xl font-semibold text-gray-900">{existingQuotation ? 'Edit Quotation' : 'Create Quotation'}</CardTitle>
               <p className="text-sm text-gray-600">For {customer?.name}</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
+          <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-gray-100">
+            <X className="h-5 w-5" />
           </Button>
         </CardHeader>
 
@@ -889,24 +889,28 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
         {/* Left Side - Form */}
         <div className="flex-1 overflow-y-auto pr-4" style={{ maxHeight: 'calc(100vh - 200px)', minWidth: '60%' }}>
           <CardContent className="p-0">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Quotation Header */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-purple-500" />
+                  <div className="p-1 bg-gradient-to-br from-purple-500 to-purple-600 rounded-md">
+                    <FileText className="h-3.5 w-3.5 text-white" />
+                  </div>
                   Quotation Number
                 </label>
                 <input
                   type="text"
                   value={quotationData.quotationNumber}
                   disabled
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-100 text-sm text-gray-600 cursor-not-allowed"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm text-gray-600 cursor-not-allowed"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-blue-500" />
+                  <div className="p-1 bg-gradient-to-br from-blue-500 to-blue-600 rounded-md">
+                    <Calendar className="h-3.5 w-3.5 text-white" />
+                  </div>
                   Quotation Date *
                 </label>
                 <input
@@ -914,15 +918,17 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                   required
                   value={quotationData.quotationDate}
                   onChange={(e) => handleInputChange("quotationDate", e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-blue-500" />
+                  <div className="p-1 bg-gradient-to-br from-green-500 to-green-600 rounded-md">
+                    <Calendar className="h-3.5 w-3.5 text-white" />
+                  </div>
                   Valid Until *
                 </label>
-                <div className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-sm">
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm text-gray-600">
                   {quotationData.validUpto} (7 days from quotation date)
                 </div>
                 <input
@@ -934,9 +940,11 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
             </div>
 
             {/* Branch Selection */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-green-500" />
+            <div className="space-y-3">
+              <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                <div className="p-1.5 bg-gradient-to-br from-green-500 to-emerald-600 rounded-md">
+                  <Building2 className="h-4 w-4 text-white" />
+                </div>
                 Company Branch
               </h3>
               <div className="space-y-2">
@@ -944,7 +952,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                 <select
                   value={quotationData.selectedBranch}
                   onChange={(e) => handleInputChange("selectedBranch", e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   required
                 >
                   <option value="">Select Organization</option>
@@ -961,9 +969,11 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
             </div>
 
             {/* Bill To Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                <User className="h-5 w-5 text-blue-500" />
+            <div className="space-y-3">
+              <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                <div className="p-1.5 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-md">
+                  <User className="h-4 w-4 text-white" />
+                </div>
                 Bill To Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -977,7 +987,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                       ...prev,
                       billTo: { ...prev.billTo, business: e.target.value }
                     }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -990,7 +1000,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                       ...prev,
                       billTo: { ...prev.billTo, buyerName: e.target.value }
                     }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1003,7 +1013,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                       ...prev,
                       billTo: { ...prev.billTo, phone: e.target.value }
                     }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1016,7 +1026,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                       ...prev,
                       billTo: { ...prev.billTo, address: e.target.value }
                     }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1028,7 +1038,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                       ...prev,
                       billTo: { ...prev.billTo, gstNo: e.target.value }
                     }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1041,35 +1051,37 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                       ...prev,
                       billTo: { ...prev.billTo, state: e.target.value }
                     }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               </div>
             </div>
 
             {/* Items Section */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                  <Package className="h-5 w-5 text-orange-500" />
-                  Items
+                <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                  <div className="p-1.5 bg-gradient-to-br from-orange-500 to-amber-600 rounded-md">
+                    <Package className="h-4 w-4 text-white" />
+                  </div>
+                  Product Details
                 </h3>
-                <Button type="button" onClick={addItem} size="sm" className="bg-green-600 hover:bg-green-700">
+                <Button type="button" onClick={addItem} size="sm" className="bg-green-600 hover:bg-green-700 text-white">
                   <Plus className="h-4 w-4 mr-1" />
                   Add Item
                 </Button>
               </div>
 
-              <div className="border border-gray-200 rounded-lg overflow-x-auto">
+              <div className="border border-gray-300 rounded-lg overflow-x-auto bg-white">
                 <table className="w-full min-w-full table-fixed">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '28%' }}>Product Name</th>
-                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '12%' }}>HSN/SAC</th>
-                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '12%' }}>Qty</th>
-                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '10%' }}>Unit</th>
-                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '15%' }}>Buyer Rate</th>
-                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{ width: '15%' }}>Amount</th>
+                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ width: '28%' }}>Product Name</th>
+                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ width: '12%' }}>HSN/SAC</th>
+                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ width: '12%' }}>Qty</th>
+                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ width: '10%' }}>Unit</th>
+                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ width: '15%' }}>Buyer Rate</th>
+                      <th className="px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase" style={{ width: '15%' }}>Amount</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -1094,7 +1106,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                                     return newState;
                                   }), 200);
                                 }}
-                                className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 required
                                 list={`product-list-${index}`}
                               />
@@ -1207,9 +1219,11 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
             </div>
 
             {/* Transport & Delivery Terms - New Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                <Truck className="h-5 w-5 text-orange-500" />
+            <div className="space-y-3">
+              <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                <div className="p-1.5 bg-gradient-to-br from-purple-500 to-pink-600 rounded-md">
+                  <Truck className="h-4 w-4 text-white" />
+                </div>
                 Delivery & Payment Terms
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1219,7 +1233,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     type="text"
                     value={quotationData.paymentMode}
                     onChange={(e) => handleInputChange('paymentMode', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                     placeholder="e.g. Advance, 30 days credit"
                   />
                 </div>
@@ -1229,7 +1243,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     type="text"
                     value={quotationData.transportTc}
                     onChange={(e) => handleInputChange('transportTc', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                     placeholder="e.g. To Pay, Paid"
                   />
                 </div>
@@ -1239,7 +1253,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     type="text"
                     value={quotationData.dispatchThrough}
                     onChange={(e) => handleInputChange('dispatchThrough', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                     placeholder="e.g. Road, Transport Name"
                   />
                 </div>
@@ -1249,7 +1263,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     type="text"
                     value={quotationData.deliveryTerms}
                     onChange={(e) => handleInputChange('deliveryTerms', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                     placeholder="e.g. Within 7 days"
                   />
                 </div>
@@ -1259,7 +1273,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     type="text"
                     value={quotationData.materialType}
                     onChange={(e) => handleInputChange('materialType', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                     placeholder="e.g. Original, Spare"
                   />
                 </div>
@@ -1267,9 +1281,11 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
             </div>
 
             {/* Remark Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                <FileText className="h-5 w-5 text-blue-500" />
+            <div className="space-y-3">
+              <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                <div className="p-1.5 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-md">
+                  <FileText className="h-4 w-4 text-white" />
+                </div>
                 Remarks
               </h3>
               <div className="space-y-2">
@@ -1278,16 +1294,18 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                   value={quotationData.remark}
                   onChange={(e) => handleInputChange('remark', e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   placeholder="Enter any additional remarks or notes for this quotation"
                 />
               </div>
             </div>
 
             {/* Transport Details */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                <Truck className="h-5 w-5 text-orange-500" />
+            <div className="space-y-3">
+              <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                <div className="p-1.5 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-md">
+                  <Truck className="h-4 w-4 text-white" />
+                </div>
                 Transport Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1297,7 +1315,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     type="text"
                     value={quotationData.transportDetails.lrNo}
                     onChange={(e) => handleTransportDetailsChange('lrNo', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Enter L.R. Number"
                   />
                 </div>
@@ -1307,7 +1325,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     type="text"
                     value={quotationData.transportDetails.transport}
                     onChange={(e) => handleTransportDetailsChange('transport', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Enter Transport Name"
                   />
                 </div>
@@ -1317,7 +1335,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     type="text"
                     value={quotationData.transportDetails.transportId}
                     onChange={(e) => handleTransportDetailsChange('transportId', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Enter Transport ID"
                   />
                 </div>
@@ -1327,7 +1345,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     type="text"
                     value={quotationData.transportDetails.vehicleNumber}
                     onChange={(e) => handleTransportDetailsChange('vehicleNumber', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Enter Vehicle Number"
                   />
                 </div>
@@ -1335,9 +1353,11 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
             </div>
 
             {/* Bank Details */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-green-500" />
+            <div className="space-y-3">
+              <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                <div className="p-1.5 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-md">
+                  <CreditCard className="h-4 w-4 text-white" />
+                </div>
                 Bank Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1347,7 +1367,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     type="text"
                     value={quotationData.bankDetails.accountHolderName || ''}
                     onChange={(e) => handleBankDetailsChange('accountHolderName', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                     placeholder="Enter Account Holder Name"
                   />
                 </div>
@@ -1357,7 +1377,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     type="text"
                     value={quotationData.bankDetails.bankName}
                     onChange={(e) => handleBankDetailsChange('bankName', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                     placeholder="Enter Bank Name"
                   />
                 </div>
@@ -1367,7 +1387,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     type="text"
                     value={quotationData.bankDetails.branchName}
                     onChange={(e) => handleBankDetailsChange('branchName', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                     placeholder="Enter Branch Name"
                   />
                 </div>
@@ -1377,7 +1397,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     type="text"
                     value={quotationData.bankDetails.accountNumber}
                     onChange={(e) => handleBankDetailsChange('accountNumber', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                     placeholder="Enter Account Number"
                   />
                 </div>
@@ -1387,7 +1407,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                     type="text"
                     value={quotationData.bankDetails.ifscCode}
                     onChange={(e) => handleBankDetailsChange('ifscCode', e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                     placeholder="Enter IFSC Code"
                   />
                 </div>
@@ -1395,35 +1415,39 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
             </div>
 
             {/* Terms & Conditions */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-purple-600" />
-                  <span className="text-sm font-medium text-gray-700">Terms & Conditions</span>
+                  <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-md">
+                    <FileText className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="text-base font-semibold text-gray-900">Terms & Conditions</span>
                 </div>
                 <Button type="button" size="sm" variant="outline" onClick={resetTermsToDefault}>
                   Reset to Default
                 </Button>
               </div>
-              <p className="text-xs text-gray-500">Edit headings and bullet points below. Each new line becomes a bullet in the quotation preview.</p>
-              <div className="space-y-4">
+              <p className="text-xs text-gray-500">
+                Edit headings and bullet points below. Each new line becomes a bullet in the quotation preview.
+              </p>
+              <div className="space-y-3">
                 {(quotationData.termsSections || []).map((section, sectionIndex) => (
-                  <div key={sectionIndex} className="border border-gray-200 rounded-lg bg-white">
-                    <div className="px-4 py-3 border-b border-gray-100">
+                  <div key={sectionIndex} className="border border-gray-300 rounded-lg bg-white">
+                    <div className="px-4 py-2 border-b border-gray-200 bg-gray-50">
                       <input
                         type="text"
                         value={section.title}
                         onChange={(e) => handleTermTitleChange(sectionIndex, e.target.value)}
-                        className="w-full text-sm font-semibold text-gray-800 border-none focus:outline-none focus:ring-0"
+                        className="w-full text-sm font-semibold text-gray-800 bg-transparent border-none focus:outline-none focus:ring-0"
                         placeholder="Section title"
                       />
                     </div>
-                    <div className="p-4">
+                    <div className="p-3">
               <textarea
                         value={section.points.join('\n')}
                         onChange={(e) => handleTermPointsChange(sectionIndex, e.target.value)}
                         rows={Math.max(3, section.points.length)}
-                        className="w-full text-xs text-gray-700 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full text-xs text-gray-700 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         placeholder="Enter each bullet point on a new line"
               />
                     </div>
@@ -1433,7 +1457,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
             </div>
 
             {/* Form Actions */}
-            <div className="flex items-center justify-end pt-6 border-t">
+            <div className="flex items-center justify-end pt-4 border-t">
               <div className="flex gap-3">
                 <Button 
                   type="button" 
@@ -1444,7 +1468,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                 </Button>
                 <Button 
                   type="submit"
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                 >
                   Save Quotation
                 </Button>
@@ -1455,12 +1479,14 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
         </div>
 
         {/* Right Side - Live Preview */}
-        <div className="w-2/5 border-l border-gray-200 pl-4" style={{ maxWidth: '400px' }}>
+        <div className="w-2/5 border-l pl-4" style={{ maxWidth: '400px' }}>
           <div className="sticky top-4">
             <div className="mb-3">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                  <Eye className="h-4 w-4 text-blue-500" />
+                  <div className="p-1.5 bg-gradient-to-br from-purple-500 to-pink-500 rounded-md">
+                    <Eye className="h-4 w-4 text-white" />
+                  </div>
                   Live Preview
                 </h3>
                 <Layout className="h-4 w-4 text-gray-400" />
@@ -1473,7 +1499,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                 <button
                     key={template.id}
                     onClick={() => setSelectedTemplate(template.template_key)}
-                  className={`flex-1 px-2 py-1.5 text-xs rounded border transition-colors ${
+                  className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
                       selectedTemplate === template.template_key
                       ? 'bg-blue-600 text-white border-blue-600'
                       : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
@@ -1486,7 +1512,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
               </div>
             </div>
             <div
-              className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-auto"
+              className="bg-white border border-gray-300 rounded-lg shadow-sm overflow-auto"
               style={{
                 maxHeight: 'calc(100vh - 150px)',
                 transform: 'scale(0.8)',
@@ -1535,8 +1561,8 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
 
   // Otherwise render as modal
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[110] p-4">
+      <Card className="w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl">
         {formContent}
       </Card>
     </div>

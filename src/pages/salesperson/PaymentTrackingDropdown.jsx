@@ -16,12 +16,12 @@ export default function PaymentTrackingDropdown({ currentPage, onNavigate, sideb
     <li>
       <div>
         {/* Main Payment Tracking Button */}
-        <button
+        <div
           className={cx(
-            "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors",
-            isPaymentTrackingActive 
-              ? (isDarkMode ? "bg-blue-900 text-blue-300" : "bg-blue-50 text-blue-700")
-              : (isDarkMode ? "hover:bg-gray-700 text-gray-300" : "hover:bg-gray-50 text-gray-700"),
+            "flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200",
+            isPaymentTrackingActive
+              ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+              : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
           )}
           onClick={() => {
             if (isOpen) {
@@ -31,66 +31,79 @@ export default function PaymentTrackingDropdown({ currentPage, onNavigate, sideb
               onNavigate("products")
             }
           }}
+          style={{
+            transform: isPaymentTrackingActive ? 'translateX(4px)' : 'none',
+          }}
         >
-          <span className="flex items-center space-x-3">
-            <CreditCard className={cx("h-5 w-5", isPaymentTrackingActive ? (isDarkMode ? "text-blue-400" : "text-blue-600") : (isDarkMode ? "text-gray-400" : "text-gray-500"))} />
-            {sidebarOpen && <span className="text-sm font-medium">Payment Tracking</span>}
-          </span>
+          <div className="flex items-center space-x-3">
+            <div className={isPaymentTrackingActive ? 'text-white' : 'text-slate-400'}>
+              <CreditCard className="w-5 h-5" />
+            </div>
+            {sidebarOpen && (
+              <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Payment Tracking</span>
+            )}
+          </div>
           {sidebarOpen && (
-            <span className="flex items-center">
+            <div className={isPaymentTrackingActive ? 'text-white' : 'text-slate-400'}>
               {isOpen ? (
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="w-4 h-4" />
               ) : (
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="w-4 h-4" />
               )}
-            </span>
+            </div>
           )}
-        </button>
+        </div>
 
         {/* Dropdown Menu */}
         {isOpen && sidebarOpen && (
-          <ul className="ml-6 mt-1 space-y-1">
+          <ul className="ml-8 mt-1 space-y-1">
             <li>
-              <button
+              <div
                 className={cx(
-                  "w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm",
-                  currentPage === "products" 
-                    ? (isDarkMode ? "bg-blue-800 text-blue-200" : "bg-blue-100 text-blue-800")
-                    : (isDarkMode ? "hover:bg-gray-600 text-gray-300" : "hover:bg-gray-100 text-gray-700"),
+                  "flex items-center px-3 py-2 rounded-lg cursor-pointer transition-colors text-sm",
+                  currentPage === "products"
+                    ? 'bg-slate-700/70 text-white'
+                    : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
                 )}
                 onClick={() => onNavigate("products")}
               >
-                <CreditCard className="h-4 w-4" />
-                <span>All Payments</span>
-              </button>
+                <div className="flex items-center space-x-2">
+                  <CreditCard className="h-4 w-4" />
+                  <span>All Payments</span>
+                </div>
+              </div>
             </li>
             <li>
-              <button
+              <div
                 className={cx(
-                  "w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm",
-                  currentPage === "due-payment" 
-                    ? (isDarkMode ? "bg-blue-800 text-blue-200" : "bg-blue-100 text-blue-800")
-                    : (isDarkMode ? "hover:bg-gray-600 text-gray-300" : "hover:bg-gray-100 text-gray-700"),
+                  "flex items-center px-3 py-2 rounded-lg cursor-pointer transition-colors text-sm",
+                  currentPage === "due-payment"
+                    ? 'bg-slate-700/70 text-white'
+                    : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
                 )}
                 onClick={() => onNavigate("due-payment")}
               >
-                <Clock className="h-4 w-4" />
-                <span>Due Payment</span>
-              </button>
+                <div className="flex items-center space-x-2">
+                  <Clock className="h-4 w-4" />
+                  <span>Due Payment</span>
+                </div>
+              </div>
             </li>
             <li>
-              <button
+              <div
                 className={cx(
-                  "w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-sm",
-                  currentPage === "advance-payment" 
-                    ? (isDarkMode ? "bg-blue-800 text-blue-200" : "bg-blue-100 text-blue-800")
-                    : (isDarkMode ? "hover:bg-gray-600 text-gray-300" : "hover:bg-gray-100 text-gray-700"),
+                  "flex items-center px-3 py-2 rounded-lg cursor-pointer transition-colors text-sm",
+                  currentPage === "advance-payment"
+                    ? 'bg-slate-700/70 text-white'
+                    : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
                 )}
                 onClick={() => onNavigate("advance-payment")}
               >
-                <DollarSign className="h-4 w-4" />
-                <span>Advance Payment</span>
-              </button>
+                <div className="flex items-center space-x-2">
+                  <DollarSign className="h-4 w-4" />
+                  <span>Advance Payment</span>
+                </div>
+              </div>
             </li>
           </ul>
         )}

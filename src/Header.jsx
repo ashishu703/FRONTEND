@@ -1,18 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Smartphone, Moon, Sun, BarChart3, Clock, User, Factory, Wrench, HelpCircle, Activity, Server, Settings, Shield, Link, CheckCheck, Circle, FileText } from 'lucide-react';
+import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Moon, Sun, BarChart3, Clock, User, Factory, Wrench, HelpCircle, Activity, Server, Settings, Shield, Link, CheckCheck, Circle, FileText } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useNotifications } from './hooks/useNotifications';
+import ProfileUpdateModal from './components/ProfileUpdateModal';
 
 const ASHVAY_LOGO = "https://res.cloudinary.com/dngojnptn/image/upload/v1764139419/ChatGPT_Image_Nov_26_2025_11_50_20_AM_qkwcqe.png";
 
-const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onToggleMobileView, isMobileView = false, isDarkMode = false, onToggleDarkMode, onProfileClick }) => {
-  const { user } = useAuth();
+const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMobileView = false, isDarkMode = false, onToggleDarkMode, onProfileClick }) => {
+  const { user, refreshUser } = useAuth();
   const { notifications, unreadCount, isConnected, markAsRead, markAsUnread, markAllAsRead } = useNotifications();
   
   const [showNotifications, setShowNotifications] = useState(false);
   const [showNotificationHistory, setShowNotificationHistory] = useState(false);
   const [expandedNotificationId, setExpandedNotificationId] = useState(null);
   const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   
   const notificationRef = useRef(null);
   const notificationHistoryRef = useRef(null);
@@ -49,11 +51,27 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
     return iconMap[type] || <Bell className="w-4 h-4 text-gray-500" />;
   };
 
-  // Format time for display
+  // Format time for display (handles timezone correctly)
   const formatTime = (timestamp) => {
-    const date = new Date(timestamp);
+    if (!timestamp) return 'Just now';
+    
+    // Parse timestamp - handles both ISO strings and Date objects
+    const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+    
+    // Get current time in UTC for accurate comparison
     const now = new Date();
-    const diffMs = now - date;
+    const diffMs = now.getTime() - date.getTime();
+    
+    // Handle negative differences (future dates)
+    if (diffMs < 0) {
+      return 'Just now';
+    }
+    
     const diffMins = Math.floor(diffMs / 60000);
     
     if (diffMins < 1) return 'Just now';
@@ -65,7 +83,12 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `${diffDays}d ago`;
     
-    return date.toLocaleDateString();
+    // For older dates, show formatted date in local timezone
+    return date.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    });
   };
 
   // Page-specific header content
@@ -527,100 +550,105 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
   const pageContent = getPageHeaderContent();
 
   return (
-    <header className={`sticky top-0 z-50 border-b shadow-sm transition-colors ${
+    <header className={`sticky top-0 z-[100] border-b shadow-lg transition-all duration-300 backdrop-blur-md ${
       isDarkMode 
-        ? 'bg-gray-900 border-gray-700' 
-        : 'bg-white border-gray-200'
-    }`}>
-      <div className="flex items-center justify-between px-6 py-4">
+        ? 'bg-gray-900/95 border-gray-700' 
+        : 'bg-white/95 border-gray-200'
+    }`} style={{
+      background: isDarkMode 
+        ? 'linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(31, 41, 55, 0.95) 100%)'
+        : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%)',
+      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+    }}>
+      <div className="flex items-center justify-between px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 flex-wrap gap-2 sm:gap-3">
         {/* Left Section - Dynamic Page Header */}
-        <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 bg-blue-400 rounded-xl flex items-center justify-center">
-            {pageContent.icon}
+        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg flex-shrink-0" style={{
+            boxShadow: '0 10px 15px -3px rgba(99, 102, 241, 0.3), 0 4px 6px -2px rgba(99, 102, 241, 0.2)'
+          }}>
+            <div className="text-white text-sm sm:text-base">
+              {pageContent.icon}
+            </div>
           </div>
-          <div>
-            <h1 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{pageContent.title}</h1>
+          <div className="min-w-0">
+            <h1 className={`text-base sm:text-lg lg:text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} truncate`} style={{ fontFamily: 'Poppins, sans-serif' }}>
+              {pageContent.title}
+            </h1>
             {pageContent.subtitle && (
-              <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>{pageContent.subtitle}</p>
+              <p className={`text-xs sm:text-sm mt-0 sm:mt-0.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} truncate hidden sm:block`} style={{ fontFamily: 'Inter, sans-serif' }}>
+                {pageContent.subtitle}
+              </p>
             )}
           </div>
         </div>
 
-        {/* Right Section - Notifications and User */}
-        <div className="flex items-center space-x-4">
-          {/* Mobile Toggle Button - Only for salesperson */}
-          {/* Mobile toggle removed; mobile layout auto-detected via viewport */}
-          
-          {/* Ashvay Chat Button */}
+        <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 flex-shrink-0">
           <button
             onClick={() => {
               window.dispatchEvent(new CustomEvent('openAshvayChat'));
             }}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-1 sm:p-1.5 rounded-lg transition-colors flex-shrink-0 ${
               isDarkMode 
                 ? 'hover:bg-gray-700' 
                 : 'hover:bg-gray-100'
             }`}
             title="Ashvay AI Support"
           >
-            <div className="w-8 h-8 rounded-full overflow-hidden bg-white p-0.5">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden bg-white p-0.5">
               <img src={ASHVAY_LOGO} alt="Ashvay" className="w-full h-full object-contain rounded-full" />
             </div>
           </button>
           
-          {/* Dark Mode Toggle Button - Only for salesperson */}
           {userType === "salesperson" && onToggleDarkMode && (
             <button
               onClick={onToggleDarkMode}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`p-1 sm:p-1.5 rounded-lg transition-colors flex-shrink-0 ${
                 isDarkMode 
                   ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' 
                   : 'hover:bg-gray-100 text-gray-600'
               }`}
               title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
-              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {isDarkMode ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
           )}
-          {/* Profile Icon - Only for marketing salesperson */}
+          
           {userType === "marketing-salesperson" && onProfileClick && (
             <button
               onClick={onProfileClick}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`p-1 sm:p-1.5 rounded-lg transition-colors flex-shrink-0 ${
                 currentPage === 'profile' 
                   ? (isDarkMode ? 'bg-blue-700 text-blue-200' : 'bg-blue-100 text-blue-700')
                   : (isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100')
               }`}
               title="Profile & Attendance"
             >
-              <User className={`w-5 h-5 ${currentPage === 'profile' ? (isDarkMode ? 'text-blue-200' : 'text-blue-700') : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} />
+              <User className={`w-4 h-4 sm:w-5 sm:h-5 ${currentPage === 'profile' ? (isDarkMode ? 'text-blue-200' : 'text-blue-700') : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} />
             </button>
           )}
           
-          {/* Notification Bell */}
-          <div className="relative" ref={notificationRef}>
+          <div className="relative flex-shrink-0" ref={notificationRef}>
             <button 
               onClick={() => setShowNotifications(!showNotifications)}
-              className={`relative p-2 rounded-lg transition-colors ${
+              className={`relative p-1 sm:p-1.5 rounded-lg transition-colors ${
                 isDarkMode 
                   ? 'hover:bg-gray-700' 
                   : 'hover:bg-gray-100'
               }`}
             >
-              <Bell className={`w-5 h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
+              <Bell className={`w-4 h-4 sm:w-5 sm:h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
               {unreadCount > 0 && (
-                <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-600 text-white text-[10px] leading-[18px] rounded-full text-center">
+                <div className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] sm:min-w-[16px] sm:h-[16px] px-0.5 bg-red-600 text-white text-[8px] sm:text-[9px] leading-[14px] sm:leading-[16px] rounded-full text-center">
                   {Math.min(99, unreadCount)}
                 </div>
               )}
               {isConnected && (
-                <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-green-500 rounded-full border border-white"></div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full border border-white"></div>
               )}
             </button>
 
-            {/* Notification Panel */}
             {showNotifications && (
-              <div className={`absolute right-0 top-full mt-2 w-80 rounded-lg shadow-lg border z-50 ${
+              <div className={`absolute right-0 top-full mt-2 w-80 rounded-lg shadow-lg border z-[1000] ${
                 isDarkMode 
                   ? 'bg-gray-800 border-gray-700' 
                   : 'bg-white border-gray-200'
@@ -758,45 +786,52 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
             )}
           </div>
 
-          {/* Support Icon */}
           <button
             onClick={() => window.location.href = '/support'}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-1 sm:p-1.5 rounded-lg transition-colors flex-shrink-0 ${
               isDarkMode 
                 ? 'hover:bg-gray-700' 
                 : 'hover:bg-gray-100'
             }`}
             title="Support & Help"
           >
-            <HelpCircle className={`w-5 h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
+            <HelpCircle className={`w-4 h-4 sm:w-5 sm:h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
           </button>
 
-          {/* User Button (without profile panel) */}
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-medium text-sm">
-                {user?.username ? user.username.split(' ').map(n => n[0]).join('').toUpperCase() : 'T'}
-              </span>
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="flex items-center space-x-1.5 sm:space-x-2 hover:bg-gray-100 rounded-lg px-1.5 sm:px-2 py-1 sm:py-1.5 transition-colors cursor-pointer flex-shrink-0"
+          >
+            <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-9 lg:h-9 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center shadow-md">
+              {user?.profile_picture || user?.profilePicture ? (
+                <img 
+                  src={user.profile_picture || user.profilePicture} 
+                  alt="Profile" 
+                  className="w-full h-full rounded-full object-cover"
+                />
+              ) : (
+                <span className="text-white font-medium text-xs sm:text-sm">
+                  {user?.username ? user.username.split(' ').map(n => n[0]).join('').toUpperCase() : 'T'}
+                </span>
+              )}
             </div>
-            <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">
+            <div className="text-right hidden sm:block">
+              <p className="text-xs sm:text-sm font-medium text-gray-900 truncate max-w-[120px]">
                 {user?.email ? 
                   `${user.email.split('@')[0]}@${user.email.split('@')[1].substring(0, 3)}...` : 
                   'testuser@gma...'
                 }
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-[10px] sm:text-xs text-gray-500 truncate">
                 {user?.role ? user.role.toUpperCase().replace('_', ' ') : userType.toUpperCase()}
               </p>
             </div>
-          </div>
-
+          </button>
         </div>
       </div>
 
-      {/* Notification History Modal */}
       {showNotificationHistory && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
           <div 
             ref={notificationHistoryRef}
             className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
@@ -984,6 +1019,18 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", onTog
           </div>
         </div>
       )}
+
+      <ProfileUpdateModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        user={user}
+        onUpdate={async (updatedUser) => {
+          if (updatedUser) {
+            // Refresh user data from the API to get the latest profile picture
+            await refreshUser();
+          }
+        }}
+      />
     </header>
   );
 };

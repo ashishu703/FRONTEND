@@ -1,7 +1,27 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:4500';
+const getBaseURL = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    const baseURL = import.meta.env.VITE_API_BASE_URL;
+    if (baseURL.startsWith('http')) {
+      return baseURL;
+    }
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}${baseURL}`;
+    }
+  }
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:4500/api';
+    }
+    return `${window.location.origin}/api`;
+  }
+  return 'http://localhost:4500/api';
+};
+
+const BASE_URL = getBaseURL();
 
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -38,78 +58,94 @@ export const useNotifications = () => {
     }
   }, []);
 
+  const calculateUnreadCount = useCallback((notifications) => {
+    return notifications.filter(n => n.unread !== false).length;
+  }, []);
+
   const fetchNotifications = useCallback(async () => {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) return;
 
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4500';
-      const res = await fetch(`${API_URL}/api/notifications`, {
+      const apiPath = BASE_URL.includes('/api') ? `${BASE_URL}/notifications` : `${BASE_URL}/api/notifications`;
+      
+      const res = await fetch(apiPath, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      
+      if (!res.ok) return;
       
       const json = await res.json();
       
       if (json?.success) {
-        setNotifications(json.data || []);
-        setUnreadCount(json.unreadCount || 0);
+        const notifications = json.data || [];
+        notifications.forEach(n => notificationIdsRef.current.add(n.id));
+        
+        setNotifications(notifications);
+        const count = calculateUnreadCount(notifications);
+        setUnreadCount(count);
+      } else {
+        setNotifications([]);
+        setUnreadCount(0);
       }
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     }
-  }, []);
+  }, [calculateUnreadCount]);
 
   const markAsRead = useCallback(async (notificationId) => {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) return;
 
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4500';
-      const res = await fetch(`${API_URL}/api/notifications/${notificationId}/read`, {
+      const apiPath = BASE_URL.includes('/api') ? `${BASE_URL}/notifications/${notificationId}/read` : `${BASE_URL}/api/notifications/${notificationId}/read`;
+      const res = await fetch(apiPath, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (res.ok) {
-        setNotifications(prev => 
-          prev.map(n => n.id === notificationId ? { ...n, unread: false } : n)
-        );
-        setUnreadCount(prev => Math.max(0, prev - 1));
+        setNotifications(prev => {
+          const updated = prev.map(n => n.id === notificationId ? { ...n, unread: false } : n);
+          setUnreadCount(calculateUnreadCount(updated));
+          return updated;
+        });
       }
     } catch (error) {
       console.error('Failed to mark as read:', error);
     }
-  }, []);
+  }, [calculateUnreadCount]);
 
   const markAsUnread = useCallback(async (notificationId) => {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) return;
 
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4500';
-      const res = await fetch(`${API_URL}/api/notifications/${notificationId}/unread`, {
+      const apiPath = BASE_URL.includes('/api') ? `${BASE_URL}/notifications/${notificationId}/unread` : `${BASE_URL}/api/notifications/${notificationId}/unread`;
+      const res = await fetch(apiPath, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (res.ok) {
-        setNotifications(prev => 
-          prev.map(n => n.id === notificationId ? { ...n, unread: true } : n)
-        );
-        setUnreadCount(prev => prev + 1);
+        setNotifications(prev => {
+          const updated = prev.map(n => n.id === notificationId ? { ...n, unread: true } : n);
+          setUnreadCount(calculateUnreadCount(updated));
+          return updated;
+        });
       }
     } catch (error) {
       console.error('Failed to mark as unread:', error);
     }
-  }, []);
+  }, [calculateUnreadCount]);
 
   const markAllAsRead = useCallback(async () => {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) return;
 
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4500';
-      const res = await fetch(`${API_URL}/api/notifications/mark-all-read`, {
+      const apiPath = BASE_URL.includes('/api') ? `${BASE_URL}/notifications/mark-all-read` : `${BASE_URL}/api/notifications/mark-all-read`;
+      const res = await fetch(apiPath, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -129,21 +165,56 @@ export const useNotifications = () => {
 
     fetchNotifications();
 
-    const socket = io(SOCKET_URL, {
+    let socketURL;
+    if (BASE_URL.includes('/api')) {
+      socketURL = BASE_URL.split('/api')[0].trim();
+    } else if (BASE_URL.includes('localhost:4500')) {
+      socketURL = 'http://localhost:4500';
+    } else {
+      socketURL = typeof window !== 'undefined' ? window.location.origin : BASE_URL;
+    }
+    
+    if (!socketURL || socketURL.endsWith('/')) {
+      socketURL = socketURL.replace(/\/$/, '');
+    }
+    
+    const socket = io(socketURL, {
       auth: { token },
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      path: '/socket.io'
+    });
+    
+    socket.on('connect_error', (error) => {
+      console.error('Socket.IO connection error:', error.message);
     });
 
     socketRef.current = socket;
 
-    socket.on('connect', () => setIsConnected(true));
-    socket.on('disconnect', () => setIsConnected(false));
+    socket.on('connect', () => {
+      setIsConnected(true);
+      console.log('✅ Socket.IO connected');
+    });
+    
+    socket.on('disconnect', () => {
+      setIsConnected(false);
+      console.log('❌ Socket.IO disconnected');
+    });
 
     socket.on('notification', (notification) => {
+      console.log('📨 Received real-time notification:', notification);
+      
+      if (!notification || !notification.id) {
+        console.warn('Invalid notification received:', notification);
+        return;
+      }
+      
       if (!notificationIdsRef.current.has(notification.id)) {
         notificationIdsRef.current.add(notification.id);
-        setNotifications(prev => [notification, ...prev]);
-        setUnreadCount(prev => prev + 1);
+        setNotifications(prev => {
+          const updated = [{ ...notification, unread: notification.unread !== false }, ...prev];
+          setUnreadCount(calculateUnreadCount(updated));
+          return updated;
+        });
         playNotificationSound();
 
         if (Notification.permission === 'granted') {
@@ -152,6 +223,8 @@ export const useNotifications = () => {
             icon: '/logo.png'
           });
         }
+      } else {
+        console.log('⚠️ Duplicate notification ignored:', notification.id);
       }
     });
 
@@ -160,7 +233,7 @@ export const useNotifications = () => {
     }
 
     return () => socket.disconnect();
-  }, [fetchNotifications, playNotificationSound]);
+  }, [fetchNotifications, playNotificationSound, calculateUnreadCount]);
 
   return {
     notifications,

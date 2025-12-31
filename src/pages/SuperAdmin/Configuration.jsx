@@ -16,7 +16,8 @@ import {
   Key,
   Loader,
   Plus,
-  X
+  X,
+  Bell
 } from 'lucide-react';
 import configurationService from '../../api/admin_api/configurationService';
 import TemplateFormSidebar from '../../components/TemplateFormSidebar';
@@ -83,6 +84,17 @@ const Configuration = () => {
     refreshToken: '',
     tokenExpiresAt: '',
     webhookUrl: ''
+  });
+
+  // Push Notification Settings State
+  const [pushNotificationSettings, setPushNotificationSettings] = useState({
+    firebase_project_id: '',
+    firebase_client_email: '',
+    firebase_private_key: '',
+    firebase_messaging_sender_id: '',
+    firebase_app_id: '',
+    firebase_public_vapid_key: '',
+    notification_enabled: false
   });
 
   // Templates State
@@ -228,6 +240,13 @@ const Configuration = () => {
 
   const handleTradeIndiaChange = (field, value) => {
     setTradeindiaSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handlePushNotificationChange = (field, value) => {
+    setPushNotificationSettings(prev => ({
       ...prev,
       [field]: value
     }));
@@ -481,6 +500,40 @@ const Configuration = () => {
     }
   };
 
+  const handleSavePushNotification = async () => {
+    if (!pushNotificationSettings.firebase_project_id || 
+        !pushNotificationSettings.firebase_client_email || 
+        !pushNotificationSettings.firebase_private_key ||
+        !pushNotificationSettings.firebase_messaging_sender_id ||
+        !pushNotificationSettings.firebase_app_id ||
+        !pushNotificationSettings.firebase_public_vapid_key) {
+      showMessage('error', 'All Firebase configuration fields are required');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await configurationService.savePushNotificationConfig({
+        firebase_project_id: pushNotificationSettings.firebase_project_id,
+        firebase_client_email: pushNotificationSettings.firebase_client_email,
+        firebase_private_key: pushNotificationSettings.firebase_private_key,
+        firebase_messaging_sender_id: pushNotificationSettings.firebase_messaging_sender_id,
+        firebase_app_id: pushNotificationSettings.firebase_app_id,
+        firebase_public_vapid_key: pushNotificationSettings.firebase_public_vapid_key,
+        notification_enabled: pushNotificationSettings.notification_enabled
+      });
+      
+      if (response.success) {
+        showMessage('success', 'Push notification configuration saved successfully');
+        loadConfigurations();
+      }
+    } catch (error) {
+      showMessage('error', error.message || 'Failed to save push notification configuration');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSaveTradeIndia = async () => {
     setSaving(true);
     try {
@@ -505,9 +558,13 @@ const Configuration = () => {
 
   const renderSmtpSettings = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <Server className="w-5 h-5 mr-2 text-blue-600" />
+      <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-xl border border-blue-100/50 p-6" style={{
+        boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 10px 10px -5px rgba(59, 130, 246, 0.04)'
+      }}>
+        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mr-3 shadow-lg">
+            <Server className="w-6 h-6 text-white" />
+          </div>
           Server Settings
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -538,9 +595,13 @@ const Configuration = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <Lock className="w-5 h-5 mr-2 text-green-600" />
+      <div className="bg-gradient-to-br from-white to-green-50/30 rounded-2xl shadow-xl border border-green-100/50 p-6" style={{
+        boxShadow: '0 10px 25px -5px rgba(34, 197, 94, 0.1), 0 10px 10px -5px rgba(34, 197, 94, 0.04)'
+      }}>
+        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center mr-3 shadow-lg">
+            <Lock className="w-6 h-6 text-white" />
+          </div>
           Authentication
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -571,9 +632,13 @@ const Configuration = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <Users className="w-5 h-5 mr-2 text-purple-600" />
+      <div className="bg-gradient-to-br from-white to-purple-50/30 rounded-2xl shadow-xl border border-purple-100/50 p-6" style={{
+        boxShadow: '0 10px 25px -5px rgba(168, 85, 247, 0.1), 0 10px 10px -5px rgba(168, 85, 247, 0.04)'
+      }}>
+        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mr-3 shadow-lg">
+            <Users className="w-6 h-6 text-white" />
+          </div>
           Recipients
         </h3>
         <div className="space-y-4">
@@ -653,7 +718,11 @@ const Configuration = () => {
         <button
           onClick={handleSaveSmtp}
           disabled={saving}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg"
+          style={{
+            boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)',
+            fontFamily: 'Inter, sans-serif'
+          }}
         >
           {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           <span>{saving ? 'Saving...' : 'Save Config'}</span>
@@ -697,16 +766,16 @@ const Configuration = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {templates.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan="5" className="px-4 py-8 text-center text-gray-500 font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                     No email templates found. Create your first template to get started.
                   </td>
                 </tr>
               ) : (
                 templates.map((template) => (
-                  <tr key={template.id} className="hover:bg-gray-50">
+                  <tr key={template.id} className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-200">
                     <td className="px-4 py-4 text-sm font-medium text-gray-900">
                       {template.name}
                     </td>
@@ -755,18 +824,20 @@ const Configuration = () => {
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 overflow-hidden" style={{
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+      }}>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gradient-to-r from-slate-50 to-gray-50 border-b-2 border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   Type
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   Name
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   Key
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -783,16 +854,16 @@ const Configuration = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {documentTemplates.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan="7" className="px-4 py-8 text-center text-gray-500 font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                     No document templates found. Create your first template to get started.
                   </td>
                 </tr>
               ) : (
                 documentTemplates.map((template) => (
-                  <tr key={template.id} className="hover:bg-gray-50">
+                  <tr key={template.id} className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 transition-all duration-200">
                     <td className="px-4 py-4 text-sm text-gray-900 capitalize">
                       {template.template_type}
                     </td>
@@ -841,9 +912,13 @@ const Configuration = () => {
 
   const renderWhatsappSettings = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <MessageSquare className="w-5 h-5 mr-2 text-green-600" />
+      <div className="bg-gradient-to-br from-white to-green-50/30 rounded-2xl shadow-xl border border-green-100/50 p-6" style={{
+        boxShadow: '0 10px 25px -5px rgba(34, 197, 94, 0.1), 0 10px 10px -5px rgba(34, 197, 94, 0.04)'
+      }}>
+        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center mr-3 shadow-lg">
+            <MessageSquare className="w-6 h-6 text-white" />
+          </div>
           WhatsApp Configuration
         </h3>
         <div className="space-y-4">
@@ -909,7 +984,11 @@ const Configuration = () => {
         <button
           onClick={handleSaveWhatsapp}
           disabled={saving}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg"
+          style={{
+            boxShadow: '0 4px 15px rgba(34, 197, 94, 0.4)',
+            fontFamily: 'Inter, sans-serif'
+          }}
         >
           {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           <span>{saving ? 'Saving...' : 'Save Config'}</span>
@@ -920,9 +999,13 @@ const Configuration = () => {
 
   const renderIndiamartSettings = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <Key className="w-5 h-5 mr-2 text-orange-600" />
+      <div className="bg-gradient-to-br from-white to-orange-50/30 rounded-2xl shadow-xl border border-orange-100/50 p-6" style={{
+        boxShadow: '0 10px 25px -5px rgba(249, 115, 22, 0.1), 0 10px 10px -5px rgba(249, 115, 22, 0.04)'
+      }}>
+        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center mr-3 shadow-lg">
+            <Key className="w-6 h-6 text-white" />
+          </div>
           Indiamart API Configuration
         </h3>
         <div className="space-y-4">
@@ -1010,7 +1093,11 @@ const Configuration = () => {
         <button
           onClick={handleSaveIndiamart}
           disabled={saving}
-          className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-5 py-2.5 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg"
+          style={{
+            boxShadow: '0 4px 15px rgba(249, 115, 22, 0.4)',
+            fontFamily: 'Inter, sans-serif'
+          }}
         >
           {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           <span>{saving ? 'Saving...' : 'Save Config'}</span>
@@ -1021,9 +1108,13 @@ const Configuration = () => {
 
   const renderTradeIndiaSettings = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <Key className="w-5 h-5 mr-2 text-blue-600" />
+      <div className="bg-gradient-to-br from-white to-cyan-50/30 rounded-2xl shadow-xl border border-cyan-100/50 p-6" style={{
+        boxShadow: '0 10px 25px -5px rgba(6, 182, 212, 0.1), 0 10px 10px -5px rgba(6, 182, 212, 0.04)'
+      }}>
+        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center mr-3 shadow-lg">
+            <Key className="w-6 h-6 text-white" />
+          </div>
           TradeIndia API Configuration
         </h3>
         <div className="space-y-4">
@@ -1111,7 +1202,11 @@ const Configuration = () => {
         <button
           onClick={handleSaveTradeIndia}
           disabled={saving}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg"
+          style={{
+            boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)',
+            fontFamily: 'Inter, sans-serif'
+          }}
         >
           {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           <span>{saving ? 'Saving...' : 'Save Config'}</span>
@@ -1120,11 +1215,134 @@ const Configuration = () => {
     </div>
   );
 
+  const renderPushNotificationSettings = () => (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-br from-white to-pink-50/30 rounded-2xl shadow-xl border border-pink-100/50 p-6" style={{
+        boxShadow: '0 10px 25px -5px rgba(236, 72, 153, 0.1), 0 10px 10px -5px rgba(236, 72, 153, 0.04)'
+      }}>
+        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center mr-3 shadow-lg">
+            <Bell className="w-6 h-6 text-white" />
+          </div>
+          Firebase Push Notification Configuration
+        </h3>
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2 mb-4">
+            <input
+              type="checkbox"
+              id="notification_enabled"
+              checked={pushNotificationSettings.notification_enabled}
+              onChange={(e) => handlePushNotificationChange('notification_enabled', e.target.checked)}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="notification_enabled" className="text-sm font-medium text-gray-700">
+              Enable Push Notifications
+            </label>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Firebase Project ID <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={pushNotificationSettings.firebase_project_id}
+                onChange={(e) => handlePushNotificationChange('firebase_project_id', e.target.value)}
+                placeholder="your-project-id"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Firebase Client Email <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                value={pushNotificationSettings.firebase_client_email}
+                onChange={(e) => handlePushNotificationChange('firebase_client_email', e.target.value)}
+                placeholder="firebase-adminsdk@your-project.iam.gserviceaccount.com"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Firebase Private Key <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={pushNotificationSettings.firebase_private_key}
+              onChange={(e) => handlePushNotificationChange('firebase_private_key', e.target.value)}
+              placeholder="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+              rows={6}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Firebase Messaging Sender ID <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={pushNotificationSettings.firebase_messaging_sender_id}
+                onChange={(e) => handlePushNotificationChange('firebase_messaging_sender_id', e.target.value)}
+                placeholder="123456789012"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Firebase App ID <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={pushNotificationSettings.firebase_app_id}
+                onChange={(e) => handlePushNotificationChange('firebase_app_id', e.target.value)}
+                placeholder="1:123456789012:web:abcdef123456"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Firebase Public VAPID Key <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={pushNotificationSettings.firebase_public_vapid_key}
+              onChange={(e) => handlePushNotificationChange('firebase_public_vapid_key', e.target.value)}
+              placeholder="BKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+            />
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <button
+          onClick={handleSavePushNotification}
+          disabled={saving}
+          className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg"
+          style={{
+            boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)',
+            fontFamily: 'Inter, sans-serif'
+          }}
+        >
+          {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          <span>{saving ? 'Saving...' : 'Save Configuration'}</span>
+        </button>
+      </div>
+    </div>
+  );
+
   const renderCloudinarySettings = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <Cloud className="w-5 h-5 mr-2 text-blue-600" />
+      <div className="bg-gradient-to-br from-white to-indigo-50/30 rounded-2xl shadow-xl border border-indigo-100/50 p-6" style={{
+        boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.1), 0 10px 10px -5px rgba(99, 102, 241, 0.04)'
+      }}>
+        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center mr-3 shadow-lg">
+            <Cloud className="w-6 h-6 text-white" />
+          </div>
           Cloudinary Configuration
         </h3>
         <div className="space-y-4">
@@ -1200,7 +1418,11 @@ const Configuration = () => {
         <button
           onClick={handleSaveCloudinary}
           disabled={saving}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg"
+          style={{
+            boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)',
+            fontFamily: 'Inter, sans-serif'
+          }}
         >
           {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           <span>{saving ? 'Saving...' : 'Save Config'}</span>
@@ -1211,7 +1433,10 @@ const Configuration = () => {
 
   if (loading) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="p-6 min-h-screen" style={{ 
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        backgroundAttachment: 'fixed'
+      }}>
         <div className="mb-6">
           <div className="h-8 bg-gray-200 rounded w-48 mb-2 animate-pulse"></div>
           <div className="h-4 bg-gray-200 rounded w-96 animate-pulse"></div>
@@ -1228,45 +1453,68 @@ const Configuration = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 min-h-screen" style={{ 
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      backgroundAttachment: 'fixed'
+    }}>
 
       {/* Message Alert */}
       {message.text && (
-        <div className={`mb-4 p-4 rounded-lg flex items-center space-x-2 ${
-          message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-        }`}>
+        <div className={`mb-4 p-4 rounded-xl flex items-center space-x-2 shadow-lg ${
+          message.type === 'success' 
+            ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-2 border-green-300' 
+            : 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border-2 border-red-300'
+        }`} style={{
+          boxShadow: message.type === 'success' 
+            ? '0 4px 6px -1px rgba(34, 197, 94, 0.2)' 
+            : '0 4px 6px -1px rgba(239, 68, 68, 0.2)'
+        }}>
           {message.type === 'success' ? (
             <CheckCircle className="w-5 h-5" />
           ) : (
             <AlertCircle className="w-5 h-5" />
           )}
-          <span>{message.text}</span>
+          <span className="font-semibold" style={{ fontFamily: 'Inter, sans-serif' }}>{message.text}</span>
         </div>
       )}
 
       {/* Tabs */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6">
+      <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200/50 mb-6" style={{
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+      }}>
+        <div className="border-b-2 border-gray-200">
+          <nav className="flex space-x-2 px-4 overflow-x-auto">
             {[
-              { id: 'smtp', label: 'SMTP Settings', icon: Server },
-              { id: 'templates', label: 'Email Templates', icon: Mail },
-              { id: 'documentTemplates', label: 'Document Templates', icon: FileText },
-              { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
-              { id: 'cloudinary', label: 'File Upload', icon: Cloud },
-              { id: 'indiamart', label: 'Indiamart', icon: Key },
-              { id: 'tradeindia', label: 'TradeIndia', icon: Key }
+              { id: 'smtp', label: 'SMTP Settings', icon: Server, color: 'from-blue-500 to-cyan-500' },
+              { id: 'templates', label: 'Email Templates', icon: Mail, color: 'from-purple-500 to-pink-500' },
+              { id: 'documentTemplates', label: 'Document Templates', icon: FileText, color: 'from-green-500 to-emerald-500' },
+              { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, color: 'from-green-500 to-teal-500' },
+              { id: 'cloudinary', label: 'File Upload', icon: Cloud, color: 'from-indigo-500 to-purple-500' },
+              { id: 'indiamart', label: 'Indiamart', icon: Key, color: 'from-orange-500 to-amber-500' },
+              { id: 'tradeindia', label: 'TradeIndia', icon: Key, color: 'from-cyan-500 to-blue-500' },
+              { id: 'pushNotification', label: 'Push Notifications', icon: Bell, color: 'from-pink-500 to-rose-500' }
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
+                className={`py-4 px-4 border-b-3 font-semibold text-sm flex items-center space-x-2 transition-all duration-200 whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
+                    ? `border-transparent bg-gradient-to-t from-${tab.color.split(' ')[1]}-50 to-transparent text-${tab.color.split(' ')[1].split('-')[0]}-600`
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
+                style={{ 
+                  fontFamily: 'Inter, sans-serif',
+                  borderBottomColor: activeTab === tab.id ? undefined : 'transparent',
+                  borderBottomWidth: activeTab === tab.id ? '3px' : '2px'
+                }}
               >
-                <tab.icon className="w-4 h-4" />
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                  activeTab === tab.id 
+                    ? `bg-gradient-to-br ${tab.color}` 
+                    : 'bg-gray-200'
+                }`}>
+                  <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-white' : 'text-gray-600'}`} />
+                </div>
                 <span>{tab.label}</span>
               </button>
             ))}
@@ -1281,6 +1529,7 @@ const Configuration = () => {
           {activeTab === 'cloudinary' && renderCloudinarySettings()}
           {activeTab === 'indiamart' && renderIndiamartSettings()}
           {activeTab === 'tradeindia' && renderTradeIndiaSettings()}
+          {activeTab === 'pushNotification' && renderPushNotificationSettings()}
         </div>
       </div>
 
