@@ -33,7 +33,7 @@ export const useFirebasePush = () => {
 
   const getVapidKey = useCallback(async () => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       if (!token) return null;
 
       const res = await fetch(`${BASE_URL}/configuration/push-notification/vapid-key`, {
@@ -53,13 +53,13 @@ export const useFirebasePush = () => {
 
   const saveTokenToBackend = useCallback(async (token) => {
     try {
-      const authToken = localStorage.getItem('authToken');
+      const authToken = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
       if (!authToken || !user?.email) return;
 
       const browser = navigator.userAgentData?.brands?.[0]?.brand || 'Unknown';
       const deviceType = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent) ? 'mobile' : 'desktop';
 
-      await fetch(`${BASE_URL}/notification/save-token`, {
+      const res = await fetch(`${BASE_URL}/notification/save-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,6 +72,11 @@ export const useFirebasePush = () => {
           user_agent: navigator.userAgent
         })
       });
+      
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        console.warn('Failed to save FCM token:', res.status, text);
+      }
     } catch (error) {
       console.error('Error saving FCM token:', error);
     }
@@ -113,10 +118,13 @@ export const useFirebasePush = () => {
 
     try {
       const firebaseConfig = {
-        apiKey: vapidKey,
-        projectId: 'temp',
-        messagingSenderId: 'temp',
-        appId: 'temp'
+        apiKey: "AIzaSyBY2AnonQnUUqz14ldrtw2VS2yI1VmjMxc",
+        authDomain: "messaging-5fc1b.firebaseapp.com",
+        projectId: "messaging-5fc1b",
+        storageBucket: "messaging-5fc1b.firebasestorage.app",
+        messagingSenderId: "12068341296",
+        appId: "1:12068341296:web:56bc9bfdde286b58900ff5",
+        measurementId: "G-V8MSGTKLW1"
       };
 
       const app = initializeApp(firebaseConfig);

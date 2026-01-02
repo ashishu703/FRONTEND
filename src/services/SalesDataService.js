@@ -3,6 +3,7 @@ import quotationService from '../api/admin_api/quotationService';
 import paymentService from '../api/admin_api/paymentService';
 import proformaInvoiceService from '../api/admin_api/proformaInvoiceService';
 import departmentUserService from '../api/admin_api/departmentUserService';
+import { toDateOnly } from '../utils/dateOnly';
 
 class SalesDataService {
   async fetchAllLeads(departmentType = null) {
@@ -146,8 +147,10 @@ class SalesDataService {
     return Array.from(paymentMap.values());
   }
 
-  calculatePaymentMetrics(allPayments, quotationsWithPI, allQuotations) {
+  calculatePaymentMetrics(allPayments, quotationsWithPI, allQuotations, options = {}) {
     // Use same logic as Sales Department Head dashboard for consistency
+    const { startDate = null, endDate = null } = options || {};
+
     const isPaymentApprovedByAccounts = (payment) => {
       // Check approval_status first (primary field), then fallback to other field names
       const accountsStatus = (payment.approval_status || payment.accounts_approval_status || payment.accountsApprovalStatus || '').toLowerCase();
@@ -161,6 +164,17 @@ class SalesDataService {
 
     const isPaymentRefund = (payment) => {
       return payment.is_refund === true || payment.is_refund === 1;
+    };
+
+    const isWithinDateRange = (payment) => {
+      if (!startDate && !endDate) return true;
+      const raw = payment.payment_date || payment.paymentDate;
+      if (!raw) return false;
+      const pd = toDateOnly(raw);
+      if (!pd) return false;
+      if (startDate && pd < startDate) return false;
+      if (endDate && pd > endDate) return false;
+      return true;
     };
 
     const getPaymentAmount = (p) => {
@@ -177,26 +191,13 @@ class SalesDataService {
              (p.installment_number === 1 || p.installment_number === 0);
     };
 
-    // Filter completed/paid/advance payments, exclude refunds, and ONLY include payments approved by accounts department
-    // This matches the logic used in Sales Department Head dashboard
+  
     const completedPayments = allPayments.filter(p => {
-      return isPaymentCompleted(p) && !isPaymentRefund(p) && isPaymentApprovedByAccounts(p);
-    });
-
-    console.log('[SalesDataService] Payment calculation:', {
-      totalPayments: allPayments.length,
-      completedApprovedPayments: completedPayments.length,
-      samplePayment: completedPayments[0] || null
+      return isPaymentCompleted(p) && !isPaymentRefund(p) && isPaymentApprovedByAccounts(p) && isWithinDateRange(p);
     });
 
     const totalReceived = completedPayments.reduce((sum, p) => sum + getPaymentAmount(p), 0);
     const totalAdvance = completedPayments.filter(isAdvancePayment).reduce((sum, p) => sum + getPaymentAmount(p), 0);
-
-    console.log('[SalesDataService] Payment totals:', {
-      totalReceived,
-      totalAdvance,
-      completedPaymentsCount: completedPayments.length
-    });
 
     return { approvedPayments: completedPayments, totalReceived, totalAdvance };
   }
@@ -366,8 +367,10 @@ class SalesDataService {
     return allUsers;
   }
 
-  async calculateTopPerformers(allPayments, allLeads, allQuotations, departmentType = null) {
+  async calculateTopPerformers(allPayments, allLeads, allQuotations, departmentType = null, options = {}) {
     try {
+      const { startDate = null, endDate = null } = options || {};
+
       // Filter users by departmentType if provided (for SuperAdmin to filter by office_sales)
       const allUsers = await this.fetchAllDepartmentUsers(departmentType);
       
@@ -395,16 +398,34 @@ class SalesDataService {
     
     const performerMap = new Map();
     
-    const isPaymentApproved = (p) => {
-      const paymentStatus = (p.payment_status || p.status || '').toLowerCase();
-      return paymentStatus === 'approved' || 
-             paymentStatus === 'completed' ||
-             paymentStatus === 'paid' ||
-             (p.approved_by_accounts || p.approvedByAccounts) ||
-             (p.payment_status === 'APPROVED' || p.status === 'APPROVED');
+    const isPaymentApprovedByAccounts = (payment) => {
+      const accountsStatus = (payment.approval_status || payment.accounts_approval_status || payment.accountsApprovalStatus || '').toLowerCase();
+      return accountsStatus === 'approved';
     };
 
-    const approvedPayments = allPayments.filter(isPaymentApproved);
+    const isPaymentCompleted = (payment) => {
+      const status = (payment.payment_status || payment.status || '').toLowerCase();
+      return status === 'completed' || status === 'paid' || status === 'success' || status === 'advance';
+    };
+
+    const isPaymentRefund = (payment) => {
+      return payment.is_refund === true || payment.is_refund === 1;
+    };
+
+    const isWithinDateRange = (payment) => {
+      if (!startDate && !endDate) return true;
+      const raw = payment.payment_date || payment.paymentDate;
+      if (!raw) return false;
+      const pd = toDateOnly(raw);
+      if (!pd) return false;
+      if (startDate && pd < startDate) return false;
+      if (endDate && pd > endDate) return false;
+      return true;
+    };
+
+    const approvedPayments = allPayments.filter(p => {
+      return isPaymentCompleted(p) && !isPaymentRefund(p) && isPaymentApprovedByAccounts(p) && isWithinDateRange(p);
+    });
 
     const quotationToSalesperson = new Map();
     allQuotations.forEach(q => {

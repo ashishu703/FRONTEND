@@ -181,7 +181,12 @@ export const useNotifications = () => {
     const socket = io(socketURL, {
       auth: { token },
       transports: ['websocket', 'polling'],
-      path: '/socket.io'
+      path: '/socket.io',
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
+      timeout: 20000,
+      forceNew: true
     });
     
     socket.on('connect_error', (error) => {

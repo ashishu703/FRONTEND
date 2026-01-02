@@ -12,6 +12,7 @@ import departmentHeadService from '../../api/admin_api/departmentHeadService'
 import { useAuth } from '../../hooks/useAuth'
 import salesDataService from '../../services/SalesDataService'
 import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton'
+import { toDateOnly } from '../../utils/dateOnly'
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")
@@ -767,7 +768,8 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   const [error, setError] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
   const [allPayments, setAllPayments] = useState([])
-  const [topPerformers, setTopPerformers] = useState([])
+  const [topPerformers, setTopPerformers] = useState({ current: [], previous: [] })
+  const [topPerformersView, setTopPerformersView] = useState('current') // current | previous
 
   const getCalendarDaysRemaining = (targetDate) => {
     if (!targetDate || isNaN(targetDate.getTime())) return 0
@@ -809,18 +811,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
     // Check approval_status first (primary field), then fallback to other field names
     const accountsStatus = (payment.approval_status || payment.accounts_approval_status || payment.accountsApprovalStatus || '').toLowerCase()
     const isApproved = accountsStatus === 'approved'
-    
-    // Debug logging for first few payments
-    if (payment.id && Math.random() < 0.05) { // Log 5% of payments randomly
-      console.log('Payment approval check:', {
-        id: payment.id,
-        approval_status: payment.approval_status,
-        accounts_approval_status: payment.accounts_approval_status,
-        accountsApprovalStatus: payment.accountsApprovalStatus,
-        isApproved: isApproved
-      })
-    }
-    
+
     return isApproved
   }
 
@@ -891,14 +882,15 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   const fetchUserTarget = useCallback(async () => {
     try {
       if (!user?.id) {
-        setUserTarget({
+        const empty = {
           target: 0,
           achievedTarget: 0,
           targetStartDate: null,
           targetEndDate: null,
           targetDurationDays: null
-        })
-        return
+        }
+        setUserTarget(empty)
+        return empty
       }
       
       // Get department head data
@@ -917,31 +909,44 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       
       if (headData) {
         const target = parseFloat(headData.target || 0)
-        setUserTarget({
+        const next = {
           target: target,
           achievedTarget: parseFloat(headData.achievedTarget || headData.achieved_target || 0),
           targetStartDate: headData.targetStartDate || headData.target_start_date || null,
           targetEndDate: headData.targetEndDate || headData.target_end_date || null,
           targetDurationDays: headData.targetDurationDays || headData.target_duration_days || null
-        })
+        }
+        setUserTarget(next)
+        return next
       } else {
         console.warn('No head data found in response:', response)
+        const empty = {
+          target: 0,
+          achievedTarget: 0,
+          targetStartDate: null,
+          targetEndDate: null,
+          targetDurationDays: null
+        }
+        setUserTarget(empty)
+        return empty
       }
     } catch (err) {
       console.error('Error fetching department head target:', err)
       // Set defaults on error
-      setUserTarget({
+      const empty = {
         target: 0,
         achievedTarget: 0,
         targetStartDate: null,
         targetEndDate: null,
         targetDurationDays: null
-      })
+      }
+      setUserTarget(empty)
+      return empty
     }
   }, [user?.id])
 
   // OPTIMIZED: Fetch business metrics - reuse leads from state if available
-  const fetchBusinessMetrics = useCallback(async (leadsData = null) => {
+  const fetchBusinessMetrics = useCallback(async (leadsData = null, targetWindow = null) => {
     try {
       setLoadingMetrics(true)
       
@@ -1064,17 +1069,17 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       })
       
       // Apply date range filter if department head has target dates
-      if (userTarget.targetStartDate && userTarget.targetEndDate) {
-        const startDate = new Date(userTarget.targetStartDate)
-        startDate.setHours(0, 0, 0, 0)
-        const endDate = new Date(userTarget.targetEndDate)
-        endDate.setHours(23, 59, 59, 999)
+      const startDateStr = targetWindow?.targetStartDate || userTarget.targetStartDate
+      const endDateStr = targetWindow?.targetEndDate || userTarget.targetEndDate
+      if (startDateStr && endDateStr) {
         
         completedPayments = completedPayments.filter(p => {
-          // Use payment_date if available, otherwise fall back to created_at
-          const paymentDate = p.payment_date ? new Date(p.payment_date) : (p.created_at ? new Date(p.created_at) : null)
-          if (!paymentDate) return false
-          return paymentDate >= startDate && paymentDate <= endDate
+          // Compare date-only strings to avoid timezone shifts
+          const raw = p.payment_date || p.paymentDate || null
+          if (!raw) return false
+          const pd = toDateOnly(raw)
+          if (!pd) return false
+          return pd >= startDateStr && pd <= endDateStr
         })
       }
       
@@ -1176,9 +1181,30 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         totalRevenue
       })
       
+      const now = new Date()
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      currentMonthEnd.setHours(23, 59, 59, 999)
+
+      const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+      prevMonthEnd.setHours(23, 59, 59, 999)
+
       // Calculate top performers based on payment received (in background)
-      calculateTopPerformers(fetchedPayments, allQuotations, allLeads, quotationIdsWithPI).catch(err => {
+      Promise.all([
+        calculateTopPerformers(fetchedPayments, allQuotations, allLeads, quotationIdsWithPI, {
+          startDate: toDateOnly(currentMonthStart),
+          endDate: toDateOnly(currentMonthEnd)
+        }),
+        calculateTopPerformers(fetchedPayments, allQuotations, allLeads, quotationIdsWithPI, {
+          startDate: toDateOnly(prevMonthStart),
+          endDate: toDateOnly(prevMonthEnd)
+        })
+      ]).then(([current, previous]) => {
+        setTopPerformers({ current, previous })
+      }).catch(err => {
         console.error('Error calculating top performers:', err)
+        setTopPerformers({ current: [], previous: [] })
       })
     } catch (err) {
       console.error('Error fetching business metrics:', err)
@@ -1225,11 +1251,9 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       
       setLeads(transformedLeads)
       
-      // Then fetch metrics with leads data (avoids duplicate API call)
-      await Promise.all([
-        fetchBusinessMetrics(transformedLeads),
-        fetchUserTarget()
-      ])
+      // Fetch target first and use it to filter metrics (avoid stale state / all-time totals)
+      const targetWindow = await fetchUserTarget()
+      await fetchBusinessMetrics(transformedLeads, targetWindow)
     } catch (err) {
       console.error('Error refreshing dashboard:', err)
     } finally {
@@ -1238,12 +1262,11 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   }, [user?.departmentType, user?.department_type, fetchBusinessMetrics, fetchUserTarget])
 
   // Calculate top performers based on payment received
-  const calculateTopPerformers = async (payments, quotations, leads, quotationIdsWithPI = new Set()) => {
+  const calculateTopPerformers = async (payments, quotations, leads, quotationIdsWithPI = new Set(), dateRange = null) => {
     try {
       // Get all department users under this head
       if (!user?.id) {
-        setTopPerformers([])
-        return
+        return []
       }
       
       const usersResponse = await departmentUserService.getByHeadId(user.id)
@@ -1264,8 +1287,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       }
       
       if (!Array.isArray(users) || users.length === 0) {
-        setTopPerformers([])
-        return
+        return []
       }
       
       // Create a map of salesperson identifier (email/username) to their data
@@ -1300,9 +1322,19 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
       
       // Calculate payment received per salesperson
       // ONLY include payments approved by accounts department (NO PI requirement)
-      const completedPayments = payments.filter(p => {
+      let completedPayments = payments.filter(p => {
         return isPaymentCompleted(p) && isPaymentApprovedByAccounts(p)
       })
+
+      if (dateRange?.startDate && dateRange?.endDate) {
+        const start = new Date(`${dateRange.startDate}T00:00:00`)
+        const end = new Date(`${dateRange.endDate}T23:59:59.999`)
+        completedPayments = completedPayments.filter(p => {
+          const paymentDate = p.payment_date ? new Date(p.payment_date) : (p.created_at ? new Date(p.created_at) : null)
+          if (!paymentDate || isNaN(paymentDate.getTime())) return false
+          return paymentDate >= start && paymentDate <= end
+        })
+      }
       
       // Map quotations to salespersons via leads
       const quotationToSalesperson = new Map()
@@ -1389,11 +1421,11 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         .filter(p => p.paymentReceived > 0)
         .sort((a, b) => b.paymentReceived - a.paymentReceived)
         .slice(0, 3)
-      
-      setTopPerformers(performers)
+
+      return performers
     } catch (err) {
       console.error('Error calculating top performers:', err)
-      setTopPerformers([])
+      return []
     }
   }
 
@@ -1425,7 +1457,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
     // Fetch metrics with leads data to avoid duplicate API call
     if (!fetchingMetricsRef.current) {
       fetchingMetricsRef.current = true;
-      fetchBusinessMetrics(leads).finally(() => {
+      fetchBusinessMetrics(leads, userTarget).finally(() => {
         fetchingMetricsRef.current = false;
       });
     }
@@ -1440,7 +1472,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
     // Only refetch if we have target dates
     if (userTarget.targetStartDate && userTarget.targetEndDate) {
       fetchingMetricsRef.current = true;
-      fetchBusinessMetrics(leads).finally(() => {
+      fetchBusinessMetrics(leads, userTarget).finally(() => {
         fetchingMetricsRef.current = false;
       });
     }
@@ -1814,22 +1846,29 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   // Get filtered performance data
   const performanceData = getPerformanceData(dateFilter)
 
+  const hasTargetAssigned =
+    Number(userTarget.target || 0) > 0 &&
+    !!userTarget.targetStartDate &&
+    !!userTarget.targetEndDate &&
+    (() => {
+      const end = new Date(`${userTarget.targetEndDate}T00:00:00`)
+      if (isNaN(end.getTime())) return false
+      const today = new Date()
+      const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+      return endDay >= todayDay
+    })()
+
   // Calculate days left based on target period
   const daysLeftInTarget = (() => {
-    if (!userTarget.targetEndDate) {
-      const now = new Date()
-      const fallbackEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      return getCalendarDaysRemaining(fallbackEnd)
-    }
-    
-    const endDate = new Date(userTarget.targetEndDate)
+    if (!hasTargetAssigned) return 0
+    const endDate = new Date(`${userTarget.targetEndDate}T00:00:00`)
     return getCalendarDaysRemaining(endDate)
   })()
   
-  // Use actual department head target data
-  const revenueTarget = userTarget.target || 0
-  // Calculate achieved target from aggregated payments (all salespersons)
-  const revenueCurrent = businessMetrics.totalReceivedPayment || userTarget.achievedTarget || 0
+  // Use actual department head target data (only when assigned)
+  const revenueTarget = hasTargetAssigned ? (userTarget.target || 0) : 0
+  const revenueCurrent = hasTargetAssigned ? (businessMetrics.totalReceivedPayment || 0) : 0
 
   // Overview Data - Real data from API
   const overviewData = {
@@ -2073,7 +2112,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                   : `bg-white ${overviewDateFilter ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`
               }`}
               title="Filter data from selected date to today"
-              max={new Date().toISOString().split('T')[0]}
+              max={toDateOnly(new Date())}
             />
             {overviewDateFilter && (
               <button
@@ -2191,9 +2230,9 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
               <p className={`text-sm  text-gray-800 mb-3 ${
                 isDarkMode ? 'text-gray-300' : 'text-gray-600'
               }`}>
-                {userTarget.targetStartDate && userTarget.targetEndDate 
-                  ? `Revenue target (${new Date(userTarget.targetStartDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} - ${new Date(userTarget.targetEndDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })})`
-                  : 'Revenue target this quarter'
+                {hasTargetAssigned 
+                  ? `Revenue target (${new Date(`${userTarget.targetStartDate}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} - ${new Date(`${userTarget.targetEndDate}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })})`
+                  : 'Target not assigned for this month'
                 }
               </p>
               <div className="w-full bg-gradient-to-r from-current to-transparent opacity-50 h-2.5 rounded-full"></div>
@@ -2225,9 +2264,9 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                   ? 'text-gray-300' 
                   : 'text-gray-600'
               }`}>
-                {userTarget.targetStartDate && userTarget.targetEndDate 
-                  ? `Approved payments received (${userTarget.targetDurationDays || Math.ceil((new Date(userTarget.targetEndDate) - new Date(userTarget.targetStartDate)) / (1000 * 60 * 60 * 24))} days period)`
-                  : 'Approved payments received this quarter'
+                {hasTargetAssigned 
+                  ? `Approved payments received (${userTarget.targetDurationDays || Math.ceil((new Date(`${userTarget.targetEndDate}T00:00:00`) - new Date(`${userTarget.targetStartDate}T00:00:00`)) / (1000 * 60 * 60 * 24))} days period)`
+                  : 'Target not assigned'
                 }
               </p>
               <div className="w-full bg-gradient-to-r from-current to-transparent opacity-50 h-2.5 rounded-full"></div>
@@ -2259,10 +2298,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                   ? 'text-gray-300' 
                   : 'text-gray-600'
               }`}>
-                {userTarget.targetEndDate 
-                  ? `Remaining days in target period`
-                  : 'Remaining days in current month'
-                }
+                {hasTargetAssigned ? 'Remaining days in target period' : 'Target not assigned'}
               </p>
               <div className="w-full bg-gradient-to-r from-current to-transparent opacity-50 h-2.5 rounded-full"></div>
             </CardContent>
@@ -2332,11 +2368,39 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
           <Trophy className={`h-5 w-5 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`} />
           <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Top Performers</h2>
         </div>
-        <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Top 3 salespersons by payment received</p>
+        <div className="flex items-center justify-between">
+          <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Top 3 salespersons by payment received</p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTopPerformersView('current')}
+              className={cx(
+                "px-3 py-1 text-xs font-semibold rounded-lg border transition-colors",
+                topPerformersView === 'current'
+                  ? (isDarkMode ? "bg-white text-gray-900 border-white" : "bg-gray-900 text-white border-gray-900")
+                  : (isDarkMode ? "bg-gray-800 text-gray-200 border-gray-600 hover:bg-gray-700" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50")
+              )}
+            >
+              This Month
+            </button>
+            <button
+              type="button"
+              onClick={() => setTopPerformersView('previous')}
+              className={cx(
+                "px-3 py-1 text-xs font-semibold rounded-lg border transition-colors",
+                topPerformersView === 'previous'
+                  ? (isDarkMode ? "bg-white text-gray-900 border-white" : "bg-gray-900 text-white border-gray-900")
+                  : (isDarkMode ? "bg-gray-800 text-gray-200 border-gray-600 hover:bg-gray-700" : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50")
+              )}
+            >
+              Last Month
+            </button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {topPerformers.length > 0 ? (
-            topPerformers.map((performer, index) => (
+          {(topPerformersView === 'previous' ? topPerformers.previous : topPerformers.current).length > 0 ? (
+            (topPerformersView === 'previous' ? topPerformers.previous : topPerformers.current).map((performer, index) => (
               <Card key={index} className={cx(
                 "border-2 shadow-lg hover:shadow-xl",
                 isDarkMode 

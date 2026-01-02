@@ -11,13 +11,10 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
   const { notifications, unreadCount, isConnected, markAsRead, markAsUnread, markAllAsRead } = useNotifications();
   
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showNotificationHistory, setShowNotificationHistory] = useState(false);
   const [expandedNotificationId, setExpandedNotificationId] = useState(null);
-  const [expandedHistoryId, setExpandedHistoryId] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   
   const notificationRef = useRef(null);
-  const notificationHistoryRef = useRef(null);
 
 
   // Click outside to close dropdowns
@@ -25,9 +22,6 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
     const handleClickOutside = (event) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target)) {
         setShowNotifications(false);
-      }
-      if (notificationHistoryRef.current && !notificationHistoryRef.current.contains(event.target)) {
-        setShowNotificationHistory(false);
       }
     };
 
@@ -39,16 +33,16 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
 
   const getNotificationIcon = (type) => {
     const iconMap = {
-      lead_assigned: <Users className="w-4 h-4 text-blue-500" />,
-      lead_transferred: <Users className="w-4 h-4 text-purple-500" />,
-      lead_activity: <Activity className="w-4 h-4 text-indigo-500" />,
-      payment_activity: <DollarSign className="w-4 h-4 text-green-500" />,
-      quotation_activity: <FileText className="w-4 h-4 text-orange-500" />,
-      meeting_activity: <Calendar className="w-4 h-4 text-blue-500" />,
-      followup_activity: <Clock className="w-4 h-4 text-yellow-500" />,
-      activity: <Activity className="w-4 h-4 text-purple-500" />
+      lead_assigned: <Users className="w-3 h-3 text-white" />,
+      lead_transferred: <Users className="w-3 h-3 text-white" />,
+      lead_activity: <Activity className="w-3 h-3 text-white" />,
+      payment_activity: <DollarSign className="w-3 h-3 text-white" />,
+      quotation_activity: <FileText className="w-3 h-3 text-white" />,
+      meeting_activity: <Calendar className="w-3 h-3 text-white" />,
+      followup_activity: <Clock className="w-3 h-3 text-white" />,
+      activity: <Activity className="w-3 h-3 text-white" />
     };
-    return iconMap[type] || <Bell className="w-4 h-4 text-gray-500" />;
+    return iconMap[type] || <Bell className="w-3 h-3 text-white" />;
   };
 
   // Format time for display (handles timezone correctly)
@@ -648,43 +642,87 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
             </button>
 
             {showNotifications && (
-              <div className={`absolute right-0 top-full mt-2 w-80 rounded-lg shadow-lg border z-[1000] ${
-                isDarkMode 
-                  ? 'bg-gray-800 border-gray-700' 
-                  : 'bg-white border-gray-200'
-              }`}>
-                <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <div className="flex items-center justify-between">
-                    <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Notifications</h3>
+              <>
+                {/* Backdrop for mobile */}
+                <div 
+                  className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[999] sm:hidden"
+                  onClick={() => setShowNotifications(false)}
+                />
+                <div className={`fixed sm:absolute right-2 sm:right-0 top-14 sm:top-full mt-0 sm:mt-2 w-[calc(100vw-1rem)] sm:w-[500px] max-w-lg rounded-xl shadow-2xl border z-[1000] max-h-[70vh] sm:max-h-[450px] ${
+                  isDarkMode 
+                    ? 'bg-gray-800 border-gray-700' 
+                    : 'bg-white border-gray-200'
+                }`} style={{
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)'
+                }}>
+                {/* Header */}
+                <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex-shrink-0 ${isDarkMode ? 'bg-gray-800' : 'bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50'}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-md">
+                        <Bell className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Notifications</h3>
+                        <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{notifications.length} total</p>
+                      </div>
+                    </div>
                     <button 
                       onClick={() => setShowNotifications(false)}
-                      className={`p-1 rounded ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                      className={`p-1.5 rounded-lg flex-shrink-0 transition-colors ${isDarkMode ? 'hover:bg-gray-700/50 text-gray-300' : 'hover:bg-gray-100 text-gray-500'}`}
                     >
-                      <X className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <X className={`w-4 h-4`} />
                     </button>
                   </div>
+                  
+                  {/* Statistics */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-blue-50'} border ${isDarkMode ? 'border-gray-600' : 'border-blue-200'}`}>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-blue-600'} font-medium`}>Total</p>
+                      <p className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-blue-700'}`}>{notifications.length}</p>
+                    </div>
+                    <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-orange-50'} border ${isDarkMode ? 'border-gray-600' : 'border-orange-200'}`}>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-orange-600'} font-medium`}>Unread</p>
+                      <p className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-orange-700'}`}>{unreadCount}</p>
+                    </div>
+                    <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-green-50'} border ${isDarkMode ? 'border-gray-600' : 'border-green-200'}`}>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-green-600'} font-medium`}>Read</p>
+                      <p className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-green-700'}`}>{notifications.length - unreadCount}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="max-h-96 overflow-y-auto">
-                  {notifications.slice(0, 6).length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">
-                      <Bell className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                      <p>No notifications yet</p>
+                
+                {/* Notifications List */}
+                <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0" style={{ maxHeight: 'calc(450px - 180px)' }}>
+                  {notifications.length === 0 ? (
+                    <div className="p-12 text-center">
+                      <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                        <Bell className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>No notifications</p>
+                      <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>You're all caught up!</p>
                     </div>
                   ) : (
-                    notifications.slice(0, 6).map((notification) => (
+                    notifications.map((notification) => (
                       <div 
                         key={notification.id}
-                        className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-100'} ${
-                          isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
-                        } ${notification.unread ? (isDarkMode ? 'bg-blue-900/30' : 'bg-blue-50') : ''}`}
+                        className={`p-3 sm:p-4 border-b transition-all duration-200 ${isDarkMode ? 'border-gray-700' : 'border-gray-100'} ${
+                          isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gradient-to-r hover:from-blue-50 hover:via-purple-50 hover:to-pink-50'
+                        } ${notification.unread ? (isDarkMode ? 'bg-gray-700' : 'bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50') : (isDarkMode ? 'bg-gray-800' : 'bg-white')} flex-shrink-0`}
                       >
-                        <div className="flex items-start space-x-3">
-                          <div className="flex-shrink-0 mt-1">
-                            {getNotificationIcon(notification.type)}
+                        <div className="flex items-start space-x-3 min-w-0">
+                          <div className="flex-shrink-0 mt-0.5">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${
+                              notification.unread 
+                                ? 'bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500' 
+                                : (isDarkMode ? 'bg-gray-700' : 'bg-gray-100')
+                            }`}>
+                              {getNotificationIcon(notification.type)}
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <p className={`text-sm font-medium ${
+                          <div className="flex-1 min-w-0 overflow-hidden">
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <p className={`text-xs sm:text-sm font-semibold truncate min-w-0 ${
                                 notification.unread 
                                   ? (isDarkMode ? 'text-white' : 'text-gray-900')
                                   : (isDarkMode ? 'text-gray-300' : 'text-gray-700')
@@ -696,7 +734,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
                                   e.stopPropagation();
                                   notification.unread ? markAsRead(notification.id) : markAsUnread(notification.id);
                                 }}
-                                className={`p-1 rounded hover:bg-gray-200 ${isDarkMode ? 'hover:bg-gray-600' : ''}`}
+                                className={`p-1.5 rounded-lg hover:bg-gray-200/50 flex-shrink-0 transition-colors ${isDarkMode ? 'hover:bg-gray-600/50' : ''}`}
                                 title={notification.unread ? 'Mark as read' : 'Mark as unread'}
                               >
                                 {notification.unread ? (
@@ -706,19 +744,19 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
                                 )}
                               </button>
                             </div>
-                            <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                            <p className={`text-xs sm:text-sm mt-1 break-words line-clamp-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                               {notification.message}
                             </p>
                             {notification.details && (
                               <div className="mt-2">
                                 <button
                                   onClick={() => setExpandedNotificationId(expandedNotificationId === notification.id ? null : notification.id)}
-                                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                  className="text-xs bg-gradient-to-r from-blue-500 to-purple-500 text-white px-2 py-1 rounded-md hover:from-blue-600 hover:to-purple-600 font-medium transition-all"
                                 >
                                   {expandedNotificationId === notification.id ? 'Hide Details' : 'View Details'}
                                 </button>
                                 {expandedNotificationId === notification.id && (
-                                  <div className={`mt-2 text-xs space-y-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                  <div className={`mt-2 text-xs space-y-1 break-words p-2 rounded-lg ${isDarkMode ? 'bg-gray-700/30 text-gray-400' : 'bg-gray-50 text-gray-600'}`}>
                                     {notification.details.customer && (
                                       <div><span className="font-semibold">Customer:</span> {notification.details.customer}</div>
                                     )}
@@ -747,7 +785,8 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
                                 )}
                               </div>
                             )}
-                            <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                            <p className={`text-xs mt-2 flex items-center gap-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                              <Clock className="w-3 h-3" />
                               {formatTime(notification.time)}
                             </p>
                           </div>
@@ -756,33 +795,25 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
                     ))
                   )}
                 </div>
-                <div className={`p-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => {
-                        markAllAsRead();
-                      }}
-                      className={`flex-1 text-sm font-medium py-2 rounded ${
-                        isDarkMode 
-                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                      disabled={unreadCount === 0}
-                    >
-                      Mark All Read
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setShowNotifications(false);
-                        setShowNotificationHistory(true);
-                      }}
-                      className="flex-1 text-sm text-blue-600 hover:text-blue-700 font-medium py-2"
-                    >
-                      View All
-                    </button>
-                  </div>
+                
+                {/* Footer */}
+                <div className={`p-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex-shrink-0 ${isDarkMode ? 'bg-gray-800' : 'bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50'}`}>
+                  <button 
+                    onClick={() => {
+                      markAllAsRead();
+                    }}
+                    className={`w-full text-xs sm:text-sm font-semibold py-2.5 rounded-lg transition-all ${
+                      isDarkMode 
+                        ? 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50' 
+                        : 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 shadow-md'
+                    }`}
+                    disabled={unreadCount === 0}
+                  >
+                    Mark All as Read
+                  </button>
                 </div>
               </div>
+              </>
             )}
           </div>
 
@@ -829,196 +860,6 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
           </button>
         </div>
       </div>
-
-      {showNotificationHistory && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
-          <div 
-            ref={notificationHistoryRef}
-            className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                  <Bell className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Notification History</h2>
-                  <p className="text-sm text-gray-600">All your notifications in one place</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowNotificationHistory(false)}
-                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6">
-              {/* Statistics */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm text-blue-600 font-medium">Total</span>
-                  </div>
-                  <p className="text-2xl font-bold text-blue-700 mt-1">{notifications.length}</p>
-                </div>
-                <div className="bg-orange-50 p-4 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-orange-600" />
-                    <span className="text-sm text-orange-600 font-medium">Unread</span>
-                  </div>
-                  <p className="text-2xl font-bold text-orange-700 mt-1">{unreadCount}</p>
-                </div>
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                    <span className="text-sm text-green-600 font-medium">Read</span>
-                  </div>
-                  <p className="text-2xl font-bold text-green-700 mt-1">
-                    {notifications.length - unreadCount}
-                  </p>
-                </div>
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-purple-600" />
-                    <span className="text-sm text-purple-600 font-medium">This Week</span>
-                  </div>
-                  <p className="text-2xl font-bold text-purple-700 mt-1">
-                    {notifications.filter(n => {
-                      const date = new Date(n.time);
-                      const weekAgo = new Date();
-                      weekAgo.setDate(weekAgo.getDate() - 7);
-                      return date >= weekAgo;
-                    }).length}
-                  </p>
-                </div>
-              </div>
-
-              {/* Notification List */}
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">
-                    <Bell className="w-16 h-16 mx-auto mb-3 text-gray-300" />
-                    <p className="text-lg font-medium">No notifications yet</p>
-                    <p className="text-sm mt-1">You're all caught up!</p>
-                  </div>
-                ) : (
-                  notifications.map((notification) => (
-                    <div 
-                      key={notification.id}
-                      className={`p-4 rounded-lg border transition-colors hover:bg-gray-50 ${
-                        notification.unread ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-1">
-                          {getNotificationIcon(notification.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <h4 className={`text-sm font-medium ${
-                              notification.unread ? 'text-gray-900' : 'text-gray-700'
-                            }`}>
-                              {notification.title}
-                            </h4>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  notification.unread ? markAsRead(notification.id) : markAsUnread(notification.id);
-                                }}
-                                className="p-1 rounded hover:bg-gray-200"
-                                title={notification.unread ? 'Mark as read' : 'Mark as unread'}
-                              >
-                                {notification.unread ? (
-                                  <Circle className="w-3 h-3 text-blue-500 fill-blue-500" />
-                                ) : (
-                                  <CheckCheck className="w-3 h-3 text-gray-400" />
-                                )}
-                              </button>
-                              <span className="text-xs text-gray-500">{formatTime(notification.time)}</span>
-                            </div>
-                          </div>
-                          <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                          {notification.details && (
-                            <div className="mt-2">
-                              <button
-                                onClick={() => setExpandedHistoryId(expandedHistoryId === notification.id ? null : notification.id)}
-                                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                              >
-                                {expandedHistoryId === notification.id ? 'Hide Details' : 'View Details'}
-                              </button>
-                              {expandedHistoryId === notification.id && (
-                                <div className="mt-2 text-xs text-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
-                                  {notification.details.customer && (
-                                    <div><span className="font-semibold">Customer:</span> {notification.details.customer}</div>
-                                  )}
-                                  {notification.details.business && (
-                                    <div><span className="font-semibold">Business:</span> {notification.details.business}</div>
-                                  )}
-                                  {notification.details.product && (
-                                    <div><span className="font-semibold">Product:</span> {notification.details.product}</div>
-                                  )}
-                                  {notification.details.phone && (
-                                    <div><span className="font-semibold">Phone:</span> {notification.details.phone}</div>
-                                  )}
-                                  {notification.details.email && (
-                                    <div><span className="font-semibold">Email:</span> {notification.details.email}</div>
-                                  )}
-                                  {notification.details.state && (
-                                    <div><span className="font-semibold">State:</span> {notification.details.state}</div>
-                                  )}
-                                  {notification.details.address && (
-                                    <div className="sm:col-span-2"><span className="font-semibold">Address:</span> {notification.details.address}</div>
-                                  )}
-                                  {notification.details.transferredFrom && (
-                                    <div className="sm:col-span-2"><span className="font-semibold">Transferred From:</span> {notification.details.transferredFrom}</div>
-                                  )}
-                                  {notification.details.amount && (
-                                    <div><span className="font-semibold">Amount:</span> ₹{Number(notification.details.amount).toLocaleString()}</div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Modal Footer */}
-              <div className="flex items-center justify-between pt-6 border-t border-gray-200 mt-6">
-                <div className="text-sm text-gray-500">
-                  Showing {notifications.length} notifications ({unreadCount} unread)
-                </div>
-                <div className="flex gap-3">
-                  <button 
-                    onClick={() => setShowNotificationHistory(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                  >
-                    Close
-                  </button>
-                  <button 
-                    onClick={() => {
-                      markAllAsRead();
-                    }}
-                    disabled={unreadCount === 0}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Mark All as Read
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       <ProfileUpdateModal
         isOpen={showProfileModal}
