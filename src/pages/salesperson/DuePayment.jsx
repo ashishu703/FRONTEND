@@ -8,6 +8,7 @@ import quotationService from '../../api/admin_api/quotationService';
 import paymentService from '../../api/admin_api/paymentService';
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService';
 import uploadService from '../../api/admin_api/uploadService';
+import { toDateOnly } from '../../utils/dateOnly';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
 import { useAuth } from '../../hooks/useAuth';
@@ -367,7 +368,7 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
     payment_status: 'advance',
     payment_receipt_url: '',
     purchase_order_id: '',
-    payment_date: new Date().toISOString().split('T')[0], // Default to today's date
+    payment_date: toDateOnly(new Date()), // Default to today's date (local-safe)
     delivery_date: '',
     delivery_status: 'pending'
   });
@@ -522,10 +523,8 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         return;
       }
 
-      // Format payment_date to ISO string if provided, otherwise use current date
-      const paymentDate = paymentData.payment_date 
-        ? new Date(paymentData.payment_date).toISOString()
-        : new Date().toISOString();
+      // Send payment_date as YYYY-MM-DD (backend will normalize). Avoid timezone shifting.
+      const paymentDate = paymentData.payment_date || toDateOnly(new Date());
 
       const paymentPayload = {
         lead_id: item.leadData?.id,

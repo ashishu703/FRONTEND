@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, UserPlus, Upload, Edit, LogOut, Trash2, Hash, User, Mail, Shield, Building, Target, Calendar, MoreHorizontal, TrendingUp, AlertTriangle, LogIn, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, UserPlus, Edit, LogOut, Trash2, Hash, User, Mail, Shield, Building, Target, Calendar, MoreHorizontal, TrendingUp, AlertTriangle, LogIn, Info } from 'lucide-react';
 import departmentUserService, { apiToUiDepartment } from '../../api/admin_api/departmentUserService';
 import departmentHeadService from '../../api/admin_api/departmentHeadService';
 import { useAuth } from '../../hooks/useAuth';
 import toastManager from '../../utils/ToastManager';
+import { toDateOnly, toDateOnlyOrEmpty } from '../../utils/dateOnly';
 import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
@@ -69,11 +70,11 @@ const SalesDepartmentUser = ({ setActiveView }) => {
         
         if (headData) {
           // Get department head's target start date
-          const headStartDate = headData.target_start_date || headData.targetStartDate;
+          // Prefer backend-normalized date-only field to avoid timezone shifts
+          const headStartDate = headData.targetStartDate || headData.target_start_date;
           let formattedStartDate = null;
           if (headStartDate) {
-            const date = new Date(headStartDate);
-            formattedStartDate = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+            formattedStartDate = toDateOnly(headStartDate); // YYYY-MM-DD (local-safe)
             setHeadTargetStartDate(formattedStartDate);
             
             // Auto-set target start date in form
@@ -131,11 +132,11 @@ const SalesDepartmentUser = ({ setActiveView }) => {
         const headData = headRes?.data?.user || headRes?.user || headRes?.data || headRes;
         
         if (headData) {
-          const headStartDate = headData.target_start_date || headData.targetStartDate;
+          // Prefer backend-normalized date-only field to avoid timezone shifts
+          const headStartDate = headData.targetStartDate || headData.target_start_date;
           let formattedStartDate = null;
           if (headStartDate) {
-            const date = new Date(headStartDate);
-            formattedStartDate = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+            formattedStartDate = toDateOnly(headStartDate); // YYYY-MM-DD (local-safe)
             setHeadTargetStartDate(formattedStartDate);
           }
           
@@ -170,9 +171,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
     const formatDateForInput = (dateString) => {
       if (!dateString) return '';
       try {
-        const date = new Date(dateString + 'T00:00:00');
-        if (isNaN(date.getTime())) return '';
-        return date.toISOString().split('T')[0];
+        return toDateOnlyOrEmpty(dateString);
       } catch {
         return '';
       }
@@ -220,42 +219,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
     }
   };
 
-  const fileInputRef = React.useRef(null);
-  const handleImportClick = () => fileInputRef.current?.click();
-  const handleFileChange = async (e) => {
-    try {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const text = await file.text();
-      const rows = text.split(/\r?\n/).filter(Boolean);
-      if (rows.length <= 1) return;
-      const headers = rows[0].split(',').map(h => h.trim().toLowerCase());
-      const getIndex = (n) => headers.indexOf(n);
-      const idx = {
-        username: getIndex('username'),
-        email: getIndex('email'),
-        target: getIndex('target'),
-        createdAt: getIndex('createdat'),
-      };
-      const parsed = rows.slice(1).map((line, i) => {
-        const cols = line.split(',');
-        return {
-          id: (users.at(-1)?.id ?? 0) + i + 1,
-          username: idx.username >= 0 ? cols[idx.username]?.trim() : '',
-          email: idx.email >= 0 ? cols[idx.email]?.trim() : '',
-          target: idx.target >= 0 ? cols[idx.target]?.trim() : '',
-          achievedTarget: '0',
-          remainingTarget: '',
-          createdAt: idx.createdAt >= 0 ? cols[idx.createdAt]?.trim() : new Date().toDateString(),
-        };
-      }).filter(u => u.username || u.email);
-      if (parsed.length) setUsers(prev => [...parsed, ...prev]);
-    } catch (err) {
-      setError(err.message || 'Import failed');
-    } finally {
-      e.target.value = '';
-    }
-  };
+  // NOTE: Removed old CSV import helpers (were injecting dummy users into UI state and not used by the UI)
 
   const fetchUsers = async () => {
     try {
@@ -295,15 +259,13 @@ const SalesDepartmentUser = ({ setActiveView }) => {
             const normalized = typeof dateString === 'string' && dateString.includes('T')
               ? dateString
               : `${dateString}T00:00:00`;
-            const date = new Date(normalized);
-            if (isNaN(date.getTime())) return '';
-            return date.toISOString().split('T')[0];
+            return toDateOnlyOrEmpty(normalized);
           } catch {
             return '';
           }
         };
         
-        // Calculate target days remaining (same logic as salesperson dashboard)
+        // Calculate target days remaining
         let targetDaysRemaining = null;
         if (u.targetEndDate || u.target_end_date) {
           const endDate = new Date(u.targetEndDate || u.target_end_date);
@@ -324,16 +286,45 @@ const SalesDepartmentUser = ({ setActiveView }) => {
           targetDaysRemaining = calculateDaysFromToday(last);
         }
         
+        // UI-only: if target period is strictly expired, show 0 values until reassigned.
+        // Some older records may not have target_end_date; in that case, treat month-end of target_start_date as the end.
+        const isExpired = (() => {
+          const now = new Date();
+          const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+          const rawEnd = u.targetEndDate || u.target_end_date;
+          const rawStart = u.targetStartDate || u.target_start_date;
+
+          let endDate = null;
+          if (rawEnd) {
+            endDate = new Date(rawEnd);
+          } else if (rawStart) {
+            const startDate = new Date(rawStart);
+            if (!isNaN(startDate.getTime())) {
+              endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+            }
+          }
+
+          if (!endDate || isNaN(endDate.getTime())) return false;
+          const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+          return endDay < todayDay;
+        })();
+
+        const displayTarget = isExpired ? 0 : target;
+        const displayAchieved = isExpired ? 0 : achievedTarget;
+        const displayRemaining = isExpired ? 0 : remainingTarget;
+        const displayDue = isExpired ? 0 : duePayment;
+
         return {
           id: u.id,
           username: u.username,
           email: u.email,
           role: 'DEPARTMENT USER',
           department: apiToUiDepartment(u.departmentType || u.department_type),
-          target: String(target),
-          achievedTarget: String(achievedTarget),
-          remainingTarget: String(remainingTarget),
-          duePayment: String(duePayment),
+          target: String(displayTarget),
+          achievedTarget: String(displayAchieved),
+          remainingTarget: String(displayRemaining),
+          duePayment: String(displayDue),
           isActive: u.isActive ?? u.is_active ?? true,
           targetStartDate: u.targetStartDate || u.target_start_date || null,
           targetEndDate: u.targetEndDate || u.target_end_date || null,
@@ -409,14 +400,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
               <UserPlus className="w-4 h-4" />
               Add User
             </button>
-            <button
-              onClick={handleImportClick}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <Upload className="w-4 h-4" />
-              Import
-            </button>
-            <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
+            {/* Import removed (was unused and referenced removed handlers) */}
           </div>
         </div>
 
@@ -732,9 +716,9 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                     const monthEnd = new Date(targetStartDate.getFullYear(), targetStartDate.getMonth() + 1, 0);
                     monthEnd.setHours(23, 59, 59, 999);
                     
-                    payload.targetStartDate = targetStartDate.toISOString().split('T')[0];
+                    payload.targetStartDate = toDateOnly(targetStartDate);
                     payload.targetDurationDays = finalDuration;
-                    // Note: targetEndDate will be calculated on backend as month end
+
                   }
                   
                   await departmentUserService.createUser(payload);
@@ -933,9 +917,9 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                     const monthEnd = new Date(targetStartDate.getFullYear(), targetStartDate.getMonth() + 1, 0);
                     monthEnd.setHours(23, 59, 59, 999);
                     
-                    payload.targetStartDate = targetStartDate.toISOString().split('T')[0];
+                    payload.targetStartDate = toDateOnly(targetStartDate);
                     payload.targetDurationDays = finalDuration;
-                    // Note: Backend will calculate target_end_date as month end
+
                   }
                   
                   await departmentUserService.updateUser(editingUser.id, payload);
@@ -1037,7 +1021,7 @@ const SalesDepartmentUser = ({ setActiveView }) => {
                   <input
                     type="date"
                     value={headTargetStartDate || editingUser.targetStartDateInput || editingUser.targetStartDate || 
-                          (editingUser.target_start_date ? new Date(editingUser.target_start_date + 'T00:00:00').toISOString().split('T')[0] : '')}
+                          (editingUser.target_start_date ? toDateOnlyOrEmpty(editingUser.target_start_date) : '')}
                     disabled
                     readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"

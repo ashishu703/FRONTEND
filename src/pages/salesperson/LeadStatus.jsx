@@ -148,7 +148,14 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   const showDateTimeFields = ['appointment scheduled', 'interested', 'negotiation', 'call back request'].includes(formData.follow_up_status);
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[110] overflow-y-auto p-3 sm:p-4">
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[110] overflow-y-auto p-3 sm:p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-auto my-4 max-h-[95vh] overflow-hidden flex flex-col">
         <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 p-4 sm:p-5 flex justify-between items-center">
           <div className="flex items-center gap-3">

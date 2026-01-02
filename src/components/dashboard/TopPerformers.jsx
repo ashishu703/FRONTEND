@@ -1,14 +1,28 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Trophy } from 'lucide-react';
 
 const TopPerformers = ({ performers = [] }) => {
+  const [activeTab, setActiveTab] = useState('current'); // current | previous
+
   const getRankColor = (index) => {
     if (index === 0) return 'bg-yellow-500';
     if (index === 1) return 'bg-gray-400';
     return 'bg-orange-500';
   };
 
-  const validPerformers = Array.isArray(performers) ? performers.filter(p => p && p.amount > 0) : [];
+  const { list, showTabs } = useMemo(() => {
+    if (Array.isArray(performers)) {
+      return { list: performers, showTabs: false };
+    }
+    if (performers && typeof performers === 'object') {
+      const current = Array.isArray(performers.current) ? performers.current : [];
+      const previous = Array.isArray(performers.previous) ? performers.previous : [];
+      return { list: activeTab === 'previous' ? previous : current, showTabs: true };
+    }
+    return { list: [], showTabs: false };
+  }, [performers, activeTab]);
+
+  const validPerformers = Array.isArray(list) ? list.filter(p => p && p.amount > 0) : [];
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -16,7 +30,35 @@ const TopPerformers = ({ performers = [] }) => {
         <h3 className="text-lg font-semibold text-gray-900">Top Performers</h3>
         <Trophy className="w-5 h-5 text-yellow-600" />
       </div>
-      <p className="text-sm text-gray-600 mb-4">Top 3 salespersons by payment received</p>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-gray-600">Top 3 salespersons by payment received</p>
+        {showTabs && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab('current')}
+              className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-colors ${
+                activeTab === 'current'
+                  ? 'bg-gray-900 text-white border-gray-900'
+                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+              }`}
+              type="button"
+            >
+              This Month
+            </button>
+            <button
+              onClick={() => setActiveTab('previous')}
+              className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-colors ${
+                activeTab === 'previous'
+                  ? 'bg-gray-900 text-white border-gray-900'
+                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+              }`}
+              type="button"
+            >
+              Last Month
+            </button>
+          </div>
+        )}
+      </div>
       {validPerformers.length > 0 ? (
         <div className="space-y-4">
           {validPerformers.map((performer, index) => (

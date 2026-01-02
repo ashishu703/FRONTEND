@@ -15,6 +15,10 @@ import quotationService from '../../api/admin_api/quotationService';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import departmentHeadService from '../../api/admin_api/departmentHeadService';
+import { toDateOnly } from '../../utils/dateOnly';
+
+const SALES_TARGET_ACHIEVED_VIDEO_URL =
+  'https://res.cloudinary.com/dngojnptn/video/upload/v1767337379/Sales_Target_Achieved_Video_Animation_ycm9sb.mp4';
 
 const SuperAdminDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('monthly');
@@ -42,7 +46,7 @@ const SuperAdminDashboard = () => {
     quotations: { total: 0, approved: 0, pending: 0, rejected: 0 },
     proformaInvoices: { total: 0, approved: 0, pending: 0, rejected: 0 },
     payments: { totalAdvance: 0, duePayment: 0, totalSaleOrder: 0, totalReceived: 0 },
-    topPerformers: []
+    topPerformers: { current: [], previous: [] }
   });
 
   const [accountsData, setAccountsData] = useState({
@@ -59,9 +63,70 @@ const SuperAdminDashboard = () => {
     closed: 0
   });
 
+  const [monthlyHighlight, setMonthlyHighlight] = useState(null);
+  const [showMonthlyHighlight, setShowMonthlyHighlight] = useState(false);
+
+  // Month-start full-screen highlights for SuperAdmin (day 1-2 on every login)
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const now = new Date();
+        if (now.getDate() > 2) return;
+
+        const res = await apiClient.get('/api/reports/monthly-highlights?departmentType=office_sales', false);
+        const data = res?.data?.data || res?.data || res || null;
+        const hasAchievers = Array.isArray(data?.achievers) && data.achievers.length > 0;
+        if (data?.show && data?.highlightType === 'superadmin_team' && hasAchievers) {
+          setMonthlyHighlight(data);
+          setShowMonthlyHighlight(true);
+          const t3 = setTimeout(() => setShowMonthlyHighlight(false), 7000);
+          return () => { clearTimeout(t3); };
+        }
+      } catch {
+        // ignore
+      }
+    };
+    run();
+  }, []);
+
+  const getEffectiveDateRange = useCallback(() => {
+    // If user picked an explicit range, respect it
+    if (startDate || endDate) {
+      return { start: startDate || null, end: endDate || null };
+    }
+
+    const now = new Date();
+    const todayStr = toDateOnly(now);
+
+    if (selectedPeriod === 'daily') {
+      return { start: todayStr, end: todayStr };
+    }
+
+    if (selectedPeriod === 'weekly') {
+      const start = new Date(now);
+      start.setDate(start.getDate() - 6);
+      return { start: toDateOnly(start), end: todayStr };
+    }
+
+    if (selectedPeriod === 'quarterly') {
+      const q = Math.floor(now.getMonth() / 3);
+      const start = new Date(now.getFullYear(), q * 3, 1);
+      return { start: toDateOnly(start), end: todayStr };
+    }
+
+    // Default monthly (also for unknown values)
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { start: toDateOnly(start), end: todayStr };
+  }, [selectedPeriod, startDate, endDate]);
+
   // OPTIMIZED: Fetch revenue targets with parallel pagination
   const fetchRevenueTargets = useCallback(async () => {
     try {
+      // Use the same effective range as Achieved, so Target matches selected month/range
+      const effectiveRange = getEffectiveDateRange();
+      const rangeStart = effectiveRange?.start ? new Date(`${effectiveRange.start}T00:00:00`) : null;
+      const rangeEnd = effectiveRange?.end ? new Date(`${effectiveRange.end}T23:59:59`) : null;
+
       // Fetch first page to get total pages, then fetch all in parallel
       const firstPageResponse = await departmentHeadService.listHeads({
         page: 1,
@@ -104,10 +169,25 @@ const SuperAdminDashboard = () => {
           const target = typeof targetValue === 'string' 
             ? parseFloat(targetValue.replace(/,/g, '')) || 0
             : parseFloat(targetValue) || 0;
-          totalTarget += target;
           
           const startDate = head.target_start_date || head.targetStartDate;
           const endDate = head.target_end_date || head.targetEndDate;
+
+          // Only include targets that belong to the selected month/range
+          let include = true;
+          if (rangeStart || rangeEnd) {
+            const sd = startDate ? new Date(startDate) : null;
+            if (sd && !isNaN(sd.getTime())) {
+              if (rangeStart && sd < rangeStart) include = false;
+              if (rangeEnd && sd > rangeEnd) include = false;
+            } else {
+              include = false;
+            }
+          }
+
+          if (include) {
+            totalTarget += target;
+          }
           
           if (startDate) {
             const start = new Date(startDate);
@@ -126,7 +206,7 @@ const SuperAdminDashboard = () => {
         
         let daysLeft = 0;
         if (latestEndDate) {
-          daysLeft = salesDataService.calculateDaysLeft(latestEndDate.toISOString().split('T')[0]);
+          daysLeft = salesDataService.calculateDaysLeft(toDateOnly(latestEndDate));
         }
         
         setSalesData(prev => ({
@@ -134,8 +214,8 @@ const SuperAdminDashboard = () => {
           revenue: {
             ...prev.revenue,
             target: totalTarget,
-            targetStartDate: earliestStartDate ? earliestStartDate.toISOString().split('T')[0] : null,
-            targetEndDate: latestEndDate ? latestEndDate.toISOString().split('T')[0] : null,
+            targetStartDate: earliestStartDate ? toDateOnly(earliestStartDate) : null,
+            targetEndDate: latestEndDate ? toDateOnly(latestEndDate) : null,
             daysLeft: daysLeft
           }
         }));
@@ -189,10 +269,25 @@ const SuperAdminDashboard = () => {
         const target = typeof targetValue === 'string' 
           ? parseFloat(targetValue.replace(/,/g, '')) || 0
           : parseFloat(targetValue) || 0;
-        totalTarget += target;
         
         const startDate = head.target_start_date || head.targetStartDate;
         const endDate = head.target_end_date || head.targetEndDate;
+
+        // Only include targets that belong to the selected month/range
+        let include = true;
+        if (rangeStart || rangeEnd) {
+          const sd = startDate ? new Date(startDate) : null;
+          if (sd && !isNaN(sd.getTime())) {
+            if (rangeStart && sd < rangeStart) include = false;
+            if (rangeEnd && sd > rangeEnd) include = false;
+          } else {
+            include = false;
+          }
+        }
+
+        if (include) {
+          totalTarget += target;
+        }
         
         if (startDate) {
           const start = new Date(startDate);
@@ -212,7 +307,7 @@ const SuperAdminDashboard = () => {
       // Calculate days left
       let daysLeft = 0;
       if (latestEndDate) {
-        daysLeft = salesDataService.calculateDaysLeft(latestEndDate.toISOString().split('T')[0]);
+        daysLeft = salesDataService.calculateDaysLeft(toDateOnly(latestEndDate));
       }
       
       // Update revenue data
@@ -221,8 +316,8 @@ const SuperAdminDashboard = () => {
         revenue: {
           ...prev.revenue,
           target: totalTarget,
-          targetStartDate: earliestStartDate ? earliestStartDate.toISOString().split('T')[0] : null,
-          targetEndDate: latestEndDate ? latestEndDate.toISOString().split('T')[0] : null,
+          targetStartDate: earliestStartDate ? toDateOnly(earliestStartDate) : null,
+          targetEndDate: latestEndDate ? toDateOnly(latestEndDate) : null,
           daysLeft: daysLeft
         }
       }));
@@ -240,12 +335,14 @@ const SuperAdminDashboard = () => {
         }
       }));
     }
-  }, []);
+  }, [getEffectiveDateRange]);
 
   // OPTIMIZED: Parallel API calls in fetchSalesData with progressive updates
   const fetchSalesData = useCallback(async () => {
     setRefreshing(true);
     try {
+      const effectiveRange = getEffectiveDateRange();
+
       // Step 1: Fetch leads
       const allLeads = await salesDataService.fetchAllLeads('office_sales');
       const leadStatuses = salesDataService.calculateLeadStatuses(allLeads);
@@ -296,7 +393,10 @@ const SuperAdminDashboard = () => {
       
       // Step 4: Calculate payment metrics (fast)
       const { totalReceived, totalAdvance } = salesDataService.calculatePaymentMetrics(
-        allPayments, quotationsWithPI, allQuotations
+        allPayments,
+        quotationsWithPI,
+        allQuotations,
+        { startDate: effectiveRange.start, endDate: effectiveRange.end }
       );
       const { conversionRate, pendingRate } = salesDataService.calculateMetrics(leadStatuses);
       
@@ -322,19 +422,38 @@ const SuperAdminDashboard = () => {
         }
       }));
       
+      const now = new Date();
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      currentMonthEnd.setHours(23, 59, 59, 999);
+
+      const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      prevMonthEnd.setHours(23, 59, 59, 999);
+
       // Step 5: Heavy calculations in background (non-blocking)
       // Calculate duePayment and topPerformers asynchronously
       Promise.all([
         salesDataService.calculateDuePayment(quotationsWithPI, allQuotations, allPayments),
-        salesDataService.calculateTopPerformers(allPayments, allLeads, allQuotations, 'office_sales')
-      ]).then(([duePayment, topPerformers]) => {
+        salesDataService.calculateTopPerformers(allPayments, allLeads, allQuotations, 'office_sales', {
+          startDate: toDateOnly(currentMonthStart),
+          endDate: toDateOnly(currentMonthEnd)
+        }),
+        salesDataService.calculateTopPerformers(allPayments, allLeads, allQuotations, 'office_sales', {
+          startDate: toDateOnly(prevMonthStart),
+          endDate: toDateOnly(prevMonthEnd)
+        })
+      ]).then(([duePayment, topPerformersCurrent, topPerformersPrevious]) => {
         setSalesData(prev => ({
           ...prev,
           payments: {
             ...prev.payments,
             duePayment
           },
-          topPerformers
+          topPerformers: {
+            current: topPerformersCurrent,
+            previous: topPerformersPrevious
+          }
         }));
       }).catch(error => {
         console.error('[SuperAdminDashboard] Error in heavy calculations:', error);
@@ -345,7 +464,7 @@ const SuperAdminDashboard = () => {
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [getEffectiveDateRange]);
 
   const formatDisplayRange = useCallback((start, end) => {
     if (!start && !end) return 'Select date range';
@@ -502,6 +621,60 @@ const SuperAdminDashboard = () => {
 
   return (
     <div className="p-6 min-h-screen bg-gray-50">
+      {showMonthlyHighlight && monthlyHighlight?.highlightType === 'superadmin_team' && (
+        <div className="fixed inset-0 z-[99999]">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-md"
+            onClick={() => setShowMonthlyHighlight(false)}
+          />
+
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative w-full h-full">
+              <video
+                src={SALES_TARGET_ACHIEVED_VIDEO_URL}
+                className="w-full h-full object-cover"
+                autoPlay
+                muted
+                playsInline
+                onEnded={() => setShowMonthlyHighlight(false)}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/40" />
+
+              <div className="absolute inset-x-0 bottom-0 p-6">
+                <div className="max-w-4xl">
+                  <div className="text-white text-3xl font-extrabold">Congratulations to Achievers!</div>
+                  <div className="text-white/90 text-sm mt-2">
+                    {monthlyHighlight?.title || 'Previous month target achievements'}
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-white/15 bg-white/10 p-4 text-white">
+                    <div className="text-sm font-semibold">Achieved Target</div>
+                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                      {(monthlyHighlight.achievers || []).slice(0, 10).map((p) => (
+                        <div key={p.id} className="flex items-center justify-between gap-2">
+                          <span className="font-semibold">{p.username || p.email}</span>
+                          <span className="text-white/90">₹{Number(p.achieved || 0).toLocaleString('en-IN')} / ₹{Number(p.target || 0).toLocaleString('en-IN')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowMonthlyHighlight(false)}
+                      className="px-5 py-2.5 text-sm font-semibold rounded-xl shadow-lg border text-white border-white/25 bg-white/10 hover:bg-white/15"
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-4">
@@ -599,7 +772,7 @@ const SuperAdminDashboard = () => {
             data={leadStatusChartData}
             total={totalChartValue || salesData.leads.total || 0}
           />
-          <TopPerformers performers={salesData.topPerformers || []} />
+          <TopPerformers performers={salesData.topPerformers} />
         </div>
 
         <BusinessMetrics

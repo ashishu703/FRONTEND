@@ -10,6 +10,7 @@ import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService'
 import departmentUserService from '../../api/admin_api/departmentUserService'
 import { useAuth } from '../../hooks/useAuth'
 import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton'
+import { toDateOnly } from '../../utils/dateOnly'
 import {
   QuotationTrendsChart,
   ProformaInvoiceDistributionChart,
@@ -27,6 +28,9 @@ import {
 } from '../../components/dashboard/ChartJSCharts'
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000
+
+const SALES_TARGET_ACHIEVED_VIDEO_URL =
+  'https://res.cloudinary.com/dngojnptn/video/upload/v1767337379/Sales_Target_Achieved_Video_Animation_ycm9sb.mp4'
 
 function cx(...classes) {
   return classes.filter(Boolean).join(" ")
@@ -58,9 +62,9 @@ function CardContent({ className, children }) {
   return <div className={cx("p-4 pt-0", className)}>{children}</div>
 }
 
-// All old chart components removed - now using Chart.js components from ChartJSCharts.jsx
 
 export default function DashboardContent({ isDarkMode = false }) {
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('overview')
   const [overviewDateFilter, setOverviewDateFilter] = useState('')
   const [leads, setLeads] = useState([])
@@ -71,6 +75,8 @@ export default function DashboardContent({ isDarkMode = false }) {
   const [allPayments, setAllPayments] = useState([])
   const [allQuotations, setAllQuotations] = useState([])
   const [allPIs, setAllPIs] = useState([])
+  const [monthlyHighlight, setMonthlyHighlight] = useState(null)
+  const [showMonthlyHighlight, setShowMonthlyHighlight] = useState(false)
   
   // User target state
   const [userTarget, setUserTarget] = useState({
@@ -137,6 +143,31 @@ export default function DashboardContent({ isDarkMode = false }) {
     }
   }, [])
 
+  // Month-start highlight (achievers only) - shown only on day 1-2 (show on every login during the window)
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const now = new Date()
+        if (now.getDate() > 2) return
+
+        const res = await apiClient.get('/api/reports/monthly-highlights')
+        const data = res?.data?.data || res?.data || null
+        const isAchiever = data?.highlightType === 'winner' || data?.highlightType === 'achieved'
+        if (data?.show && isAchiever) {
+          setMonthlyHighlight(data)
+          setShowMonthlyHighlight(true)
+          const t3 = setTimeout(() => setShowMonthlyHighlight(false), 7000)
+          return () => {
+            clearTimeout(t3)
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    run()
+  }, [user?.id])
+
   // Fetch user target data
   const fetchUserTarget = useCallback(async () => {
     try {
@@ -147,29 +178,42 @@ export default function DashboardContent({ isDarkMode = false }) {
       
       if (users.length > 0) {
         const user = users[0]
-        setUserTarget({
+        const next = {
           target: parseFloat(user.target || 0),
           achievedTarget: parseFloat(user.achievedTarget || user.achieved_target || 0),
           targetStartDate: user.targetStartDate || user.target_start_date || null,
           targetEndDate: user.targetEndDate || user.target_end_date || null,
           targetDurationDays: user.targetDurationDays || user.target_duration_days || null
-        })
+        }
+        setUserTarget(next)
+        return next
       }
-    } catch (err) {
-      console.error('Error fetching user target:', err)
-      // Set defaults on error
-      setUserTarget({
+      const empty = {
         target: 0,
         achievedTarget: 0,
         targetStartDate: null,
         targetEndDate: null,
         targetDurationDays: null
-      })
+      }
+      setUserTarget(empty)
+      return empty
+    } catch (err) {
+      console.error('Error fetching user target:', err)
+      // Set defaults on error
+      const empty = {
+        target: 0,
+        achievedTarget: 0,
+        targetStartDate: null,
+        targetEndDate: null,
+        targetDurationDays: null
+      }
+      setUserTarget(empty)
+      return empty
     }
   }, [])
 
   // OPTIMIZED: Fetch business metrics - reuse leads from state if available, parallel API calls
-  const fetchBusinessMetrics = useCallback(async (leadsData = null) => {
+  const fetchBusinessMetrics = useCallback(async (leadsData = null, targetWindow = null) => {
     try {
       setLoadingMetrics(true)
       
@@ -306,17 +350,17 @@ export default function DashboardContent({ isDarkMode = false }) {
       })
       
       // Apply date range filter if user has target dates
-      if (userTarget.targetStartDate && userTarget.targetEndDate) {
-        const startDate = new Date(userTarget.targetStartDate)
-        startDate.setHours(0, 0, 0, 0)
-        const endDate = new Date(userTarget.targetEndDate)
-        endDate.setHours(23, 59, 59, 999)
+      const startDateStr = targetWindow?.targetStartDate || userTarget.targetStartDate
+      const endDateStr = targetWindow?.targetEndDate || userTarget.targetEndDate
+      if (startDateStr && endDateStr) {
         
         completedPayments = completedPayments.filter(p => {
-          // Use payment_date if available, otherwise fall back to created_at
-          const paymentDate = p.payment_date ? new Date(p.payment_date) : (p.created_at ? new Date(p.created_at) : null)
-          if (!paymentDate) return false
-          return paymentDate >= startDate && paymentDate <= endDate
+          // Compare date-only strings to avoid timezone shifts
+          const raw = p.payment_date || p.paymentDate || null
+          if (!raw) return false
+          const pd = toDateOnly(raw)
+          if (!pd) return false
+          return pd >= startDateStr && pd <= endDateStr
         })
       }
       
@@ -342,7 +386,7 @@ export default function DashboardContent({ isDarkMode = false }) {
       completedPayments.forEach(p => {
         const key = p.quotation_id || `lead_${p.lead_id}`
         const status = (p.payment_status || p.status || '').toLowerCase()
-        const paymentDate = p.payment_date ? new Date(p.payment_date) : (p.created_at ? new Date(p.created_at) : new Date(0))
+        const paymentDate = p.payment_date ? new Date(p.payment_date) : new Date(0)
         const amount = Number(p.installment_amount || p.paid_amount || p.amount || p.payment_amount || 0)
         
         // Check if this is an advance payment
@@ -385,12 +429,8 @@ export default function DashboardContent({ isDarkMode = false }) {
       
       // Prepare date range filter
       let dateFilter = null
-      if (userTarget.targetStartDate && userTarget.targetEndDate) {
-        const startDate = new Date(userTarget.targetStartDate)
-        startDate.setHours(0, 0, 0, 0)
-        const endDate = new Date(userTarget.targetEndDate)
-        endDate.setHours(23, 59, 59, 999)
-        dateFilter = { startDate, endDate }
+      if (startDateStr && endDateStr) {
+        dateFilter = { startDateStr, endDateStr }
       }
       
       // OPTIMIZED: Use already fetched PIs instead of making N+1 queries
@@ -430,9 +470,11 @@ export default function DashboardContent({ isDarkMode = false }) {
             // Apply date range filter if target dates are set
             if (dateFilter) {
               quotationPayments = quotationPayments.filter(p => {
-                const paymentDate = p.payment_date ? new Date(p.payment_date) : (p.created_at ? new Date(p.created_at) : null)
-                if (!paymentDate) return false
-                return paymentDate >= dateFilter.startDate && paymentDate <= dateFilter.endDate
+                const raw = p.payment_date || p.paymentDate || null
+                if (!raw) return false
+                const pd = toDateOnly(raw)
+                if (!pd) return false
+                return pd >= dateFilter.startDateStr && pd <= dateFilter.endDateStr
               })
             }
             
@@ -523,11 +565,9 @@ export default function DashboardContent({ isDarkMode = false }) {
       
       setLeads(transformedLeads)
       
-      // OPTIMIZED: Fetch metrics and user target in parallel
-      await Promise.all([
-        fetchBusinessMetrics(transformedLeads),
-        fetchUserTarget()
-      ])
+      // Fetch target first and use it to filter metrics (avoid stale state / all-time totals)
+      const targetWindow = await fetchUserTarget()
+      await fetchBusinessMetrics(transformedLeads, targetWindow)
     } catch (err) {
       console.error('Error refreshing dashboard:', err)
     } finally {
@@ -538,8 +578,7 @@ export default function DashboardContent({ isDarkMode = false }) {
   const fetchingMetricsRef = React.useRef(false);
   const lastUserIdRef = React.useRef(null);
   
-  const { user: currentUser } = useAuth();
-  const currentUserId = currentUser?.id || currentUser?.email || null;
+  const currentUserId = user?.id || user?.email || null;
   
   useEffect(() => {
     if (lastUserIdRef.current === currentUserId && lastUserIdRef.current !== null) {
@@ -547,7 +586,6 @@ export default function DashboardContent({ isDarkMode = false }) {
     }
     
     if (lastUserIdRef.current !== null && lastUserIdRef.current !== currentUserId) {
-      console.log('[Dashboard] User changed, clearing leads. Old:', lastUserIdRef.current, 'New:', currentUserId);
       setLeads([]);
       setError(null);
       setBusinessMetrics({
@@ -569,11 +607,8 @@ export default function DashboardContent({ isDarkMode = false }) {
     lastUserIdRef.current = currentUserId;
     
     const loadData = async () => {
-      // OPTIMIZED: Fetch leads and user target in parallel
-      await Promise.all([
-        fetchLeads(),
-        fetchUserTarget()
-      ]);
+      // Fetch leads and target; metrics will run once leads are loaded and/or target is available
+      await Promise.all([fetchLeads(), fetchUserTarget()]);
       setInitialLoading(false);
     };
     
@@ -590,7 +625,7 @@ export default function DashboardContent({ isDarkMode = false }) {
     // Fetch metrics with leads data to avoid duplicate API call
     if (!fetchingMetricsRef.current) {
       fetchingMetricsRef.current = true;
-      fetchBusinessMetrics(leads).finally(() => {
+      fetchBusinessMetrics(leads, userTarget).finally(() => {
         fetchingMetricsRef.current = false;
       });
     }
@@ -604,7 +639,7 @@ export default function DashboardContent({ isDarkMode = false }) {
     // Only refetch if we have target dates and leads
     if (userTarget.targetStartDate && userTarget.targetEndDate && leads.length > 0) {
       fetchingMetricsRef.current = true;
-      fetchBusinessMetrics(leads).finally(() => {
+      fetchBusinessMetrics(leads, userTarget).finally(() => {
         fetchingMetricsRef.current = false;
       });
     }
@@ -662,7 +697,7 @@ export default function DashboardContent({ isDarkMode = false }) {
     const dateRange = getDateRange()
     if (!dateRange) return allPayments
     return allPayments.filter(p => {
-      const paymentDate = p.payment_date ? new Date(p.payment_date) : (p.created_at ? new Date(p.created_at) : null)
+      const paymentDate = p.payment_date ? new Date(p.payment_date) : null
       if (!paymentDate) return false
       return paymentDate >= dateRange.start && paymentDate <= dateRange.end
     })
@@ -716,6 +751,94 @@ export default function DashboardContent({ isDarkMode = false }) {
       pendingRate
     }
   }
+
+  // Month-wise trends (real data, no hardcoded fallbacks)
+  const trendMetrics = useMemo(() => {
+    const now = new Date()
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    currentMonthEnd.setHours(23, 59, 59, 999)
+
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+    prevMonthEnd.setHours(23, 59, 59, 999)
+
+    const inRange = (d, start, end) => d && !isNaN(d.getTime()) && d >= start && d <= end
+
+    const calcLeadMetricsForRange = (start, end) => {
+      const monthLeads = (leads || []).filter(l => {
+        if (!l.created_at) return false
+        const ld = new Date(l.created_at)
+        return inRange(ld, start, end)
+      })
+
+      const totalLeads = monthLeads.length
+      const winClosedLeads = monthLeads.filter(lead => {
+        const status = String(lead.sales_status || '').toLowerCase()
+        return status === 'win/closed' || status === 'win' || status === 'closed'
+      }).length
+      const pendingLeads = monthLeads.filter(lead => String(lead.sales_status || '').toLowerCase() === 'pending').length
+
+      const conversionRate = totalLeads > 0 ? (winClosedLeads / totalLeads) * 100 : 0
+      const pendingRate = totalLeads > 0 ? (pendingLeads / totalLeads) * 100 : 0
+
+      return { totalLeads, conversionRate, pendingRate }
+    }
+
+    const formatPctChange = (prev, curr) => {
+      if (!Number.isFinite(prev) || !Number.isFinite(curr)) return { text: '—', up: false }
+      if (prev === 0) {
+        return { text: '—', up: curr > 0 }
+      }
+      const pct = ((curr - prev) / prev) * 100
+      const rounded = Math.round(pct * 10) / 10
+      return { text: `${rounded > 0 ? '+' : ''}${rounded}%`, up: rounded >= 0 }
+    }
+
+    const formatPointChange = (prev, curr) => {
+      if (!Number.isFinite(prev) || !Number.isFinite(curr)) return { text: '—', up: false }
+      const diff = curr - prev
+      const rounded = Math.round(diff * 10) / 10
+      return { text: `${rounded > 0 ? '+' : ''}${rounded}%`, up: rounded >= 0 }
+    }
+
+    const currLead = calcLeadMetricsForRange(currentMonthStart, currentMonthEnd)
+    const prevLead = calcLeadMetricsForRange(prevMonthStart, prevMonthEnd)
+
+    // Payments (approved + completed) month-wise
+    const isPaymentApprovedByAccounts = (p) => {
+      const accountsStatus = (p.approval_status || p.accounts_approval_status || p.accountsApprovalStatus || '').toLowerCase()
+      return accountsStatus === 'approved'
+    }
+    const isPaymentCompleted = (p) => {
+      const status = (p.payment_status || p.status || '').toLowerCase()
+      return status === 'completed' || status === 'paid' || status === 'success' || status === 'advance'
+    }
+    const isRefund = (p) => p.is_refund === true || p.is_refund === 1
+    const getPaymentAmount = (p) => {
+      const amount = Number(p.installment_amount || p.paid_amount || p.amount || p.payment_amount || 0)
+      return isNaN(amount) ? 0 : amount
+    }
+    const sumPaymentsForRange = (start, end) => {
+      return (allPayments || [])
+        .filter(p => isPaymentCompleted(p) && !isRefund(p) && isPaymentApprovedByAccounts(p))
+        .filter(p => {
+          const pd = p.payment_date ? new Date(p.payment_date) : null
+          return pd ? inRange(pd, start, end) : false
+        })
+        .reduce((sum, p) => sum + getPaymentAmount(p), 0)
+    }
+
+    const currRevenue = sumPaymentsForRange(currentMonthStart, currentMonthEnd)
+    const prevRevenue = sumPaymentsForRange(prevMonthStart, prevMonthEnd)
+
+    return {
+      totalLeadsTrend: formatPctChange(prevLead.totalLeads, currLead.totalLeads),
+      conversionRateTrend: formatPointChange(prevLead.conversionRate, currLead.conversionRate),
+      pendingRateTrend: formatPointChange(prevLead.pendingRate, currLead.pendingRate),
+      revenueTrend: formatPctChange(prevRevenue, currRevenue)
+    }
+  }, [leads, allPayments])
 
   // Calculate lead sources from real data
   const calculateLeadSources = () => {
@@ -972,8 +1095,8 @@ export default function DashboardContent({ isDarkMode = false }) {
     }
     
     const target = userTarget.target || 0
-    const targetStartDate = userTarget.targetStartDate ? new Date(userTarget.targetStartDate) : null
-    const targetEndDate = userTarget.targetEndDate ? new Date(userTarget.targetEndDate) : null
+    const targetStartDate = userTarget.targetStartDate ? new Date(`${userTarget.targetStartDate}T00:00:00`) : null
+    const targetEndDate = userTarget.targetEndDate ? new Date(`${userTarget.targetEndDate}T00:00:00`) : null
     
     const paymentsToUse = getFilteredPayments()
     
@@ -984,7 +1107,7 @@ export default function DashboardContent({ isDarkMode = false }) {
       monthEnd.setHours(23, 59, 59, 999)
       
       const monthPayments = paymentsToUse.filter(p => {
-        const paymentDate = p.payment_date ? new Date(p.payment_date) : (p.created_at ? new Date(p.created_at) : null)
+        const paymentDate = p.payment_date ? new Date(p.payment_date) : null
         if (!paymentDate) return false
         const status = (p.payment_status || p.status || '').toLowerCase()
         const approvalStatus = (p.approval_status || '').toLowerCase()
@@ -1099,7 +1222,7 @@ export default function DashboardContent({ isDarkMode = false }) {
       
       // Get payments for this month
       const monthPayments = paymentsToUse.filter(p => {
-        const paymentDate = p.payment_date ? new Date(p.payment_date) : (p.created_at ? new Date(p.created_at) : null)
+        const paymentDate = p.payment_date ? new Date(p.payment_date) : null
         if (!paymentDate) return false
         return paymentDate >= monthStart && paymentDate <= monthEnd
       })
@@ -1110,7 +1233,7 @@ export default function DashboardContent({ isDarkMode = false }) {
       let days60Plus = 0
       
       monthPayments.forEach(payment => {
-        const paymentDate = payment.payment_date ? new Date(payment.payment_date) : (payment.created_at ? new Date(payment.created_at) : null)
+        const paymentDate = payment.payment_date ? new Date(payment.payment_date) : null
         if (!paymentDate) return
         
         const daysDiff = Math.floor((now - paymentDate) / (1000 * 60 * 60 * 24))
@@ -1147,25 +1270,35 @@ export default function DashboardContent({ isDarkMode = false }) {
   const weeklyActivity = useMemo(() => calculateWeeklyActivity(), [leads, overviewDateFilter])
   const monthlyRevenue = useMemo(() => calculateMonthlyRevenue(), [allPayments, overviewDateFilter])
 
+  const hasTargetAssigned =
+    Number(userTarget.target || 0) > 0 &&
+    !!userTarget.targetStartDate &&
+    !!userTarget.targetEndDate &&
+    (() => {
+      const end = new Date(`${userTarget.targetEndDate}T00:00:00`)
+      if (isNaN(end.getTime())) return false
+      const today = new Date()
+      const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+      return endDay >= todayDay
+    })()
+
   // Calculate days left based on target period
   const daysLeftInTarget = (() => {
-    if (!userTarget.targetEndDate) {
-      const now = new Date()
-      const last = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      return getCalendarDaysRemaining(last)
-    }
-    
-    const endDate = new Date(userTarget.targetEndDate)
+    if (!hasTargetAssigned) return 0
+    const endDate = new Date(`${userTarget.targetEndDate}T00:00:00`)
     endDate.setHours(23, 59, 59, 999)
     return getCalendarDaysRemaining(endDate)
   })()
   
-  // Use actual user target data
-  const revenueTarget = userTarget.target || 0
-  // Use totalReceivedPayment which counts only APPROVED payments
-  const revenueCurrent = businessMetrics.totalReceivedPayment || 0
+  // Use actual user target data (only when assigned)
+  const revenueTarget = hasTargetAssigned ? (userTarget.target || 0) : 0
+  // Prefer backend-calculated achievedTarget (uses target date range); fall back to metrics if present
+  const revenueCurrent = hasTargetAssigned
+    ? (Number(userTarget.achievedTarget || 0) || businessMetrics.totalReceivedPayment || 0)
+    : 0
 
-  // Overview Data - Real data from API
+  // Overview Data - Real data from API (trends computed from current month vs previous month)
   const overviewData = {
     metrics: [
       {
@@ -1174,8 +1307,8 @@ export default function DashboardContent({ isDarkMode = false }) {
         subtitle: "Active leads this month",
         icon: UserPlus,
         color: "bg-blue-50 text-blue-600 border-blue-200",
-        trend: "+12%",
-        trendUp: true
+        trend: trendMetrics.totalLeadsTrend.text,
+        trendUp: trendMetrics.totalLeadsTrend.up
       },
       {
         title: "Conversion Rate",
@@ -1183,8 +1316,8 @@ export default function DashboardContent({ isDarkMode = false }) {
         subtitle: "Above target of 20%",
         icon: CheckCircle,
         color: "bg-green-50 text-green-600 border-green-200",
-        trend: "+3.2%",
-        trendUp: true
+        trend: trendMetrics.conversionRateTrend.text,
+        trendUp: trendMetrics.conversionRateTrend.up
       },
       {
         title: "Pending Rate",
@@ -1192,8 +1325,8 @@ export default function DashboardContent({ isDarkMode = false }) {
         subtitle: "Leads requiring follow-up",
         icon: Clock,
         color: "bg-orange-50 text-orange-600 border-orange-200",
-        trend: "-2.1%",
-        trendUp: false
+        trend: trendMetrics.pendingRateTrend.text,
+        trendUp: trendMetrics.pendingRateTrend.up
       },
       {
         title: "Total Revenue",
@@ -1201,8 +1334,8 @@ export default function DashboardContent({ isDarkMode = false }) {
         subtitle: "Revenue from payment received",
         icon: CreditCard,
         color: "bg-purple-50 text-purple-600 border-purple-200",
-        trend: "0%",
-        trendUp: false
+        trend: trendMetrics.revenueTrend.text,
+        trendUp: trendMetrics.revenueTrend.up
       },
     ],
     weeklyLeads: weeklyActivity,
@@ -1334,6 +1467,51 @@ export default function DashboardContent({ isDarkMode = false }) {
 
   return (
     <main className={`flex-1 overflow-y-auto overflow-x-hidden p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      {showMonthlyHighlight && (monthlyHighlight?.highlightType === 'winner' || monthlyHighlight?.highlightType === 'achieved') && (
+        <div className="fixed inset-0 z-[99999]">
+          <div
+            className="absolute inset-0 bg-black/80"
+            onClick={() => setShowMonthlyHighlight(false)}
+          />
+
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="relative w-full h-full">
+              <video
+                src={SALES_TARGET_ACHIEVED_VIDEO_URL}
+                className="w-full h-full object-cover"
+                autoPlay
+                muted
+                playsInline
+                onEnded={() => setShowMonthlyHighlight(false)}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/40" />
+
+              <div className="absolute inset-x-0 bottom-0 p-6">
+                <div className="max-w-3xl">
+                  <div className="text-white text-3xl font-extrabold">Congratulations!</div>
+                  <div className="text-white/90 text-sm mt-2">
+                    {monthlyHighlight?.message || 'You achieved your sales target. Great work — keep it up!'}
+                  </div>
+                  {monthlyHighlight?.stats && (
+                    <div className="mt-3 text-white/85 text-sm">
+                      Target: ₹{Number(monthlyHighlight.stats.target || 0).toLocaleString('en-IN')} • Achieved: ₹{Number(monthlyHighlight.stats.achieved || 0).toLocaleString('en-IN')} • {monthlyHighlight.stats.achievementPercentage}% complete
+                    </div>
+                  )}
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowMonthlyHighlight(false)}
+                      className="px-5 py-2.5 text-sm font-semibold rounded-xl shadow-lg border text-white border-white/25 bg-white/10 hover:bg-white/15"
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Tab Navigation with Date Filter and Refresh Button */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex gap-6">
@@ -1385,36 +1563,36 @@ export default function DashboardContent({ isDarkMode = false }) {
             </button>
             <div className="relative flex items-center gap-2">
               <Calendar className={`h-5 w-5 ${
-                overviewDateFilter 
+              overviewDateFilter 
                   ? (isDarkMode ? 'text-purple-400' : 'text-purple-600')
-                  : (isDarkMode ? 'text-gray-400' : 'text-gray-500')
+                : (isDarkMode ? 'text-gray-400' : 'text-gray-500')
               } transition-colors duration-200`} />
-              <input
-                type="date"
-                value={overviewDateFilter}
-                onChange={(e) => setOverviewDateFilter(e.target.value)}
+            <input
+              type="date"
+              value={overviewDateFilter}
+              onChange={(e) => setOverviewDateFilter(e.target.value)}
                 className={`px-4 py-2.5 border-2 rounded-lg text-sm focus:outline-none focus:ring-2 transition-all duration-200 shadow-sm ${
-                  isDarkMode 
+                isDarkMode 
                     ? `bg-gray-800 border-gray-600 text-white focus:ring-purple-500 focus:border-purple-500 hover:border-purple-400 ${overviewDateFilter ? 'border-purple-400 bg-purple-900/30' : ''}`
                     : `bg-white text-gray-900 focus:ring-purple-500 focus:border-purple-500 hover:border-purple-300 ${overviewDateFilter ? 'border-purple-500 bg-purple-50' : 'border-gray-300'}`
-                }`}
-                title="Filter data from selected date to today"
-                max={new Date().toISOString().split('T')[0]}
+              }`}
+              title="Filter data from selected date to today"
+              max={toDateOnly(new Date())}
                 placeholder="dd-mm-yyyy"
-              />
-              {overviewDateFilter && (
-                <button
-                  onClick={() => setOverviewDateFilter('')}
+            />
+            {overviewDateFilter && (
+              <button
+                onClick={() => setOverviewDateFilter('')}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
-                    isDarkMode 
+                  isDarkMode 
                       ? 'text-gray-300 hover:text-white hover:bg-gray-700 bg-gray-800 border border-gray-600' 
                       : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 bg-white border border-gray-300'
-                  }`}
-                  title="Clear date filter"
-                >
-                  Clear
-                </button>
-              )}
+                }`}
+                title="Clear date filter"
+              >
+                Clear
+              </button>
+            )}
             </div>
           </div>
         )}
@@ -1559,9 +1737,9 @@ export default function DashboardContent({ isDarkMode = false }) {
               <p className={`text-xs font-medium mb-3 ${
                 isDarkMode ? 'text-indigo-200' : 'text-indigo-600'
               }`}>
-                {userTarget.targetStartDate && userTarget.targetEndDate 
-                  ? `Revenue target (${new Date(userTarget.targetStartDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} - ${new Date(userTarget.targetEndDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })})`
-                  : 'Revenue target this quarter'
+                {hasTargetAssigned 
+                  ? `Revenue target (${new Date(`${userTarget.targetStartDate}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} - ${new Date(`${userTarget.targetEndDate}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })})`
+                  : 'Target not assigned for this month'
                 }
               </p>
               <div className={`w-full h-2 rounded-full ${
@@ -1600,9 +1778,9 @@ export default function DashboardContent({ isDarkMode = false }) {
                   ? 'text-green-200' 
                   : 'text-green-600'
               }`}>
-                {userTarget.targetStartDate && userTarget.targetEndDate 
-                  ? `Revenue achieved (${userTarget.targetDurationDays || Math.ceil((new Date(userTarget.targetEndDate) - new Date(userTarget.targetStartDate)) / (1000 * 60 * 60 * 24))} days period)`
-                  : 'Revenue achieved this quarter'
+                {hasTargetAssigned 
+                  ? `Revenue achieved (${userTarget.targetDurationDays || Math.ceil((new Date(`${userTarget.targetEndDate}T00:00:00`) - new Date(`${userTarget.targetStartDate}T00:00:00`)) / (1000 * 60 * 60 * 24))} days period)`
+                  : 'Target not assigned'
                 }
               </p>
               <div className={`w-full h-2 rounded-full ${
@@ -1641,10 +1819,7 @@ export default function DashboardContent({ isDarkMode = false }) {
                   ? 'text-slate-300' 
                   : 'text-slate-600'
               }`}>
-                {userTarget.targetEndDate 
-                  ? `Remaining days in target period`
-                  : 'Remaining days in current month'
-                }
+                {hasTargetAssigned ? 'Remaining days in target period' : 'Target not assigned'}
               </p>
               <div className={`w-full h-2 rounded-full ${
                 isDarkMode ? 'bg-slate-700/30' : 'bg-slate-100'

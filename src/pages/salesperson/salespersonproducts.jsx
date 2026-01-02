@@ -16,6 +16,7 @@ import { useViewQuotationPI } from '../../hooks/useViewQuotationPI';
 import CompanyBranchService from '../../services/CompanyBranchService';
 import QuotationPreview from '../../components/QuotationPreview';
 import PIPreview from '../../components/PIPreview';
+import { toDateOnly } from '../../utils/dateOnly';
 
 class DataExtractor {
   static extractArray(response) {
@@ -1208,7 +1209,7 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
     payment_status: 'advance',
     payment_receipt_url: '',
     purchase_order_id: '',
-    payment_date: new Date().toISOString().split('T')[0], // Default to today's date
+    payment_date: toDateOnly(new Date()), // Default to today's date (local-safe)
     delivery_date: '',
     delivery_status: 'pending'
   });
@@ -1364,8 +1365,6 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
 
       // Validate installment amount
       const installmentAmount = parseFloat(paymentData.installment_amount);
-      console.log('💰 Payment submission - installment_amount:', installmentAmount);
-      console.log('💰 Payment data:', paymentData);
       
       if (!installmentAmount || isNaN(installmentAmount) || installmentAmount <= 0) {
         setError('Please enter a valid payment amount greater than 0');
@@ -1373,10 +1372,8 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         return;
       }
 
-      // Format payment_date to ISO string if provided, otherwise use current date
-      const paymentDate = paymentData.payment_date 
-        ? new Date(paymentData.payment_date).toISOString()
-        : new Date().toISOString();
+      // Send payment_date as YYYY-MM-DD (backend will normalize). Avoid timezone shifting.
+      const paymentDate = paymentData.payment_date || toDateOnly(new Date());
 
       const paymentPayload = {
         lead_id: item.leadData?.id,
@@ -1395,9 +1392,7 @@ const PaymentModal = ({ item, onClose, onPaymentAdded }) => {
         delivery_status: paymentData.delivery_status
       };
 
-      console.log('📤 Sending payment payload:', paymentPayload);
       const response = await paymentService.createPayment(paymentPayload);
-      console.log('✅ Payment response:', response);
       if (response.success) {
         const { summary: responseSummary } = response.data;
         onClose();
