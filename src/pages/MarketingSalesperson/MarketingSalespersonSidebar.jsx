@@ -36,12 +36,12 @@ const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
       icon: <BarChart3 className="w-5 h-5" />,
       hasDropdown: false
     },
-    {
-      id: 'all-leads',
-      label: 'All Leads',
-      icon: <UserCheck className="w-5 h-5" />,
-      hasDropdown: false
-    },
+    // {
+    //   id: 'all-leads',
+    //   label: 'All Leads',
+    //   icon: <UserCheck className="w-5 h-5" />,
+    //   hasDropdown: false
+    // },
     {
       id: 'assigned-meetings',
       label: 'Assigned Meetings',

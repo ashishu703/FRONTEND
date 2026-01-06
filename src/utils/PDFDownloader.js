@@ -6,14 +6,13 @@ export class PDFDownloader {
     margin: [0.3, 0.3, 0.3, 0.3],
     image: { type: 'jpeg', quality: 0.95 },
     html2canvas: {
-      scale: 2, // Higher scale for better quality and font rendering
+      scale: 2, 
       useCORS: true,
       letterRendering: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
       onclone: (clonedDoc) => {
-        // Ensure fonts are loaded and applied
         const style = clonedDoc.createElement('style');
         style.textContent = `
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');

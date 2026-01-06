@@ -57,7 +57,7 @@ export default function LeadStatusDropdown({ currentPage, onNavigate, sidebarOpe
         {/* Dropdown Menu */}
         {isOpen && sidebarOpen && (
           <ul className="ml-8 mt-1 space-y-1">
-            <li>
+            {/* <li>
               <div
                 className={cx(
                   "flex items-center px-3 py-2 rounded-lg cursor-pointer transition-colors text-sm",
@@ -72,7 +72,7 @@ export default function LeadStatusDropdown({ currentPage, onNavigate, sidebarOpe
                   <span>All Leads</span>
                 </div>
               </div>
-            </li>
+            </li> */}
             <li>
               <div
                 className={cx(

@@ -129,7 +129,7 @@ const MobileLayout = ({ onLogout, onToggleDesktopView }) => {
   const toolboxInterfaceItem = { id: 'products', label: 'Toolbox Interface', icon: Box, color: 'text-orange-600' };
 
   const leadStatusOptions = [
-    { id: 'lead-status', label: 'All Leads', icon: BarChart3, color: 'text-indigo-500' },
+    // { id: 'lead-status', label: 'All Leads', icon: BarChart3, color: 'text-indigo-500' },
     { id: 'scheduled-call', label: 'Scheduled Call', icon: Calendar, color: 'text-blue-500' },
     { id: 'last-call', label: 'Last Call', icon: Clock, color: 'text-purple-500' },
   ];
