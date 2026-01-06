@@ -32,7 +32,7 @@ const MobileMarketingSalespersonLayout = ({ onLogout, onToggleDesktopView }) => 
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-blue-600' },
-    { id: 'all-leads', label: 'All Leads', icon: Users, color: 'text-green-600' },
+    // { id: 'all-leads', label: 'All Leads', icon: Users, color: 'text-green-600' },
     { id: 'assigned-meetings', label: 'Assigned Meetings', icon: Calendar, color: 'text-indigo-600' },
     { id: 'checkin-history', label: 'Check-In History', icon: Camera, color: 'text-pink-600' },
     { id: 'orders', label: 'Orders', icon: ShoppingCart, color: 'text-orange-600' },
