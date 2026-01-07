@@ -173,6 +173,7 @@ export default function SalespersonLayout({ onLogout }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isMobileView, setIsMobileView] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null)
   
   // Check if we should show quotation form (from sessionStorage)
   useEffect(() => {
@@ -190,10 +191,32 @@ export default function SalespersonLayout({ onLogout }) {
     window.addEventListener('resize', updateIsMobile);
     return () => window.removeEventListener('resize', updateIsMobile);
   }, []);
-  const handleNavigation = (page) => {
-    setCurrentPage(page);
+  const handleNavigation = (page, id) => {
+    // Handle customer(s) paths: '/customers' (list) and '/customer/{id}' or '/customers/{id}' (detail)
+    if (typeof page === 'string' && (page.startsWith('/customer') || page.startsWith('/customers'))) {
+      const parts = page.split('/').filter(Boolean) // ['customer'|'customers', '123']
+      const plural = parts[0] === 'customers'
+      const cid = parts[1] || id || null
+      setCurrentPage('customers')
+      setSelectedCustomerId(cid)
+      const url = cid ? `/${plural ? 'customers' : 'customer'}/${cid}` : `/${plural ? 'customers' : 'customer'}`
+      window.history.pushState({}, '', url)
+      return
+    }
+
+    if (page === 'customers' || page === 'customer') {
+      const cid = id || null
+      setCurrentPage('customers')
+      setSelectedCustomerId(cid)
+      const url = cid ? `/${page}/${cid}` : `/${page}`
+      window.history.pushState({}, '', url)
+      return
+    }
+
+    setSelectedCustomerId(null)
+    setCurrentPage(page)
     // Update the URL without a page reload
-    window.history.pushState({}, '', `/${page}`);
+    window.history.pushState({}, '', `/${page}`)
   };
 
   const handleToggleDarkMode = () => {
@@ -230,7 +253,7 @@ export default function SalespersonLayout({ onLogout }) {
             isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
           }`}>
             {currentPage === 'dashboard' && <DashboardContent isDarkMode={isDarkMode} />}
-            {currentPage === 'customers' && <CustomerListContent isDarkMode={isDarkMode} />}
+            {currentPage === 'customers' && <CustomerListContent isDarkMode={isDarkMode} selectedCustomerId={selectedCustomerId} />}
             {currentPage === 'stock' && <StockManagement isDarkMode={isDarkMode} />}
             {currentPage === 'products' && <ProductsPage isDarkMode={isDarkMode} />}
             {currentPage === 'lead-status' && <LeadStatusPage isDarkMode={isDarkMode} />}

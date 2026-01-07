@@ -33,12 +33,12 @@ export default function CustomerDetailSidebar({
       <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={onClose}></div>
       
       <div className="fixed right-0 top-12 sm:top-14 h-[calc(100vh-3rem)] sm:h-[calc(100vh-3.5rem)] w-full sm:w-96 lg:max-w-lg bg-white shadow-2xl z-50 flex flex-col overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 p-3 sm:p-4 flex items-center justify-between shadow-lg flex-shrink-0 gap-2 sm:gap-3">
-          <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 pt-6 pb-3 px-3 sm:pt-8 sm:pb-4 sm:px-4 flex items-center justify-between shadow-lg flex-shrink-0 gap-2 sm:gap-3">
+          <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 leading-none">
             <User className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
             <span className="truncate">Customer Details</span>
           </h2>
-          <button onClick={onClose} className="text-white hover:text-gray-200 p-1.5 rounded-lg hover:bg-white/20 transition-colors flex-shrink-0">
+          <button onClick={onClose} className="text-white hover:text-gray-200 p-1.5 rounded-lg hover:bg-white/20 transition-colors flex-shrink-0 flex items-center justify-center" aria-label="Close">
             <X className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>

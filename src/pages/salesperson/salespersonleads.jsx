@@ -33,7 +33,7 @@ const getUserData = () => {
   }
 }
 
-export default function CustomerListContent({ isDarkMode = false }) {
+export default function CustomerListContent({ isDarkMode = false, selectedCustomerId = null }) {
   const { customers, setCustomers, loading } = useSharedData()
   const [initialLoading, setInitialLoading] = React.useState(true)
   const user = getUserData()
@@ -134,6 +134,17 @@ export default function CustomerListContent({ isDarkMode = false }) {
       handleRefresh()
     }
   }, [])
+
+  // If parent requested opening a specific customer, find and open it
+  React.useEffect(() => {
+    if (!selectedCustomerId) return
+    // If customers not loaded yet, wait for them (handleRefresh sets customers)
+    const found = (customers || []).find(c => String(c.id) === String(selectedCustomerId))
+    if (found) {
+      setViewingCustomer(found)
+      // scroll or focus logic could go here
+    }
+  }, [selectedCustomerId, customers])
 
   const refreshingRef = React.useRef(false)
   
