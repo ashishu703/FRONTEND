@@ -130,29 +130,7 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen
                 </div>
               </div>
             </li>
-            <li>
-              <div
-                className={cx(
-                  "flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200",
-                  currentPage === "customers"
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
-                    : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
-                )}
-                onClick={() => onNavigate("customers")}
-                style={{
-                  transform: currentPage === "customers" ? 'translateX(4px)' : 'none',
-                }}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className={currentPage === "customers" ? 'text-white' : 'text-slate-400'}>
-                    <Users className="w-5 h-5" />
-                  </div>
-                  {sidebarOpen && (
-                    <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Leads</span>
-                  )}
-                </div>
-              </div>
-            </li>
+            {/* Leads moved into LeadStatusDropdown - standalone entry removed intentionally */}
             <LeadStatusDropdown 
               currentPage={currentPage} 
               onNavigate={onNavigate} 
