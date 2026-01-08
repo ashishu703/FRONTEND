@@ -9,6 +9,7 @@ import CompanyBranchService from '../../services/CompanyBranchService'
 import QuotationPreview from '../../components/QuotationPreview'
 import PIPreview from '../../components/PIPreview'
 import LeadFilters from '../../components/salesperson/LeadFilters'
+import EnquiryFilters from '../../components/salesperson/EnquiryFilters'
 import TagManager from '../../components/salesperson/TagManager'
 import CustomerDetailSidebar from '../../components/salesperson/CustomerDetailSidebar'
 import ImportLeadsModal from '../../components/salesperson/ImportLeadsModal'
@@ -52,9 +53,16 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
   const [enquiryLimit, setEnquiryLimit] = React.useState(50)
   const [enquiryTotal, setEnquiryTotal] = React.useState(0)
   const [showEnquiryFilters, setShowEnquiryFilters] = React.useState(false)
+  const [enquirySearchQuery, setEnquirySearchQuery] = React.useState('')
+  const [debouncedEnquirySearchQuery, setDebouncedEnquirySearchQuery] = React.useState('')
   const [enquiryFilters, setEnquiryFilters] = React.useState({
-    enquiry_date: ''
+    state: '', division: '', product: '', followUpStatus: '', salesStatus: '', salesperson: '', telecaller: '', dateFrom: '', dateTo: ''
   })
+  const [enquiryEnabledFilters, setEnquiryEnabledFilters] = React.useState({
+    state: false, division: false, product: false, followUpStatus: false, salesStatus: false, salesperson: false, telecaller: false, dateRange: false
+  })
+  const [enquirySortBy, setEnquirySortBy] = React.useState('none')
+  const [enquirySortOrder, setEnquirySortOrder] = React.useState('asc')
   
   // Modal states
   const [viewingCustomer, setViewingCustomer] = React.useState(null)
@@ -856,11 +864,11 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
       const params = new URLSearchParams();
       params.append('page', enquiryPage.toString());
       params.append('limit', enquiryLimit.toString());
-      if (enquiryFilters.enquiry_date) params.append('enquiryDate', enquiryFilters.enquiry_date);
+      if (enquiryEnabledFilters.dateRange && enquiryFilters.dateFrom) params.append('enquiryDate', enquiryFilters.dateFrom);
       
       // Fetch grouped data
       const groupedParams = new URLSearchParams();
-      if (enquiryFilters.enquiry_date) groupedParams.append('enquiryDate', enquiryFilters.enquiry_date);
+        if (enquiryEnabledFilters.dateRange && enquiryFilters.dateFrom) groupedParams.append('enquiryDate', enquiryFilters.dateFrom);
       
       const [paginatedResponse, groupedResponse] = await Promise.all([
         apiClient.get(`${API_ENDPOINTS.ENQUIRIES_DEPARTMENT_HEAD()}?${params.toString()}`),
@@ -897,8 +905,11 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
         setEnquiriesGroupedByDate(filteredGrouped);
         setEnquiryTotal(filteredEnquiries.length);
         
+        // Update total based on filtered results
+        setEnquiryTotal(filteredEnquiries.length);
+        
         // Update last fetch key
-        lastEnquiryFetchRef.current = { page: enquiryPage, limit: enquiryLimit, date: enquiryFilters.enquiry_date || '' };
+        lastEnquiryFetchRef.current = { page: enquiryPage, limit: enquiryLimit, date: enquiryFilters.dateFrom || '' };
       }
     } catch (error) {
       console.error('Error fetching enquiries:', error);
@@ -906,7 +917,7 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
       setEnquiriesLoading(false);
       fetchingEnquiriesRef.current = false;
     }
-  }, [activeTab, enquiryPage, enquiryLimit, enquiryFilters.enquiry_date, salespersonIdentifier]);
+  }, [activeTab, enquiryPage, enquiryLimit, enquiryFilters.dateFrom, enquiryEnabledFilters.dateRange, salespersonIdentifier]);
 
   // Fetch enquiries when tab changes or filters/pagination change
   React.useEffect(() => {
@@ -920,7 +931,7 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
     if (fetchingEnquiriesRef.current) return;
     
     // Check if we need to fetch (avoid unnecessary calls)
-    const currentFetchKey = `${enquiryPage}-${enquiryLimit}-${enquiryFilters.enquiry_date || ''}`;
+    const currentFetchKey = `${enquiryPage}-${enquiryLimit}-${enquiryFilters.dateFrom || ''}`;
     const lastFetchKey = `${lastEnquiryFetchRef.current.page}-${lastEnquiryFetchRef.current.limit}-${lastEnquiryFetchRef.current.date}`;
     if (currentFetchKey === lastFetchKey && enquiryInitialLoadRef.current) {
       return;
@@ -934,11 +945,11 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
         const params = new URLSearchParams();
         params.append('page', enquiryPage.toString());
         params.append('limit', enquiryLimit.toString());
-        if (enquiryFilters.enquiry_date) params.append('enquiryDate', enquiryFilters.enquiry_date);
+        if (enquiryEnabledFilters.dateRange && enquiryFilters.dateFrom) params.append('enquiryDate', enquiryFilters.dateFrom);
         
         // Fetch grouped data
         const groupedParams = new URLSearchParams();
-        if (enquiryFilters.enquiry_date) groupedParams.append('enquiryDate', enquiryFilters.enquiry_date);
+        if (enquiryEnabledFilters.dateRange && enquiryFilters.dateFrom) groupedParams.append('enquiryDate', enquiryFilters.dateFrom);
         
         const [paginatedResponse, groupedResponse] = await Promise.all([
           apiClient.get(`${API_ENDPOINTS.ENQUIRIES_DEPARTMENT_HEAD()}?${params.toString()}`),
@@ -971,12 +982,10 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
             }
           });
           
-          setEnquiries(filteredEnquiries);
-          setEnquiriesGroupedByDate(filteredGrouped);
-          setEnquiryTotal(filteredEnquiries.length);
-          
-          // Update last fetch key
-          lastEnquiryFetchRef.current = { page: enquiryPage, limit: enquiryLimit, date: enquiryFilters.enquiry_date || '' };
+        setEnquiries(filteredEnquiries);
+        setEnquiriesGroupedByDate(filteredGrouped);
+        
+        // Update total will be set after client-side filtering
           enquiryInitialLoadRef.current = true;
         }
       } catch (error) {
@@ -988,17 +997,203 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
     };
 
     loadEnquiries();
-  }, [activeTab, enquiryPage, enquiryLimit, enquiryFilters.enquiry_date, salespersonIdentifier]);
+  }, [activeTab, enquiryPage, enquiryLimit, enquiryFilters.dateFrom, enquiryEnabledFilters.dateRange, salespersonIdentifier]);
 
-  // Filter enquiries client-side
+  // Debounce search query for enquiries
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedEnquirySearchQuery(enquirySearchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [enquirySearchQuery]);
+
+  // Extract unique filter options from enquiries
+  const enquiryUniqueFilterOptions = React.useMemo(() => {
+    const allEnquiries = enquiries || []
+    return {
+      states: [...new Set(allEnquiries.map(e => e.state).filter(s => s && s !== 'N/A'))].sort(),
+      divisions: [...new Set(allEnquiries.map(e => e.division).filter(d => d && d !== 'N/A'))].sort(),
+      products: [...new Set(allEnquiries.map(e => e.enquired_product || e.product_name).filter(p => p && p !== 'N/A'))].sort(),
+      followUpStatuses: [...new Set(allEnquiries.map(e => e.follow_up_status).filter(s => s && s !== 'N/A'))].sort(),
+      salesStatuses: [...new Set(allEnquiries.map(e => e.sales_status).filter(s => s && s !== 'N/A'))].sort(),
+      salespersons: [...new Set(allEnquiries.map(e => e.salesperson).filter(s => s && s !== 'N/A'))].sort(),
+      telecallers: [...new Set(allEnquiries.map(e => e.telecaller).filter(t => t && t !== 'N/A'))].sort()
+    }
+  }, [enquiries])
+
+  // Filter and sort enquiries client-side
   const filteredEnquiries = React.useMemo(() => {
-    return enquiries;
-  }, [enquiries]);
+    let filtered = [...enquiries];
+    
+    // Apply search query - search in customer name, business, address, state, product, etc.
+    if (debouncedEnquirySearchQuery && debouncedEnquirySearchQuery.trim()) {
+      const query = debouncedEnquirySearchQuery.toLowerCase().trim();
+      filtered = filtered.filter(e => {
+        const customerName = (e.customer_name || e.customer || e.name || '').toLowerCase();
+        const business = (e.business || '').toLowerCase();
+        const address = (e.address || '').toLowerCase();
+        const state = (e.state || '').toLowerCase();
+        const product = ((e.enquired_product || e.product_name || '')).toLowerCase();
+        const division = (e.division || '').toLowerCase();
+        const phone = String(e.phone || e.mobile || '').toLowerCase();
+        
+        return customerName.includes(query) || 
+               business.includes(query) || 
+               address.includes(query) ||
+               state.includes(query) ||
+               product.includes(query) ||
+               division.includes(query) ||
+               phone.includes(query);
+      });
+    }
+    
+    // Apply filters
+    Object.entries(enquiryFilters).forEach(([key, value]) => {
+      if (enquiryEnabledFilters[key] && value) {
+        if (key === 'dateRange' || key === 'dateFrom' || key === 'dateTo') {
+          // Date range filtering is handled separately
+        } else {
+          // Handle product field which might be enquired_product or product_name
+          if (key === 'product') {
+            filtered = filtered.filter(e => {
+              const productValue = e.enquired_product || e.product_name || '';
+              return String(productValue).toLowerCase() === String(value).toLowerCase();
+            });
+          } else {
+            const fieldMap = {
+              state: 'state',
+              division: 'division',
+              followUpStatus: 'follow_up_status',
+              salesStatus: 'sales_status',
+              salesperson: 'salesperson',
+              telecaller: 'telecaller'
+            }
+            if (fieldMap[key]) {
+              filtered = filtered.filter(e => {
+                const fieldValue = e[fieldMap[key]] || '';
+                return String(fieldValue).toLowerCase() === String(value).toLowerCase();
+              });
+            }
+          }
+        }
+      }
+    });
+    
+    // Date range filter
+    if (enquiryEnabledFilters.dateRange) {
+      if (enquiryFilters.dateFrom) {
+        filtered = filtered.filter(e => {
+          const enquiryDate = e.enquiry_date || e.date || '';
+          return enquiryDate >= enquiryFilters.dateFrom;
+        });
+      }
+      if (enquiryFilters.dateTo) {
+        filtered = filtered.filter(e => {
+          const enquiryDate = e.enquiry_date || e.date || '';
+          return enquiryDate <= enquiryFilters.dateTo;
+        });
+      }
+    }
+    
+    // Apply sorting
+    if (enquirySortBy && enquirySortBy !== 'none') {
+      filtered = filtered.sort((a, b) => {
+        let aVal = a[enquirySortBy];
+        let bVal = b[enquirySortBy];
+        
+        if (enquirySortBy === 'enquiry_date' || enquirySortBy === 'date') {
+          aVal = aVal ? new Date(aVal).getTime() : 0;
+          bVal = bVal ? new Date(bVal).getTime() : 0;
+        } else if (typeof aVal === 'string') {
+          aVal = aVal.toLowerCase();
+          bVal = (bVal || '').toLowerCase();
+        }
+        
+        if (aVal < bVal) return enquirySortOrder === 'asc' ? -1 : 1;
+        if (aVal > bVal) return enquirySortOrder === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    
+    return filtered;
+  }, [enquiries, debouncedEnquirySearchQuery, enquiryFilters, enquiryEnabledFilters, enquirySortBy, enquirySortOrder]);
 
   // Group filtered enquiries by date
   const filteredEnquiriesGroupedByDate = React.useMemo(() => {
-    return enquiriesGroupedByDate;
-  }, [enquiriesGroupedByDate]);
+    const grouped = {};
+    filteredEnquiries.forEach(enquiry => {
+      const date = enquiry.enquiry_date || enquiry.date || '';
+      if (date) {
+        if (!grouped[date]) {
+          grouped[date] = [];
+        }
+        grouped[date].push(enquiry);
+      }
+    });
+    return grouped;
+  }, [filteredEnquiries]);
+
+  // Update enquiry total based on filtered results
+  React.useEffect(() => {
+    if (activeTab === 'enquiry') {
+      setEnquiryTotal(filteredEnquiries.length);
+      // Reset to page 1 when search query changes
+      if (debouncedEnquirySearchQuery) {
+        setEnquiryPage(1);
+      }
+    }
+  }, [filteredEnquiries, activeTab, debouncedEnquirySearchQuery]);
+
+  // Enquiry filter handlers
+  const handleEnquiryAdvancedFilterChange = React.useCallback((filterKey, value) => {
+    setEnquiryFilters(prev => ({ ...prev, [filterKey]: value }));
+    setEnquiryPage(1);
+  }, []);
+
+  const handleEnquiryToggleFilterSection = React.useCallback((filterKey) => {
+    setEnquiryEnabledFilters(prev => ({ ...prev, [filterKey]: !prev[filterKey] }));
+    if (enquiryEnabledFilters[filterKey]) {
+      if (filterKey === 'dateRange') {
+        setEnquiryFilters(prev => ({ ...prev, dateFrom: '', dateTo: '' }));
+      } else {
+        setEnquiryFilters(prev => ({ ...prev, [filterKey]: '' }));
+      }
+    }
+  }, [enquiryEnabledFilters]);
+
+  const handleEnquiryClearFilters = React.useCallback(() => {
+    setEnquiryFilters({ state: '', division: '', product: '', followUpStatus: '', salesStatus: '', salesperson: '', telecaller: '', dateFrom: '', dateTo: '' });
+    setEnquiryEnabledFilters({ state: false, division: false, product: false, followUpStatus: false, salesStatus: false, salesperson: false, telecaller: false, dateRange: false });
+    setEnquiryPage(1);
+  }, []);
+
+  const handleEnquirySortChange = React.useCallback((newSortBy) => {
+    setEnquirySortBy(newSortBy);
+    setEnquiryPage(1);
+  }, []);
+
+  const handleEnquirySortOrderChange = React.useCallback((newSortOrder) => {
+    setEnquirySortOrder(newSortOrder);
+    setEnquiryPage(1);
+  }, []);
+
+  // Close enquiry filter panel when clicking outside
+  React.useEffect(() => {
+    if (!showEnquiryFilters) return;
+    
+    const handleClickOutside = (event) => {
+      const filterPanel = document.getElementById('enquiry-filter-panel');
+      const filterButton = document.getElementById('enquiry-filter-button');
+      if (filterPanel && !filterPanel.contains(event.target) && !filterButton?.contains(event.target)) {
+        setShowEnquiryFilters(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEnquiryFilters]);
 
   if (initialLoading && activeTab === 'leads') {
     return <DashboardSkeleton />;
@@ -1628,60 +1823,78 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
 
       {activeTab === 'enquiry' && (
         <>
-          {/* Enquiry Header */}
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>Enquiries</h2>
-            <button
-              onClick={() => setShowEnquiryFilters(!showEnquiryFilters)}
-              className={`p-2.5 rounded-xl border-2 inline-flex items-center relative transition-all duration-200 shadow-md ${
-                showEnquiryFilters 
-                  ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-blue-300 shadow-blue-200/50' 
-                  : isDarkMode
-                    ? 'bg-gray-800 border-gray-700 hover:bg-gray-700'
-                    : 'bg-white border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <Filter className={`h-4 w-4 ${showEnquiryFilters ? 'text-blue-600' : isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
-            </button>
-          </div>
-
-          {/* Enquiry Filters */}
-          {showEnquiryFilters && (
-            <div className={`mb-4 p-4 rounded-lg border shadow-sm ${
-              isDarkMode 
-                ? 'bg-gray-800 border-gray-700' 
-                : 'bg-white border-gray-200'
-            }`}>
-              <div className="space-y-3">
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Filter by Enquiry Date</label>
-                  <input
-                    type="date"
-                    value={enquiryFilters.enquiry_date}
-                    onChange={(e) => setEnquiryFilters(prev => ({ ...prev, enquiry_date: e.target.value }))}
-                    className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      isDarkMode
-                        ? 'bg-gray-700 border-gray-600 text-gray-100'
-                        : 'bg-white border-gray-300'
-                    }`}
+          {/* Enquiry Search and Action Bar */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="flex shadow-lg rounded-xl overflow-hidden">
+                  <input 
+                    type="text" 
+                    placeholder="Search items..." 
+                    value={enquirySearchQuery} 
+                    onChange={(e) => setEnquirySearchQuery(e.target.value)} 
+                    className={`px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 ${
+                      isDarkMode 
+                        ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' 
+                        : 'bg-white border-gray-200 text-gray-900 placeholder-gray-500'
+                    }`} 
                   />
+                  <button className={`px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md`}>
+                    <Search className="h-4 w-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    setEnquiryFilters({ enquiry_date: '' });
-                    setEnquiryPage(1);
-                  }}
-                  className={`px-4 py-2 text-sm font-medium rounded-md ${
-                    isDarkMode
-                      ? 'text-gray-300 bg-gray-700 hover:bg-gray-600'
-                      : 'text-gray-700 bg-gray-100 hover:bg-gray-200'
-                  }`}
+              </div>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setShowEnquiryFilters(!showEnquiryFilters)} 
+                  className={`p-2.5 rounded-xl border-2 inline-flex items-center relative transition-all duration-200 shadow-md ${
+                    showEnquiryFilters 
+                      ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-blue-300 shadow-blue-200/50' 
+                      : isDarkMode 
+                        ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' 
+                        : 'bg-white border-gray-200 hover:bg-gray-50'
+                  }`} 
+                  id="enquiry-filter-button"
                 >
-                  Clear Filters
+                  <Filter className={`h-4 w-4 ${showEnquiryFilters ? 'text-blue-600' : isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
+                  {Object.values(enquiryEnabledFilters).some(Boolean) && (
+                    <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-gradient-to-r from-blue-500 to-purple-500 rounded-full shadow-lg">
+                      {Object.values(enquiryEnabledFilters).filter(Boolean).length}
+                    </span>
+                  )}
+                </button>
+                <button 
+                  onClick={() => fetchEnquiries(true)} 
+                  disabled={enquiriesLoading} 
+                  className={`p-2.5 rounded-xl border-2 transition-all duration-200 shadow-md ${
+                    isDarkMode 
+                      ? 'bg-gray-800 border-gray-700 hover:bg-gray-700 text-gray-300' 
+                      : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-600'
+                  } disabled:opacity-50`}
+                >
+                  <RefreshCw className={`h-4 w-4 ${enquiriesLoading ? 'animate-spin' : ''}`} />
                 </button>
               </div>
             </div>
-          )}
+          </div>
+
+          {/* Enquiry Filters */}
+          <EnquiryFilters 
+            showFilterPanel={showEnquiryFilters}
+            setShowFilterPanel={setShowEnquiryFilters}
+            enabledFilters={enquiryEnabledFilters}
+            advancedFilters={enquiryFilters}
+            getUniqueFilterOptions={enquiryUniqueFilterOptions}
+            handleAdvancedFilterChange={handleEnquiryAdvancedFilterChange}
+            toggleFilterSection={handleEnquiryToggleFilterSection}
+            clearAdvancedFilters={handleEnquiryClearFilters}
+            sortBy={enquirySortBy}
+            setSortBy={setEnquirySortBy}
+            sortOrder={enquirySortOrder}
+            setSortOrder={setEnquirySortOrder}
+            handleSortChange={handleEnquirySortChange}
+            handleSortOrderChange={handleEnquirySortOrderChange}
+          />
 
           {/* Enquiry Table */}
           {enquiriesLoading && enquiryPage === 1 ? (
