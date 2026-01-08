@@ -48,6 +48,8 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   const [showOtherInput, setShowOtherInput] = useState(
     initialEnquiredProducts.some(p => p.product === 'Other')
   );
+  const [productSearch, setProductSearch] = useState('');
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -77,6 +79,90 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
     
     e.target.value = ''; // Reset dropdown after selection
   };
+
+  // Filter products based on search
+  const filteredProducts = React.useMemo(() => {
+    if (!productSearch.trim()) {
+      return products;
+    }
+    const searchLower = productSearch.toLowerCase();
+    return products.filter(p => p.name.toLowerCase().includes(searchLower));
+  }, [productSearch, products]);
+
+  // Handle adding product from search input or dropdown
+  const handleAddProduct = (productName = null) => {
+    const productToAdd = productName || productSearch.trim();
+    if (!productToAdd) return;
+    
+    // Don't add if already exists
+    if (formData.enquired_products.some(p => 
+      p.product === productToAdd || 
+      (p.product === 'Other' && formData.other_product === productToAdd)
+    )) {
+      setProductSearch('');
+      setShowProductDropdown(false);
+      return;
+    }
+    
+    // Check if it's in the products list
+    const isInProductsList = products.some(p => p.name.toLowerCase() === productToAdd.toLowerCase());
+    
+    if (isInProductsList) {
+      // If it's in the list, add it normally
+      setFormData(prev => ({
+        ...prev,
+        enquired_products: [...prev.enquired_products, { product: productToAdd, quantity: '', remark: '' }]
+      }));
+    } else {
+      // If it's not in the list, add as "Other" with the custom name
+      const hasOther = formData.enquired_products.some(p => p.product === 'Other');
+      if (!hasOther) {
+        setShowOtherInput(true);
+        setFormData(prev => ({
+          ...prev,
+          enquired_products: [...prev.enquired_products, { product: 'Other', quantity: '', remark: '' }],
+          other_product: productToAdd
+        }));
+      } else {
+        // If Other already exists, just update the other_product
+        setFormData(prev => ({
+          ...prev,
+          other_product: productToAdd
+        }));
+      }
+    }
+    
+    setProductSearch('');
+    setShowProductDropdown(false);
+  };
+
+  const handleProductSearchKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddProduct();
+    } else if (e.key === 'Escape') {
+      setShowProductDropdown(false);
+    }
+  };
+
+  const handleProductSearchChange = (e) => {
+    setProductSearch(e.target.value);
+    setShowProductDropdown(true);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showProductDropdown && !event.target.closest('.product-combobox-container')) {
+        setShowProductDropdown(false);
+      }
+    };
+    
+    if (showProductDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showProductDropdown]);
 
   const handleRemoveProduct = (indexToRemove) => {
     const updatedProducts = formData.enquired_products.filter((_, index) => index !== indexToRemove);
@@ -247,19 +333,66 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
               <Package className="h-4 w-4 text-emerald-500" />
               Enquired Products
             </label>
-            <select
-              onChange={handleProductSelect}
-              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-gray-900 transition-all duration-200 hover:border-emerald-300"
-              defaultValue=""
-            >
-              <option value="">Select Product</option>
-              {products.map((product) => (
-                <option key={product.name} value={product.name}>
-                  {product.name}
-                </option>
-              ))}
-              <option value="Other">Other</option>
-            </select>
+            
+            {/* Combobox: Input + Dropdown */}
+            <div className="relative product-combobox-container">
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    value={productSearch}
+                    onChange={handleProductSearchChange}
+                    onFocus={() => setShowProductDropdown(true)}
+                    onKeyDown={handleProductSearchKeyPress}
+                    className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-gray-900 transition-all duration-200 hover:border-emerald-300"
+                    placeholder="Type to search or add custom product..."
+                  />
+                  
+                  {/* Dropdown List */}
+                  {showProductDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                      {filteredProducts.length > 0 ? (
+                        <div className="py-1">
+                          {filteredProducts.map((product) => (
+                            <button
+                              key={product.name}
+                              type="button"
+                              onClick={() => handleAddProduct(product.name)}
+                              className="w-full text-left px-4 py-2.5 hover:bg-emerald-50 hover:text-emerald-700 transition-colors text-sm text-gray-900"
+                            >
+                              {product.name}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="px-4 py-2.5 text-sm text-gray-500">
+                          No products found. Press Enter to add as custom product.
+                        </div>
+                      )}
+                      {productSearch.trim() && !filteredProducts.some(p => p.name.toLowerCase() === productSearch.toLowerCase()) && (
+                        <div className="border-t border-gray-200 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => handleAddProduct()}
+                            className="w-full text-left px-4 py-2.5 hover:bg-emerald-50 hover:text-emerald-700 transition-colors text-sm text-emerald-600 font-medium"
+                          >
+                            + Add "{productSearch}" as custom product
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAddProduct()}
+                  disabled={!productSearch.trim()}
+                  className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium whitespace-nowrap"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
             
             {/* Display selected products */}
             {formData.enquired_products.length > 0 && (

@@ -17,7 +17,7 @@ export default function LeadStatusDropdown({ currentPage, onNavigate, sidebarOpe
   // trigger fetching when a status is expanded
   useFetchLeads(isOpen, expandedStatus, setScheduledLeads, setLastCallLeads, setLeads)
 
-  const isLeadStatusActive = currentPage === 'lead-status' || currentPage === 'scheduled-call' || currentPage === 'last-call'
+  const isLeadStatusActive = currentPage === 'lead-status' || currentPage === 'scheduled-call' || currentPage === 'last-call' || currentPage === 'customers' || currentPage === '/customers'
 
   return (
     <li>
@@ -35,7 +35,7 @@ export default function LeadStatusDropdown({ currentPage, onNavigate, sidebarOpe
               setIsOpen(false)
             } else {
               setIsOpen(true)
-              onNavigate("lead-status")
+              // onNavigate("lead-status") // Commented out - dropdown should open without redirecting
             }
           }}
           style={{

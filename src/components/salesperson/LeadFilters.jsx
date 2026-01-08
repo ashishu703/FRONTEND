@@ -18,6 +18,16 @@ export default function LeadFilters({
     dateRange: 'Date Range'
   }
 
+  // Map filter keys to their corresponding option keys in getUniqueFilterOptions
+  const filterOptionsMap = {
+    tag: 'tags',
+    followUpStatus: 'followUpStatuses',
+    salesStatus: 'salesStatuses',
+    state: 'states',
+    leadSource: 'leadSources',
+    productType: 'products'
+  }
+
   return (
     <div id="filter-panel" className="fixed right-4 top-32 z-[100] bg-white rounded-xl shadow-2xl border border-gray-200 w-80 max-h-[calc(100vh-150px)] overflow-hidden flex flex-col">
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-200 p-3 flex items-center justify-between">
@@ -64,9 +74,41 @@ export default function LeadFilters({
                     className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <option value="">All</option>
-                    {(getUniqueFilterOptions[filterKey === 'tag' ? 'tags' : filterKey === 'followUpStatus' ? 'followUpStatuses' : filterKey === 'salesStatus' ? 'salesStatuses' : filterKey === 'state' ? 'states' : filterKey === 'leadSource' ? 'leadSources' : 'products'] || []).map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
+                    {(() => {
+                      const optionsKey = filterOptionsMap[filterKey]
+                      const options = (getUniqueFilterOptions && optionsKey && getUniqueFilterOptions[optionsKey]) || []
+                      
+                      // Debug for productType
+                      if (filterKey === 'productType') {
+                        console.log('[LeadFilters] ========== PRODUCT TYPE FILTER RENDER ==========')
+                        console.log('[LeadFilters] Filter key:', filterKey)
+                        console.log('[LeadFilters] Options key:', optionsKey)
+                        console.log('[LeadFilters] Options length:', options.length)
+                        console.log('[LeadFilters] Options array:', options)
+                        console.log('[LeadFilters] Has getUniqueFilterOptions:', !!getUniqueFilterOptions)
+                        console.log('[LeadFilters] getUniqueFilterOptions keys:', getUniqueFilterOptions ? Object.keys(getUniqueFilterOptions) : null)
+                        console.log('[LeadFilters] Products key exists:', getUniqueFilterOptions ? 'products' in getUniqueFilterOptions : false)
+                        console.log('[LeadFilters] Products value:', getUniqueFilterOptions?.products)
+                        console.log('[LeadFilters] Full getUniqueFilterOptions:', getUniqueFilterOptions)
+                        
+                        if (!options || options.length === 0) {
+                          console.error('[LeadFilters] ❌ ERROR: No product options available!')
+                          console.error('[LeadFilters] This means products are not being extracted correctly.')
+                        } else {
+                          console.log('[LeadFilters] ✅ SUCCESS: Product options found!')
+                        }
+                        console.log('[LeadFilters] ================================================')
+                      }
+                      
+                      // Render options
+                      if (!options || options.length === 0) {
+                        return null // Don't render anything if no options
+                      }
+                      
+                      return options.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))
+                    })()}
                   </select>
                 )}
               </div>
