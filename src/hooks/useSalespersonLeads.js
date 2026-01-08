@@ -175,13 +175,36 @@ export function useSalespersonLeads(initialCustomers = []) {
       console.log('[Filter Debug] =========================================')
     }
 
+    // Extract sales statuses - include all statuses including 'N/A'
+    const allSalesStatuses = customers.map(c => {
+      const status = c.salesStatus || '';
+      const trimmed = String(status).trim();
+      // Include all statuses including 'N/A'
+      if (trimmed && trimmed !== '' && trimmed.toLowerCase() !== 'null') {
+        return trimmed;
+      }
+      // If status is empty/null, treat as 'N/A'
+      if (!trimmed || trimmed === '') {
+        return 'N/A';
+      }
+      return null;
+    }).filter(Boolean);
+    
+    // Get unique sales statuses
+    const uniqueSalesStatuses = [...new Set(allSalesStatuses)];
+    
+    // Always include 'N/A' as an option if not already present
+    if (!uniqueSalesStatuses.includes('N/A')) {
+      uniqueSalesStatuses.push('N/A');
+    }
+    
     return {
       tags: [...new Set(customers.map(c => {
         const type = c.customerType
         return type && type !== 'N/A' ? type.toLowerCase() : null
       }).filter(Boolean))].sort(),
       followUpStatuses: [...new Set(customers.map(c => cleanValue(c.followUpStatus)).filter(Boolean))].sort(),
-      salesStatuses: [...new Set(customers.map(c => cleanValue(c.salesStatus)).filter(Boolean))].sort(),
+      salesStatuses: uniqueSalesStatuses.sort(),
       states: [...new Set(customers.map(c => cleanValue(c.state)).filter(Boolean))].sort(),
       leadSources: [...new Set(customers.map(c => cleanValue(c.enquiryBy)).filter(Boolean))].sort(),
       products: uniqueProducts
@@ -229,7 +252,18 @@ export function useSalespersonLeads(initialCustomers = []) {
         } else {
           const fieldMap = { tag: 'customerType', followUpStatus: 'followUpStatus', salesStatus: 'salesStatus', 
             state: 'state', leadSource: 'enquiryBy', productType: 'productName' }
-          if (fieldMap[key]) filtered = filtered.filter(c => c[fieldMap[key]] === value)
+          if (fieldMap[key]) {
+            if (key === 'salesStatus' && value === 'N/A') {
+              // Special handling for N/A - match empty, null, 'N/A', or 'n/a'
+              filtered = filtered.filter(c => {
+                const status = c.salesStatus || '';
+                const trimmed = String(status).trim().toLowerCase();
+                return !trimmed || trimmed === '' || trimmed === 'n/a' || trimmed === 'null';
+              });
+            } else {
+              filtered = filtered.filter(c => c[fieldMap[key]] === value)
+            }
+          }
         }
       }
     })
