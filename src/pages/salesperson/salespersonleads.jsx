@@ -23,6 +23,8 @@ import { Search, RefreshCw, Plus, Filter, Eye, Pencil, FileText, Upload, Setting
 import { apiClient, API_ENDPOINTS, quotationService } from '../../utils/globalImports'
 import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton'
 import { EditLeadStatusModal } from './LeadStatus'
+import EnquiryTable from '../../components/EnquiryTable'
+import { useAuth } from '../../hooks/useAuth'
 
 const getUserData = () => {
   try {
@@ -37,6 +39,22 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
   const { customers, setCustomers, loading } = useSharedData()
   const [initialLoading, setInitialLoading] = React.useState(true)
   const user = getUserData()
+  
+  // Active tab state
+  const [activeTab, setActiveTab] = React.useState('leads')
+  
+  // Enquiry state
+  const { user: authUser } = useAuth()
+  const [enquiries, setEnquiries] = React.useState([])
+  const [enquiriesGroupedByDate, setEnquiriesGroupedByDate] = React.useState({})
+  const [enquiriesLoading, setEnquiriesLoading] = React.useState(false)
+  const [enquiryPage, setEnquiryPage] = React.useState(1)
+  const [enquiryLimit, setEnquiryLimit] = React.useState(50)
+  const [enquiryTotal, setEnquiryTotal] = React.useState(0)
+  const [showEnquiryFilters, setShowEnquiryFilters] = React.useState(false)
+  const [enquiryFilters, setEnquiryFilters] = React.useState({
+    enquiry_date: ''
+  })
   
   // Modal states
   const [viewingCustomer, setViewingCustomer] = React.useState(null)
@@ -76,6 +94,7 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
   const [actionMenuOpen, setActionMenuOpen] = React.useState(null)
 
   const defaultColumns = React.useMemo(() => ({
+    leadId: true,
     namePhone: true,
     email: true,
     business: true,
@@ -813,12 +832,214 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
   const goToPreviousPage = () => leadsHook.setCurrentPage(prev => Math.max(1, prev - 1))
   const goToNextPage = () => leadsHook.setCurrentPage(prev => Math.min(totalPages, prev + 1))
 
-  if (initialLoading) {
+  // Ref to prevent multiple simultaneous fetches
+  const fetchingEnquiriesRef = React.useRef(false);
+  const enquiryInitialLoadRef = React.useRef(false);
+  const lastEnquiryFetchRef = React.useRef({ page: 0, limit: 0, date: '' });
+
+  // Get stable user identifier
+  const salespersonIdentifier = React.useMemo(() => {
+    return authUser?.username || authUser?.email || user?.username || user?.email || '';
+  }, [authUser?.username, authUser?.email, user?.username, user?.email]);
+
+  // Fetch enquiries function for manual refresh
+  const fetchEnquiries = React.useCallback(async (forceRefresh = false) => {
+    if (activeTab !== 'enquiry') return;
+    
+    // Prevent multiple simultaneous calls
+    if (fetchingEnquiriesRef.current && !forceRefresh) return;
+    
+    fetchingEnquiriesRef.current = true;
+    setEnquiriesLoading(true);
+    try {
+      // Build query params
+      const params = new URLSearchParams();
+      params.append('page', enquiryPage.toString());
+      params.append('limit', enquiryLimit.toString());
+      if (enquiryFilters.enquiry_date) params.append('enquiryDate', enquiryFilters.enquiry_date);
+      
+      // Fetch grouped data
+      const groupedParams = new URLSearchParams();
+      if (enquiryFilters.enquiry_date) groupedParams.append('enquiryDate', enquiryFilters.enquiry_date);
+      
+      const [paginatedResponse, groupedResponse] = await Promise.all([
+        apiClient.get(`${API_ENDPOINTS.ENQUIRIES_DEPARTMENT_HEAD()}?${params.toString()}`),
+        apiClient.get(`${API_ENDPOINTS.ENQUIRIES_DEPARTMENT_HEAD()}?${groupedParams.toString()}`)
+      ]);
+      
+      if (paginatedResponse.success && groupedResponse.success) {
+        // Filter by current salesperson (username or email)
+        const filterBySalesperson = (enquiryList) => {
+          if (!salespersonIdentifier) return enquiryList;
+          return enquiryList.filter(enquiry => {
+            const enquirySalesperson = enquiry.salesperson || '';
+            const enquiryTelecaller = enquiry.telecaller || '';
+            const identifierLower = salespersonIdentifier.toLowerCase().trim();
+            return enquirySalesperson.toLowerCase().trim() === identifierLower ||
+                   enquiryTelecaller.toLowerCase().trim() === identifierLower;
+          });
+        };
+        
+        const allEnquiries = paginatedResponse.data?.enquiries || [];
+        const allGrouped = groupedResponse.data?.groupedByDate || {};
+        
+        // Filter enquiries by salesperson
+        const filteredEnquiries = filterBySalesperson(allEnquiries);
+        const filteredGrouped = {};
+        Object.keys(allGrouped).forEach(date => {
+          const dateEnquiries = filterBySalesperson(allGrouped[date]);
+          if (dateEnquiries.length > 0) {
+            filteredGrouped[date] = dateEnquiries;
+          }
+        });
+        
+        setEnquiries(filteredEnquiries);
+        setEnquiriesGroupedByDate(filteredGrouped);
+        setEnquiryTotal(filteredEnquiries.length);
+        
+        // Update last fetch key
+        lastEnquiryFetchRef.current = { page: enquiryPage, limit: enquiryLimit, date: enquiryFilters.enquiry_date || '' };
+      }
+    } catch (error) {
+      console.error('Error fetching enquiries:', error);
+    } finally {
+      setEnquiriesLoading(false);
+      fetchingEnquiriesRef.current = false;
+    }
+  }, [activeTab, enquiryPage, enquiryLimit, enquiryFilters.enquiry_date, salespersonIdentifier]);
+
+  // Fetch enquiries when tab changes or filters/pagination change
+  React.useEffect(() => {
+    if (activeTab !== 'enquiry') {
+      enquiryInitialLoadRef.current = false;
+      lastEnquiryFetchRef.current = { page: 0, limit: 0, date: '' };
+      return;
+    }
+
+    // Prevent multiple simultaneous calls
+    if (fetchingEnquiriesRef.current) return;
+    
+    // Check if we need to fetch (avoid unnecessary calls)
+    const currentFetchKey = `${enquiryPage}-${enquiryLimit}-${enquiryFilters.enquiry_date || ''}`;
+    const lastFetchKey = `${lastEnquiryFetchRef.current.page}-${lastEnquiryFetchRef.current.limit}-${lastEnquiryFetchRef.current.date}`;
+    if (currentFetchKey === lastFetchKey && enquiryInitialLoadRef.current) {
+      return;
+    }
+
+    const loadEnquiries = async () => {
+      fetchingEnquiriesRef.current = true;
+      setEnquiriesLoading(true);
+      try {
+        // Build query params
+        const params = new URLSearchParams();
+        params.append('page', enquiryPage.toString());
+        params.append('limit', enquiryLimit.toString());
+        if (enquiryFilters.enquiry_date) params.append('enquiryDate', enquiryFilters.enquiry_date);
+        
+        // Fetch grouped data
+        const groupedParams = new URLSearchParams();
+        if (enquiryFilters.enquiry_date) groupedParams.append('enquiryDate', enquiryFilters.enquiry_date);
+        
+        const [paginatedResponse, groupedResponse] = await Promise.all([
+          apiClient.get(`${API_ENDPOINTS.ENQUIRIES_DEPARTMENT_HEAD()}?${params.toString()}`),
+          apiClient.get(`${API_ENDPOINTS.ENQUIRIES_DEPARTMENT_HEAD()}?${groupedParams.toString()}`)
+        ]);
+        
+        if (paginatedResponse.success && groupedResponse.success) {
+          // Filter by current salesperson (username or email)
+          const filterBySalesperson = (enquiryList) => {
+            if (!salespersonIdentifier) return enquiryList;
+            return enquiryList.filter(enquiry => {
+              const enquirySalesperson = enquiry.salesperson || '';
+              const enquiryTelecaller = enquiry.telecaller || '';
+              const identifierLower = salespersonIdentifier.toLowerCase().trim();
+              return enquirySalesperson.toLowerCase().trim() === identifierLower ||
+                     enquiryTelecaller.toLowerCase().trim() === identifierLower;
+            });
+          };
+          
+          const allEnquiries = paginatedResponse.data?.enquiries || [];
+          const allGrouped = groupedResponse.data?.groupedByDate || {};
+          
+          // Filter enquiries by salesperson
+          const filteredEnquiries = filterBySalesperson(allEnquiries);
+          const filteredGrouped = {};
+          Object.keys(allGrouped).forEach(date => {
+            const dateEnquiries = filterBySalesperson(allGrouped[date]);
+            if (dateEnquiries.length > 0) {
+              filteredGrouped[date] = dateEnquiries;
+            }
+          });
+          
+          setEnquiries(filteredEnquiries);
+          setEnquiriesGroupedByDate(filteredGrouped);
+          setEnquiryTotal(filteredEnquiries.length);
+          
+          // Update last fetch key
+          lastEnquiryFetchRef.current = { page: enquiryPage, limit: enquiryLimit, date: enquiryFilters.enquiry_date || '' };
+          enquiryInitialLoadRef.current = true;
+        }
+      } catch (error) {
+        console.error('Error fetching enquiries:', error);
+      } finally {
+        setEnquiriesLoading(false);
+        fetchingEnquiriesRef.current = false;
+      }
+    };
+
+    loadEnquiries();
+  }, [activeTab, enquiryPage, enquiryLimit, enquiryFilters.enquiry_date, salespersonIdentifier]);
+
+  // Filter enquiries client-side
+  const filteredEnquiries = React.useMemo(() => {
+    return enquiries;
+  }, [enquiries]);
+
+  // Group filtered enquiries by date
+  const filteredEnquiriesGroupedByDate = React.useMemo(() => {
+    return enquiriesGroupedByDate;
+  }, [enquiriesGroupedByDate]);
+
+  if (initialLoading && activeTab === 'leads') {
     return <DashboardSkeleton />;
   }
 
   return (
     <main className={`flex-1 overflow-auto p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Tabs */}
+      <div className={`border-b mb-6 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('leads')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+              activeTab === 'leads'
+                ? 'border-blue-500 text-blue-600'
+                : isDarkMode 
+                  ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            Leads
+          </button>
+          <button
+            onClick={() => setActiveTab('enquiry')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+              activeTab === 'enquiry'
+                ? 'border-blue-500 text-blue-600'
+                : isDarkMode 
+                  ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Package className="w-4 h-4" />
+            Enquiry
+          </button>
+        </nav>
+      </div>
+
+      {activeTab === 'leads' && (
+        <>
       {/* Search and Action Bar */}
       <div className="mb-6">
         <div className="flex items-center justify-between gap-4 mb-4">
@@ -975,6 +1196,14 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
                     }`}
                   />
                 </th>
+                {columnVisibility.leadId && (
+                  <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <Hash className="h-4 w-4 text-purple-600" />
+                      <span>LEAD ID</span>
+                    </div>
+                  </th>
+                )}
                 {(columnVisibility.namePhone || columnVisibility.email) && (
                   <th className={`px-4 py-4 text-left text-xs font-bold uppercase ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                     <div className="flex items-center gap-2">
@@ -1123,6 +1352,11 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
                       }`}
                     />
                   </td>
+                  {columnVisibility.leadId && (
+                    <td className={`px-4 py-3 text-sm font-medium ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`} title={`Lead ID: ${customer.id}`}>
+                      {customer.id}
+                    </td>
+                  )}
                   {(columnVisibility.namePhone || columnVisibility.email) && (
                     <td className="px-4 py-3">
                       <div className="space-y-1">
@@ -1389,6 +1623,178 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
           </div>
         </div>
       </div>
+        </>
+      )}
+
+      {activeTab === 'enquiry' && (
+        <>
+          {/* Enquiry Header */}
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>Enquiries</h2>
+            <button
+              onClick={() => setShowEnquiryFilters(!showEnquiryFilters)}
+              className={`p-2.5 rounded-xl border-2 inline-flex items-center relative transition-all duration-200 shadow-md ${
+                showEnquiryFilters 
+                  ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-blue-300 shadow-blue-200/50' 
+                  : isDarkMode
+                    ? 'bg-gray-800 border-gray-700 hover:bg-gray-700'
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <Filter className={`h-4 w-4 ${showEnquiryFilters ? 'text-blue-600' : isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
+            </button>
+          </div>
+
+          {/* Enquiry Filters */}
+          {showEnquiryFilters && (
+            <div className={`mb-4 p-4 rounded-lg border shadow-sm ${
+              isDarkMode 
+                ? 'bg-gray-800 border-gray-700' 
+                : 'bg-white border-gray-200'
+            }`}>
+              <div className="space-y-3">
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Filter by Enquiry Date</label>
+                  <input
+                    type="date"
+                    value={enquiryFilters.enquiry_date}
+                    onChange={(e) => setEnquiryFilters(prev => ({ ...prev, enquiry_date: e.target.value }))}
+                    className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      isDarkMode
+                        ? 'bg-gray-700 border-gray-600 text-gray-100'
+                        : 'bg-white border-gray-300'
+                    }`}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    setEnquiryFilters({ enquiry_date: '' });
+                    setEnquiryPage(1);
+                  }}
+                  className={`px-4 py-2 text-sm font-medium rounded-md ${
+                    isDarkMode
+                      ? 'text-gray-300 bg-gray-700 hover:bg-gray-600'
+                      : 'text-gray-700 bg-gray-100 hover:bg-gray-200'
+                  }`}
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Enquiry Table */}
+          {enquiriesLoading && enquiryPage === 1 ? (
+            <DashboardSkeleton />
+          ) : (
+            <>
+              <EnquiryTable 
+                enquiries={filteredEnquiries}
+                loading={enquiriesLoading}
+                groupedByDate={filteredEnquiriesGroupedByDate}
+                onRefresh={() => fetchEnquiries(true)}
+                visibleColumns={{
+                  customer_name: true,
+                  business: true,
+                  address: true,
+                  state: true,
+                  division: true,
+                  enquired_product: true,
+                  product_quantity: true,
+                  follow_up_status: false,
+                  follow_up_remark: false,
+                  sales_status: false,
+                  salesperson: false,
+                  telecaller: false,
+                  enquiry_date: false
+                }}
+              />
+              
+              {/* Enquiry Pagination */}
+              {enquiryTotal > 0 && (
+                <div className={`mt-6 flex items-center justify-between px-4 py-4 border-t rounded-lg ${
+                  isDarkMode
+                    ? 'bg-gray-800 border-gray-700'
+                    : 'bg-white border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Show:</span>
+                    <select
+                      value={enquiryLimit}
+                      onChange={(e) => {
+                        setEnquiryPage(1);
+                        setEnquiryLimit(Number(e.target.value));
+                      }}
+                      className={`px-3 py-1 border rounded-md text-sm ${
+                        isDarkMode
+                          ? 'bg-gray-700 border-gray-600 text-gray-100'
+                          : 'bg-white border-gray-300'
+                      }`}
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Showing {((enquiryPage - 1) * enquiryLimit) + 1} to {Math.min(enquiryPage * enquiryLimit, enquiryTotal)} of {enquiryTotal} enquiries
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setEnquiryPage(1)}
+                      disabled={enquiryPage === 1}
+                      className={`px-3 py-1 border rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isDarkMode
+                          ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
+                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      First
+                    </button>
+                    <button
+                      onClick={() => setEnquiryPage(p => Math.max(1, p - 1))}
+                      disabled={enquiryPage === 1}
+                      className={`px-3 py-1 border rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isDarkMode
+                          ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
+                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      Previous
+                    </button>
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Page {enquiryPage} of {Math.ceil(enquiryTotal / enquiryLimit) || 1}
+                    </span>
+                    <button
+                      onClick={() => setEnquiryPage(p => p < Math.ceil(enquiryTotal / enquiryLimit) ? p + 1 : p)}
+                      disabled={enquiryPage >= Math.ceil(enquiryTotal / enquiryLimit)}
+                      className={`px-3 py-1 border rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isDarkMode
+                          ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
+                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      Next
+                    </button>
+                    <button
+                      onClick={() => setEnquiryPage(Math.ceil(enquiryTotal / enquiryLimit))}
+                      disabled={enquiryPage >= Math.ceil(enquiryTotal / enquiryLimit)}
+                      className={`px-3 py-1 border rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isDarkMode
+                          ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
+                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      Last
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
 
       {/* Modals */}
       {viewingCustomer && <CustomerDetailSidebar customer={viewingCustomer} onClose={() => setViewingCustomer(null)} onEdit={() => { setEditingCustomer(viewingCustomer); setViewingCustomer(null); setShowAddCustomer(true) }} onQuotation={handleQuotation} quotations={quotationHook.quotations} onViewQuotation={handleViewQuotation} onEditQuotation={handleEditQuotation} onSendQuotation={quotationHook.handleSendQuotation} onDeleteQuotation={quotationHook.handleDeleteQuotation} onCreatePI={(quotation, customer) => { setSelectedQuotationForPI(quotation); setViewingCustomerForQuotation(customer); setShowCreatePIModal(true); setViewingCustomer(null) }} quotationPIs={piHook.quotationPIs} piHook={piHook} onViewPI={piHook.handleViewPI} />}
@@ -1478,7 +1884,7 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
         />
       )}
       <ImportLeadsModal show={showImportModal} onClose={() => setShowImportModal(false)} onImportSuccess={handleImportSuccess} />
-      <ColumnVisibilityModal show={showColumnModal} onClose={() => setShowColumnModal(false)} columns={{ namePhone: 'Name/Phone', email: 'Email', business: 'Business', productType: 'Product Type', gstNo: 'GST No', address: 'Address', state: 'State', division: 'Division', customerType: 'Customer Type', leadSource: 'Lead Source', salesStatus: 'Sales Status', followUpStatus: 'Follow Up Status', followUpDate: 'Follow Up Date', followUpTime: 'Follow Up Time', date: 'Date' }} visibleColumns={columnVisibility} onToggleColumn={handleToggleColumn} />
+      <ColumnVisibilityModal show={showColumnModal} onClose={() => setShowColumnModal(false)} columns={{ leadId: 'Lead ID', namePhone: 'Name/Phone', email: 'Email', business: 'Business', productType: 'Product Type', gstNo: 'GST No', address: 'Address', state: 'State', division: 'Division', customerType: 'Customer Type', leadSource: 'Lead Source', salesStatus: 'Sales Status', followUpStatus: 'Follow Up Status', followUpDate: 'Follow Up Date', followUpTime: 'Follow Up Time', date: 'Date' }} visibleColumns={columnVisibility} onToggleColumn={handleToggleColumn} />
       <TagManager showCreateTagModal={showCreateTagModal} setShowCreateTagModal={setShowCreateTagModal} newTagName={newTagName} setNewTagName={setNewTagName} selectedLeadsForTag={selectedLeadsForTag} setSelectedLeadsForTag={setSelectedLeadsForTag} customers={leadsHook.customers} setCustomers={leadsHook.setCustomers} isCreatingTag={isCreatingTag} setIsCreatingTag={setIsCreatingTag} handleToggleLeadForTag={handleToggleLeadForTag} handleSelectAllLeadsForTag={handleSelectAllLeadsForTag} />
       
       {/* Bulk Actions Modal */}

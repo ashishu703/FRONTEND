@@ -1,13 +1,15 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Eye, Edit, Calendar, Clock, Phone, Mail, Search, X, RefreshCw, MoreHorizontal, User, Building2, MapPin } from 'lucide-react';
+import { Eye, Edit, Calendar, Clock, Phone, Mail, Search, X, RefreshCw, MoreHorizontal, User, Building2, MapPin, Filter } from 'lucide-react';
 import apiClient from '../../utils/apiClient';
 import { API_ENDPOINTS } from '../../api/admin_api/api';
 import SalespersonCustomerTimeline from '../../components/SalespersonCustomerTimeline';
 import toastManager from '../../utils/ToastManager';
 import { useAuth } from '../../hooks/useAuth';
 import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
+import { useSalespersonLeads } from '../../hooks/useSalespersonLeads';
+import LeadFilters from '../../components/salesperson/LeadFilters';
 
 // Edit Lead Status Modal Component
 const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
@@ -203,6 +205,7 @@ const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
 export default function ScheduledCall() {
   const [leads, setLeads] = useState([]);
   const [filteredLeads, setFilteredLeads] = useState([]);
+  const [allLeads, setAllLeads] = useState([]); // Store all leads for filter options
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -224,6 +227,61 @@ export default function ScheduledCall() {
   const currentUserId = user?.id;
   const lastUserIdRef = React.useRef(null);
 
+  // Convert ALL leads to format expected by useSalespersonLeads hook (for filter options)
+  const convertedAllLeads = React.useMemo(() => {
+    return allLeads.map(lead => {
+      // Better product type handling - check multiple fields
+      const productType = lead.product_type || lead.productType || lead.product_name || lead.productName || ''
+      const productNameValue = productType && productType.trim() !== '' ? productType.trim() : 'N/A'
+      
+      return {
+        id: lead.id,
+        name: lead.name || 'N/A',
+        phone: lead.phone || 'N/A',
+        email: lead.email || 'N/A',
+        business: lead.business || 'N/A',
+        address: lead.address || 'N/A',
+        gstNo: lead.gst_no || 'N/A',
+        productName: productNameValue,
+        product_type: productNameValue, // Store both for compatibility
+        state: lead.state || 'N/A',
+        enquiryBy: lead.lead_source || 'N/A',
+        customerType: lead.customer_type || 'N/A',
+        date: lead.date ? new Date(lead.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        salesStatus: lead.sales_status || 'pending',
+        salesStatusRemark: lead.sales_status_remark || null,
+        followUpStatus: lead.follow_up_status || null,
+        followUpRemark: lead.follow_up_remark || null,
+        followUpDate: lead.follow_up_date ? new Date(lead.follow_up_date).toISOString().split('T')[0] : null,
+        followUpTime: lead.follow_up_time || null,
+      }
+    });
+  }, [allLeads]);
+
+  // Use the filter hook with ALL leads (so filter options are complete)
+  const filterHook = useSalespersonLeads(convertedAllLeads);
+  
+  // Update hook's customers when all leads change (for filter options)
+  React.useEffect(() => {
+    filterHook.setCustomers(convertedAllLeads);
+  }, [convertedAllLeads]);
+
+  // Apply filters to filteredLeads (but only from scheduled leads)
+  React.useEffect(() => {
+    // First apply the scheduled leads filter
+    const scheduledLeadIds = new Set(leads.map(l => l.id));
+    
+    // Then apply the filter hook filters
+    if (filterHook.filteredCustomers.length > 0) {
+      const filteredIds = new Set(filterHook.filteredCustomers.map(c => c.id));
+      // Intersection: must be in both scheduled leads AND filter results
+      const newFiltered = leads.filter(lead => filteredIds.has(lead.id) && scheduledLeadIds.has(lead.id));
+      setFilteredLeads(newFiltered);
+    } else {
+      setFilteredLeads(leads);
+    }
+  }, [filterHook.filteredCustomers, leads]);
+
   // Refresh function
   const refreshData = async () => {
     try {
@@ -235,6 +293,9 @@ export default function ScheduledCall() {
       const leadsData = response?.data || [];
       
       console.log(`[ScheduledCall] Received ${leadsData.length} leads from API for user: ${user?.email}`);
+      
+      // Store ALL leads for filter options
+      setAllLeads(leadsData);
       
       // Filter leads that have scheduled meetings
       const scheduledLeads = leadsData.filter(lead => {
@@ -298,38 +359,31 @@ export default function ScheduledCall() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openActionMenu]);
 
+  // Close filter panel when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const filterPanel = document.getElementById('filter-panel');
+      const filterButton = document.getElementById('filter-button');
+      if (filterPanel && !filterPanel.contains(event.target) && !filterButton?.contains(event.target)) {
+        filterHook.setShowFilterPanel(false);
+      }
+    };
+    
+    if (filterHook.showFilterPanel) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [filterHook.showFilterPanel]);
+
   // Show skeleton loader on initial load
   if (initialLoading) {
     return <DashboardSkeleton />;
   }
 
-  // Handle search
+  // Handle search - integrate with filter hook
   const handleSearch = (query) => {
     setSearchQuery(query);
-    
-    if (!query.trim()) {
-      setFilteredLeads(leads);
-      setCurrentPage(1);
-      return;
-    }
-    
-    const lowercasedQuery = query.toLowerCase();
-    const filtered = leads.filter(
-      (lead) =>
-        lead.name?.toLowerCase().includes(lowercasedQuery) ||
-        lead.phone?.toLowerCase().includes(lowercasedQuery) ||
-        lead.email?.toLowerCase().includes(lowercasedQuery) ||
-        lead.business?.toLowerCase().includes(lowercasedQuery) ||
-        lead.address?.toLowerCase().includes(lowercasedQuery) ||
-        lead.product_type?.toLowerCase().includes(lowercasedQuery) ||
-        lead.lead_source?.toLowerCase().includes(lowercasedQuery) ||
-        lead.sales_status?.toLowerCase().includes(lowercasedQuery) ||
-        lead.follow_up_status?.toLowerCase().includes(lowercasedQuery) ||
-        lead.id?.toString().includes(lowercasedQuery)
-    );
-    
-    setFilteredLeads(filtered);
-    setCurrentPage(1);
+    filterHook.setSearchQuery(query);
   };
 
   // Handle lead status update
@@ -530,7 +584,7 @@ export default function ScheduledCall() {
               <input 
                 type="text" 
                 placeholder="Search items..." 
-                value={searchQuery} 
+                value={filterHook.searchQuery || searchQuery} 
                 onChange={(e) => handleSearch(e.target.value)} 
                 className="px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 bg-white border-gray-200 text-gray-900 placeholder-gray-500" 
               />
@@ -540,6 +594,22 @@ export default function ScheduledCall() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button 
+              onClick={() => filterHook.setShowFilterPanel(!filterHook.showFilterPanel)} 
+              className={`p-2.5 rounded-xl border-2 inline-flex items-center relative transition-all duration-200 shadow-md ${
+                filterHook.showFilterPanel 
+                  ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-blue-300 shadow-blue-200/50' 
+                  : 'bg-white border-gray-200 hover:bg-gray-50'
+              }`} 
+              id="filter-button"
+            >
+              <Filter className={`h-4 w-4 ${filterHook.showFilterPanel ? 'text-blue-600' : 'text-gray-600'}`} />
+              {Object.values(filterHook.enabledFilters).some(Boolean) && (
+                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold text-white bg-gradient-to-r from-blue-500 to-purple-500 rounded-full shadow-lg">
+                  {Object.values(filterHook.enabledFilters).filter(Boolean).length}
+                </span>
+              )}
+            </button>
             <button
               onClick={refreshData}
               disabled={loading}
@@ -552,6 +622,9 @@ export default function ScheduledCall() {
           </div>
         </div>
       </div>
+
+      {/* Filters */}
+      <LeadFilters {...filterHook} sortBy={filterHook.sortBy} setSortBy={filterHook.setSortBy} sortOrder={filterHook.sortOrder} setSortOrder={filterHook.setSortOrder} handleSortChange={filterHook.handleSortChange} handleSortOrderChange={filterHook.handleSortOrderChange} />
 
       {error ? (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
