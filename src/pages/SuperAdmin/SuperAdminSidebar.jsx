@@ -33,12 +33,14 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
       clearTimeout(collapseTimerRef.current);
       collapseTimerRef.current = null;
     }
-    if (!isManuallyToggledRef.current) {
+    // Only auto-expand if sidebar is not manually closed
+    if (!isManuallyToggledRef.current && !isExpanded) {
       setIsExpanded(true);
     }
   };
 
   const handleMouseLeave = () => {
+    // Only auto-collapse if not manually toggled
     if (!isManuallyToggledRef.current) {
       collapseTimerRef.current = setTimeout(() => {
         setIsExpanded(false);
@@ -56,14 +58,20 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
     };
   }, []);
 
-  const toggleSidebar = () => {
-    isManuallyToggledRef.current = !isExpanded; // If expanding manually, set flag; if collapsing, clear flag
-    setIsExpanded(!isExpanded);
-    if (!isExpanded) {
-      setOpenDropdowns({ department: false, salesDepartment: false, marketingSalesperson: false });
-    } else {
-      setOpenDropdowns({ department: false, salesDepartment: false, marketingSalesperson: false });
-    }
+  const toggleSidebar = (e) => {
+    e?.stopPropagation(); // Prevent event bubbling if event exists
+    const newState = !isExpanded;
+    
+    // Set flag based on new state:
+    // - If closing (newState = false), set flag to true (manually closed)
+    // - If opening (newState = true), set flag to false (can auto-collapse again)
+    isManuallyToggledRef.current = !newState;
+    
+    setIsExpanded(newState);
+    
+    // Reset dropdowns when toggling
+    setOpenDropdowns({ department: false, salesDepartment: false, marketingSalesperson: false });
+    
     // Clear any pending auto-collapse
     if (collapseTimerRef.current) {
       clearTimeout(collapseTimerRef.current);
@@ -152,7 +160,7 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
             onClick={toggleSidebar}
             className={`p-2 hover:bg-slate-700/50 rounded-lg transition-all duration-200 text-slate-300 hover:text-white ${!isExpanded ? 'mx-auto' : ''}`}
           >
-            {isExpanded ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            {isExpanded ? <X className="w-4 h-4" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
           </button>
         </div>
       </div>

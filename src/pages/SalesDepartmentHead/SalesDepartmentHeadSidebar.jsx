@@ -29,12 +29,14 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => 
       clearTimeout(collapseTimerRef.current);
       collapseTimerRef.current = null;
     }
-    if (!isManuallyToggledRef.current) {
+    // Only auto-expand if sidebar is not manually closed
+    if (!isManuallyToggledRef.current && !isExpanded) {
       setIsExpanded(true);
     }
   };
 
   const handleMouseLeave = () => {
+    // Only auto-collapse if not manually toggled
     if (!isManuallyToggledRef.current) {
       collapseTimerRef.current = setTimeout(() => {
         setIsExpanded(false);
@@ -52,9 +54,17 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => 
     };
   }, []);
 
-  const toggleSidebar = () => {
-    isManuallyToggledRef.current = !isExpanded; // If expanding manually, set flag; if collapsing, clear flag
-    setIsExpanded(!isExpanded);
+  const toggleSidebar = (e) => {
+    e?.stopPropagation(); // Prevent event bubbling if event exists
+    const newState = !isExpanded;
+    
+    // Set flag based on new state:
+    // - If closing (newState = false), set flag to true (manually closed)
+    // - If opening (newState = true), set flag to false (can auto-collapse again)
+    isManuallyToggledRef.current = !newState;
+    
+    setIsExpanded(newState);
+    
     // Clear any pending auto-collapse
     if (collapseTimerRef.current) {
       clearTimeout(collapseTimerRef.current);
@@ -140,7 +150,7 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => 
             onClick={toggleSidebar}
             className={`p-1 hover:bg-gray-100 rounded transition-colors ${!isExpanded ? 'mx-auto' : ''}`}
           >
-            {isExpanded ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            {isExpanded ? <X className="w-4 h-4" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
           </button>
         </div>
       </div>
