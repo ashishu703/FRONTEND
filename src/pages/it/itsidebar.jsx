@@ -42,18 +42,9 @@ const ItSidebar = ({ activeView, setActiveView, onLogout }) => {
             </div>
           </div>
         )}
-        {!isExpanded && (
-          <div className="flex justify-center w-full">
-            <img 
-              src={ANOCAB_LOGO} 
-              alt="ANOCAB Logo" 
-              className="w-8 h-8 object-contain"
-            />
-          </div>
-        )}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="p-1 hover:bg-gray-100 rounded transition-colors"
+          className={`p-1 hover:bg-gray-100 rounded transition-colors ${!isExpanded ? 'mx-auto' : ''}`}
         >
           {isExpanded ? <X className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
