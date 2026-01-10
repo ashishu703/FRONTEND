@@ -122,18 +122,9 @@ const PPCSidebar = ({ onLogout, activeView, setActiveView }) => {
               </div>
             </div>
           )}
-          {!isExpanded && (
-            <div className="flex justify-center w-full">
-              <img 
-                src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png" 
-                alt="ANOCAB Logo" 
-                className="w-8 h-8 object-contain"
-              />
-            </div>
-          )}
           <button
             onClick={toggleSidebar}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
+            className={`p-1 hover:bg-gray-100 rounded transition-colors ${!isExpanded ? 'mx-auto' : ''}`}
           >
             {isExpanded ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>

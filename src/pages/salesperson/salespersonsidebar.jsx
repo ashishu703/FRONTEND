@@ -84,20 +84,10 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen
                   <p className="text-xs text-slate-400">Salesperson</p>
                 </div>
               </div>
-            ) : (
-              <div className="flex justify-center w-full">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 p-1.5 shadow-lg">
-                  <img
-                    src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
-                    alt="ANOCAB Logo"
-                    className="w-full h-full object-contain rounded-lg"
-                  />
-                </div>
-              </div>
-            )}
+            ) : null}
             <button
               onClick={handleToggle}
-              className="p-2 hover:bg-slate-700/50 rounded-lg transition-all duration-200 text-slate-300 hover:text-white"
+              className={`p-2 hover:bg-slate-700/50 rounded-lg transition-all duration-200 text-slate-300 hover:text-white ${!sidebarOpen ? 'mx-auto' : ''}`}
             >
               {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
