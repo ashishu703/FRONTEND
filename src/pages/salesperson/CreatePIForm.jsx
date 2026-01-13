@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, FileText, Calendar, User, Building2, FileCheck, Eye, Download, Package, Plus } from "lucide-react"
+import { X, FileText, Calendar, User, Building2, FileCheck, Eye, Download, Package, Plus, History, Receipt, DollarSign } from "lucide-react"
 import DynamicTemplateRenderer from '../../components/DynamicTemplateRenderer'
 import html2pdf from 'html2pdf.js'
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService'
 import quotationService from '../../api/admin_api/quotationService'
+import paymentService from '../../api/admin_api/paymentService'
 import companyBranchService from '../../services/CompanyBranchService'
 import templateService from '../../services/TemplateService'
 import apiClient from '../../utils/apiClient'
@@ -88,6 +89,8 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
   const [loading, setLoading] = useState(true)
   const [selectedTemplate, setSelectedTemplate] = useState(null)
   const [availableTemplates, setAvailableTemplates] = useState([])
+  const [paymentHistory, setPaymentHistory] = useState([])
+  const [quotationTotal, setQuotationTotal] = useState(0)
 
   useEffect(() => {
     const buildInitialPiData = (quotation, customerLike) => {
@@ -153,6 +156,34 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
       }
     }
 
+    const loadPaymentHistory = async (quotationId, qTotal) => {
+      try {
+        // Fetch payments for this quotation
+        const paymentsResponse = await paymentService.getPaymentsByQuotation(quotationId).catch(() => ({ data: [] }))
+        const allPayments = paymentsResponse?.data || []
+        
+        // Filter only approved payments and sort by date (newest first)
+        const approvedPayments = allPayments
+          .filter(p => (p.approval_status || p.accounts_approval_status || '').toLowerCase() === 'approved')
+          .sort((a, b) => {
+            const dateA = new Date(a.payment_date || a.created_at || 0)
+            const dateB = new Date(b.payment_date || b.created_at || 0)
+            return dateB - dateA
+          })
+        
+        // Store payment history
+        setPaymentHistory(approvedPayments)
+        setQuotationTotal(qTotal)
+        
+        return approvedPayments
+      } catch (error) {
+        console.error('Error loading payment history:', error)
+        setPaymentHistory([])
+        setQuotationTotal(qTotal)
+        return []
+      }
+    }
+
     const calculateRemainingBalance = async (quotationId, quotationTotal) => {
       try {
         console.log('💰 Quotation Total:', quotationTotal)
@@ -212,9 +243,12 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
             }
           }
 
-          // Calculate remaining balance
+          // Calculate remaining balance and load payment history
           const quotationTotal = Number(completeQuotation.total_amount || completeQuotation.total || 0)
           const remainingBalance = await calculateRemainingBalance(completeQuotation.id, quotationTotal)
+          
+          // Load payment history for advance payment display
+          await loadPaymentHistory(completeQuotation.id, quotationTotal)
           
           console.log('💰 Quotation Total:', quotationTotal)
           console.log('💸 Remaining Balance:', remainingBalance)
@@ -281,9 +315,12 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
           }
         }
 
-        // Calculate remaining balance
+        // Calculate remaining balance and load payment history
         const quotationTotal = Number(completeQuotation.total_amount || completeQuotation.total || 0)
         const remainingBalance = await calculateRemainingBalance(completeQuotation.id, quotationTotal)
+        
+        // Load payment history for advance payment display
+        await loadPaymentHistory(completeQuotation.id, quotationTotal)
         
         console.log('💰 Quotation Total:', quotationTotal)
         console.log('💸 Remaining Balance:', remainingBalance)
@@ -343,7 +380,6 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
         alert('Error loading quotation data. Please try again.')
       } finally {
         setLoading(false)
-        setInitialLoading(false)
       }
     }
 
@@ -391,6 +427,63 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
         console.warn('Failed to parse terms_sections for PI preview:', e)
       }
 
+      // Prepare advance payment history for template
+      // Filter approved payments and format according to template requirements
+      const approvedPayments = (Array.isArray(paymentHistory) && paymentHistory.length > 0)
+        ? paymentHistory.map(payment => {
+            // Format date: DD/MM/YYYY
+            const paymentDate = payment.payment_date || payment.created_at || ''
+            let formattedDate = ''
+            if (paymentDate) {
+              try {
+                formattedDate = new Date(paymentDate).toLocaleDateString('en-IN', { 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric' 
+                })
+              } catch (e) {
+                formattedDate = paymentDate
+              }
+            }
+            
+            // Get payment amount
+            const amount = Number(payment.installment_amount || payment.paid_amount || payment.amount || 0)
+            
+            // Format amount to 2 decimal places
+            const formattedAmount = amount.toFixed(2)
+            
+            return {
+              date: formattedDate,
+              mode: payment.payment_method || 'N/A',
+              refNo: payment.payment_reference || payment.id || '',
+              amount: formattedAmount,
+              amountRaw: amount // Keep raw value for calculations
+            }
+          })
+        : []
+
+      // Calculate totalAdvance: Sum of all advance payment amounts
+      const totalAdvance = approvedPayments.reduce((sum, payment) => {
+        return sum + (payment.amountRaw || 0)
+      }, 0)
+
+      // Calculate balanceDue: Quotation Total - Total Advance Payments
+      const quotationTotalAmount = Number(quotationTotal || 0)
+      const balanceDue = Math.max(0, quotationTotalAmount - totalAdvance)
+
+      // Format both values to 2 decimal places as strings
+      const formattedTotalAdvance = totalAdvance.toFixed(2)
+      const formattedBalanceDue = balanceDue.toFixed(2)
+
+      console.log('💰 Advance Payment Calculation:', {
+        quotationTotal: quotationTotalAmount,
+        totalAdvance,
+        balanceDue,
+        formattedTotalAdvance,
+        formattedBalanceDue,
+        approvedPaymentsCount: approvedPayments.length
+      })
+
       const formattedPiData = {
         quotationNumber: quotationData?.quotation_number || quotationData?.quotationNumber || '',
         quotationDate: piFormData.invoiceDate,
@@ -430,7 +523,11 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
         validity: piFormData.validity,
         warranty: piFormData.warranty,
         bankDetails,
-        terms
+        terms,
+        // Advance payment history data for template
+        advancePayments: approvedPayments,
+        totalAdvance: formattedTotalAdvance,
+        balanceDue: formattedBalanceDue
       }
       
       console.log('📊 CreatePIForm - formattedPiData for preview:', {
@@ -443,7 +540,7 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
       
       setPiPreviewData(formattedPiData)
     }
-  }, [piFormData, quotationData])
+  }, [piFormData, quotationData, paymentHistory, quotationTotal])
 
   // Load PI templates from config  uration
   useEffect(() => {
@@ -912,6 +1009,92 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
                     )}
                   </div>
 
+                  {/* Advance Payment History Section */}
+                  {quotationData?.id && paymentHistory && paymentHistory.length > 0 && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                        <History className="h-5 w-5 text-blue-500" />
+                        Advance Payment History
+                      </h3>
+                      
+                      {/* Summary Card */}
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">Quotation Total</p>
+                            <p className="text-xl font-bold text-gray-900 mt-1">
+                              ₹{quotationTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-medium text-gray-600">Total Advance Paid</p>
+                            <p className="text-xl font-bold text-green-600 mt-1">
+                              ₹{paymentHistory.reduce((sum, p) => sum + (Number(p.installment_amount || p.paid_amount || p.amount || 0)), 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-medium text-gray-600">Balance Due</p>
+                            <p className="text-2xl font-bold text-orange-600 mt-1">
+                              ₹{Math.max(0, quotationTotal - paymentHistory.reduce((sum, p) => sum + (Number(p.installment_amount || p.paid_amount || p.amount || 0)), 0)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Payment History Table */}
+                      <div className="border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                          <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                            <Receipt className="h-4 w-4 text-green-500" />
+                            Payment History ({paymentHistory.length})
+                          </h4>
+                        </div>
+                        <div className="overflow-x-auto max-h-64 overflow-y-auto">
+                          <table className="w-full min-w-full">
+                            <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+                              <tr>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Method</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {paymentHistory.map((payment) => {
+                                const paymentAmount = Number(payment.installment_amount || payment.paid_amount || payment.amount || 0)
+                                const paymentDate = payment.payment_date || payment.created_at || ''
+                                const formattedDate = paymentDate ? new Date(paymentDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'
+                                
+                                return (
+                                  <tr key={payment.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-2 text-sm text-gray-600">
+                                      {formattedDate}
+                                    </td>
+                                    <td className="px-4 py-2 text-sm text-gray-600">
+                                      {payment.payment_method || '-'}
+                                    </td>
+                                    <td className="px-4 py-2 text-sm text-gray-600 font-mono text-xs">
+                                      {payment.payment_reference || payment.id || '-'}
+                                    </td>
+                                    <td className="px-4 py-2 text-sm font-medium text-green-600">
+                                      ₹{paymentAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
+                                    <td className="px-4 py-2 text-sm">
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Approved
+                                      </span>
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Terms & Conditions */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
@@ -1152,9 +1335,6 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
   }
 
   // Show skeleton loader on initial load
-  if (initialLoading) {
-    return <DashboardSkeleton />;
-  }
 
   return (
     <div className="min-h-screen w-full bg-gray-50">
