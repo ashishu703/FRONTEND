@@ -1200,13 +1200,13 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
   }
 
   return (
-    <main className={`flex-1 overflow-auto p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <main className={`flex-1 overflow-auto p-3 sm:p-4 md:p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Tabs */}
-      <div className={`border-b mb-6 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-        <nav className="-mb-px flex space-x-8">
+      <div className={`border-b mb-4 sm:mb-6 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <nav className="-mb-px flex space-x-4 sm:space-x-8 overflow-x-auto">
           <button
             onClick={() => setActiveTab('leads')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+            className={`py-2 px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
               activeTab === 'leads'
                 ? 'border-blue-500 text-blue-600'
                 : isDarkMode 
@@ -1214,12 +1214,12 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            <FileText className="w-4 h-4" />
+            <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
             Leads
           </button>
           <button
             onClick={() => setActiveTab('enquiry')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+            className={`py-2 px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
               activeTab === 'enquiry'
                 ? 'border-blue-500 text-blue-600'
                 : isDarkMode 
@@ -1227,7 +1227,7 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            <Package className="w-4 h-4" />
+            <Package className="w-3 h-3 sm:w-4 sm:h-4" />
             Enquiry
           </button>
         </nav>
@@ -1236,16 +1236,16 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
       {activeTab === 'leads' && (
         <>
       {/* Search and Action Bar */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3 flex-1">
-            <div className="flex shadow-lg rounded-xl overflow-hidden">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 w-full sm:w-auto">
+            <div className="flex shadow-lg rounded-xl overflow-hidden flex-1 sm:flex-initial">
               <input 
                 type="text" 
                 placeholder="Search items..." 
                 value={leadsHook.searchQuery} 
                 onChange={(e) => leadsHook.setSearchQuery(e.target.value)} 
-                className={`px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 ${
+                className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64 ${
                   isDarkMode 
                     ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' 
                     : 'bg-white border-gray-200 text-gray-900 placeholder-gray-500'
@@ -1370,10 +1370,10 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
       <LeadFilters {...leadsHook} sortBy={leadsHook.sortBy} setSortBy={leadsHook.setSortBy} sortOrder={leadsHook.sortOrder} setSortOrder={leadsHook.setSortOrder} handleSortChange={leadsHook.handleSortChange} handleSortOrderChange={leadsHook.handleSortOrderChange} />
 
       {/* Customer Table */}
-      <div className={`rounded-xl shadow-xl overflow-hidden ${
-        isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
-      }`}>
-        <div className="overflow-x-auto">
+        <div className={`rounded-xl shadow-xl overflow-hidden ${
+          isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+        }`}>
+        <div className="overflow-x-auto -mx-3 sm:mx-0">
           <table className="w-full">
             <thead className={`bg-gradient-to-r from-blue-50 via-purple-50 to-blue-50 border-b-2 ${
               isDarkMode ? 'from-gray-800 via-gray-750 to-gray-800 border-gray-700' : 'border-blue-200'
@@ -1824,23 +1824,23 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
       {activeTab === 'enquiry' && (
         <>
           {/* Enquiry Search and Action Bar */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <div className="flex items-center gap-3 flex-1">
-                <div className="flex shadow-lg rounded-xl overflow-hidden">
+          <div className="mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+              <div className="flex items-center gap-2 sm:gap-3 flex-1 w-full sm:w-auto">
+                <div className="flex shadow-lg rounded-xl overflow-hidden flex-1 sm:flex-initial">
                   <input 
                     type="text" 
                     placeholder="Search items..." 
                     value={enquirySearchQuery} 
                     onChange={(e) => setEnquirySearchQuery(e.target.value)} 
-                    className={`px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 ${
+                    className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64 ${
                       isDarkMode 
                         ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' 
                         : 'bg-white border-gray-200 text-gray-900 placeholder-gray-500'
                     }`} 
                   />
-                  <button className={`px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md`}>
-                    <Search className="h-4 w-4" />
+                  <button className={`px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md flex-shrink-0`}>
+                    <Search className="h-3 w-3 sm:h-4 sm:w-4" />
                   </button>
                 </div>
               </div>
@@ -1925,20 +1925,20 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
               
               {/* Enquiry Pagination */}
               {enquiryTotal > 0 && (
-                <div className={`mt-6 flex items-center justify-between px-4 py-4 border-t rounded-lg ${
+                <div className={`mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 px-4 py-4 border-t rounded-lg overflow-x-auto ${
                   isDarkMode
                     ? 'bg-gray-800 border-gray-700'
                     : 'bg-white border-gray-200'
                 }`}>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Show:</span>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 min-w-0">
+                    <span className={`text-xs sm:text-sm whitespace-nowrap ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Show:</span>
                     <select
                       value={enquiryLimit}
                       onChange={(e) => {
                         setEnquiryPage(1);
                         setEnquiryLimit(Number(e.target.value));
                       }}
-                      className={`px-3 py-1 border rounded-md text-sm ${
+                      className={`px-3 py-1 border rounded-md text-xs sm:text-sm flex-shrink-0 ${
                         isDarkMode
                           ? 'bg-gray-700 border-gray-600 text-gray-100'
                           : 'bg-white border-gray-300'
@@ -1949,15 +1949,15 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
                       <option value={50}>50</option>
                       <option value={100}>100</option>
                     </select>
-                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <span className={`text-xs sm:text-sm whitespace-nowrap ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                       Showing {((enquiryPage - 1) * enquiryLimit) + 1} to {Math.min(enquiryPage * enquiryLimit, enquiryTotal)} of {enquiryTotal} enquiries
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                     <button
                       onClick={() => setEnquiryPage(1)}
                       disabled={enquiryPage === 1}
-                      className={`px-3 py-1 border rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`px-2 sm:px-3 py-1 border rounded text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ${
                         isDarkMode
                           ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
                           : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -1968,7 +1968,7 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
                     <button
                       onClick={() => setEnquiryPage(p => Math.max(1, p - 1))}
                       disabled={enquiryPage === 1}
-                      className={`px-3 py-1 border rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`px-2 sm:px-3 py-1 border rounded text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ${
                         isDarkMode
                           ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
                           : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -1976,13 +1976,13 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
                     >
                       Previous
                     </button>
-                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <span className={`text-xs sm:text-sm whitespace-nowrap ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                       Page {enquiryPage} of {Math.ceil(enquiryTotal / enquiryLimit) || 1}
                     </span>
                     <button
                       onClick={() => setEnquiryPage(p => p < Math.ceil(enquiryTotal / enquiryLimit) ? p + 1 : p)}
                       disabled={enquiryPage >= Math.ceil(enquiryTotal / enquiryLimit)}
-                      className={`px-3 py-1 border rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`px-2 sm:px-3 py-1 border rounded text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ${
                         isDarkMode
                           ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
                           : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -1993,7 +1993,7 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
                     <button
                       onClick={() => setEnquiryPage(Math.ceil(enquiryTotal / enquiryLimit))}
                       disabled={enquiryPage >= Math.ceil(enquiryTotal / enquiryLimit)}
-                      className={`px-3 py-1 border rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`px-2 sm:px-3 py-1 border rounded text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ${
                         isDarkMode
                           ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
                           : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'

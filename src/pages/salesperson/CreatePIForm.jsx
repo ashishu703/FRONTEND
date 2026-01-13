@@ -20,7 +20,7 @@ function CardContent({ className, children }) {
 }
 
 function CardHeader({ className, children }) {
-  return <div className={`p-6 ${className || ''}`}>{children}</div>
+  return <div className={`p-3 sm:p-4 md:p-6 ${className || ''}`}>{children}</div>
 }
 
 function CardTitle({ className, children }) {
@@ -683,16 +683,16 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
   }
 
   const formContent = (
-    <Card className={`w-full ${modal ? 'h-screen rounded-none' : 'max-w-7xl max-h-[95vh]'} overflow-hidden flex flex-col`}>
+    <Card className={`w-full ${modal ? 'h-screen rounded-none' : 'max-w-7xl max-h-[95vh] sm:max-h-[95vh]'} overflow-hidden flex flex-col`}>
           {/* Header */}
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
-                <FileCheck className="h-5 w-5 text-white" />
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 pb-4 border-b pt-3 sm:pt-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+                <FileCheck className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
               </div>
               <div>
-                <CardTitle className="text-xl font-semibold">Create Proforma Invoice</CardTitle>
-                <p className="text-sm text-gray-600">Based on Quotation</p>
+                <CardTitle className="text-lg sm:text-xl font-semibold">Create Proforma Invoice</CardTitle>
+                <p className="text-xs sm:text-sm text-gray-600">Based on Quotation</p>
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={handleClose}>
@@ -701,7 +701,7 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
           </CardHeader>
 
           {/* PI Form Content with Live Preview */}
-          <div className="flex flex-row gap-4 p-6 flex-1 overflow-hidden">
+          <div className="flex flex-col lg:flex-row gap-4 p-3 sm:p-4 md:p-6 flex-1 overflow-hidden">
             {/* Left Side - PI Form */}
             <div className="flex-1 overflow-y-auto pr-4" style={{ maxHeight: modal ? 'calc(100vh - 150px)' : 'calc(95vh - 150px)', minWidth: '60%' }}>
               <CardContent className="p-0">
@@ -1158,7 +1158,7 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
 
   return (
     <div className="min-h-screen w-full bg-gray-50">
-      <div className="w-full max-w-7xl mx-auto p-4">
+      <div className="w-full max-w-7xl mx-auto p-2 sm:p-4">
         {formContent}
       </div>
     </div>

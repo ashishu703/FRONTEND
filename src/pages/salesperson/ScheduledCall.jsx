@@ -72,7 +72,7 @@ const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110]">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+      <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md mx-2 sm:mx-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Update Lead Status & Follow Up</h3>
           <button
@@ -574,19 +574,19 @@ export default function ScheduledCall() {
   const sortedDates = Object.keys(groupedLeads).sort((a, b) => new Date(a) - new Date(b));
 
   return (
-    <div className={`p-6 transition-all duration-300 ${showCustomerTimeline ? 'pr-[360px]' : ''}`}>
+    <div className={`p-3 sm:p-4 md:p-6 transition-all duration-300 ${showCustomerTimeline ? 'pr-0 lg:pr-[360px]' : ''}`}>
 
       {/* Search and Filters */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3 flex-1">
-            <div className="flex shadow-lg rounded-xl overflow-hidden">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 w-full sm:w-auto">
+            <div className="flex shadow-lg rounded-xl overflow-hidden flex-1 sm:flex-initial">
               <input 
                 type="text" 
                 placeholder="Search items..." 
                 value={filterHook.searchQuery || searchQuery} 
                 onChange={(e) => handleSearch(e.target.value)} 
-                className="px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 bg-white border-gray-200 text-gray-900 placeholder-gray-500" 
+                className="px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64 bg-white border-gray-200 text-gray-900 placeholder-gray-500" 
               />
               <button className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md">
                 <Search className="h-4 w-4" />
@@ -652,17 +652,17 @@ export default function ScheduledCall() {
         <div className="space-y-6">
           {sortedDates.map(date => (
             <div key={date} className="bg-white rounded-lg shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                <div className="flex items-center justify-between">
+              <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
                       <Calendar className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900">
+                      <h3 className="text-lg sm:text-xl font-bold text-gray-900">
                         {formatDateShort(date)}
                       </h3>
-                      <p className="text-sm text-gray-600">{formatDateForGrouping(date)}</p>
+                      <p className="text-xs sm:text-sm text-gray-600">{formatDateForGrouping(date)}</p>
                     </div>
                   </div>
                   <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
@@ -671,43 +671,43 @@ export default function ScheduledCall() {
                 </div>
               </div>
               
-              <div className="overflow-x-auto">
-                <table className="min-w-[1200px] w-full divide-y divide-gray-200">
+              <div className="overflow-x-auto -mx-3 sm:mx-0">
+                <table className="min-w-[800px] sm:min-w-[1200px] w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">LEAD ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
+                      <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">LEAD ID</th>
+                      <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-blue-600" />
                           <span>CUSTOMER</span>
                         </div>
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
+                      <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4 text-purple-600" />
                           <span>BUSINESS</span>
                         </div>
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
+                      <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4 text-red-600" />
                           <span>ADDRESS</span>
                         </div>
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
+                      <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-teal-600" />
                           <span>FOLLOW UP</span>
                         </div>
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
+                      <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-yellow-600" />
                           <span>SALES STATUS</span>
                         </div>
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">SCHEDULED CALL</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
+                      <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">SCHEDULED CALL</th>
+                      <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <MoreHorizontal className="h-4 w-4 text-gray-600" />
                           <span>ACTION</span>
@@ -747,7 +747,7 @@ export default function ScheduledCall() {
                         <td className="px-6 py-4 text-sm text-gray-500 max-w-[200px]">
                           <div className="truncate" title={lead.address || 'N/A'}>{lead.address || 'N/A'}</div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
                           <div className="space-y-1">
                             {getFollowUpBadge(lead.follow_up_status)}
                             {lead.follow_up_remark && (
@@ -757,7 +757,7 @@ export default function ScheduledCall() {
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
                           <div className="space-y-1">
                             {getStatusBadge(lead.sales_status)}
                             {lead.sales_status_remark && (

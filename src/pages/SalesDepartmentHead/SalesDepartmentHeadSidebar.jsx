@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -17,8 +17,23 @@ import {
   FileText
 } from 'lucide-react';
 
-const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView, sidebarOpen, setSidebarOpen }) => {
+  const [isExpanded, setIsExpanded] = useState(sidebarOpen !== undefined ? sidebarOpen : true);
+  
+  // Update parent state when internal state changes
+  const updateExpanded = useCallback((newValue) => {
+    setIsExpanded(newValue);
+    if (setSidebarOpen) {
+      setSidebarOpen(newValue);
+    }
+  }, [setSidebarOpen]);
+  
+  // Sync internal state with prop if provided
+  useEffect(() => {
+    if (sidebarOpen !== undefined && sidebarOpen !== isExpanded) {
+      setIsExpanded(sidebarOpen);
+    }
+  }, [sidebarOpen, isExpanded]);
   const [expandedDropdowns, setExpandedDropdowns] = useState({});
   const collapseTimerRef = useRef(null);
   const isManuallyToggledRef = useRef(false);
@@ -30,14 +45,14 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => 
       collapseTimerRef.current = null;
     }
     if (!isManuallyToggledRef.current) {
-      setIsExpanded(true);
+      updateExpanded(true);
     }
   };
 
   const handleMouseLeave = () => {
     if (!isManuallyToggledRef.current) {
       collapseTimerRef.current = setTimeout(() => {
-        setIsExpanded(false);
+        updateExpanded(false);
         setExpandedDropdowns({});
       }, 2000); // Collapse after 2 seconds
     }
@@ -54,7 +69,7 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => 
 
   const toggleSidebar = () => {
     isManuallyToggledRef.current = !isExpanded; // If expanding manually, set flag; if collapsing, clear flag
-    setIsExpanded(!isExpanded);
+    updateExpanded(!isExpanded);
     // Clear any pending auto-collapse
     if (collapseTimerRef.current) {
       clearTimeout(collapseTimerRef.current);
@@ -116,29 +131,35 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => 
 
   return (
     <div 
-      className={`bg-white shadow-lg transition-all duration-300 ${isExpanded ? 'w-64' : 'w-16'} h-screen flex flex-col border-r border-gray-200`}
+      className={`fixed top-0 left-0 h-screen z-40 shadow-2xl border-r transition-all duration-300 flex flex-col bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 border-slate-700/50 ${isExpanded ? 'w-64' : 'w-16'}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      style={{
+        background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+        boxShadow: '4px 0 20px rgba(0, 0, 0, 0.3)'
+      }}
     >
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-slate-700/50 bg-gradient-to-r from-blue-600/20 to-purple-600/20">
         <div className="flex items-center justify-between">
-          {isExpanded && (
+          {isExpanded ? (
             <div className="flex items-center space-x-3">
-              <img 
-                src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png" 
-                alt="ANOCAB Logo" 
-                className="w-8 h-8 object-contain"
-              />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 p-1.5 shadow-lg">
+                <img
+                  src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png"
+                  alt="ANOCAB Logo"
+                  className="w-full h-full object-contain rounded-lg"
+                />
+              </div>
               <div>
-                <h1 className="font-bold text-gray-800 text-lg">ANOCAB</h1>
-                <p className="text-xs text-gray-500">Sales Department Head</p>
+                <h1 className="font-bold text-white text-lg tracking-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>ANOCAB</h1>
+                <p className="text-xs text-slate-400">Sales Department Head</p>
               </div>
             </div>
-          )}
+          ) : null}
           <button
             onClick={toggleSidebar}
-            className={`p-1 hover:bg-gray-100 rounded transition-colors ${!isExpanded ? 'mx-auto' : ''}`}
+            className={`p-2 hover:bg-slate-700/50 rounded-lg transition-all duration-200 text-slate-300 hover:text-white ${!isExpanded ? 'mx-auto' : ''}`}
           >
             {isExpanded ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
@@ -146,28 +167,33 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => 
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 p-2 overflow-y-auto">
-        <ul className="space-y-1">
+      <nav className="flex-1 p-3 overflow-y-auto">
+        <ul className="space-y-1.5">
           {sidebarItems.map((item) => (
             <li key={item.id}>
               {item.hasDropdown ? (
                 <div>
                   <div
-                    className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                      activeView.startsWith(item.id) ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-700'
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 ${
+                      activeView.startsWith(item.id) 
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30' 
+                        : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
                     }`}
                     onClick={() => toggleDropdown(item.id)}
+                    style={{
+                      transform: activeView.startsWith(item.id) ? 'translateX(4px)' : 'none',
+                    }}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className={activeView.startsWith(item.id) ? 'text-blue-600' : 'text-gray-500'}>
+                      <div className={activeView.startsWith(item.id) ? 'text-white' : 'text-slate-400'}>
                         {item.icon}
                       </div>
                       {isExpanded && (
-                        <span className="text-sm font-medium">{item.label}</span>
+                        <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>{item.label}</span>
                       )}
                     </div>
                     {isExpanded && (
-                      <div className={activeView.startsWith(item.id) ? 'text-blue-600' : 'text-gray-500'}>
+                      <div className={activeView.startsWith(item.id) ? 'text-white' : 'text-slate-400'}>
                         {expandedDropdowns[item.id] ? (
                           <ChevronDown className="w-4 h-4" />
                         ) : (
@@ -181,15 +207,17 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => 
                       {item.dropdownItems.map((subItem) => (
                         <li key={subItem.id}>
                           <div
-                            className={`flex items-center space-x-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                              activeView === subItem.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-700'
+                            className={`flex items-center space-x-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                              activeView === subItem.id 
+                                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30' 
+                                : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
                             }`}
                             onClick={() => setActiveView(subItem.id)}
                           >
-                            <div className={activeView === subItem.id ? 'text-blue-600' : 'text-gray-500'}>
+                            <div className={activeView === subItem.id ? 'text-white' : 'text-slate-400'}>
                               {subItem.icon}
                             </div>
-                            <span className="text-sm font-medium">{subItem.label}</span>
+                            <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>{subItem.label}</span>
                           </div>
                         </li>
                       ))}
@@ -198,22 +226,25 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => 
                 </div>
               ) : (
                 <div
-                  className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 ${
                     activeView === item.id || (item.id === 'reports' && activeView?.startsWith('detailed-report-')) 
-                      ? 'bg-blue-50 text-blue-700' 
-                      : 'hover:bg-gray-50 text-gray-700'
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30' 
+                      : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
                   }`}
                   onClick={() => {
                     console.log('Sidebar click - setting activeView to:', item.id);
                     setActiveView(item.id);
                   }}
+                  style={{
+                    transform: activeView === item.id || (item.id === 'reports' && activeView?.startsWith('detailed-report-')) ? 'translateX(4px)' : 'none',
+                  }}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className={activeView === item.id || (item.id === 'reports' && activeView?.startsWith('detailed-report-')) ? 'text-blue-600' : 'text-gray-500'}>
+                    <div className={activeView === item.id || (item.id === 'reports' && activeView?.startsWith('detailed-report-')) ? 'text-white' : 'text-slate-400'}>
                       {item.icon}
                     </div>
                     {isExpanded && (
-                      <span className="text-sm font-medium">{item.label}</span>
+                      <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>{item.label}</span>
                     )}
                   </div>
                 </div>
@@ -224,24 +255,24 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView }) => 
       </nav>
 
       {/* Support Button */}
-      <div className="p-4 border-t border-gray-200 mt-auto">
+      <div className="p-3 border-t border-slate-700/50 bg-slate-800/30">
         <button 
           onClick={() => window.location.href = '/support'}
-          className={`w-full flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors`}
+          className="w-full flex items-center space-x-3 px-3 py-2.5 text-slate-300 hover:bg-slate-700/50 hover:text-white rounded-xl transition-all duration-200"
         >
           <HelpCircle className="w-5 h-5" />
-          {isExpanded && <span className="text-sm font-medium">Support</span>}
+          {isExpanded && <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Support</span>}
         </button>
       </div>
 
       {/* Logout Button */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-3 border-t border-slate-700/50 bg-slate-800/30">
         <button 
           onClick={onLogout}
-          className="w-full flex items-center space-x-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          className="w-full flex items-center space-x-3 px-3 py-2.5 text-red-400 hover:bg-red-500/20 hover:text-red-300 rounded-xl transition-all duration-200"
         >
           <LogOut className="w-5 h-5" />
-          {isExpanded && <span className="text-sm font-medium">Logout</span>}
+          {isExpanded && <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Logout</span>}
         </button>
       </div>
     </div>

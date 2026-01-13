@@ -11,7 +11,6 @@ import DuePaymentPage from './DuePayment.jsx'
 import AdvancePaymentPage from './AdvancePayment.jsx'
 import ToolboxInterface from './ToolboxInterface.jsx'
 import NotificationsPage from './Notifications.jsx'
-import MobileLayout from './MOBILE view/MobileLayout.jsx'
 import FixedHeader from '../../Header.jsx'
 import AshvayChat from '../../components/AshvayChat'
 import CreateQuotationForm from './salespersoncreatequotation.jsx'
@@ -170,7 +169,7 @@ export default function SalespersonLayout({ onLogout }) {
   }
   
   const [currentPage, setCurrentPage] = useState(urlPage || 'dashboard')
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isMobileView, setIsMobileView] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [selectedCustomerId, setSelectedCustomerId] = useState(null)
@@ -184,9 +183,18 @@ export default function SalespersonLayout({ onLogout }) {
     }
   }, [])
 
-  // Auto-detect mobile view based on viewport width (no manual toggle)
+  // Auto-detect mobile view based on viewport width
   useEffect(() => {
-    const updateIsMobile = () => setIsMobileView(window.innerWidth <= 768);
+    const updateIsMobile = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobileView(mobile);
+      // On desktop, sidebar open by default; on mobile, closed by default
+      if (!mobile) {
+        setSidebarOpen(true);
+      } else {
+        setSidebarOpen(false);
+      }
+    };
     updateIsMobile();
     window.addEventListener('resize', updateIsMobile);
     return () => window.removeEventListener('resize', updateIsMobile);
@@ -223,16 +231,19 @@ export default function SalespersonLayout({ onLogout }) {
     setIsDarkMode(!isDarkMode);
   };
 
-  // If mobile view is active, render mobile layout
-  if (isMobileView) {
-    return <MobileLayout onLogout={onLogout} onToggleDesktopView={() => setIsMobileView(false)} />
-  }
-
   return (
     <SharedDataProvider>
       <div className={`min-h-screen relative transition-colors ${
         isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
       }`}>
+        {/* Mobile overlay */}
+        {isMobileView && sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        
         <Sidebar 
           currentPage={currentPage} 
           onNavigate={handleNavigation} 
@@ -240,14 +251,24 @@ export default function SalespersonLayout({ onLogout }) {
           sidebarOpen={sidebarOpen} 
           setSidebarOpen={setSidebarOpen}
           isDarkMode={isDarkMode}
+          isMobileView={isMobileView}
         />
-        <div className={sidebarOpen ? "flex-1 ml-64 transition-all duration-300" : "flex-1 ml-16 transition-all duration-300"}>
+        
+        <div className={`flex-1 transition-all duration-300 ${
+          isMobileView 
+            ? 'ml-0' 
+            : sidebarOpen 
+              ? 'ml-64' 
+              : 'ml-16'
+        }`}>
           <FixedHeader 
             userType="salesperson" 
             currentPage={currentPage} 
             isMobileView={isMobileView}
             isDarkMode={isDarkMode}
             onToggleDarkMode={handleToggleDarkMode}
+            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            sidebarOpen={sidebarOpen}
           />
           <div className={`flex-1 transition-colors ${
             isDarkMode ? 'bg-gray-900' : 'bg-gray-50'

@@ -58,9 +58,9 @@ const SalesDepartmentHeadDashboard = ({ activeView, setActiveView }) => {
   };
 
   return (
-    <div className="h-full">
+    <>
       {renderContent()}
-    </div>
+    </>
   );
 };
 
