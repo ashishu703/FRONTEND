@@ -50,6 +50,7 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView, sideb
   };
 
   const handleMouseLeave = () => {
+    // Only auto-collapse if not manually toggled
     if (!isManuallyToggledRef.current) {
       collapseTimerRef.current = setTimeout(() => {
         updateExpanded(false);
@@ -161,7 +162,7 @@ const SalesDepartmentHeadSidebar = ({ onLogout, activeView, setActiveView, sideb
             onClick={toggleSidebar}
             className={`p-2 hover:bg-slate-700/50 rounded-lg transition-all duration-200 text-slate-300 hover:text-white ${!isExpanded ? 'mx-auto' : ''}`}
           >
-            {isExpanded ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            {isExpanded ? <X className="w-4 h-4" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
           </button>
         </div>
       </div>
