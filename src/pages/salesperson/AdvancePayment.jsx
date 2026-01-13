@@ -1578,7 +1578,7 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
   }
 
   return (
-    <div className={`p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
+    <div className={`p-3 sm:p-4 md:p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen pb-24 sm:pb-6`}>
       {/* Toolbar */}
       <Toolbar
         onSearch={handleSearch}
@@ -1592,7 +1592,7 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
       {/* Table */}
       {filteredPaymentTracking.length === 0 ? (
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-6 py-4 text-center">
+          <div className="px-3 sm:px-6 py-3 sm:py-4 text-center">
             <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No advance payments found</h3>
             <p className="mt-1 text-sm text-gray-500">
@@ -1602,65 +1602,65 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
         </div>
       ) : (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto -mx-3 sm:mx-0">
+          <table className="min-w-[800px] sm:w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-4 text-left">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                   <div className="flex items-center gap-2">
                     <User className="h-3 w-3 text-blue-600" />
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Lead ID</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                   <div className="flex items-center gap-2">
                     <Building2 className="h-3 w-3 text-purple-600" />
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Customer Name</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                   <div className="flex items-center gap-2">
                     <Package className="h-3 w-3 text-violet-500" />
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Product Name</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                   <div className="flex items-center gap-2">
                     <MapPin className="h-3 w-3 text-red-500" />
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Address</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                   <div className="flex items-center gap-2">
                     <FileText className="h-3 w-3 text-indigo-500" />
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Quotation ID</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-3 w-3 text-emerald-600" />
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Payment Status</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-3 w-3 text-green-500" />
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Advance Amount</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-3 w-3 text-blue-500" />
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Remaining Amount</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-3 w-3 text-yellow-500" />
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Delivery Date</span>
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-center">
                   <div className="flex items-center gap-2 justify-center">
                     <MoreHorizontal className="h-3 w-3 text-gray-500" />
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Action</span>
@@ -1672,12 +1672,12 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
                 {paginatedPaymentTracking.length > 0 ? (
                   paginatedPaymentTracking.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-sm text-gray-900 font-medium">
                         {item.leadId}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div>
                         <div className="font-semibold text-sm text-gray-900 truncate max-w-[200px]" title={item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}>
                           {item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}
@@ -1705,28 +1705,28 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-xs text-gray-900 truncate max-w-[150px] block" title={item.productName || 'N/A'}>{item.productName || 'N/A'}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div className="max-w-[180px]">
                         <span className="text-xs text-gray-700 truncate block" title={item.address || 'N/A'}>
                           {item.address || 'N/A'}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-sm font-bold text-gray-900 font-mono">{item.quotationId || 'N/A'}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       {getPaymentStatusBadge(item.paymentStatus, item)}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-sm text-green-600 font-semibold">
                         ₹{item.advanceAmount?.toFixed(2) || '0.00'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div className="flex flex-col">
                         <span className="text-sm text-blue-600 font-semibold">
                           ₹{item.remainingAmount?.toFixed(2) || '0.00'}
@@ -1738,7 +1738,7 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-gray-900">
                           {item.dueDate ? 
@@ -1753,7 +1753,7 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
                       <div className="flex items-center justify-center">
                         <div className="relative action-menu-container">
                           <button
@@ -1802,7 +1802,7 @@ export default function AdvancePaymentPage({ isDarkMode = false }) {
                 ))
               ) : (
                 <tr>
-                    <td colSpan="9" className="px-6 py-4 text-center text-sm text-gray-500">
+                    <td colSpan="9" className="px-3 sm:px-6 py-3 sm:py-4 text-center text-xs sm:text-sm text-gray-500">
                       No advance payment records found matching your criteria
                   </td>
                 </tr>

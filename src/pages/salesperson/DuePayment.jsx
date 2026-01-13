@@ -1152,7 +1152,7 @@ export default function DuePaymentPage({ isDarkMode = false }) {
   const groupedPayments = groupPaymentsByDate(paginatedPaymentTracking);
 
   return (
-    <div className={`p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen`}>
+    <div className={`p-3 sm:p-4 md:p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} min-h-screen pb-24 sm:pb-6`}>
       {/* Toolbar */}
       <Toolbar
         onSearch={handleSearch}
@@ -1166,7 +1166,7 @@ export default function DuePaymentPage({ isDarkMode = false }) {
       {/* Grouped Payments by Date */}
       {filteredPaymentTracking.length === 0 ? (
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-6 py-4 text-center">
+          <div className="px-3 sm:px-6 py-3 sm:py-4 text-center">
             <Package className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No due payments found</h3>
             <p className="mt-1 text-sm text-gray-500">
@@ -1184,15 +1184,15 @@ export default function DuePaymentPage({ isDarkMode = false }) {
             return (
               <div key={dateKey} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 {/* Date Header */}
-                <div className="bg-blue-50 px-6 py-4 border-b border-blue-100">
-                  <div className="flex items-center justify-between">
+                <div className="bg-blue-50 px-3 sm:px-6 py-3 sm:py-4 border-b border-blue-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                     <div className="flex items-center space-x-3">
-                      <div className="flex-shrink-0 w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-                        <Clock className="h-6 w-6 text-white" />
+                      <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                        <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-semibold text-gray-900">{dateStr}</h2>
-                        <p className="text-sm text-gray-600">{fullDateStr}</p>
+                        <h2 className="text-base sm:text-lg font-semibold text-gray-900">{dateStr}</h2>
+                        <p className="text-xs sm:text-sm text-gray-600">{fullDateStr}</p>
                       </div>
                     </div>
                     <span className="text-sm font-medium text-blue-600">
@@ -1202,53 +1202,53 @@ export default function DuePaymentPage({ isDarkMode = false }) {
                 </div>
 
                 {/* Table for this date group */}
-                <div className="overflow-x-auto">
-                  <table className="w-full">
+                <div className="overflow-x-auto -mx-3 sm:mx-0">
+                  <table className="min-w-[800px] sm:w-full">
                     <thead className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 border-b-2 border-blue-200">
                       <tr>
-                        <th className="px-6 py-4 text-left">
+                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-blue-600" />
                             <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Lead ID</span>
                           </div>
                         </th>
-                        <th className="px-6 py-4 text-left">
+                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                           <div className="flex items-center gap-2">
                             <Building2 className="h-4 w-4 text-purple-600" />
                             <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Customer Name</span>
                           </div>
                         </th>
-                        <th className="px-6 py-4 text-left">
+                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                           <div className="flex items-center gap-2">
                             <Package className="h-4 w-4 text-violet-500" />
                             <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Product Name</span>
                           </div>
                         </th>
-                        <th className="px-6 py-4 text-left">
+                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                           <div className="flex items-center gap-2">
                             <MapPin className="h-4 w-4 text-red-500" />
                             <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Address</span>
                           </div>
                         </th>
-                        <th className="px-6 py-4 text-left">
+                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                           <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4 text-indigo-500" />
                             <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Quotation ID</span>
                           </div>
                         </th>
-                        <th className="px-6 py-4 text-left">
+                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                           <div className="flex items-center gap-2">
                             <CreditCard className="h-4 w-4 text-emerald-600" />
                             <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Payment Status</span>
                           </div>
                         </th>
-                        <th className="px-6 py-4 text-left">
+                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                           <div className="flex items-center gap-2">
                             <CreditCard className="h-4 w-4 text-red-500" />
                             <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Due Amount</span>
                           </div>
                         </th>
-                        <th className="px-6 py-4 text-center">
+                        <th className="px-3 sm:px-6 py-3 sm:py-4 text-center">
                           <div className="flex items-center gap-2 justify-center">
                             <MoreHorizontal className="h-4 w-4 text-gray-500" />
                             <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Action</span>
@@ -1259,12 +1259,12 @@ export default function DuePaymentPage({ isDarkMode = false }) {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {datePayments.map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-6 py-3 sm:py-4">
                             <span className="text-sm text-gray-900 font-medium">
                               {item.leadId}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-6 py-3 sm:py-4">
                             <div>
                               <div className="font-medium text-gray-900 text-sm">{item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}</div>
                               {item.leadData?.phone && (
@@ -1290,28 +1290,28 @@ export default function DuePaymentPage({ isDarkMode = false }) {
                               )}
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-6 py-3 sm:py-4">
                             <span className="text-sm text-gray-900 truncate max-w-[200px] block" title={item.productName || 'N/A'}>{item.productName || 'N/A'}</span>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-6 py-3 sm:py-4">
                             <div className="flex flex-col gap-0.5 max-w-[250px]">
                               <span className="text-sm text-gray-700 truncate" title={item.address || 'N/A'}>
                                 {item.address || 'N/A'}
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-6 py-3 sm:py-4">
                             <span className="text-sm font-bold text-gray-900 font-mono">{item.quotationId || 'N/A'}</span>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-6 py-3 sm:py-4">
                             {getPaymentStatusBadge(item.paymentStatus, item)}
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-6 py-3 sm:py-4">
                             <span className="text-sm text-red-600 font-semibold">
                               ₹{item.dueAmount?.toFixed(2) || '0.00'}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
                             <div className="flex items-center justify-end space-x-2">
                               <Tooltip text="View Details">
                                 <button 

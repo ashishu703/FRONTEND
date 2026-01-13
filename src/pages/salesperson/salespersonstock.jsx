@@ -195,18 +195,18 @@ export default function StockManagement({ isDarkMode = false }) {
   }
 
   return (
-    <div className={`min-h-screen p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen p-3 sm:p-4 md:p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} pb-24 sm:pb-6`}>
       <div className="max-w-7xl mx-auto">
         {/* Search Bar */}
-        <div className={`mb-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} p-4`}>
+        <div className={`mb-4 sm:mb-6 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} p-3 sm:p-4`}>
           <div className="relative">
-            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
             <input
               type="text"
               placeholder="Search products by name or description..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-9 pr-4 py-2 rounded-lg border text-sm ${
+              className={`w-full pl-8 sm:pl-9 pr-3 sm:pr-4 py-2 rounded-lg border text-xs sm:text-sm ${
                 isDarkMode 
                   ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500' 
                   : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500'
@@ -216,7 +216,7 @@ export default function StockManagement({ isDarkMode = false }) {
         </div>
 
         {/* Three Header Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
           {/* Availables Card */}
           <div 
             onClick={() => setSelectedFilter(selectedFilter === 'available' ? 'all' : 'available')}
@@ -232,14 +232,14 @@ export default function StockManagement({ isDarkMode = false }) {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h3 className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                <h3 className={`text-base sm:text-lg font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   Availables
                 </h3>
-                <p className={`text-2xl font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                <p className={`text-xl sm:text-2xl font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
                   {statusCounts.available}
                 </p>
               </div>
-              <CheckCircle className={`w-8 h-8 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+              <CheckCircle className={`w-6 h-6 sm:w-8 sm:h-8 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
             </div>
           </div>
 
@@ -258,14 +258,14 @@ export default function StockManagement({ isDarkMode = false }) {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h3 className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                <h3 className={`text-base sm:text-lg font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   Limiteds
                 </h3>
-                <p className={`text-2xl font-bold ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                <p className={`text-xl sm:text-2xl font-bold ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
                   {statusCounts.limited}
                 </p>
               </div>
-              <AlertCircle className={`w-8 h-8 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`} />
+              <AlertCircle className={`w-6 h-6 sm:w-8 sm:h-8 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`} />
             </div>
           </div>
 
@@ -284,14 +284,14 @@ export default function StockManagement({ isDarkMode = false }) {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h3 className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                <h3 className={`text-base sm:text-lg font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   Out of Stocks
                 </h3>
-                <p className={`text-2xl font-bold ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                <p className={`text-xl sm:text-2xl font-bold ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
                   {statusCounts.out_of_stock}
                 </p>
               </div>
-              <XCircle className={`w-8 h-8 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
+              <XCircle className={`w-6 h-6 sm:w-8 sm:h-8 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
             </div>
           </div>
         </div>
@@ -300,10 +300,10 @@ export default function StockManagement({ isDarkMode = false }) {
         {filteredProducts.length === 0 ? (
           <div className={`text-center py-12 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
             <Package className={`w-12 h-12 mx-auto mb-4 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
-            <p className={`text-lg font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            <p className={`text-base sm:text-lg font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               No products found
             </p>
-            <p className={`text-sm mt-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+            <p className={`text-xs sm:text-sm mt-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
               Try adjusting your search terms or filter
             </p>
           </div>
@@ -320,9 +320,9 @@ export default function StockManagement({ isDarkMode = false }) {
                       : 'bg-white border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <div className="flex items-center gap-4 p-3">
+                  <div className="flex items-center gap-2 sm:gap-4 p-2 sm:p-3">
                     {/* Product Image - Shorter */}
-                    <div className={`w-20 h-20 flex-shrink-0 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg flex items-center justify-center overflow-hidden`}>
+                    <div className={`w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-lg flex items-center justify-center overflow-hidden`}>
                       <img
                         src={product.sideViewImage}
                         alt={product.name}
@@ -339,9 +339,9 @@ export default function StockManagement({ isDarkMode = false }) {
                     </div>
 
                     {/* Product Info and Availability Side by Side */}
-                    <div className="flex-1 flex items-center justify-between gap-4">
+                    <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
                       <div className="flex-1 min-w-0">
-                        <h3 className={`font-semibold text-sm mb-1 line-clamp-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <h3 className={`font-semibold text-xs sm:text-sm mb-1 line-clamp-2 sm:line-clamp-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                           {product.name}
                         </h3>
                         <p className={`text-xs line-clamp-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -355,11 +355,11 @@ export default function StockManagement({ isDarkMode = false }) {
                       </div>
 
                       {/* Availability Badge on the Side */}
-                      <div className="flex-shrink-0">
-                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium ${availabilityBadge.className}`}>
+                      <div className="flex-shrink-0 self-start sm:self-auto">
+                        <div className={`flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border text-xs font-medium ${availabilityBadge.className}`}>
                           <span className={availabilityBadge.iconColor}>
-                            <availabilityBadge.Icon className="w-4 h-4" />
-          </span>
+                            <availabilityBadge.Icon className="w-3 h-3 sm:w-4 sm:h-4" />
+                          </span>
                           <span>{availabilityBadge.text}</span>
                         </div>
                       </div>

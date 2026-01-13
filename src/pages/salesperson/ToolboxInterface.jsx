@@ -225,6 +225,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
   const [isBisFolderOpen, setIsBisFolderOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredTools, setFilteredTools] = useState([]);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   // AB Cable - Costing calculator editable inputs (sheet row 30) - shared state
   const [abPhaseInputs, setAbPhaseInputs] = useSharedToolboxState("abPhaseInputs", { cores: 3, strands: 7, strandSize: 2.12 });
   // CALCUS helper function
@@ -3512,10 +3513,31 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
     <div className={`flex min-h-screen ${
       isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
     }`}>
+      {/* Mobile Sidebar Toggle Button */}
+      <button
+        onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+        className={`lg:hidden fixed bottom-4 right-4 z-40 p-3 rounded-full shadow-lg ${
+          isDarkMode 
+            ? 'bg-gray-800 text-white border border-gray-700' 
+            : 'bg-white text-gray-700 border border-gray-200'
+        }`}
+        title="Toggle Sidebar"
+      >
+        <Settings className="w-5 h-5" />
+      </button>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* Main Content */}
-      <div className="flex-1 p-6 pr-80">
+      <div className="flex-1 pt-16 sm:pt-20 p-3 sm:p-4 md:p-6 pr-0 lg:pr-80 pb-24 sm:pb-6 overflow-x-hidden">
         <div className="max-w-6xl mx-auto">
-          <div className="space-y-12">
+          <div className="space-y-8 sm:space-y-12">
             {sections.map((section, sectionIndex) => {
               const IconComponent = section.icon;
               return (
@@ -3529,16 +3551,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           isDarkMode ? 'text-blue-400' : 'text-blue-600'
                         }`} />
                       </div>
-                      <h2 className={`text-2xl font-semibold ${
+                      <h2 className={`text-xl sm:text-2xl font-semibold ${
                         isDarkMode ? 'text-white' : 'text-gray-900'
                       }`}>{section.title}</h2>
                     </div>
                   )}
 
                   {section.id === "products" && (
-                    <div className="mb-6">
+                    <div className="mb-4 sm:mb-6">
                       {/* Search Box */}
-                      <div className="flex shadow-lg rounded-xl overflow-hidden w-1/2">
+                      <div className="flex shadow-lg rounded-xl overflow-hidden w-full sm:w-1/2">
                         <input
                           type="text"
                           placeholder="Search products..."
@@ -3579,20 +3601,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             });
                             setFilteredTools(filtered);
                           }}
-                          className={`flex-1 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white border-gray-200 text-gray-900 placeholder-gray-500 ${
+                          className={`flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white border-gray-200 text-gray-900 placeholder-gray-500 ${
                             isDarkMode 
                               ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' 
                               : 'bg-white border-gray-200 text-gray-900'
                           }`}
                         />
-                        <button className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md">
-                          <Search className="h-4 w-4" />
+                        <button className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md flex-shrink-0">
+                          <Search className="h-3 w-3 sm:h-4 sm:w-4" />
                         </button>
                       </div>
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                     {(section.id === "products" && searchQuery ? filteredTools : section.tools).map((tool, toolIndex) => {
                       const ToolIcon = tool.icon;
                       return (
@@ -3695,9 +3717,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
       {/* Data Table Modal */}
       {selectedTableData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">{selectedTableData.name}</h2>
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-2 sm:mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 sm:p-4 md:p-6 border-b">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{selectedTableData.name}</h2>
               <button 
                 onClick={closeTable}
                 className="text-gray-400 hover:text-gray-600"
@@ -3705,13 +3727,13 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="p-6">
-              <div className="overflow-x-auto">
-                <table className="w-full">
+            <div className="p-3 sm:p-4 md:p-6">
+              <div className="overflow-x-auto -mx-3 sm:mx-0">
+                <table className="min-w-[600px] sm:w-full">
                   <thead>
                     <tr className="border-b">
                       {selectedTableData.headers.map((header, index) => (
-                        <th key={index} className="text-left py-3 px-4 font-medium text-gray-700">{header}</th>
+                        <th key={index} className="text-left py-2 sm:py-3 px-3 sm:px-4 text-xs sm:text-sm font-medium text-gray-700">{header}</th>
                       ))}
                     </tr>
                   </thead>
@@ -3719,7 +3741,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     {selectedTableData.rows.map((row, index) => (
                       <tr key={index} className="border-b">
                         {row.map((cell, cellIndex) => (
-                          <td key={cellIndex} className="py-3 px-4 text-gray-900">{cell}</td>
+                          <td key={cellIndex} className="py-2 sm:py-3 px-3 sm:px-4 text-xs sm:text-sm text-gray-900">{cell}</td>
                         ))}
                       </tr>
                     ))}
@@ -3733,35 +3755,35 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
 
       {/* Conversional Calculations Modal */}
       {isHelpingCalcOpen && helpingCalcType === 'conversional' && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="w-full max-w-6xl max-h-[90vh] overflow-y-auto bg-white rounded-lg">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Conversional Calculations</h3>
-              <button onClick={closeHelpingCalc} className="text-gray-400 hover:text-gray-600">
-                <X className="h-6 w-6" />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-2 sm:p-4">
+          <div className="w-full max-w-6xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto bg-white rounded-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 sm:p-4 border-b">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Conversional Calculations</h3>
+              <button onClick={closeHelpingCalc} className="text-gray-400 hover:text-gray-600 self-end sm:self-auto">
+                <X className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
             </div>
-            <div className="p-6 space-y-6">
+            <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
               {/* LENGTH CONVERSION CALCULATOR */}
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-                <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
-                  <h5 className="text-sm font-semibold text-gray-900">Length Conversion Calculator</h5>
+                <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
+                  <h5 className="text-xs sm:text-sm font-semibold text-gray-900">Length Conversion Calculator</h5>
                 </div>
-                <div className="p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1">
+                <div className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                    <div className="flex-1 w-full sm:w-auto">
                       <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
                       <div className="flex gap-2">
                         <input 
                           type="number" 
                           value={convLenValL} 
                           onChange={(e) => setConvLenValL(Number(e.target.value) || 0)}
-                          className="flex-1 px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                          className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                         />
                         <select 
                           value={convLenUnitL}
                           onChange={(e) => setConvLenUnitL(e.target.value)}
-                          className="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option>km</option>
                           <option>m</option>
@@ -3781,13 +3803,13 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         <input 
                           type="number" 
                           value={convLenValR.toFixed(4)} 
-                          className="flex-1 px-3 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-300 rounded-md" 
+                          className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 bg-gray-50 border border-gray-300 rounded-md" 
                           readOnly 
                         />
                         <select 
                           value={convLenUnitR}
                           onChange={(e) => setConvLenUnitR(e.target.value)}
-                          className="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option>km</option>
                           <option>m</option>
@@ -3818,7 +3840,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         step="0.001" 
                         value={ktFactor}
                         onChange={(e) => setKtFactor(Number(e.target.value) || 0)}
-                        className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                       />
                   </div>
                     <div>
@@ -3827,7 +3849,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         type="number" 
                         value={ktTemp}
                         onChange={(e) => setKtTemp(Number(e.target.value) || 0)}
-                        className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                       />
                 </div>
                     <div>
@@ -3836,7 +3858,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         type="number" 
                         step="0.001" 
                         value={ktTo20}
-                        className="w-full px-3 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-300 rounded-md" 
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 bg-gray-50 border border-gray-300 rounded-md" 
                         readOnly 
                       />
               </div>
@@ -3859,12 +3881,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           type="number" 
                           value={subMotorRating}
                           onChange={(e) => setSubMotorRating(Number(e.target.value) || 0)}
-                          className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                         />
                         <select 
                           value={subMotorUnit}
                           onChange={(e) => setSubMotorUnit(e.target.value)}
-                          className="w-full px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option>HP</option>
                           <option>KW</option>
@@ -3879,12 +3901,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           type="number" 
                           value={subMotorLen}
                           onChange={(e) => setSubMotorLen(Number(e.target.value) || 0)}
-                          className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                         />
                         <select 
                           value={subMotorLenUnit}
                           onChange={(e) => setSubMotorLenUnit(e.target.value)}
-                          className="w-full px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option>MTR</option>
                           <option>FT</option>
@@ -3893,19 +3915,19 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Voltage Drop</label>
-                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subVoltDrop).toFixed(2)}</div>
+                      <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subVoltDrop).toFixed(2)}</div>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Current (Ω)</label>
-                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subCurrent).toFixed(2)}</div>
+                      <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subCurrent).toFixed(2)}</div>
                   </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Actual Gauge</label>
-                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subActualGauge).toFixed(2)}</div>
+                      <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subActualGauge).toFixed(2)}</div>
                 </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Cable Size</label>
-                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{subCableSize}</div>
+                      <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{subCableSize}</div>
           </div>
         </div>
                 </div>
@@ -3920,7 +3942,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Armoured OD</label>
-                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armOd).toFixed(2)}</div>
+                      <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armOd).toFixed(2)}</div>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Wire/Strip OD</label>
@@ -3928,32 +3950,32 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         type="number" 
                         value={armWireStripOd}
                         onChange={(e) => setArmWireStripOd(Number(e.target.value) || 0)}
-                        className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                       />
           </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Width</label>
-                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armWidth).toFixed(2)}</div>
+                      <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armWidth).toFixed(2)}</div>
         </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Lay</label>
-                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armLay).toFixed(2)}</div>
+                      <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armLay).toFixed(2)}</div>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">COS(Φ)</label>
-                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armCosPhi).toFixed(4)}</div>
+                      <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armCosPhi).toFixed(4)}</div>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Inner OD</label>
-                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armInnerOd).toFixed(2)}</div>
+                      <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armInnerOd).toFixed(2)}</div>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Covering %</label>
-                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armCoveringPct).toFixed(2)}</div>
+                      <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(armCoveringPct).toFixed(2)}</div>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">N/O Wires</label>
-                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{armNoWires}</div>
+                      <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{armNoWires}</div>
                     </div>
                   </div>
                 </div>
@@ -3973,12 +3995,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           type="number" 
                           value={energyValL}
                           onChange={(e) => setEnergyValL(Number(e.target.value) || 0)}
-                          className="flex-1 px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                          className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                         />
                         <select 
                           value={energyUnitL}
                           onChange={(e) => setEnergyUnitL(e.target.value)}
-                          className="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option>J</option>
                           <option>kJ</option>
@@ -4000,13 +4022,13 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           type="number" 
                           step="0.0001" 
                           value={energyValR.toFixed(4)} 
-                          className="flex-1 px-3 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-300 rounded-md" 
+                          className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 bg-gray-50 border border-gray-300 rounded-md" 
                           readOnly 
                         />
                         <select 
                           value={energyUnitR}
                           onChange={(e) => setEnergyUnitR(e.target.value)}
-                          className="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option>J</option>
                           <option>kJ</option>
@@ -4036,7 +4058,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       <select 
                         value={chwPhase}
                         onChange={(e) => setChwPhase(Number(e.target.value) || 1)}
-                        className="w-full px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value={1}>1</option>
                         <option value={3}>3</option>
@@ -4049,12 +4071,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           type="number" 
                           value={chwPowerVal}
                           onChange={(e) => setChwPowerVal(Number(e.target.value) || 0)}
-                          className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                         />
                         <select 
                           value={chwPowerUnit}
                           onChange={(e) => setChwPowerUnit(e.target.value)}
-                          className="w-full px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option>HP</option>
                           <option>KW</option>
@@ -4069,12 +4091,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           type="number" 
                           value={chwLengthVal}
                           onChange={(e) => setChwLengthVal(Number(e.target.value) || 0)}
-                          className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                         />
                         <select 
                           value={chwLengthUnit}
                           onChange={(e) => setChwLengthUnit(e.target.value)}
-                          className="w-full px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option>MTR</option>
                           <option>FT</option>
@@ -4083,15 +4105,15 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Current (Ω)</label>
-                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(chwCurrent).toFixed(2)}</div>
+                      <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(chwCurrent).toFixed(2)}</div>
                 </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Actual Gauge</label>
-                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(chwActualGauge).toFixed(2)}</div>
+                      <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(chwActualGauge).toFixed(2)}</div>
               </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Wire Size</label>
-                      <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{chwWireSize}</div>
+                      <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{chwWireSize}</div>
             </div>
           </div>
         </div>
@@ -4160,7 +4182,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
       {/* Image Viewer Modal - images only */}
       {isFileViewerOpen && Array.isArray(selectedFile) && selectedFile.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-lg">
+          <div className="w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden bg-white rounded-lg mx-2 sm:mx-4">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -4255,7 +4277,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
       {/* File Viewer Modal */}
       {false && isFileViewerOpen && selectedFile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-lg">
+          <div className="w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden bg-white rounded-lg mx-2 sm:mx-4">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -4292,18 +4314,27 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
       )}
 
       {/* Right Sidebar */}
-      <div className={`fixed right-0 top-0 h-full w-80 border-l shadow-lg overflow-y-auto ${
+      <div className={`fixed right-0 top-0 h-full w-80 border-l shadow-lg overflow-y-auto z-50 transition-transform duration-300 ${
+        isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'
+      } lg:translate-x-0 ${
         isDarkMode 
           ? 'bg-gray-800 border-gray-700' 
           : 'bg-white border-gray-200'
       }`}>
-        <div className="p-6 pt-12">
+        <div className="p-3 sm:p-4 md:p-6 pt-12 sm:pt-12">
+          {/* Mobile Close Button */}
+          <button
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="lg:hidden absolute top-4 right-4 p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+          >
+            <X className="w-5 h-5" />
+          </button>
           {/* Blank space placeholder */}
           <div className="mb-12"></div>
 
           {/* Business Cards & Brochure */}
           <div className="mb-4">
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3">
               {/* Business Card - Anocab */}
               <div className="flex-1">
                 <div 
@@ -4375,28 +4406,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
           </div>
 
           {/* Approvals */}
-          <div className="mb-4">
+          <div className="mb-3 sm:mb-4">
             <div 
-              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+              className={`p-2 sm:p-3 md:p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
                 isDarkMode 
                   ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
                   : 'border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100'
               }`}
               onClick={openApprovals}
             >
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm">
-                  <CheckCircle className="h-5 w-5 text-white" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 md:p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm flex-shrink-0">
+                  <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 text-white" />
                 </div>
-                <div className="flex-1">
-                  <h3 className={`font-semibold text-sm ${
+                <div className="flex-1 min-w-0">
+                  <h3 className={`font-semibold text-xs sm:text-sm ${
                     isDarkMode ? 'text-white' : 'text-gray-900'
                   }`}>Approvals</h3>
                   <p className={`text-xs ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>Product approvals and certifications</p>
                 </div>
-                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                <ChevronRight className={`h-3 w-3 sm:h-4 sm:w-4 transition-transform duration-300 flex-shrink-0 ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 }`} />
               </div>
@@ -4404,28 +4435,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
           </div>
 
           {/* License */}
-          <div className="mb-4">
+          <div className="mb-3 sm:mb-4">
             <div 
-              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+              className={`p-2 sm:p-3 md:p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
                 isDarkMode 
                   ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
                   : 'border-gray-200 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100'
               }`}
               onClick={openLicense}
             >
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-sm">
-                  <Shield className="h-5 w-5 text-white" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-2 sm:p-3 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-sm flex-shrink-0">
+                  <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <div className="flex-1">
-                  <h3 className={`font-semibold text-sm ${
+                <div className="flex-1 min-w-0">
+                  <h3 className={`font-semibold text-xs sm:text-sm ${
                     isDarkMode ? 'text-white' : 'text-gray-900'
                   }`}>License</h3>
                   <p className={`text-xs ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>Company licenses and certifications</p>
                 </div>
-                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                <ChevronRight className={`h-3 w-3 sm:h-4 sm:w-4 transition-transform duration-300 flex-shrink-0 ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 }`} />
               </div>
@@ -4433,28 +4464,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
           </div>
 
           {/* GST Details */}
-          <div className="mb-4">
+          <div className="mb-3 sm:mb-4">
             <div 
-              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+              className={`p-2 sm:p-3 md:p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
               isDarkMode 
                   ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
                   : 'border-gray-200 bg-gradient-to-r from-purple-50 to-violet-50 hover:from-purple-100 hover:to-violet-100'
               }`}
               onClick={openGstDetails}
             >
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-sm">
-                  <CreditCard className="h-5 w-5 text-white" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-2 sm:p-3 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-sm flex-shrink-0">
+                  <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <div className="flex-1">
-                  <h3 className={`font-semibold text-sm ${
+                <div className="flex-1 min-w-0">
+                  <h3 className={`font-semibold text-xs sm:text-sm ${
                     isDarkMode ? 'text-white' : 'text-gray-900'
                   }`}>GST Details</h3>
                   <p className={`text-xs ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>Tax registration information</p>
                 </div>
-                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                <ChevronRight className={`h-3 w-3 sm:h-4 sm:w-4 transition-transform duration-300 flex-shrink-0 ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 }`} />
               </div>
@@ -4462,28 +4493,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
           </div>
 
           {/* Company Emails */}
-          <div className="mb-4">
+          <div className="mb-3 sm:mb-4">
             <div 
-              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+              className={`p-2 sm:p-3 md:p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
                 isDarkMode 
                   ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
                   : 'border-gray-200 bg-gradient-to-r from-pink-50 to-rose-50 hover:from-pink-100 hover:to-rose-100'
               }`}
               onClick={openCompanyEmails}
             >
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 shadow-sm">
-                  <Mail className="h-5 w-5 text-white" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-2 sm:p-3 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 shadow-sm flex-shrink-0">
+                  <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <div className="flex-1">
-                  <h3 className={`font-semibold text-sm ${
+                <div className="flex-1 min-w-0">
+                  <h3 className={`font-semibold text-xs sm:text-sm ${
                     isDarkMode ? 'text-white' : 'text-gray-900'
                   }`}>Company Emails</h3>
                   <p className={`text-xs ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>All company email addresses</p>
                 </div>
-                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                <ChevronRight className={`h-3 w-3 sm:h-4 sm:w-4 transition-transform duration-300 flex-shrink-0 ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 }`} />
               </div>
@@ -4491,28 +4522,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
             
           </div>
           {/* Location Dropdown */}
-          <div className="mb-4">
+          <div className="mb-3 sm:mb-4">
             <div 
-              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+              className={`p-2 sm:p-3 md:p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
                 isDarkMode 
                   ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
                   : 'border-gray-200 bg-gradient-to-r from-slate-50 to-gray-50 hover:from-slate-100 hover:to-gray-100'
               }`}
               onClick={openLocation}
             >
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-slate-500 to-gray-600 shadow-sm">
-                  <MapPin className="h-5 w-5 text-white" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-2 sm:p-3 rounded-xl bg-gradient-to-br from-slate-500 to-gray-600 shadow-sm flex-shrink-0">
+                  <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <div className="flex-1">
-                  <h3 className={`font-semibold text-sm ${
+                <div className="flex-1 min-w-0">
+                  <h3 className={`font-semibold text-xs sm:text-sm ${
                     isDarkMode ? 'text-white' : 'text-gray-900'
                   }`}>Location</h3>
                   <p className={`text-xs ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>Company locations</p>
                 </div>
-                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                <ChevronRight className={`h-3 w-3 sm:h-4 sm:w-4 transition-transform duration-300 flex-shrink-0 ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
                       }`} />
                     </div>
@@ -4520,35 +4551,35 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
           </div>
           
           {/* Helping Calculators */}
-          <div className="mb-4">
+          <div className="mb-3 sm:mb-4">
             <div 
-              className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
+              className={`p-2 sm:p-3 md:p-4 rounded-xl border cursor-pointer transition-all duration-300 shadow-sm hover:shadow-md ${
                 isDarkMode 
                   ? 'border-gray-600 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500' 
                   : 'border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100'
               }`}
               onClick={openHelpingCalculators}
             >
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-sm">
-                  <FileText className="h-5 w-5 text-white" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-2 sm:p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-sm flex-shrink-0">
+                  <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <div className="flex-1">
-                  <h3 className={`font-semibold text-sm ${
+                <div className="flex-1 min-w-0">
+                  <h3 className={`font-semibold text-xs sm:text-sm ${
                     isDarkMode ? 'text-white' : 'text-gray-900'
                   }`}>Helping Calculators</h3>
                   <p className={`text-xs ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>Advanced calculation tools</p>
                 </div>
-                <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${
+                <ChevronRight className={`h-3 w-3 sm:h-4 sm:w-4 transition-transform duration-300 flex-shrink-0 ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 } ${showHelpingCalculators ? 'rotate-90' : ''}`} />
               </div>
             </div>
             
             {showHelpingCalculators && (
-              <div className="mt-3 space-y-2">
+              <div className="mt-2 sm:mt-3 space-y-2">
                 {[
                   { name: "TECHNICAL CALCULATIONS", description: "Advanced technical calculation tools", icon: Calculator },
                   { name: "CONVERSIONAL CALCULATIONS", description: "Unit conversion and calculation utilities", icon: Settings },
@@ -4560,7 +4591,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   return (
                   <div 
                     key={index}
-                      className={`p-3 rounded-lg border transition-all duration-200 shadow-sm ${
+                      className={`p-2 sm:p-3 rounded-lg border transition-all duration-200 shadow-sm ${
                         isDisabled 
                           ? 'cursor-not-allowed opacity-50' 
                           : 'cursor-pointer hover:shadow-md'
@@ -4586,7 +4617,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         }
                       }}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <div className={`p-2 rounded-lg ${
                           isDarkMode 
                             ? isDisabled ? 'bg-gray-700' : 'bg-gray-600'
@@ -4598,13 +4629,13 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                               : isDisabled ? 'text-gray-400' : 'text-teal-600'
                         }`} />
                       </div>
-                      <div className="flex-1">
-                        <span className={`text-sm font-medium ${
+                      <div className="flex-1 min-w-0">
+                        <span className={`text-xs sm:text-sm font-medium break-words ${
                             isDarkMode 
                               ? isDisabled ? 'text-gray-400' : 'text-white'
                               : isDisabled ? 'text-gray-500' : 'text-gray-900'
                         }`}>{calculator.name}</span>
-                        <p className={`text-xs mt-1 ${
+                        <p className={`text-xs mt-1 break-words ${
                             isDarkMode 
                               ? isDisabled ? 'text-gray-500' : 'text-gray-300'
                               : isDisabled ? 'text-gray-400' : 'text-gray-500'
@@ -4624,25 +4655,25 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
       </div>
       {/* Product Detail Modal - Dynamic */}
       {isProductDetailOpen && selectedProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="w-full max-w-7xl max-h-[95vh] overflow-hidden bg-white rounded-lg">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-blue-100">
-                      <Image className="h-6 w-6 text-blue-600" />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-2 sm:p-4" onClick={closeProductDetail}>
+            <div className="w-full max-w-7xl max-h-[95vh] overflow-hidden bg-white rounded-lg mx-2 sm:mx-4" onClick={(e) => e.stopPropagation()}>
+              <div className="p-3 sm:p-4 md:p-6 border-b border-gray-200">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <div className="p-1.5 sm:p-2 rounded-lg bg-blue-100 flex-shrink-0">
+                      <Image className="h-4 w-4 sm:h-6 sm:w-6 text-blue-600" />
                     </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-gray-900">{(getProductData(selectedProduct) || {}).title || selectedProduct}</h2>
-                        <p className="text-gray-600">{(getProductData(selectedProduct) || {}).description || "Product details and specifications"}</p>
+                    <div className="flex-1 min-w-0">
+                        <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 break-words">{(getProductData(selectedProduct) || {}).title || selectedProduct}</h2>
+                        <p className="text-xs sm:text-sm text-gray-600 break-words">{(getProductData(selectedProduct) || {}).description || "Product details and specifications"}</p>
                     </div>
                   </div>
-                  <button onClick={closeProductDetail} className="text-gray-400 hover:text-gray-600">
-                    <X className="h-6 w-6" />
+                  <button onClick={closeProductDetail} className="text-gray-400 hover:text-gray-600 self-end sm:self-auto flex-shrink-0">
+                    <X className="h-5 w-5 sm:h-6 sm:w-6" />
                   </button>
                 </div>
               </div>
-            <div className="p-6 overflow-auto max-h-[80vh]">
+            <div className="p-3 sm:p-4 md:p-6 overflow-y-auto max-h-[calc(95vh-120px)] sm:max-h-[80vh]">
               {/* Business Information Section for Business Cards */}
               {(getProductData(selectedProduct) || {})?.businessInfo && (
                 <div className="mb-8">
@@ -4659,69 +4690,69 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
               {/* Technical Specifications Section - includes products with custom specs */}
               {(selectedProduct === "Aerial Bunch Cable" || selectedProduct === "Aluminium Conductor Galvanized Steel Reinforced" || selectedProduct === "All Aluminium Alloy Conductor" || selectedProduct === "PVC Insulated Submersible Cable" || selectedProduct === "Multi Core XLPE Insulated Aluminium Unarmoured Cable" || selectedProduct === "Multistrand Single Core Copper Cable" || selectedProduct === "Multi Core Copper Cable" || selectedProduct === "PVC Insulated Single Core Aluminium Cable" || selectedProduct === "PVC Insulated Multicore Aluminium Cable" || selectedProduct === "Submersible Winding Wire" || selectedProduct === "Twin Twisted Copper Wire" || selectedProduct === "Speaker Cable" || selectedProduct === "CCTV Cable" || selectedProduct === "LAN Cable" || selectedProduct === "Automobile Cable" || selectedProduct === "PV Solar Cable" || selectedProduct === "Co Axial Cable" || selectedProduct === "Uni-tube Unarmoured Optical Fibre Cable" || selectedProduct === "Armoured Unarmoured PVC Insulated Copper Control Cable" || selectedProduct === "Telecom Switch Board Cables" || selectedProduct === "Multi Core PVC Insulated Aluminium Unarmoured Cable" || selectedProduct === "Multi Core XLPE Insulated Aluminium Armoured Cable" || selectedProduct === "Multi Core PVC Insulated Aluminium Armoured Cable" || selectedProduct === "Single Core XLPE Insulated Aluminium/Copper Armoured/Unarmoured Cable" || selectedProduct === "Single Core PVC Insulated Aluminium/Copper Armoured/Unarmoured Cable" || selectedProduct === "Paper Cover Aluminium Conductor") && (
                 <div className="mb-8">
-                  <div id="technical-spec-header" className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                    <Wrench className="h-5 w-5 text-blue-600" />
+                  <div id="technical-spec-header" className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2">
+                    <Wrench className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                     Technical Specifications
                   </h3>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                     <button
                         onClick={openBrochure}
-                        className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
+                        className="px-3 sm:px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors"
                     >
                       BROCHURE
                     </button>
                       <button
                         onClick={() => downloadTechnicalSpecPDF()}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+                        className="px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs sm:text-sm font-medium flex items-center justify-center gap-2 transition-colors"
                       >
-                        <Download className="h-4 w-4" />
-                        Download PDF
+                        <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="whitespace-nowrap">Download PDF</span>
                     </button>
                   </div>
                   </div>
                   <div id="technical-specification-content" className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="p-6 flex flex-col lg:flex-row gap-8">
-                      <div className="flex-1">
+                    <div className="p-3 sm:p-4 md:p-6 flex flex-col lg:flex-row gap-4 sm:gap-6 md:gap-8">
+                      <div className="flex-1 min-w-0">
                         {selectedProduct === "All Aluminium Alloy Conductor" ? (
-                          <div className="space-y-6">
+                          <div className="space-y-4 sm:space-y-6">
                             {/* Construction Details */}
                             <div>
-                              <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
-                              <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                              <h4 className="text-sm sm:text-base font-semibold text-gray-900 mb-2 sm:mb-3">1. Construction Details</h4>
+                              <div className="overflow-x-auto -mx-2 sm:mx-0 border border-gray-200 rounded-lg">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
-                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
-                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Material Used</th>
-                                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
+                                      <th className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
+                                      <th className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Material Used</th>
+                                      <th className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Description</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">All Aluminium Alloy Conductor (AAAC)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Stranded conductor made up of high-strength aluminium-magnesium-silicon alloy wires.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">All Aluminium Alloy Conductor (AAAC)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Stranded conductor made up of high-strength aluminium-magnesium-silicon alloy wires.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Material Grade</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium Alloy 6201-T81 (as per IS 398 Pt-4)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Combines good conductivity with higher tensile strength than pure aluminium.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Material Grade</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Aluminium Alloy 6201-T81 (as per IS 398 Pt-4)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Combines good conductivity with higher tensile strength than pure aluminium.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Construction</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Concentric Stranding</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Multiple aluminium alloy wires stranded in layers around a central wire.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Construction</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Concentric Stranding</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Multiple aluminium alloy wires stranded in layers around a central wire.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Surface Finish</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Smooth and Bright Finish</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Provides corrosion resistance and low oxidation tendency.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Surface Finish</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Smooth and Bright Finish</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Provides corrosion resistance and low oxidation tendency.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">None (Bare Conductor)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Designed for overhead transmission and distribution without insulation.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">None (Bare Conductor)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Designed for overhead transmission and distribution without insulation.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -4732,7 +4763,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
@@ -4741,20 +4772,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 398 (Part 4):1994</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for All Aluminium Alloy Conductors (AAAC).</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 398 (Part 4):1994</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for All Aluminium Alloy Conductors (AAAC).</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 61089</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">International standard for round wire concentric lay overhead conductors.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IEC 61089</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">International standard for round wire concentric lay overhead conductors.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">ASTM B399 / B399M</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard specification for concentric-lay-stranded aluminium-alloy conductors.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">ASTM B399 / B399M</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Standard specification for concentric-lay-stranded aluminium-alloy conductors.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Lead-free, environmentally safe materials.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Lead-free, environmentally safe materials.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -4765,7 +4796,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -4774,36 +4805,36 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for overhead transmission up to 400 kV (depending on design).</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for overhead transmission up to 400 kV (depending on design).</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Resistivity</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Max. 0.0328 ohm·mm²/m at 20°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Resistivity</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Max. 0.0328 ohm·mm²/m at 20°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-5°C to +85°C (continuous operation)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-5°C to +85°C (continuous operation)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Tensile Strength</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Higher than AAC; typically 250–350 MPa depending on alloy and strand design.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Tensile Strength</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Higher than AAC; typically 250–350 MPa depending on alloy and strand design.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Current Carrying Capacity</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Comparable or higher than ACSR for equivalent sizes.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Current Carrying Capacity</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Comparable or higher than ACSR for equivalent sizes.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Thermal Expansion Coefficient</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">23 × 10⁻⁶ /°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Thermal Expansion Coefficient</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">23 × 10⁻⁶ /°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Creep Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent under sustained mechanical loads.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Creep Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Excellent under sustained mechanical loads.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Corrosion Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Superior – no galvanic action as no steel core is present.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Corrosion Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Superior – no galvanic action as no steel core is present.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -4814,7 +4845,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -4823,20 +4854,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Overhead Power Transmission Lines</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for medium, high, and extra-high voltage transmission.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Overhead Power Transmission Lines</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used for medium, high, and extra-high voltage transmission.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Urban and Coastal Distribution Lines</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for coastal regions due to excellent corrosion resistance.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Urban and Coastal Distribution Lines</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for coastal regions due to excellent corrosion resistance.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Power Substations & Distribution Networks</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for both primary and secondary distribution.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Power Substations & Distribution Networks</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for both primary and secondary distribution.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Renewable Energy Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Commonly used in wind and solar power evacuation systems.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Renewable Energy Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Commonly used in wind and solar power evacuation systems.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -4849,7 +4880,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
@@ -4859,34 +4890,34 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium / Aluminium Alloy Conductor (Class 2 as per IS 8130)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High conductivity, corrosion-resistant conductor ensuring minimal power loss.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Aluminium / Aluminium Alloy Conductor (Class 2 as per IS 8130)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">High conductivity, corrosion-resistant conductor ensuring minimal power loss.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cross-linked Polyethylene (XLPE)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Heat and UV resistant insulation providing enhanced dielectric strength and mechanical durability.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Cross-linked Polyethylene (XLPE)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Heat and UV resistant insulation providing enhanced dielectric strength and mechanical durability.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Messenger Wire</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium Alloy Conductor (as per IS 398 Pt-4)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Provides mechanical support and tensile strength to the aerial bundle.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Messenger Wire</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Aluminium Alloy Conductor (as per IS 398 Pt-4)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Provides mechanical support and tensile strength to the aerial bundle.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Identification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Phase cores: Black with number marking; Neutral: Black with blue marking; Street lighting: Black with white marking</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Easy identification and installation.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Core Identification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Phase cores: Black with number marking; Neutral: Black with blue marking; Street lighting: Black with white marking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Easy identification and installation.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath (if applicable)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">UV stabilized XLPE</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Offers superior resistance against environmental degradation and sunlight.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath (if applicable)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">UV stabilized XLPE</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Offers superior resistance against environmental degradation and sunlight.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Layout Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2 to 4 Core + Messenger</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Configured for overhead LT distribution systems.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Layout Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">2 to 4 Core + Messenger</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Configured for overhead LT distribution systems.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -4897,7 +4928,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
@@ -4906,24 +4937,24 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 14255:1995</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for Aerial Bunched Cables for working voltage up to and including 1100 V.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 14255:1995</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for Aerial Bunched Cables for working voltage up to and including 1100 V.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2023</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Conductors for insulated electric cables and flexible cords.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2023</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Conductors for insulated electric cables and flexible cords.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 398 (Part 4):1994</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium Alloy Conductors.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 398 (Part 4):1994</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Aluminium Alloy Conductors.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60502-1</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Power cables with extruded insulation and their accessories for rated voltages up to 1 kV (optional).</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60502-1</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Power cables with extruded insulation and their accessories for rated voltages up to 1 kV (optional).</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environmentally friendly and lead-free materials.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Environmentally friendly and lead-free materials.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -4934,7 +4965,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -4943,40 +4974,40 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1100 V (1.1 kV)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">1100 V (1.1 kV)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-30°C to +90°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-30°C to +90°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{'>'} 1 MΩ/km at 27°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{'>'} 1 MΩ/km at 27°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance (Max.)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 8130:2023 for Aluminium / Aluminium Alloy</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance (Max.)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per IS 8130:2023 for Aluminium / Aluminium Alloy</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UV Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent – tested for prolonged sunlight exposure</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">UV Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Excellent – tested for prolonged sunlight exposure</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Tensile Strength (Messenger)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 398 Pt-4</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Tensile Strength (Messenger)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per IS 398 Pt-4</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Current Carrying Capacity</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Higher compared to conventional bare conductor systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Current Carrying Capacity</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Higher compared to conventional bare conductor systems</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Short Circuit Rating</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 14255:1995</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Short Circuit Rating</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per IS 14255:1995</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -4987,7 +5018,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -4996,20 +5027,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Overhead LT Power Distribution</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Widely used in power distribution lines for reliable power delivery.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Overhead LT Power Distribution</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Widely used in power distribution lines for reliable power delivery.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Urban & Rural Electrification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for areas where safety, reliability, and reduced theft risk are required.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Urban & Rural Electrification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for areas where safety, reliability, and reduced theft risk are required.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial & Street Lighting Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for power supply in industrial complexes and municipal lighting.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Industrial & Street Lighting Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for power supply in industrial complexes and municipal lighting.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Hilly / Forested / Coastal Areas</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Performs efficiently under harsh weather, moisture, and UV exposure.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Hilly / Forested / Coastal Areas</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Performs efficiently under harsh weather, moisture, and UV exposure.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5022,7 +5053,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
@@ -5032,34 +5063,34 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium Conductor Galvanized Steel Reinforced (ACSR)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Composite conductor consisting of a central core of galvanized steel wires surrounded by concentric layers of hard-drawn aluminium wires.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Aluminium Conductor Galvanized Steel Reinforced (ACSR)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Composite conductor consisting of a central core of galvanized steel wires surrounded by concentric layers of hard-drawn aluminium wires.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Aluminium Wire</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium (99.7% purity)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Provides high conductivity and low resistance for efficient power transmission.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Aluminium Wire</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">EC Grade Aluminium (99.7% purity)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Provides high conductivity and low resistance for efficient power transmission.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Steel Core</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Steel Wire (as per IS 398 Pt-2)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Offers excellent tensile strength and mechanical support for long-span installations.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Steel Core</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Galvanized Steel Wire (as per IS 398 Pt-2)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Offers excellent tensile strength and mechanical support for long-span installations.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Construction</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Concentric Stranding</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Typically 6 Aluminium wires around 1 Steel core (can vary as per size and application).</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Construction</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Concentric Stranding</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Typically 6 Aluminium wires around 1 Steel core (can vary as per size and application).</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Surface Finish</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Smooth, bright, corrosion-resistant</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ensures durability and reduced oxidation during service.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Surface Finish</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Smooth, bright, corrosion-resistant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ensures durability and reduced oxidation during service.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">None (Bare Conductor)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Designed for overhead applications without insulation.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">None (Bare Conductor)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Designed for overhead applications without insulation.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5070,7 +5101,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
@@ -5079,24 +5110,24 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 398 (Part 2):1996</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for Aluminium Conductors, Galvanized Steel Reinforced (ACSR).</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 398 (Part 2):1996</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for Aluminium Conductors, Galvanized Steel Reinforced (ACSR).</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 398 (Part 1):1996</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for Aluminium Conductors, Stranded and Solid.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 398 (Part 1):1996</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for Aluminium Conductors, Stranded and Solid.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 61089</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">International standard for round wire concentric lay overhead conductors.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IEC 61089</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">International standard for round wire concentric lay overhead conductors.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">ASTM B232 / B232M</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard specification for concentric-lay-stranded aluminium conductors, steel-reinforced.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">ASTM B232 / B232M</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Standard specification for concentric-lay-stranded aluminium conductors, steel-reinforced.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environment-friendly, lead-free manufacturing process.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Environment-friendly, lead-free manufacturing process.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5107,7 +5138,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -5116,40 +5147,40 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for overhead power transmission lines (up to 400 kV, depending on design).</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for overhead power transmission lines (up to 400 kV, depending on design).</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Resistivity (Aluminium)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Max. 0.032 ohm·mm²/m at 20°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Resistivity (Aluminium)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Max. 0.032 ohm·mm²/m at 20°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-5°C to +85°C (Continuous Operation)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-5°C to +85°C (Continuous Operation)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Tensile Strength</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Determined by steel core (varies with strand ratio and design).</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Tensile Strength</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Determined by steel core (varies with strand ratio and design).</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Current Carrying Capacity</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Depends on conductor size and ambient conditions; typically high due to aluminium's conductivity.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Current Carrying Capacity</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Depends on conductor size and ambient conditions; typically high due to aluminium's conductivity.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Galvanization Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Heavy / Standard coating as per IS 4826</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Galvanization Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Heavy / Standard coating as per IS 4826</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Thermal Expansion Coefficient</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">19.3 × 10⁻⁶ /°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Thermal Expansion Coefficient</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">19.3 × 10⁻⁶ /°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Creep Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent – low elongation under sustained load.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Creep Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Excellent – low elongation under sustained load.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Corona Onset Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High – designed for minimal corona loss at extra-high voltages.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Corona Onset Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">High – designed for minimal corona loss at extra-high voltages.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5160,7 +5191,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -5169,20 +5200,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Overhead Power Transmission Lines</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Widely used for medium, high, and extra-high voltage transmission.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Overhead Power Transmission Lines</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Widely used for medium, high, and extra-high voltage transmission.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rural and Urban Distribution Networks</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cost-effective solution for long-distance power supply.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Rural and Urban Distribution Networks</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Cost-effective solution for long-distance power supply.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">River Crossings & Long Spans</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal due to high tensile strength and mechanical support from steel core.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">River Crossings & Long Spans</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal due to high tensile strength and mechanical support from steel core.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Substation Connections</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for bus-bar interconnections and outgoing feeders.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Substation Connections</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used for bus-bar interconnections and outgoing feeders.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5195,7 +5226,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
@@ -5205,29 +5236,29 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper (99.97% purity)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High conductivity, flexible, and oxygen-free copper for minimum power loss.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper (99.97% purity)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">High conductivity, flexible, and oxygen-free copper for minimum power loss.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC (Polyvinyl Chloride) Type A / Type C</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specially formulated for submersible duty, offering excellent insulation resistance and protection against moisture, oil, and abrasion.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC (Polyvinyl Chloride) Type A / Type C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specially formulated for submersible duty, offering excellent insulation resistance and protection against moisture, oil, and abrasion.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Identification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Color coded (Red, Yellow, Blue or Black, Blue, Brown)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For easy phase identification in 3-core cables.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Core Identification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Color coded (Red, Yellow, Blue or Black, Blue, Brown)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For easy phase identification in 3-core cables.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 (as per IS 5831)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Highly abrasion resistant and water-tight outer sheath for durability under submerged conditions.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 (as per IS 5831)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Highly abrasion resistant and water-tight outer sheath for durability under submerged conditions.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Layout Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3 Core Flat / Round Construction</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Flat for narrow boreholes and round for open wells or surface installations.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Layout Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">3 Core Flat / Round Construction</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Flat for narrow boreholes and round for open wells or surface installations.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5238,7 +5269,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
@@ -5247,20 +5278,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC insulated cables for working voltage up to and including 1100 Volts.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC insulated cables for working voltage up to and including 1100 Volts.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831:1984</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC insulation and sheath compound standards.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831:1984</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC insulation and sheath compound standards.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2023</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Conductors for insulated electric cables and flexible cords.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2023</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Conductors for insulated electric cables and flexible cords.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environment-friendly, lead-free materials.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Environment-friendly, lead-free materials.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5271,7 +5302,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -5280,32 +5311,32 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1100 V (1.1 kV)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">1100 V (1.1 kV)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +70°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-15°C to +70°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">&gt; 1 MΩ/km at 27°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">&gt; 1 MΩ/km at 27°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance (Max.)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 8130:2023 for class 5 flexible conductors</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance (Max.)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per IS 8130:2023 for class 5 flexible conductors</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Water Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent – designed for continuous underwater operation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Water Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Excellent – designed for continuous underwater operation</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flexibility</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High – suitable for frequent movement and vibration of pumps</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Flexibility</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">High – suitable for frequent movement and vibration of pumps</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5316,7 +5347,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -5325,20 +5356,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Submersible Pumps</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for power supply connection to deep-well or borewell submersible motors.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Submersible Pumps</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for power supply connection to deep-well or borewell submersible motors.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Irrigation & Agriculture</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For connecting pumps in agricultural fields, wells, and reservoirs.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Irrigation & Agriculture</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For connecting pumps in agricultural fields, wells, and reservoirs.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Water Supply Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For motors operating under water or in damp conditions.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Water Supply Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For motors operating under water or in damp conditions.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Domestic Water Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in home borewells and water tanks for pumping operations.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Domestic Water Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used in home borewells and water tanks for pumping operations.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5351,7 +5382,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
@@ -5361,34 +5392,34 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium, Class 1 / Class 2 (as per IS 8130)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High-conductivity aluminium conductor ensuring low power loss and reliable performance.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">EC Grade Aluminium, Class 1 / Class 2 (as per IS 8130)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">High-conductivity aluminium conductor ensuring low power loss and reliable performance.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">XLPE (Cross-Linked Polyethylene) as per IS 7098 Pt-1</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Thermoset insulation providing excellent electrical strength, heat resistance, and long service life.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">XLPE (Cross-Linked Polyethylene) as per IS 7098 Pt-1</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Thermoset insulation providing excellent electrical strength, heat resistance, and long service life.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Colour Identification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2 Core: Red & Black<br />3 Core: Red, Yellow, Blue<br />4 Core: Red, Yellow, Blue & Black</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard colour coding for easy phase identification during installation.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Core Colour Identification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">2 Core: Red & Black<br />3 Core: Red, Yellow, Blue<br />4 Core: Red, Yellow, Blue & Black</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Standard colour coding for easy phase identification during installation.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 (as per IS 5831)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Durable sheath providing protection against moisture, oil, and mechanical stress.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 (as per IS 5831)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Durable sheath providing protection against moisture, oil, and mechanical stress.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Colour</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black (other colours available on request)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">UV-stabilized outer sheath suitable for outdoor use.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Colour</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Black (other colours available on request)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">UV-stabilized outer sheath suitable for outdoor use.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Construction Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Multi-core, Unarmoured</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for fixed installation where mechanical protection is not required.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Construction Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Multi-core, Unarmoured</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for fixed installation where mechanical protection is not required.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5399,7 +5430,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
@@ -5408,24 +5439,24 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 7098 (Part 1):1988</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for XLPE Insulated Cables for working voltages up to and including 1100 V.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 7098 (Part 1):1988</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for XLPE Insulated Cables for working voltages up to and including 1100 V.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2023</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Conductors for insulated electric cables and flexible cords.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2023</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Conductors for insulated electric cables and flexible cords.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831:1984</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC insulation and sheath compounds.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831:1984</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for PVC insulation and sheath compounds.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60502-1</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Power cables with extruded insulation for rated voltages up to 1 kV.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60502-1</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Power cables with extruded insulation for rated voltages up to 1 kV.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environment-friendly, lead-free materials.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Environment-friendly, lead-free materials.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5436,7 +5467,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -5445,40 +5476,40 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 1100 V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">EC Grade Aluminium</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">XLPE</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">XLPE</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +90°C (continuous)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-15°C to +90°C (continuous)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{'>'} 1 MΩ/km at 27°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{'>'} 1 MΩ/km at 27°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Current Carrying Capacity</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 3961 (varies with size and installation conditions)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Current Carrying Capacity</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per IS 3961 (varies with size and installation conditions)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Weather Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent – resistant to UV, ozone, oil, grease, and chemicals</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Weather Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Excellent – resistant to UV, ozone, oil, grease, and chemicals</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">12 × overall diameter of cable (approx.)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">12 × overall diameter of cable (approx.)</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5489,7 +5520,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -5498,20 +5529,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Power Distribution</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for fixed installation in industrial plants and control panels.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Power Distribution</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for fixed installation in industrial plants and control panels.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Wiring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for internal and external power supply systems.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Wiring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used for internal and external power supply systems.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor Installations</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for open-air, conduit, or surface mounting under moderate mechanical stress.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor Installations</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for open-air, conduit, or surface mounting under moderate mechanical stress.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Renewable Energy Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in solar and wind power applications for flexible distribution.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Renewable Energy Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used in solar and wind power applications for flexible distribution.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5522,7 +5553,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">6. Packing & Marking</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -5531,12 +5562,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Standard Packing</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">500-meter coils (custom lengths available on request)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Standard Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">500-meter coils (custom lengths available on request)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cables are sequentially marked and printed with <strong>"ANOCAB"</strong> and relevant specifications for traceability.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Cables are sequentially marked and printed with <strong>"ANOCAB"</strong> and relevant specifications for traceability.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5549,7 +5580,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
@@ -5558,28 +5589,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Multicore flexible copper conductor cable</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Multicore flexible copper conductor cable</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Options</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2, 3, or 4 core</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Core Options</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">2, 3, or 4 core</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Colours</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2 Core: Red & Black<br />3 Core: Red, Yellow & Blue<br />4 Core: Red, Yellow, Blue & Black</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Core Colours</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">2 Core: Red & Black<br />3 Core: Red, Yellow & Blue<br />4 Core: Red, Yellow, Blue & Black</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Colour</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black (other colours on customer demand)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Colour</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Black (other colours on customer demand)</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5590,7 +5621,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
@@ -5599,16 +5630,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">General requirements for PVC insulated cables</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">General requirements for PVC insulated cables</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For conductor specifications</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For conductor specifications</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For insulation and sheath properties</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For insulation and sheath properties</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5619,7 +5650,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -5628,24 +5659,24 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 450/750V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 450/750V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 5 (Flexible)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Class 5 (Flexible)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type A / HR PVC Type C as per IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type A / HR PVC Type C as per IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +70°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-15°C to +70°C</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5656,7 +5687,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -5665,16 +5696,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Power and control circuits</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Power and control circuits</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Control of motors and appliances</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Industrial</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Control of motors and appliances</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">General Use</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Fixed installations needing flexibility and flame retardance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">General Use</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Fixed installations needing flexibility and flame retardance</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5685,7 +5716,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">5. Packing & Marking</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -5694,12 +5725,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Printed with 'ANOCAB'</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Printed with 'ANOCAB'</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100 / 300 / 500 mtr coils (custom lengths on request)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">100 / 300 / 500 mtr coils (custom lengths on request)</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5712,7 +5743,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
@@ -5721,24 +5752,24 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100% Pure Electrolytic Grade Copper, Class 2 / 5 as per IS 8130:2013</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">100% Pure Electrolytic Grade Copper, Class 2 / 5 as per IS 8130:2013</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC conforming to IS 5831, formulated with Flame Retardant (FR) properties and heat resistance up to 85°C; also available in FRLSH & ZHFR insulation types (Type A/C 70°C / 85°C)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC conforming to IS 5831, formulated with Flame Retardant (FR) properties and heat resistance up to 85°C; also available in FRLSH & ZHFR insulation types (Type A/C 70°C / 85°C)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Not Applicable (Single Core Unarmoured)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Not Applicable (Single Core Unarmoured)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Multilayer PVC with enhanced IR value</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Multilayer PVC with enhanced IR value</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colours Available</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red, Yellow, Blue, Black & other colours on customer demand</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colours Available</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Red, Yellow, Blue, Black & other colours on customer demand</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5749,7 +5780,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -5758,24 +5789,24 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 694:2010</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 694:2010</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 8130:2013</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 8130:2013</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Compliance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">REACH and RoHS Compliant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Compliance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">REACH and RoHS Compliant</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 1100 V</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5786,7 +5817,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -5795,28 +5826,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1100 V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">1100 V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +85°C (continuous operation)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-15°C to +85°C (continuous operation)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">FR / FRLSH / ZHFR</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">FR / FRLSH / ZHFR</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Oxygen Index</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Higher than standard FR cables</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Oxygen Index</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Higher than standard FR cables</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Flexibility</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Super Flexible</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Flexibility</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Super Flexible</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductivity</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100% conductivity of pure copper</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductivity</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">100% conductivity of pure copper</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5827,7 +5858,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -5836,20 +5867,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Domestic, Commercial & Industrial Wiring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for domestic, commercial, and industrial wiring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Domestic, Commercial & Industrial Wiring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for domestic, commercial, and industrial wiring</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels & Appliances</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for use in control panels, appliances, and conduit wiring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels & Appliances</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for use in control panels, appliances, and conduit wiring</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Long-term Performance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Designed for safe, long-term performance under varying load conditions</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Long-term Performance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Designed for safe, long-term performance under varying load conditions</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Special Requirements</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Recommended where flame retardancy, flexibility, and durability are essential</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Special Requirements</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Recommended where flame retardancy, flexibility, and durability are essential</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5862,7 +5893,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Component</th>
@@ -5871,32 +5902,32 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Single Core Aluminium Conductor Cable</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Single Core Aluminium Conductor Cable</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Annealed Aluminium</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">EC Grade Annealed Aluminium</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 1 & 2 as per IS 8130:2013</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Class 1 & 2 as per IS 8130:2013</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type A/C, Flame Retardant formulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type A/C, Flame Retardant formulation</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour Options</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red, Yellow, Blue, Black & other colours on customer demand</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour Options</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Red, Yellow, Blue, Black & other colours on customer demand</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Printed with 'ANOCAB'</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Printed with 'ANOCAB'</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">90 mtr & 270 mtr coils packed in protective plastic bags</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">90 mtr & 270 mtr coils packed in protective plastic bags</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5907,7 +5938,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
@@ -5916,16 +5947,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For PVC insulated cables up to 1100V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For PVC insulated cables up to 1100V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2013</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For conductor construction and quality</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2013</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For conductor construction and quality</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For insulation material and thermal properties</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For insulation material and thermal properties</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5936,7 +5967,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -5945,32 +5976,32 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 450/750V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 450/750V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Annealed Aluminium (Class 1 & 2)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Annealed Aluminium (Class 1 & 2)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC confirming to IS-5831, FR 70°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC confirming to IS-5831, FR 70°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Rating</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to 70°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Rating</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to 70°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Yes — Higher Oxygen Index</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Yes — Higher Oxygen Index</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UV Resistant</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Yes</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">UV Resistant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Yes</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Compliance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">REACH and RoHS Compliant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Compliance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">REACH and RoHS Compliant</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -5981,7 +6012,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -5990,16 +6021,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Wiring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Power and lighting circuits</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Wiring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Power and lighting circuits</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Installations</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Control panels and conduits</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Installations</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Control panels and conduits</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">General Use</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for low voltage distribution and fixed installations</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">General Use</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for low voltage distribution and fixed installations</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6012,7 +6043,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Component</th>
@@ -6021,40 +6052,40 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Multicore Aluminium Conductor Cable</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Multicore Aluminium Conductor Cable</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">EC Grade Aluminium</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 1 & 2 as per IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Class 1 & 2 as per IS 8130</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type A as per IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type A as per IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red & Black (2 Core); Red, Yellow, Blue (3 Core); Red, Yellow, Blue & Black (4 Core)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Red & Black (2 Core); Red, Yellow, Blue (3 Core); Red, Yellow, Blue & Black (4 Core)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black and other colours as per requirement</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Black and other colours as per requirement</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Printed with 'ANOCAB'</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Printed with 'ANOCAB'</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard 500 mtr coil; other lengths on request</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Standard 500 mtr coil; other lengths on request</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6065,7 +6096,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
@@ -6074,16 +6105,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For PVC insulated cables up to 1100V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For PVC insulated cables up to 1100V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For conductor quality and classification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For conductor quality and classification</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For insulation and sheath material specifications</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For insulation and sheath material specifications</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6094,7 +6125,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -6103,36 +6134,36 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 450/750V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 450/750V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">EC Grade Aluminium</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type A</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type A</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Yes – High Oxygen Index</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Yes – High Oxygen Index</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UV Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Yes</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">UV Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Yes</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Compliance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">REACH and RoHS Compliant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Compliance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">REACH and RoHS Compliant</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to 70°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to 70°C</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6143,7 +6174,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -6152,16 +6183,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Wiring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Power and lighting distribution</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Wiring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Power and lighting distribution</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Installations</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Control panels and electrical circuits</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Installations</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Control panels and electrical circuits</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">General Use</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for fixed low-voltage connections and outdoor usage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">General Use</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for fixed low-voltage connections and outdoor usage</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6183,32 +6214,32 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                 </thead>
                                 <tbody>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Submersible Winding Wire</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Submersible Winding Wire</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100% Pure CC Grade Copper</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">100% Pure CC Grade Copper</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Standard</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS-8783 Part 1 &ndash; Annealed Copper</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per IS-8783 Part 1 &ndash; Annealed Copper</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Polypropylene and Polyester Tape / HR PVC</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Polypropylene and Polyester Tape / HR PVC</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Applicable Insulation Standard</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS-8783 (Part 4, Sec 3) for PP & Polyester; IS-8783 (Part 4, Sec 1) for HR PVC</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Applicable Insulation Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS-8783 (Part 4, Sec 3) for PP & Polyester; IS-8783 (Part 4, Sec 1) for HR PVC</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per customer requirement</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per customer requirement</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard coil form suitable for submersible applications</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Standard coil form suitable for submersible applications</td>
                                   </tr>
                                 </tbody>
                               </table>
@@ -6228,28 +6259,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                 </thead>
                                 <tbody>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Material</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">CC Grade Copper</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">CC Grade Copper</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Material Resistivity</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0.01724 Ω·mm²/m at 20°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Material Resistivity</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">0.01724 Ω·mm²/m at 20°C</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Test</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Tested at 3 kV</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Test</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Tested at 3 kV</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Types</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Polypropylene / Polyester Tape / HR PVC</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Types</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Polypropylene / Polyester Tape / HR PVC</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Yes (in HR PVC variant)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Yes (in HR PVC variant)</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Thermal Endurance</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for continuous submersible motor operations</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Thermal Endurance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for continuous submersible motor operations</td>
                                   </tr>
                                 </tbody>
                               </table>
@@ -6269,20 +6300,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                 </thead>
                                 <tbody>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8783 (Part 1)</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for annealed copper conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8783 (Part 1)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for annealed copper conductor</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8783 (Part 4, Sec 3)</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for polyester & polypropylene taped winding wires</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8783 (Part 4, Sec 3)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for polyester & polypropylene taped winding wires</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8783 (Part 4, Sec 1)</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for HR PVC insulated winding wires</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8783 (Part 4, Sec 1)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for HR PVC insulated winding wires</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard for PVC insulation materials</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Standard for PVC insulation materials</td>
                                   </tr>
                                 </tbody>
                               </table>
@@ -6302,16 +6333,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                 </thead>
                                 <tbody>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Submersible Pumps</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Winding of motor coils for deep well and borewell pumps</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Submersible Pumps</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Winding of motor coils for deep well and borewell pumps</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Electric Motors</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in wet-type or oil-filled submersible motor windings</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Electric Motors</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used in wet-type or oil-filled submersible motor windings</td>
                                   </tr>
                                   <tr className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Applications</td>
-                                    <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for rewinding and repair of submersible motors</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Applications</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for rewinding and repair of submersible motors</td>
                                   </tr>
                                 </tbody>
                               </table>
@@ -6325,7 +6356,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Component</th>
@@ -6334,36 +6365,36 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Twin Twisted Copper Wire</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Twin Twisted Copper Wire</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100% Pure Electrolytic Grade Copper</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">100% Pure Electrolytic Grade Copper</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 2 / 5 as per IS 8130:2013</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Class 2 / 5 as per IS 8130:2013</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC (Flame Retardant)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC (Flame Retardant)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Applicable Insulation Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 5831 Type A / C FR 70°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Applicable Insulation Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 5831 Type A / C FR 70°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Twisting</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Two cores twisted uniformly for flexibility</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Twisting</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Two cores twisted uniformly for flexibility</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colours</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red, Black & other colours on customer demand</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colours</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Red, Black & other colours on customer demand</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">90 m coil packed in protective plastic bag; longer lengths available on request</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">90 m coil packed in protective plastic bag; longer lengths available on request</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6374,7 +6405,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
@@ -6383,16 +6414,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC insulated cables up to and including 1100V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for PVC insulated cables up to and including 1100V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2013</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for conductors for insulated electric cables</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2013</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for conductors for insulated electric cables</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC insulation and sheath materials</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for PVC insulation and sheath materials</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6403,7 +6434,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -6412,28 +6443,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 1100V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 2 / 5 (Flexible)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Class 2 / 5 (Flexible)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Flame retardant PVC with heat resistance up to 70°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Flame retardant PVC with heat resistance up to 70°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Twisting Pitch</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Uniform twisting for flexibility and reduced electromagnetic interference</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Twisting Pitch</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Uniform twisting for flexibility and reduced electromagnetic interference</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant Properties</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High oxygen index for enhanced fire safety</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant Properties</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">High oxygen index for enhanced fire safety</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Environmental Compliance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">REACH and RoHS compliant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Environmental Compliance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">REACH and RoHS compliant</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6444,7 +6475,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -6453,20 +6484,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Domestic Wiring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for low-voltage residential wiring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Domestic Wiring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for low-voltage residential wiring</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Connections</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for control wiring and internal circuits</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Connections</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for control wiring and internal circuits</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Electronic Appliances</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for power supply and interconnections</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Electronic Appliances</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used for power supply and interconnections</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Lighting Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Flexible wiring for lamps and fixtures</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Lighting Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Flexible wiring for lamps and fixtures</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6479,7 +6510,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Component</th>
@@ -6488,36 +6519,36 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Speaker Cable</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Speaker Cable</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100% Pure Electrolytic Grade Copper</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">100% Pure Electrolytic Grade Copper</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 5 as per IS 8130:2013</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Class 5 as per IS 8130:2013</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC (Flame Retardant)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC (Flame Retardant)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Applicable Insulation Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 5831 Type A/C FR 70°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Applicable Insulation Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 5831 Type A/C FR 70°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Transparent sheath with coloured strip for identification; other colours on demand</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Transparent sheath with coloured strip for identification; other colours on demand</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Structure</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Twin parallel / twisted flexible copper conductors</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Structure</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Twin parallel / twisted flexible copper conductors</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">90 m coil packed in protective plastic bag; longer lengths available on request</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">90 m coil packed in protective plastic bag; longer lengths available on request</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6528,7 +6559,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
@@ -6537,16 +6568,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC insulated cables up to and including 1100V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 694:2010</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for PVC insulated cables up to and including 1100V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2013</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for conductors for insulated electric cables</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2013</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for conductors for insulated electric cables</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC insulation and sheath materials</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for PVC insulation and sheath materials</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6557,7 +6588,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -6566,36 +6597,36 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 450/750V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 450/750V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Electrolytic Grade Copper, Class 5</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Electrolytic Grade Copper, Class 5</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type A/C FR 70°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type A/C FR 70°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to 85°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-15°C to 85°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Yes (High Oxygen Index)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Yes (High Oxygen Index)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Electrical Conductivity</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100%</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Electrical Conductivity</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">100%</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flexibility</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Super flexible stranded conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Flexibility</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Super flexible stranded conductor</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High insulation resistance and sound signal integrity</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">High insulation resistance and sound signal integrity</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6606,7 +6637,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -6615,20 +6646,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Audio Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Speaker-to-amplifier connections for high-quality sound transmission</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Audio Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Speaker-to-amplifier connections for high-quality sound transmission</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Home Theatres</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Wiring for residential and commercial audio installations</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Home Theatres</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Wiring for residential and commercial audio installations</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Public Address Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for long-distance and indoor wiring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Public Address Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for long-distance and indoor wiring</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Musical Instruments</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in amplifiers and sound setups for clear audio signals</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Musical Instruments</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used in amplifiers and sound setups for clear audio signals</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6641,7 +6672,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Component</th>
@@ -6650,36 +6681,36 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">CCTV Cable</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">CCTV Cable</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 1 as per IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Class 1 as per IS 8130</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Gas-injected Polyethylene Foam / Solid LDPE</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Gas-injected Polyethylene Foam / Solid LDPE</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Shielding</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium Alloy Braided for signal protection</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Shielding</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Aluminium Alloy Braided for signal protection</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Compound Type ST-1</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Compound Type ST-1</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Grey & other colours on customer demand</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Grey & other colours on customer demand</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100 m coil packed in protective plastic bag; longer lengths available on request</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">100 m coil packed in protective plastic bag; longer lengths available on request</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6690,7 +6721,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
@@ -6699,16 +6730,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard for conductors for insulated cables</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Standard for conductors for insulated cables</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC sheath materials</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for PVC sheath materials</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC / ASTM</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">International guidelines for coaxial and CCTV cable performance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IEC / ASTM</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">International guidelines for coaxial and CCTV cable performance</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6719,7 +6750,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -6728,36 +6759,36 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 600/1000 V AC, 1800 V DC</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 600/1000 V AC, 1800 V DC</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper, Class 1</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper, Class 1</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Gas-injected PE Foam / Solid LDPE</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Gas-injected PE Foam / Solid LDPE</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Shielding</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium Alloy Braiding</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Shielding</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Aluminium Alloy Braiding</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Compound ST-1</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Compound ST-1</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Capacitance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Low for high-definition signal clarity</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Capacitance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Low for high-definition signal clarity</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Minimum signal loss over long distances</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Minimum signal loss over long distances</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Yes (on special request)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Yes (on special request)</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6768,7 +6799,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -6777,20 +6808,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">CCTV Surveillance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Transmission of high-definition video signals</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">CCTV Surveillance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Transmission of high-definition video signals</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Security Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for indoor and outdoor camera wiring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Security Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for indoor and outdoor camera wiring</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Video Monitoring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in commercial, industrial & residential setups</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Video Monitoring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used in commercial, industrial & residential setups</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Data Transmission</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for low-loss video and control signals</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Data Transmission</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for low-loss video and control signals</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6803,7 +6834,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -6812,40 +6843,40 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Unshielded Twisted Pair (UTP)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Unshielded Twisted Pair (UTP)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Category</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cat5e / Cat6 (as per requirement)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Category</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Cat5e / Cat6 (as per requirement)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Annealed Solid Bare Copper</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Annealed Solid Bare Copper</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Diameter</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">0.5 mm ± 0.005 mm</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Diameter</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">0.5 mm ± 0.005 mm</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">No. of Pairs</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">4 twisted pairs</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">No. of Pairs</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">4 twisted pairs</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High Quality Polyethylene Compound</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">High Quality Polyethylene Compound</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Jacket / Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Flame Retardant PVC</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Jacket / Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Flame Retardant PVC</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rip Cord</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Provided for easy stripping</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Rip Cord</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Provided for easy stripping</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Separator</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cross separator in Cat6 version for improved crosstalk performance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Separator</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Cross separator in Cat6 version for improved crosstalk performance</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6856,7 +6887,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Reference Standard</th>
@@ -6865,20 +6896,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">ISO/IEC 11801</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Generic cabling for customer premises</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">ISO/IEC 11801</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Generic cabling for customer premises</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">TIA/EIA-568-C.2</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">UTP Cable Standard for data communication</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">TIA/EIA-568-C.2</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">UTP Cable Standard for data communication</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UL 444</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Safety Standard for Communications Cables</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">UL 444</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Safety Standard for Communications Cables</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environmental compliance for non-toxic materials</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Environmental compliance for non-toxic materials</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6889,7 +6920,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -6898,44 +6929,44 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">72 Volt</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">72 Volt</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Impedance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100 ± 15 Ohms</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Impedance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">100 ± 15 Ohms</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Frequency Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to 250 MHz (Cat6)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Frequency Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to 250 MHz (Cat6)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Capacitance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≤ 5.6 nF/100m</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Capacitance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">≤ 5.6 nF/100m</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≤ 22 dB/100m @100 MHz</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">≤ 22 dB/100m @100 MHz</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Near End Crosstalk (NEXT)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 35 dB/100m @100 MHz</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Near End Crosstalk (NEXT)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">≥ 35 dB/100m @100 MHz</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Return Loss</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 20 dB @100 MHz</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Return Loss</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">≥ 20 dB @100 MHz</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-20°C to +75°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-20°C to +75°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">8 × cable outer diameter</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">8 × cable outer diameter</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colours</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">White, Blue, Orange, Green, Brown</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colours</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">White, Blue, Orange, Green, Brown</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6946,7 +6977,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -6955,28 +6986,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">LAN & Networking</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for computer networking and structured cabling systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">LAN & Networking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for computer networking and structured cabling systems</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Internet Connectivity</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For routers, modems, and switches</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Internet Connectivity</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For routers, modems, and switches</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">CCTV & IP Camera Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Stable data and video signal transmission</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">CCTV & IP Camera Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Stable data and video signal transmission</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Office & Industrial Automation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Reliable for PLC and monitoring systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Office & Industrial Automation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Reliable for PLC and monitoring systems</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Data Centers</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for patch cords and rack interconnections</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Data Centers</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used for patch cords and rack interconnections</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Buildings</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For internal network wiring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Buildings</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For internal network wiring</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -6987,7 +7018,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">5. Packing & Marking</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -6996,12 +7027,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cables printed with 'ANOCAB'</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Cables printed with 'ANOCAB'</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100 mtr & 305 mtr coil packed in protective plastic bag</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">100 mtr & 305 mtr coil packed in protective plastic bag</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7014,7 +7045,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -7023,48 +7054,48 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Low Voltage Flexible Automotive Cable</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Low Voltage Flexible Automotive Cable</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">DIN 72551 Pt-6 FLRY-B</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">DIN 72551 Pt-6 FLRY-B</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Tinned / Bare Copper</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Tinned / Bare Copper</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class-B as per DIN 13602</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Class-B as per DIN 13602</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Construction</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Fine stranded, flexible construction</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Construction</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Fine stranded, flexible construction</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Plasticized PVC (Lead-free)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Plasticized PVC (Lead-free)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Properties</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Resistant to heat, oil, acids, fuel & abrasion</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Properties</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Resistant to heat, oil, acids, fuel & abrasion</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per customer specification or automotive code</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per customer specification or automotive code</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-40°C to +105°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-40°C to +105°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outer Diameter</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Varies by cross-section (0.35 mm² to 6 mm² typical)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Outer Diameter</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Varies by cross-section (0.35 mm² to 6 mm² typical)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath (Optional)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC or TPE sheath for added mechanical protection</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath (Optional)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC or TPE sheath for added mechanical protection</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7075,7 +7106,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
@@ -7084,20 +7115,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">DIN 72551 Pt-6 FLRY-B</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Automotive low-voltage cable standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">DIN 72551 Pt-6 FLRY-B</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Automotive low-voltage cable standard</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">DIN 13602</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard for copper wire classification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">DIN 13602</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Standard for copper wire classification</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">ISO 6722</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Road vehicle cable performance and materials</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">ISO 6722</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Road vehicle cable performance and materials</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environmental safety and compliance standards</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Environmental safety and compliance standards</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7108,7 +7139,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -7117,44 +7148,44 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">60V DC nominal (12V & 24V systems)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">60V DC nominal (12V & 24V systems)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3000 Volts</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">3000 Volts</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per DIN 72551 requirements</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per DIN 72551 requirements</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 10 MΩ·km at 20°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">≥ 10 MΩ·km at 20°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-40°C to +105°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-40°C to +105°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Test</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Self-extinguishing (Flame Retardant PVC)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Flame Test</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Self-extinguishing (Flame Retardant PVC)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Chemical Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Highly resistant to acids, petrol, diesel, grease, and engine oils</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Chemical Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Highly resistant to acids, petrol, diesel, grease, and engine oils</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Bending Radius</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 10 × cable diameter</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Bending Radius</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">≥ 10 × cable diameter</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Thermal Stability</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to 105°C continuous operation, 120°C short term</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Thermal Stability</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to 105°C continuous operation, 120°C short term</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flexibility</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for continuous vibration and flexing conditions</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Flexibility</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for continuous vibration and flexing conditions</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7165,7 +7196,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Usage Area</th>
@@ -7174,28 +7205,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Automotive Wiring Harness</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in cars, trucks, buses, and two-wheelers</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Automotive Wiring Harness</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used in cars, trucks, buses, and two-wheelers</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Engine Compartment Wiring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Performs reliably under high heat and vibration</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Engine Compartment Wiring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Performs reliably under high heat and vibration</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Battery & Lighting Circuits</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for 12V / 24V DC electrical systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Battery & Lighting Circuits</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for 12V / 24V DC electrical systems</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels & Instrumentation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for dashboards and control units</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels & Instrumentation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for dashboards and control units</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Vehicles</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Forklifts, tractors, and heavy machinery</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Vehicles</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Forklifts, tractors, and heavy machinery</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marine & Off-road Vehicles</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Resistant to oil and fuel, suitable for harsh conditions</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Marine & Off-road Vehicles</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Resistant to oil and fuel, suitable for harsh conditions</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7208,7 +7239,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -7217,52 +7248,52 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Single Core / Twin Core PV Solar Cable</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Single Core / Twin Core PV Solar Cable</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">TÜV: EN 50618 (H1Z2Z2-K)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">TÜV: EN 50618 (H1Z2Z2-K)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Tinned Copper</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Tinned Copper</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 5 – Flexible as per IEC 60228</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Class 5 – Flexible as per IEC 60228</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Construction</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Fine stranded for high flexibility</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Construction</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Fine stranded for high flexibility</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cross-linked, Halogen Free, Flame Retardant (XLPO) compound</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Cross-linked, Halogen Free, Flame Retardant (XLPO) compound</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">UV, Ozone, and Weather Resistant XLPO compound</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">UV, Ozone, and Weather Resistant XLPO compound</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour Options</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red, Black (other colours on request)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour Options</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Red, Black (other colours on request)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-40°C to +90°C (continuous); up to 120°C short-term</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-40°C to +90°C (continuous); up to 120°C short-term</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Bending Radius</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 5 × cable diameter</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Bending Radius</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">≥ 5 × cable diameter</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100 mtr coil; longer lengths on demand</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">100 mtr coil; longer lengths on demand</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">'ANOCAB' printed on sheath for traceability</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">'ANOCAB' printed on sheath for traceability</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7273,7 +7304,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
@@ -7282,28 +7313,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">EN 50618</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard for PV power cables (H1Z2Z2-K)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">EN 50618</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Standard for PV power cables (H1Z2Z2-K)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60228</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Conductors for electrical cables – Class 5 flexible conductors</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60228</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Conductors for electrical cables – Class 5 flexible conductors</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environmental and hazardous substance compliance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Environmental and hazardous substance compliance</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60332-1</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Flame Retardant Test</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60332-1</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Flame Retardant Test</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60811</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Mechanical & Thermal Test for Cables</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60811</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Mechanical & Thermal Test for Cables</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">TÜV Rheinland Certified</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ensures high performance & safety reliability</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">TÜV Rheinland Certified</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ensures high performance & safety reliability</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7314,7 +7345,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -7323,52 +7354,52 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">600/1000 V AC, 1800 V DC</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">600/1000 V AC, 1800 V DC</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">6500 V (A.C. 50 Hz, 5 min)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">6500 V (A.C. 50 Hz, 5 min)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IEC 60228 Class 5</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per IEC 60228 Class 5</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 1000 MΩ·km at 20°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">≥ 1000 MΩ·km at 20°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-40°C to +90°C (continuous)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-40°C to +90°C (continuous)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Short Circuit Temperature</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to 250°C (5 sec max)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Short Circuit Temperature</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to 250°C (5 sec max)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UV & Ozone Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent, suitable for outdoor use</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">UV & Ozone Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Excellent, suitable for outdoor use</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Weather Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High resistance to sunlight, humidity & aging</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Weather Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">High resistance to sunlight, humidity & aging</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Smoke Emission</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Low smoke, halogen-free</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Smoke Emission</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Low smoke, halogen-free</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardancy</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IEC 60332-1 compliant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardancy</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IEC 60332-1 compliant</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Oil & Grease Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Oil & Grease Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Excellent</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">5 × overall diameter</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">5 × overall diameter</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7379,7 +7410,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Usage Area</th>
@@ -7388,28 +7419,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Photovoltaic Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for interconnection of solar panels and inverters</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Photovoltaic Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used for interconnection of solar panels and inverters</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">DC Power Transmission</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for DC side of solar systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">DC Power Transmission</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for DC side of solar systems</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rooftop Installations</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">UV & weather resistant, perfect for open-air environments</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Rooftop Installations</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">UV & weather resistant, perfect for open-air environments</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Solar Farms</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Long life and consistent performance under harsh conditions</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Solar Farms</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Long life and consistent performance under harsh conditions</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Battery & Energy Storage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for DC connection between PV modules and batteries</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Battery & Energy Storage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for DC connection between PV modules and batteries</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Commercial & Industrial Solar Projects</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ensures minimal power loss and long service life</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Commercial & Industrial Solar Projects</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ensures minimal power loss and long service life</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7422,7 +7453,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -7431,52 +7462,52 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Co-Axial Cable</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Co-Axial Cable</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 14459</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 14459</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Electrolytic Grade Annealed Copper</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 1 – Solid Conductor as per IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Class 1 – Solid Conductor as per IS 8130</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric / Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Gas Injected Polyethylene Foam / Solid LDPE</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric / Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Gas Injected Polyethylene Foam / Solid LDPE</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Shield / Braid</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aluminium Alloy Braided Shielding</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Shield / Braid</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Aluminium Alloy Braided Shielding</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Compound Type ST-1 as per IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Compound Type ST-1 as per IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour Options</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black (other colours on demand)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour Options</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Black (other colours on demand)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Impedance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">50 Ω / 75 Ω (depending on type)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Impedance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">50 Ω / 75 Ω (depending on type)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-20°C to +85°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-20°C to +85°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100 mtr coil packed in protective plastic bag; longer lengths available</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">100 mtr coil packed in protective plastic bag; longer lengths available</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">'ANOCAB' printed on sheath for brand traceability</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">'ANOCAB' printed on sheath for brand traceability</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7487,7 +7518,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
@@ -7496,28 +7527,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 14459</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for Co-Axial Cables for Communication</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 14459</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for Co-Axial Cables for Communication</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Conductors for Insulated Cables and Flexible Cords</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Conductors for Insulated Cables and Flexible Cords</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Insulation and Sheath Materials</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Insulation and Sheath Materials</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Restriction of Hazardous Substances / Environmental Compliance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Restriction of Hazardous Substances / Environmental Compliance</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60332-1</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Flame Retardant Test</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60332-1</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Flame Retardant Test</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60811</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Mechanical and Thermal Test for Cables</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60811</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Mechanical and Thermal Test for Cables</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7528,7 +7559,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -7537,48 +7568,48 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 600/1000 V AC, 1800 V DC</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 600/1000 V AC, 1800 V DC</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Characteristic Impedance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">50 / 75 Ohm</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Characteristic Impedance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">50 / 75 Ohm</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Low signal loss, suitable for long-distance transmission</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Low signal loss, suitable for long-distance transmission</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Capacitance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">67 ± 3 pF/m (typical)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Capacitance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">67 ± 3 pF/m (typical)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3000 V AC (for 1 min)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">3000 V AC (for 1 min)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 8130 standards</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per IS 8130 standards</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 5000 MΩ·km at 20°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">≥ 5000 MΩ·km at 20°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Shield Coverage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Minimum 85%</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Shield Coverage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Minimum 85%</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-20°C to +85°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-20°C to +85°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardancy</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IEC 60332-1 compliant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardancy</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IEC 60332-1 compliant</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UV & Weather Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent, suitable for outdoor use</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">UV & Weather Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Excellent, suitable for outdoor use</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7589,7 +7620,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Usage Area</th>
@@ -7598,28 +7629,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">CCTV Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for surveillance and camera connections</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">CCTV Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for surveillance and camera connections</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Television & Broadcasting</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for signal transmission in cable TV and DTH networks</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Television & Broadcasting</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used for signal transmission in cable TV and DTH networks</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Communication Equipment</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for RF and data transmission systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Communication Equipment</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for RF and data transmission systems</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Antenna Connections</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in connecting radio antennas and transmitters</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Antenna Connections</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used in connecting radio antennas and transmitters</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor Installations</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Weather and UV resistant for reliable performance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor Installations</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Weather and UV resistant for reliable performance</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Audio-Video Transmission</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ensures minimal distortion and high-quality signal output</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Audio-Video Transmission</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ensures minimal distortion and high-quality signal output</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7632,7 +7663,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -7641,56 +7672,56 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Uni-tube Unarmoured Optical Fibre Cable</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Uni-tube Unarmoured Optical Fibre Cable</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standards</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IEC 60794 Series, ANSI/ICEA S-87-640, ITU-T Rec. G.652D</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standards</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IEC 60794 Series, ANSI/ICEA S-87-640, ITU-T Rec. G.652D</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Fibre Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Single Mode / Multi Mode Optical Fibre</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Fibre Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Single Mode / Multi Mode Optical Fibre</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Tube Construction</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Loose Uni-tube filled with thixotropic jelly for water blocking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Tube Construction</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Loose Uni-tube filled with thixotropic jelly for water blocking</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Strength Members</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Aramid Yarn (Kevlar) for tensile strength</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Strength Members</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Aramid Yarn (Kevlar) for tensile strength</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outer Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">UV-stabilized HDPE sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Outer Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">UV-stabilized HDPE sheath</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Water Protection</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Longitudinal water blocking with gel-filled tube</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Water Protection</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Longitudinal water blocking with gel-filled tube</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Fully dielectric — non-metallic design</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Fully dielectric — non-metallic design</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Fibre Count</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2F to 24F (custom configurations available)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Fibre Count</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">2F to 24F (custom configurations available)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Fibres</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Blue, Orange, Green, Brown, Grey, White, Red, Black, Yellow, Violet, Pink, Aqua</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Fibres</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Blue, Orange, Green, Brown, Grey, White, Red, Black, Yellow, Violet, Pink, Aqua</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">20 × Outer Diameter</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">20 × Outer Diameter</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2000 m coil packed in protective plastic bag</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">2000 m coil packed in protective plastic bag</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cables printed with 'ANOCAB' marking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Cables printed with 'ANOCAB' marking</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7701,7 +7732,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
@@ -7710,24 +7741,24 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60794 Series</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Optical Fibre Cable Construction and Test Methods</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60794 Series</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Optical Fibre Cable Construction and Test Methods</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">ANSI/ICEA S-87-640</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard for Optical Fibre Outside Plant Cables</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">ANSI/ICEA S-87-640</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Standard for Optical Fibre Outside Plant Cables</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">ITU-T G.652D</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard for Single Mode Optical Fibre Specifications</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">ITU-T G.652D</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Standard for Single Mode Optical Fibre Specifications</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">ISO/IEC 11801</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Generic Cabling for Customer Premises</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">ISO/IEC 11801</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Generic Cabling for Customer Premises</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environmental Compliance for Materials</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Environmental Compliance for Materials</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7738,7 +7769,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -7747,56 +7778,56 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Tensile Strength</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">500 N</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Tensile Strength</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">500 N</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Bending Radius</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">20 × Cable Diameter</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Bending Radius</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">20 × Cable Diameter</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Crush Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1000 N / 100 mm</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Crush Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">1000 N / 100 mm</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Impact Strength</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">50 N × 0.5 m</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Impact Strength</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">50 N × 0.5 m</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-40°C to +70°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-40°C to +70°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation (1310 nm)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≤ 0.36 dB/km</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation (1310 nm)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">≤ 0.36 dB/km</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation (1550 nm)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≤ 0.22 dB/km</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Attenuation (1550 nm)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">≤ 0.22 dB/km</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Water Blocking</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Longitudinal (gel-filled)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Water Blocking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Longitudinal (gel-filled)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UV Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High-grade UV-stabilized sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">UV Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">High-grade UV-stabilized sheath</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Totally non-metallic design</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Totally non-metallic design</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Fibre Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">ITU-T G.652D compliant single-mode fibre</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Fibre Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">ITU-T G.652D compliant single-mode fibre</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Jacket Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">HDPE (High-Density Polyethylene)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Jacket Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">HDPE (High-Density Polyethylene)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Cable Weight</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Approx. 20–35 kg/km (depending on fibre count)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Cable Weight</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Approx. 20–35 kg/km (depending on fibre count)</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7807,7 +7838,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Usage Area</th>
@@ -7816,32 +7847,32 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Telecommunication Networks</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Long-distance and local area data transmission</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Telecommunication Networks</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Long-distance and local area data transmission</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">FTTH / FTTx Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for high-speed internet and broadband networks</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">FTTH / FTTx Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for high-speed internet and broadband networks</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Data Centres</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Reliable backbone interconnections</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Data Centres</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Reliable backbone interconnections</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Communication</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For process automation and monitoring systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Communication</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For process automation and monitoring systems</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor Installations</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for duct, trench, or direct aerial installation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor Installations</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for duct, trench, or direct aerial installation</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">CCTV and Security Networks</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For long-distance high-bandwidth data transmission</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">CCTV and Security Networks</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For long-distance high-bandwidth data transmission</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Railway & Metro Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Communication and signaling applications</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Railway & Metro Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Communication and signaling applications</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7854,7 +7885,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -7863,56 +7894,56 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Armoured / Unarmoured PVC Insulated Copper Control Cable</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Armoured / Unarmoured PVC Insulated Copper Control Cable</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standards</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 1554 (Part-1)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standards</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 1554 (Part-1)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">CC Grade Copper, Class 1 & 2 as per IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">CC Grade Copper, Class 1 & 2 as per IS 8130</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type A / C as per IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type A / C as per IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armour</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Steel Round Wire / Strip (for armoured version)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Armour</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Galvanized Steel Round Wire / Strip (for armoured version)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Inner Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Extruded PVC or Tape Applied as per IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Inner Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Extruded PVC or Tape Applied as per IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outer Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Outer Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Identification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red & Black (2 Core); Red, Yellow, Blue (3 Core); Red, Yellow, Blue & Black (4 Core)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Core Identification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Red & Black (2 Core); Red, Yellow, Blue (3 Core); Red, Yellow, Blue & Black (4 Core)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2 to 24 Cores</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Core Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">2 to 24 Cores</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Sizes</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1.5 sq.mm & 2.5 sq.mm</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Sizes</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">1.5 sq.mm & 2.5 sq.mm</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black or as per customer requirement</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Black or as per customer requirement</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard 500 mtr coil; other lengths on request</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Standard 500 mtr coil; other lengths on request</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cables printed with 'ANOCAB' marking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Cables printed with 'ANOCAB' marking</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7923,7 +7954,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard</th>
@@ -7932,24 +7963,24 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 1554 (Part-1)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Insulated (Heavy Duty) Electric Cables</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 1554 (Part-1)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Insulated (Heavy Duty) Electric Cables</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Conductors for Insulated Electric Cables and Flexible Cords</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Conductors for Insulated Electric Cables and Flexible Cords</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Insulation and Sheathing Compounds</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Insulation and Sheathing Compounds</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 10810-53</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Flammability Test for Cables</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 10810-53</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Flammability Test for Cables</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environmental Compliance for Materials</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">RoHS / REACH</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Environmental Compliance for Materials</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -7960,7 +7991,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -7969,48 +8000,48 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 1100 V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">101% Pure Copper (CC Grade)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">101% Pure Copper (CC Grade)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">≥ 36.7 MΩ·km at 70°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">≥ 36.7 MΩ·km at 70°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flammability</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 10810-53</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Flammability</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per IS 10810-53</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +90°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-15°C to +90°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.0 kV AC</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">3.0 kV AC</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armour Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Steel (optional)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Armour Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Galvanized Steel (optional)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Bending Radius</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">12 × Overall Diameter</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Bending Radius</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">12 × Overall Diameter</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">UV, Oil & Ozone Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">UV, Oil & Ozone Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">High</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Configuration</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to 24 cores</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Core Configuration</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to 24 cores</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Class 1 (Solid) / Class 2 (Stranded)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Class</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Class 1 (Solid) / Class 2 (Stranded)</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8021,7 +8052,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Usage Area</th>
@@ -8030,32 +8061,32 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For internal and external wiring in control panels</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For internal and external wiring in control panels</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Power Plants</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Control and signal transmission in electrical systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Power Plants</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Control and signal transmission in electrical systems</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industries</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Automation, process control, and manufacturing units</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Industries</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Automation, process control, and manufacturing units</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor Installations</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Armoured type suitable for direct burial and mechanical protection</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor Installations</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Armoured type suitable for direct burial and mechanical protection</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Buildings & Commercial Complexes</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in control circuits and power distribution</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Buildings & Commercial Complexes</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used in control circuits and power distribution</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Substations</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Reliable for signal and control connections</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Substations</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Reliable for signal and control connections</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Machinery & Equipment</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">For flexible and durable control connectivity</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Machinery & Equipment</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">For flexible and durable control connectivity</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8068,7 +8099,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
@@ -8078,39 +8109,39 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium / Copper – Class 1 & 2 as per IS 8130</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High conductivity and flexibility for reliable electrical performance.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">EC Grade Aluminium / Copper – Class 1 & 2 as per IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">High conductivity and flexibility for reliable electrical performance.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type-A (as per IS 5831)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Special grade PVC insulation providing electrical and mechanical protection.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type-A (as per IS 5831)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Special grade PVC insulation providing electrical and mechanical protection.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Iron (GI) Wires or Strips (for Armoured Type)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Provides mechanical strength and protection against impact or rodents.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Galvanized Iron (GI) Wires or Strips (for Armoured Type)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Provides mechanical strength and protection against impact or rodents.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Core Colour Identification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red & Black (2-core), Red-Yellow-Blue (3-core), Red-Yellow-Blue-Black (4-core)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Standard colour coding for phase identification.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Core Colour Identification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Red & Black (2-core), Red-Yellow-Blue (3-core), Red-Yellow-Blue-Black (4-core)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Standard colour coding for phase identification.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 (as per IS 5831)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Outer sheath provides resistance to oil, grease, UV, ozone, and moisture.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 (as per IS 5831)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Outer sheath provides resistance to oil, grease, UV, ozone, and moisture.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Colour</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black (other colours available on request)</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">UV stabilized for long-term outdoor use.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Colour</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Black (other colours available on request)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">UV stabilized for long-term outdoor use.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Construction Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Single Core – Armoured / Unarmoured</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Available in both configurations depending on application needs.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Construction Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Single Core – Armoured / Unarmoured</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Available in both configurations depending on application needs.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8121,7 +8152,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
@@ -8130,28 +8161,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 1554 (Part 1):1988</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC Insulated (Heavy Duty) Electric Cables for working voltages up to and including 1100 V.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 1554 (Part 1):1988</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for PVC Insulated (Heavy Duty) Electric Cables for working voltages up to and including 1100 V.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2023</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Conductors for insulated electric cables and flexible cords.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 8130:2023</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Conductors for insulated electric cables and flexible cords.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831:1984</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for PVC insulation and sheath compounds.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 5831:1984</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for PVC insulation and sheath compounds.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 3975:1999</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for Armouring of Cables (GI Wire/Strip).</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 3975:1999</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for Armouring of Cables (GI Wire/Strip).</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60502-1</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Power cables with extruded insulation and rated voltage up to 1 kV.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60502-1</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Power cables with extruded insulation and rated voltage up to 1 kV.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Lead-free, non-toxic, and environmentally safe materials.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Lead-free, non-toxic, and environmentally safe materials.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8162,7 +8193,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -8171,44 +8202,44 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Rated Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 1100 V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium or Copper</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">EC Grade Aluminium or Copper</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type-A</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type-A</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +70°C (continuous operation)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-15°C to +70°C (continuous operation)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{'>'} 1 MΩ/km at 27°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{'>'} 1 MΩ/km at 27°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armouring Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Iron Wire or Strip (if applicable)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Armouring Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Galvanized Iron Wire or Strip (if applicable)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Weather Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent – resistant to UV, O₃, oil, grease, and adverse weather</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Weather Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Excellent – resistant to UV, O₃, oil, grease, and adverse weather</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">12 × overall cable diameter (approx.)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Minimum Bending Radius</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">12 × overall cable diameter (approx.)</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8219,7 +8250,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -8228,20 +8259,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Power Distribution</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in electrical distribution networks, switchboards, and feeders.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Power Distribution</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used in electrical distribution networks, switchboards, and feeders.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Wiring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for heavy-duty and outdoor installations.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Industrial Wiring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for heavy-duty and outdoor installations.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Buildings</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for internal power circuits and service connections.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Residential & Commercial Buildings</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for internal power circuits and service connections.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Underground / Surface Installation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Armoured type provides additional mechanical protection in harsh conditions.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Underground / Surface Installation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Armoured type provides additional mechanical protection in harsh conditions.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8252,7 +8283,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">5. Packing & Marking</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -8261,12 +8292,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Standard Packing</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">500-meter coil (custom lengths available on request).</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Standard Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">500-meter coil (custom lengths available on request).</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Each cable is printed with <strong>'ANOCAB'</strong> and full specification details for identification and traceability.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Each cable is printed with <strong>'ANOCAB'</strong> and full specification details for identification and traceability.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8279,7 +8310,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
@@ -8289,24 +8320,24 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Round Aluminium Conductor</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Manufactured from high-purity EC Grade Aluminium as per IS 4026:1969.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Round Aluminium Conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Manufactured from high-purity EC Grade Aluminium as per IS 4026:1969.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Double Layer Paper Covering</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Insulated with high-quality kraft or crepe paper of <strong>O, F, or S grade</strong>, selected as per customer requirement.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Double Layer Paper Covering</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Insulated with high-quality kraft or crepe paper of <strong>O, F, or S grade</strong>, selected as per customer requirement.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Finish</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Smooth, Bright, Oxidation-Resistant</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ensures uniform insulation application and long operational life.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Finish</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Smooth, Bright, Oxidation-Resistant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ensures uniform insulation application and long operational life.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Application</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Helically applied overlapping paper tapes</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Provides consistent thickness, flexibility, and excellent dielectric strength.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Application</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Helically applied overlapping paper tapes</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Provides consistent thickness, flexibility, and excellent dielectric strength.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8317,7 +8348,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Code</th>
@@ -8326,20 +8357,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 6162 (Part 1):1971</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for Paper Covered Aluminium Conductors for Electrical Machines.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 6162 (Part 1):1971</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for Paper Covered Aluminium Conductors for Electrical Machines.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IS 4026:1969</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Specification for Aluminium Conductors for Coils of Electrical Machines.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IS 4026:1969</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Specification for Aluminium Conductors for Coils of Electrical Machines.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60317-27</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">International standard for paper-insulated conductors (optional compliance).</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">IEC 60317-27</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">International standard for paper-insulated conductors (optional compliance).</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Environment-friendly and free from hazardous substances.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">RoHS Compliance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Environment-friendly and free from hazardous substances.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8350,7 +8381,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -8359,36 +8390,36 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100% Pure EC Grade Aluminium</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Material</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">100% Pure EC Grade Aluminium</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Resistivity</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Max. 0.028264 ohm·mm²/m at 20°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Resistivity</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Max. 0.028264 ohm·mm²/m at 20°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Test</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Tested at 5.5 kV to 10 kV depending on conductor size and insulation grade</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Test</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Tested at 5.5 kV to 10 kV depending on conductor size and insulation grade</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to 90°C (continuous)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Operating Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to 90°C (continuous)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Paper Grades Available</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">O (Ordinary), F (Fine), S (Superfine)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Paper Grades Available</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">O (Ordinary), F (Fine), S (Superfine)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Thickness</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per customer specification and voltage class</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Thickness</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per customer specification and voltage class</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Excellent – suitable for transformer and winding use</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Dielectric Strength</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Excellent – suitable for transformer and winding use</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Moisture Content</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Controlled to ensure long-term stability and performance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Moisture Content</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Controlled to ensure long-term stability and performance</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8399,7 +8430,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -8408,20 +8439,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Transformers</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used as winding conductors in oil-filled and dry-type transformers.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Transformers</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used as winding conductors in oil-filled and dry-type transformers.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Motors & Generators</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for high-efficiency electrical machine windings.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Motors & Generators</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for high-efficiency electrical machine windings.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Coil Windings</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for electromagnetic coils and other electrical equipment.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Coil Windings</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for electromagnetic coils and other electrical equipment.</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Switchgear & Control Equipment</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in components requiring reliable dielectric insulation.</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Switchgear & Control Equipment</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used in components requiring reliable dielectric insulation.</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8434,7 +8465,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
@@ -8443,28 +8474,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium / Copper, Class 1 & 2 as per IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">EC Grade Aluminium / Copper, Class 1 & 2 as per IS 8130</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">XLPE Insulation as per IS 7098 (Part-1)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">XLPE Insulation as per IS 7098 (Part-1)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Iron Wire / Strip (for Armoured Type)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Galvanized Iron Wire / Strip (for Armoured Type)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red, Yellow, Blue & Black</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Red, Yellow, Blue & Black</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black or as per customer requirement</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Black or as per customer requirement</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8475,7 +8506,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -8484,20 +8515,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 7098 (Part-1)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 7098 (Part-1)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 8130</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 Volts</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 1100 Volts</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8508,7 +8539,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -8517,24 +8548,24 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1100 V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">1100 V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-30°C to +90°C</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-30°C to +90°C</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 7098 (Part-1)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per IS 7098 (Part-1)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Armoured / Unarmoured</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Armoured / Unarmoured</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8545,7 +8576,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -8554,16 +8585,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Power Transmission & Distribution</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for power transmission and distribution in industrial, residential, and commercial networks</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Power Transmission & Distribution</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for power transmission and distribution in industrial, residential, and commercial networks</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor & Direct Burial</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for outdoor installations and direct burial (armoured type)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor & Direct Burial</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for outdoor installations and direct burial (armoured type)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels & Switchboards</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used in control panels, switchboards, and electrical connections requiring safety and durability</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels & Switchboards</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used in control panels, switchboards, and electrical connections requiring safety and durability</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8576,7 +8607,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
@@ -8585,28 +8616,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium, Class 1 & 2 as per IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">EC Grade Aluminium, Class 1 & 2 as per IS 8130</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type-A as per IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type-A as per IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Iron Wire / Strip (for mechanical protection)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Galvanized Iron Wire / Strip (for mechanical protection)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red & Black for 2 Core; Red, Yellow, Blue for 3 Core; Red, Yellow, Blue & Black for 4 Core</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Red & Black for 2 Core; Red, Yellow, Blue for 3 Core; Red, Yellow, Blue & Black for 4 Core</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black or other colours as per requirement</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Black or other colours as per requirement</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8617,7 +8648,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -8626,20 +8657,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 1554 (Part-1)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 1554 (Part-1)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 8130</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 Volts</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 1100 Volts</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8650,7 +8681,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -8659,24 +8690,24 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1100 V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">1100 V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +70°C (continuous operation)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-15°C to +70°C (continuous operation)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 1554 (Part-1)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per IS 1554 (Part-1)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Armoured</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Armoured</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8687,7 +8718,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -8696,16 +8727,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Power Transmission & Distribution</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for power transmission and distribution in industrial and commercial networks</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Power Transmission & Distribution</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used for power transmission and distribution in industrial and commercial networks</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor & Underground Installation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for outdoor installations and underground cabling (armoured type)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor & Underground Installation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for outdoor installations and underground cabling (armoured type)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Fixed Wiring Applications</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for fixed wiring in panels, switchboards, and machinery</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Fixed Wiring Applications</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for fixed wiring in panels, switchboards, and machinery</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8718,7 +8749,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
@@ -8727,28 +8758,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium, Class 1 & 2 as per IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">EC Grade Aluminium, Class 1 & 2 as per IS 8130</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">XLPE Insulation as per IS 7098 (Part-1)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">XLPE Insulation as per IS 7098 (Part-1)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Galvanized Iron Wire / Strip (for mechanical protection)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Galvanized Iron Wire / Strip (for mechanical protection)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red & Black for 2 Core; Red, Yellow, Blue for 3 Core; Red, Yellow, Blue & Black for 4 Core</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Red & Black for 2 Core; Red, Yellow, Blue for 3 Core; Red, Yellow, Blue & Black for 4 Core</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black or other colours as per requirement</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Black or other colours as per requirement</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8759,7 +8790,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -8768,20 +8799,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 7098 (Part-1)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 7098 (Part-1)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 8130</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 Volts</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 1100 Volts</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8792,7 +8823,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -8801,24 +8832,24 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1100 V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">1100 V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-30°C to +90°C (continuous operation)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-30°C to +90°C (continuous operation)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 7098 (Part-1)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per IS 7098 (Part-1)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Armoured</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Armoured</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8829,7 +8860,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -8838,16 +8869,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Power Transmission & Distribution</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Designed for power transmission and distribution in industrial, commercial, and residential networks</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Power Transmission & Distribution</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Designed for power transmission and distribution in industrial, commercial, and residential networks</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor & Direct Burial</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for outdoor installations and direct burial (armoured type)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Outdoor & Direct Burial</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for outdoor installations and direct burial (armoured type)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Fixed Wiring & Control Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for fixed wiring, control panels, and electrical switchgear systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Fixed Wiring & Control Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for fixed wiring, control panels, and electrical switchgear systems</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8860,7 +8891,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Part</th>
@@ -8869,28 +8900,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">EC Grade Aluminium, Class 1 & 2 as per IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">EC Grade Aluminium, Class 1 & 2 as per IS 8130</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type-A as per IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type-A as per IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Not Applicable (Unarmoured Type)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Armouring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Not Applicable (Unarmoured Type)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">PVC Type ST-1 / ST-2 as per IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Red & Black for 2 Core; Red, Yellow, Blue for 3 Core; Red, Yellow, Blue & Black for 4 Core</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Core</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Red & Black for 2 Core; Red, Yellow, Blue for 3 Core; Red, Yellow, Blue & Black for 4 Core</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Black or other colours as per requirement</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour of Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Black or other colours as per requirement</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8901,7 +8932,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Parameter</th>
@@ -8910,20 +8941,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 1554 (Part-1)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Reference Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 1554 (Part-1)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 8130</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Specification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 8130</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS 5831</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">PVC Compound Specification</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS 5831</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Up to and including 1100 Volts</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Grade</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Up to and including 1100 Volts</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8934,7 +8965,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -8943,24 +8974,24 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">1100 V</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Voltage Rating</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">1100 V</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-15°C to +70°C (continuous operation)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Temperature Range</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-15°C to +70°C (continuous operation)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">3.5 kV for 5 minutes</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">As per IS 1554 (Part-1)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Resistance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">As per IS 1554 (Part-1)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Unarmoured</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Unarmoured</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -8971,7 +9002,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Use Area</th>
@@ -8980,16 +9011,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Power Distribution & Fixed Wiring</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Designed for power distribution and fixed wiring in electrical installations</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Power Distribution & Fixed Wiring</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Designed for power distribution and fixed wiring in electrical installations</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Indoor & Outdoor Use</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for indoor and outdoor use where mechanical protection is not required</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Indoor & Outdoor Use</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for indoor and outdoor use where mechanical protection is not required</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels & Conduits</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Commonly used in control panels, conduits, and surface installations</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Control Panels & Conduits</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Commonly used in control panels, conduits, and surface installations</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -9002,7 +9033,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">1. Construction Details</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Component</th>
@@ -9011,28 +9042,28 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Annealed Tinned Copper Conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Annealed Tinned Copper Conductor</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Hard PVC confirming to IS-13176 (1991) Type-2</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Hard PVC confirming to IS-13176 (1991) Type-2</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Colour Code</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">White, Blue, Orange, Green, Brown & Grey (as per DOT)</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Colour Code</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">White, Blue, Orange, Green, Brown & Grey (as per DOT)</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">High-quality multilayer PVC providing greater IR value</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Sheath</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">High-quality multilayer PVC providing greater IR value</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Cables printed with marking of 'ANOCAB'</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Marking</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Cables printed with marking of 'ANOCAB'</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">100 mtr & 200 mtr coil packed in protective plastic bag</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Packing</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">100 mtr & 200 mtr coil packed in protective plastic bag</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -9043,7 +9074,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">2. Standards Followed</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Standard Type</th>
@@ -9052,16 +9083,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">DOT Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">DOT TEC Spec No: G/WIR-06/02</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">DOT Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">DOT TEC Spec No: G/WIR-06/02</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Standard</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">IS-13176 (1991) Type-2</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Insulation Standard</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">IS-13176 (1991) Type-2</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Compliance</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">REACH and RoHS Compliant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Compliance</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">REACH and RoHS Compliant</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -9072,7 +9103,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">3. Technical Properties</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Property</th>
@@ -9081,20 +9112,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">2000 V Spark Tester</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Test Voltage</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">2000 V Spark Tester</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Higher Oxygen Index</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Flame Retardant</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Higher Oxygen Index</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Durability</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Anti-Rodent and Anti-Termite</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Durability</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Anti-Rodent and Anti-Termite</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Super Annealed for better flexibility and conductivity</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Conductor Type</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Super Annealed for better flexibility and conductivity</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -9105,7 +9136,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             <div>
                               <h4 className="text-base font-semibold text-gray-900 mb-3">4. Applications</h4>
                               <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="min-w-full bg-white">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                                   <thead>
                                     <tr className="bg-gray-50">
                                       <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700 border border-gray-200">Usage Area</th>
@@ -9114,16 +9145,16 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                                   </thead>
                                   <tbody>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Telecom Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Used for internal connection in telephone exchanges and telecom switchboards</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Telecom Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Used for internal connection in telephone exchanges and telecom switchboards</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Communication Panels</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Ideal for data and voice signal transmission</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Communication Panels</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Ideal for data and voice signal transmission</td>
                                     </tr>
                                     <tr className="hover:bg-gray-50">
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-semibold">Control Systems</td>
-                                      <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">Suitable for low-voltage signal and control circuits</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-semibold">Control Systems</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">Suitable for low-voltage signal and control circuits</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -10109,14 +10140,14 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           { area: "95", strands: "475/0.5", ins: "1.60", sheath: "2.40", width: "49.60", height: "19.10", res: "0.206", amps: "165" }
                         ].map((row, idx) => (
                           <tr key={idx} className="hover:bg-gray-50">
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.area}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 whitespace-nowrap">{row.strands}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.ins}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.sheath}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.width}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.height}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.res}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.amps}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.area}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 whitespace-nowrap">{row.strands}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.ins}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.sheath}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.width}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.height}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.res}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.amps}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -10145,12 +10176,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                               type="number" 
                               value={subMotorRating}
                               onChange={(e) => setSubMotorRating(Number(e.target.value) || 0)}
-                              className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                             />
                             <select 
                               value={subMotorUnit}
                               onChange={(e) => setSubMotorUnit(e.target.value)}
-                              className="w-full px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             >
                               <option>HP</option>
                               <option>KW</option>
@@ -10165,12 +10196,12 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                               type="number" 
                               value={subMotorLen}
                               onChange={(e) => setSubMotorLen(Number(e.target.value) || 0)}
-                              className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                             />
                             <select 
                               value={subMotorLenUnit}
                               onChange={(e) => setSubMotorLenUnit(e.target.value)}
-                              className="w-full px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             >
                               <option>MTR</option>
                               <option>FT</option>
@@ -10179,19 +10210,19 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-gray-600 mb-1">Voltage Drop</label>
-                          <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subVoltDrop).toFixed(2)}</div>
+                          <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subVoltDrop).toFixed(2)}</div>
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-gray-600 mb-1">Current (Ω)</label>
-                          <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subCurrent).toFixed(2)}</div>
+                          <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subCurrent).toFixed(2)}</div>
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-gray-600 mb-1">Actual Gauge</label>
-                          <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subActualGauge).toFixed(2)}</div>
+                          <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{Number(subActualGauge).toFixed(2)}</div>
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-gray-600 mb-1">Cable Size</label>
-                          <div className="px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{subCableSize}</div>
+                          <div className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-md">{subCableSize}</div>
                         </div>
                       </div>
                     </div>
@@ -10236,20 +10267,20 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           { v: "220-240", kw: "2.20", hp: "3.00", s15: "-", s25: "40", s4: "60", s6: "100", s10: "170", s16: "280", s25mm: "430", s35: "600", s50: "820", s70: "1080", s95: "1310" }
                         ].map((row, idx) => (
                           <tr key={idx} className="hover:bg-gray-50">
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.v}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.kw}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.hp}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s15}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s25}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s4}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s6}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s10}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s16}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s25mm}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s35}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s50}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s70}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">{row.s95}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.v}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.kw}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.hp}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">{row.s15}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">{row.s25}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">{row.s4}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">{row.s6}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">{row.s10}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">{row.s16}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">{row.s25mm}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">{row.s35}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">{row.s50}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">{row.s70}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">{row.s95}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -10272,26 +10303,26 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       <table className="min-w-full bg-white">
                         <tbody>
                           <tr className="hover:bg-gray-50">
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">HP</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">5</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">7.5</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">10</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">12.5</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">15.5</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">17.5</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">20</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">25</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">HP</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">5</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">7.5</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">10</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">12.5</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">15.5</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">17.5</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">20</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">25</td>
                           </tr>
                           <tr className="hover:bg-gray-50">
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">Amp</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">7.50</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">11.00</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">14.90</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">18.90</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">25.20</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">25.20</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">28.40</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">35.60</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">Amp</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">7.50</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">11.00</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">14.90</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">18.90</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">25.20</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">25.20</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">28.40</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">35.60</td>
                           </tr>
                         </tbody>
                       </table>
@@ -10301,26 +10332,26 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       <table className="min-w-full bg-white">
                         <tbody>
                           <tr className="hover:bg-gray-50">
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">HP</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">30</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">35</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">40</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">45</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">50</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">55</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">60</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium">65</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">HP</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">30</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">35</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">40</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">45</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">50</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">55</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">60</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium">65</td>
                           </tr>
                           <tr className="hover:bg-gray-50">
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">Amp</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">42.30</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">50.40</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">58.10</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">62.10</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">67.50</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">73.80</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">81.00</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 text-center">87.30</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center font-medium bg-gray-50">Amp</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">42.30</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">50.40</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">58.10</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">62.10</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">67.50</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">73.80</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">81.00</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 text-center">87.30</td>
                           </tr>
                         </tbody>
                       </table>
@@ -10375,17 +10406,17 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           { code: "Moose", area: "570", strand: "61/3.45", dcn: "0.05827", dcm: "0.05980", ac65: "0.069", ac75: "0.071", ac90: "0.074", i65: "663", i75: "833", i90: "1028" }
                         ].map((row, idx) => (
                           <tr key={idx} className="hover:bg-gray-50">
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 whitespace-nowrap">{row.code}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.area}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 whitespace-nowrap">{row.strand}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.dcn}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.dcm}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.ac65}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.ac75}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.ac90}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.i65}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.i75}</td>
-                            <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{row.i90}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 whitespace-nowrap">{row.code}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.area}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 whitespace-nowrap">{row.strand}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.dcn}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.dcm}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.ac65}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.ac75}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.ac90}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.i65}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.i75}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{row.i90}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -10583,8 +10614,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   Reduction Gauge Calculator
                 </h3>
                 <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white">
+                  <div className="overflow-x-auto -mx-2 sm:mx-0">
+                                <table className="min-w-[600px] sm:min-w-full bg-white">
                       <thead>
                         <tr className="bg-gray-100">
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">AREA</th>
@@ -10598,7 +10629,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                       <tbody>
                         {/* PHASE Row */}
                         <tr className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PHASE</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-medium">PHASE</td>
                           <td className="px-3 py-2 border border-gray-200">
                             <input
                               type="text"
@@ -10621,7 +10652,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         </tr>
                         {/* STREET LIGHT Row */}
                         <tr className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STREET LIGHT</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-medium">STREET LIGHT</td>
                           <td className="px-3 py-2 border border-gray-200">
                             <input
                               type="text"
@@ -10637,7 +10668,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         </tr>
                         {/* MESSENGER Row */}
                         <tr className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MESSENGER</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-medium">MESSENGER</td>
                           <td className="px-3 py-2 border border-gray-200">
                             <input
                               type="text"
@@ -10806,39 +10837,39 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
 
       {/* Costing Calculator Modal */}
       {isHelpingCalcOpen && helpingCalcType === 'costing' && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-2 sm:p-4">
           <div className="w-full max-w-7xl max-h-[95vh] overflow-y-auto bg-white rounded-lg">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Costing Calculator</h3>
-              <button onClick={closeHelpingCalc} className="text-gray-400 hover:text-gray-600">
-                <X className="h-6 w-6" />
-                            </button>
-                          </div>
-            <div className="p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 sm:p-4 border-b">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Costing Calculator</h3>
+              <button onClick={closeHelpingCalc} className="text-gray-400 hover:text-gray-600 self-end sm:self-auto">
+                <X className="h-5 w-5 sm:h-6 sm:w-6" />
+              </button>
+            </div>
+            <div className="p-3 sm:p-4 md:p-6">
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full bg-white">
+                <div className="overflow-x-auto -mx-2 sm:mx-0">
+                  <table className="min-w-[600px] sm:min-w-full bg-white">
                     <thead>
                       <tr className="bg-gray-100">
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">DISC.</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">CORE Φ</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">N/O STRAND</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">STAND SIZE</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">CALCUS</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">GAUGE</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">KG/MTR</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">TOTAL</th>
+                        <th className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">DISC.</th>
+                        <th className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">CORE Φ</th>
+                        <th className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">N/O STRAND</th>
+                        <th className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">STAND SIZE</th>
+                        <th className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">CALCUS</th>
+                        <th className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">GAUGE</th>
+                        <th className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">KG/MTR</th>
+                        <th className="px-2 sm:px-3 py-1.5 sm:py-2 text-left text-xs font-semibold text-gray-600 border border-gray-200">TOTAL</th>
                       </tr>
                     </thead>
                     <tbody>
                       {/* PHASE Row */}
                       <tr className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PHASE</td>
-                        <td className="px-3 py-2 border border-gray-200">
+                        <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-medium">PHASE</td>
+                        <td className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-200">
                           <div className="flex items-center gap-1">
                             <input type="number" value={abPhaseInputs.cores}
                               onChange={(e) => setAbPhaseInputs(v => ({ ...v, cores: Number(e.target.value) }))}
-                              className="flex-1 text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
+                              className="flex-1 text-xs sm:text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
                             {reverseMode && targetSalePrice && targetProfitPercent && (
                               <span className="px-1.5 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded border border-blue-300 font-semibold">
                                 {abPhaseInputs.cores}
@@ -10870,44 +10901,44 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             )}
                       </div>
                         </td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abPhaseCalcus.toFixed(3)}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhaseGauge)} SQMM`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhaseKgPerM)}/KG`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow1)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{abPhaseCalcus.toFixed(3)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhaseGauge)} SQMM`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhaseKgPerM)}/KG`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{Math.round(totalRow1)}</td>
                       </tr>
                       {/* PH INN INS Row */}
                       <tr className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PH INN INS</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-medium">PH INN INS</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-</td>
                         <td className="px-3 py-2 border border-gray-200">
                           <input type="number" step="0.01" value={abPhInnIns.thickness}
                             onChange={(e) => setAbPhInnIns({ thickness: Number(e.target.value) })}
                             className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
                         </td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abPhInnCalcus.toFixed(3)}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abPhInnGauge.toFixed(2)}`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhInnKgPerM)}/KG`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow2)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{abPhInnCalcus.toFixed(3)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`OD ${abPhInnGauge.toFixed(2)}`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhInnKgPerM)}/KG`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{Math.round(totalRow2)}</td>
                       </tr>
                       {/* PH OUT INS Row */}
                       <tr className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">PH OUT INS</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-medium">PH OUT INS</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-</td>
                         <td className="px-3 py-2 border border-gray-200">
                           <input type="number" step="0.01" value={abPhOutIns.thickness}
                             onChange={(e) => setAbPhOutIns({ thickness: Number(e.target.value) })}
                             className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
                         </td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abPhInnGauge.toFixed(2)}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abPhOutGauge.toFixed(2)}`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhOutKgPerM)}/KG`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow3)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{abPhInnGauge.toFixed(2)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`OD ${abPhOutGauge.toFixed(2)}`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`${Math.round(abPhOutKgPerM)}/KG`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{Math.round(totalRow3)}</td>
                       </tr>
                       {/* STREET LIGHT Row */}
                       <tr className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STREET LIGHT</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-medium">STREET LIGHT</td>
                         <td className="px-3 py-2 border border-gray-200">
                           <div className="flex items-center gap-1">
                             <input type="number" value={abStreetInputs.cores}
@@ -10944,44 +10975,44 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             )}
                   </div>
                         </td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abStreetCalcus.toFixed(3)}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStreetGauge)} SQMM`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStreetKgPerM)}/KG`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow4)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{abStreetCalcus.toFixed(3)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`${Math.round(abStreetGauge)} SQMM`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`${Math.round(abStreetKgPerM)}/KG`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{Math.round(totalRow4)}</td>
                       </tr>
                       {/* STL INN INS Row */}
                       <tr className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STL INN INS</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-medium">STL INN INS</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-</td>
                         <td className="px-3 py-2 border border-gray-200">
                           <input type="number" step="0.01" value={stlInnIns.thickness}
                             onChange={(e) => setStlInnIns({ thickness: Number(e.target.value) })}
                             className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
                         </td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abStlInnCalcus.toFixed(3)}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${stlInnGauge.toFixed(2)}`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStlInnKgPerM)}/KG`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow5)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{abStlInnCalcus.toFixed(3)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`OD ${stlInnGauge.toFixed(2)}`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`${Math.round(abStlInnKgPerM)}/KG`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{Math.round(totalRow5)}</td>
                       </tr>
                       {/* STL OUT INS Row */}
                       <tr className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">STL OUT INS</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-medium">STL OUT INS</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-</td>
                         <td className="px-3 py-2 border border-gray-200">
                           <input type="number" step="0.01" value={stlOutIns.thickness}
                             onChange={(e) => setStlOutIns({ thickness: Number(e.target.value) })}
                             className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
                         </td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{stlInnGauge.toFixed(2)}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${stlOutGauge.toFixed(2)}`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abStlOutKgPerM)}/KG`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow6)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{stlInnGauge.toFixed(2)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`OD ${stlOutGauge.toFixed(2)}`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`${Math.round(abStlOutKgPerM)}/KG`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{Math.round(totalRow6)}</td>
                       </tr>
                       {/* MESSENGER Row */}
                       <tr className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MESSENGER</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-medium">MESSENGER</td>
                         <td className="px-3 py-2 border border-gray-200">
                           <div className="flex items-center gap-1">
                             <input type="number" value={abMessengerInputs.cores}
@@ -11018,40 +11049,40 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             )}
                       </div>
                         </td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abMessengerCalcus.toFixed(3)}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMessengerGauge)} SQMM`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMessengerKgPerM)}/KG`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow7)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{abMessengerCalcus.toFixed(3)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`${Math.round(abMessengerGauge)} SQMM`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`${Math.round(abMessengerKgPerM)}/KG`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{Math.round(totalRow7)}</td>
                       </tr>
                       {/* MSN INN INS Row */}
                       <tr className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MSN INN INS</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-medium">MSN INN INS</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-</td>
                         <td className="px-3 py-2 border border-gray-200">
                           <input type="number" step="0.01" value={abMsnInn.thickness}
                             onChange={(e) => setAbMsnInn({ thickness: Number(e.target.value) })}
                             className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
                         </td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abMsnInnCalcus.toFixed(3)}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abMsnInnGauge.toFixed(2)}`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMsnInnKgPerM)}/KG`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow8)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{abMsnInnCalcus.toFixed(3)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`OD ${abMsnInnGauge.toFixed(2)}`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`${Math.round(abMsnInnKgPerM)}/KG`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{Math.round(totalRow8)}</td>
                       </tr>
                       {/* MSN OUT INS Row */}
                       <tr className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200 font-medium">MSN OUT INS</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">-</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200 font-medium">MSN OUT INS</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">-</td>
                         <td className="px-3 py-2 border border-gray-200">
                           <input type="number" step="0.01" value={abMsnOut.thickness}
                             onChange={(e) => setAbMsnOut({ thickness: Number(e.target.value) })}
                             className="w-full text-sm text-red-600 font-semibold border-0 focus:ring-0 focus:outline-none" />
                         </td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{abMsnInnGauge.toFixed(2)}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`OD ${abMsnOutGauge.toFixed(2)}`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{`${Math.round(abMsnOutKgPerM)}/KG`}</td>
-                        <td className="px-3 py-2 text-sm text-gray-800 border border-gray-200">{Math.round(totalRow9)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{abMsnInnGauge.toFixed(2)}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`OD ${abMsnOutGauge.toFixed(2)}`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{`${Math.round(abMsnOutKgPerM)}/KG`}</td>
+                                      <td className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-800 border border-gray-200">{Math.round(totalRow9)}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -11177,7 +11208,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             value={targetSalePrice || ''} 
                             onChange={(e)=>setTargetSalePrice(Number(e.target.value))} 
                             onFocus={() => setReverseMode(true)}
-                            className="w-20 text-xs text-red-600 font-semibold border border-gray-300 rounded px-1 focus:ring-1 focus:ring-blue-500 focus:outline-none" 
+                            className="w-16 sm:w-20 text-xs text-red-600 font-semibold border border-gray-300 rounded px-1 focus:ring-1 focus:ring-blue-500 focus:outline-none" 
                             placeholder="Target ₹"
                             title="Enter target sale price for reverse calculation"
                           />
@@ -11193,7 +11224,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                             value={targetProfitPercent || ''} 
                             onChange={(e)=>setTargetProfitPercent(Number(e.target.value))} 
                             onFocus={() => setReverseMode(true)}
-                            className="w-20 text-xs text-red-600 font-semibold border border-gray-300 rounded px-1 focus:ring-1 focus:ring-blue-500 focus:outline-none" 
+                            className="w-16 sm:w-20 text-xs text-red-600 font-semibold border border-gray-300 rounded px-1 focus:ring-1 focus:ring-blue-500 focus:outline-none" 
                             placeholder="Target %"
                             title="Enter target profit % for reverse calculation"
                           />
@@ -11210,23 +11241,23 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
 
       {/* Helping Calculators Modal */}
       {isHelpingCalcOpen && helpingCalcType === 'technical' && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="w-full max-w-6xl max-h-[90vh] overflow-y-auto bg-white rounded-lg">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Technical Calculations</h3>
-              <button onClick={closeHelpingCalc} className="text-gray-400 hover:text-gray-600">
-                <X className="h-6 w-6" />
-                            </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-2 sm:p-4">
+          <div className="w-full max-w-6xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto bg-white rounded-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 sm:p-4 border-b">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Technical Calculations</h3>
+              <button onClick={closeHelpingCalc} className="text-gray-400 hover:text-gray-600 self-end sm:self-auto">
+                <X className="h-5 w-5 sm:h-6 sm:w-6" />
+              </button>
             </div>
-            <div className="p-4 space-y-6">
+            <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
               {/* AERIAL BUNCHED CABLE PARAMETERS */}
               <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-                <div className="px-4 py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
-                  <h5 className="text-sm font-semibold text-gray-900">AERIAL BUNCHED CABLE PARAMETERS CALCULATOR</h5>
-                        </div>
-                <div className="p-4">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-xs border border-gray-300">
+                <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-200 border-b-2 border-gray-300 shadow-sm">
+                  <h5 className="text-xs sm:text-sm font-semibold text-gray-900">AERIAL BUNCHED CABLE PARAMETERS CALCULATOR</h5>
+                </div>
+                <div className="p-2 sm:p-3 md:p-4">
+                  <div className="overflow-x-auto -mx-2 sm:mx-0">
+                    <table className="min-w-[600px] sm:min-w-full text-xs border border-gray-300">
                       <thead>
                         <tr className="bg-black text-white">
                           <th className="px-2 py-2 border border-gray-300">CORES</th>
@@ -11343,7 +11374,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
       )}
       {isFileViewerOpen && Array.isArray(selectedFile) && selectedFile.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-lg">
+          <div className="w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden bg-white rounded-lg mx-2 sm:mx-4">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -11517,7 +11548,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
       {/* File Viewer Modal */}
       {false && isFileViewerOpen && selectedFile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white rounded-lg">
+          <div className="w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden bg-white rounded-lg mx-2 sm:mx-4">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -11556,33 +11587,33 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
       {/* Technical Calculations Calculator Modal */}
       {isCalculatorOpen && selectedCalculator === "technical-calculations" && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-semibold text-gray-900">Technical Calculations</h2>
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-2 sm:mx-4 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 sm:p-4 md:p-6 border-b">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Technical Calculations</h2>
               <button 
                 onClick={closeCalculator}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 self-end sm:self-auto"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
-            <div className="p-6">
+            <div className="p-3 sm:p-4 md:p-6">
               {/* Simple Calculator Selection */}
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Choose Calculator Type</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="mb-6 sm:mb-8">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Choose Calculator Type</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   <button 
                     onClick={() => selectCalculatorType('aerial')}
-                    className={`p-4 border-2 rounded-lg hover:bg-blue-100 transition-colors ${
+                    className={`p-3 sm:p-4 border-2 rounded-lg hover:bg-blue-100 transition-colors ${
                       selectedCalculator === 'aerial' 
                         ? 'bg-blue-100 border-blue-400' 
                         : 'bg-blue-50 border-blue-200'
                     }`}
                   >
                     <div className="text-center">
-                      <Zap className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                      <h4 className="font-medium text-gray-900">Aerial Cable</h4>
-                      <p className="text-sm text-gray-600">Parameters</p>
+                      <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 mx-auto mb-2" />
+                      <h4 className="font-medium text-sm sm:text-base text-gray-900">Aerial Cable</h4>
+                      <p className="text-xs sm:text-sm text-gray-600">Parameters</p>
                     </div>
                   </button>
                   <button 
@@ -11779,60 +11810,60 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
 
       {/* Company Emails Modal */}
       {isCompanyEmailsOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className={`rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto ${
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className={`rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] sm:max-h-[80vh] overflow-y-auto ${
             isDarkMode ? 'bg-gray-800' : 'bg-white'
           }`}>
-            <div className={`flex items-center justify-between p-4 border-b ${
+            <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 sm:p-4 border-b ${
               isDarkMode ? 'border-gray-700' : 'border-gray-200'
             }`}>
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className={`p-1.5 sm:p-2 rounded-lg ${
                   isDarkMode ? 'bg-pink-900' : 'bg-pink-100'
                 }`}>
-                  <Mail className={`h-6 w-6 ${
+                  <Mail className={`h-4 w-4 sm:h-6 sm:w-6 ${
                     isDarkMode ? 'text-pink-400' : 'text-pink-600'
                   }`} />
                 </div>
                 <div>
-                  <h2 className={`text-xl font-semibold ${
+                  <h2 className={`text-lg sm:text-xl font-semibold ${
                     isDarkMode ? 'text-white' : 'text-gray-900'
                   }`}>Company Emails</h2>
-                  <p className={`text-sm ${
+                  <p className={`text-xs sm:text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>All company email addresses</p>
                 </div>
               </div>
               <button 
                 onClick={closeCompanyEmails}
-                className={`${
+                className={`self-end sm:self-auto ${
                   isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <div className="space-y-2">
                 {/* Anshul Gupta - Managing Director */}
-                <div className={`p-3 rounded-lg border ${
+                <div className={`p-2 sm:p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
                 }`}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`p-2 rounded-lg ${
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                    <div className={`p-1.5 sm:p-2 rounded-lg ${
                       isDarkMode ? 'bg-blue-900' : 'bg-blue-100'
                     }`}>
-                      <User className={`h-5 w-5 ${
+                      <User className={`h-4 w-4 sm:h-5 sm:w-5 ${
                         isDarkMode ? 'text-blue-400' : 'text-blue-600'
                       }`} />
                     </div>
-                    <div className="flex-1">
-                      <h3 className={`font-semibold ${
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`font-semibold text-sm sm:text-base ${
                         isDarkMode ? 'text-white' : 'text-gray-900'
                       }`}>Anshul Gupta</h3>
-                      <p className={`text-sm ${
+                      <p className={`text-xs sm:text-sm ${
                         isDarkMode ? 'text-gray-300' : 'text-gray-600'
                       }`}>Managing Director</p>
                     </div>
@@ -11840,7 +11871,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   <div className="space-y-1">
                     <a 
                       href="mailto:MD@anocab.in" 
-                      className={`text-sm font-mono hover:underline cursor-pointer block ${
+                      className={`text-xs sm:text-sm font-mono hover:underline cursor-pointer block break-all ${
                         isDarkMode ? 'text-blue-300 hover:text-blue-200' : 'text-blue-600 hover:text-blue-700'
                       }`}
                     >
@@ -11848,42 +11879,42 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                     </a>
                     <a 
                       href="tel:6262002101" 
-                      className={`text-sm font-mono hover:underline cursor-pointer flex items-center gap-1 ${
+                      className={`text-xs sm:text-sm font-mono hover:underline cursor-pointer flex items-center gap-1 ${
                         isDarkMode ? 'text-blue-300 hover:text-blue-200' : 'text-blue-600 hover:text-blue-700'
                       }`}
                     >
-                      <Phone className="h-3 w-3" />
-                      6262002101
+                      <Phone className="h-3 w-3 flex-shrink-0" />
+                      <span>6262002101</span>
                     </a>
                   </div>
                 </div>
 
                 {/* Suraj Gehani - Chief Executive Officer */}
-                <div className={`p-3 rounded-lg border ${
+                <div className={`p-2 sm:p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
                 }`}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`p-2 rounded-lg ${
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                    <div className={`p-1.5 sm:p-2 rounded-lg ${
                       isDarkMode ? 'bg-green-900' : 'bg-green-100'
                     }`}>
-                      <User className={`h-5 w-5 ${
+                      <User className={`h-4 w-4 sm:h-5 sm:w-5 ${
                         isDarkMode ? 'text-green-400' : 'text-green-600'
                       }`} />
                     </div>
-                    <div className="flex-1">
-                      <h3 className={`font-semibold ${
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`font-semibold text-sm sm:text-base ${
                         isDarkMode ? 'text-white' : 'text-gray-900'
                       }`}>Suraj Gehani</h3>
-                      <p className={`text-sm ${
+                      <p className={`text-xs sm:text-sm ${
                         isDarkMode ? 'text-gray-300' : 'text-gray-600'
                       }`}>Chief Executive Officer</p>
                     </div>
                   </div>
                   <a 
                     href="mailto:CEO@anocab.in" 
-                    className={`text-sm font-mono hover:underline cursor-pointer ${
+                    className={`text-xs sm:text-sm font-mono hover:underline cursor-pointer block break-all ${
                       isDarkMode ? 'text-green-300 hover:text-green-200' : 'text-green-600 hover:text-green-700'
                     }`}
                   >
@@ -12327,51 +12358,51 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
 
       {/* GST Details Modal */}
       {isGstDetailsOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className={`rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto ${
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className={`rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] sm:max-h-[80vh] overflow-y-auto ${
             isDarkMode ? 'bg-gray-800' : 'bg-white'
           }`}>
-            <div className={`flex items-center justify-between p-4 border-b ${
+            <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 sm:p-4 border-b ${
               isDarkMode ? 'border-gray-700' : 'border-gray-200'
             }`}>
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className={`p-1.5 sm:p-2 rounded-lg ${
                   isDarkMode ? 'bg-purple-900' : 'bg-purple-100'
                 }`}>
-                  <CreditCard className={`h-6 w-6 ${
+                  <CreditCard className={`h-4 w-4 sm:h-6 sm:w-6 ${
                     isDarkMode ? 'text-purple-400' : 'text-purple-600'
                   }`} />
                 </div>
                 <div>
-                  <h2 className={`text-xl font-semibold ${
+                  <h2 className={`text-lg sm:text-xl font-semibold ${
                     isDarkMode ? 'text-white' : 'text-gray-900'
                   }`}>GST Details</h2>
-                  <p className={`text-sm ${
+                  <p className={`text-xs sm:text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>Tax registration information</p>
                 </div>
               </div>
               <button 
                 onClick={closeGstDetails}
-                className={`${
+                className={`self-end sm:self-auto ${
                   isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <div className="space-y-2">
                 {/* ANODE ELECTRIC PVT LTD */}
-                <div className={`p-3 rounded-lg border ${
+                <div className={`p-2 sm:p-3 rounded-lg border ${
                   isDarkMode 
                     ? 'bg-gray-700 border-gray-600' 
                     : 'bg-gray-50 border-gray-200'
                 }`}>
-                  <div className={`font-semibold text-xs mb-1 ${
+                  <div className={`font-semibold text-xs mb-1 break-words ${
                     isDarkMode ? 'text-purple-300' : 'text-purple-700'
                   }`}>ANODE ELECTRIC PVT LTD.</div>
-                  <div className={`font-mono text-xs ${
+                  <div className={`font-mono text-xs break-all ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-700'
                   }`}>23AANCA7455R1ZX</div>
                 </div>
@@ -12411,44 +12442,44 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
 
       {/* Location Modal */}
       {isLocationOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className={`rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto ${
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className={`rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] sm:max-h-[80vh] overflow-y-auto ${
             isDarkMode ? 'bg-gray-800' : 'bg-white'
           }`}>
-            <div className={`flex items-center justify-between p-4 border-b ${
+            <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 sm:p-4 border-b ${
               isDarkMode ? 'border-gray-700' : 'border-gray-200'
             }`}>
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className={`p-1.5 sm:p-2 rounded-lg ${
                   isDarkMode ? 'bg-slate-700' : 'bg-slate-100'
                 }`}>
-                  <MapPin className={`h-6 w-6 ${
+                  <MapPin className={`h-4 w-4 sm:h-6 sm:w-6 ${
                     isDarkMode ? 'text-slate-300' : 'text-slate-600'
                   }`} />
                 </div>
                 <div>
-                  <h2 className={`text-xl font-semibold ${
+                  <h2 className={`text-lg sm:text-xl font-semibold ${
                     isDarkMode ? 'text-white' : 'text-gray-900'
                   }`}>Location</h2>
-                  <p className={`text-sm ${
+                  <p className={`text-xs sm:text-sm ${
                     isDarkMode ? 'text-gray-300' : 'text-gray-600'
                   }`}>Company locations</p>
                 </div>
               </div>
               <button 
                 onClick={closeLocation}
-                className={`${
+                className={`self-end sm:self-auto ${
                   isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <div className="space-y-2">
                 {/* IT Park, Jabalpur */}
                 <div 
-                  className={`p-3 rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md ${
+                  className={`p-2 sm:p-3 rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md ${
                     selectedLocation === "IT Park, Jabalpur" 
                       ? isDarkMode 
                         ? "bg-gray-600 border-gray-500 shadow-md" 
@@ -12458,9 +12489,9 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         : "bg-white border-gray-200 hover:bg-slate-50"
                   }`}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-2 sm:gap-3">
                     <div 
-                      className={`p-2 rounded-lg cursor-pointer ${
+                      className={`p-1.5 sm:p-2 rounded-lg cursor-pointer flex-shrink-0 ${
                         isDarkMode ? 'bg-gray-600' : 'bg-slate-100'
                       }`}
                       onClick={() => {
@@ -12468,13 +12499,13 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                         closeLocation();
                       }}
                     >
-                      <MapPin className={`h-4 w-4 ${
+                      <MapPin className={`h-3 w-3 sm:h-4 sm:w-4 ${
                         isDarkMode ? 'text-slate-300' : 'text-slate-600'
                       }`} />
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div 
-                        className={`text-sm font-semibold mb-1 cursor-pointer ${
+                        className={`text-xs sm:text-sm font-semibold mb-1 cursor-pointer ${
                           isDarkMode ? 'text-white' : 'text-gray-900'
                         }`}
                         onClick={() => {
@@ -12482,7 +12513,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                           closeLocation();
                         }}
                       >IT Park, Jabalpur</div>
-                      <div className={`text-xs mb-2 ${
+                      <div className={`text-xs mb-2 break-words ${
                         isDarkMode ? 'text-gray-300' : 'text-gray-600'
                       }`}>Plot No 10, IT Park, Bargi Hills, Jabalpur, M.P.</div>
                       <div className="flex gap-2 mt-2">
@@ -12591,15 +12622,15 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
 
       {/* Business Card Modal */}
       {isBusinessCardOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeBusinessCard} key="business-card-modal-v2">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4" onClick={closeBusinessCard} key="business-card-modal-v2">
           <div 
             className={`rounded-lg shadow-2xl overflow-hidden border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex flex-col max-w-md w-full bg-white`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header with Actions */}
-            <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
-              <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Anocab Business Card</h3>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-2 sm:p-3 border-b border-gray-200 bg-gray-50">
+              <h3 className={`text-xs sm:text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Anocab Business Card</h3>
+              <div className="flex items-center gap-1 sm:gap-2 self-end sm:self-auto">
                 <button
                   onClick={() => downloadBusinessCard('image')}
                   className="p-2 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors"
@@ -12625,8 +12656,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
             </div>
 
             {/* Business Card Content - for download */}
-            <div className="py-8 px-4">
-              <div ref={businessCardRef} className="w-[320px] bg-white rounded-lg shadow-2xl overflow-hidden border border-gray-200 flex flex-col mx-auto" style={{ minHeight: '500px' }}>
+            <div className="py-4 sm:py-8 px-2 sm:px-4 overflow-x-auto">
+              <div ref={businessCardRef} className="w-[280px] sm:w-[320px] bg-white rounded-lg shadow-2xl overflow-hidden border border-gray-200 flex flex-col mx-auto" style={{ minHeight: '450px' }}>
               {/* Top Section - Logo */}
               <div className="px-6 py-5 flex flex-col items-center bg-white">
                 <img
@@ -12694,15 +12725,15 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
 
       {/* Samriddhi Industries Business Card Modal */}
       {isSamriddhiBusinessCardOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeSamriddhiBusinessCard} key="samriddhi-business-card-modal">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4" onClick={closeSamriddhiBusinessCard} key="samriddhi-business-card-modal">
           <div 
             className={`rounded-lg shadow-2xl overflow-hidden border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex flex-col max-w-md w-full bg-white`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header with Actions */}
-            <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
-              <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Samriddhi Business Card</h3>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-2 sm:p-3 border-b border-gray-200 bg-gray-50">
+              <h3 className={`text-xs sm:text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Samriddhi Business Card</h3>
+              <div className="flex items-center gap-1 sm:gap-2 self-end sm:self-auto">
                 <button
                   onClick={() => downloadSamriddhiBusinessCard('image')}
                   className="p-2 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors"
@@ -12728,8 +12759,8 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                   </div>
 
             {/* Business Card Content - for download */}
-            <div className="py-8 px-4">
-              <div ref={samriddhiBusinessCardRef} className="w-[320px] bg-white rounded-lg shadow-2xl overflow-hidden border border-gray-200 flex flex-col mx-auto" style={{ minHeight: '500px' }}>
+            <div className="py-4 sm:py-8 px-2 sm:px-4 overflow-x-auto">
+              <div ref={samriddhiBusinessCardRef} className="w-[280px] sm:w-[320px] bg-white rounded-lg shadow-2xl overflow-hidden border border-gray-200 flex flex-col mx-auto" style={{ minHeight: '450px' }}>
               {/* Top Section - JEO Logo (Top Left) */}
               <div className="px-6 pt-5 pb-2 flex items-start bg-white">
                 <img
@@ -12812,40 +12843,40 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
 
       {/* Approvals Modal */}
       {isApprovalsOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={closeApprovals}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4" onClick={closeApprovals}>
           <div 
             className={`rounded-lg shadow-2xl overflow-hidden border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} flex flex-col max-w-md w-full bg-white`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
-              <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Approvals</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 sm:p-4 border-b border-gray-200 bg-gray-50">
+              <h3 className={`text-base sm:text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Approvals</h3>
               <button 
                 onClick={closeApprovals}
-                className="p-2 rounded-lg hover:bg-red-100 text-red-600 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-red-100 text-red-600 transition-colors self-end sm:self-auto"
                 title="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="p-6">
-              <div className="space-y-3">
+            <div className="p-3 sm:p-4 md:p-6">
+              <div className="space-y-2 sm:space-y-3">
                 {/* CHHATTISGARH */}
                 <button
                   onClick={() => openApprovalPdf('CHHATTISGARH')}
-                  className={`w-full p-4 rounded-lg border transition-all duration-200 ${
+                  className={`w-full p-3 sm:p-4 rounded-lg border transition-all duration-200 ${
                     isDarkMode 
                       ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' 
                       : 'border-gray-200 bg-white hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <h4 className={`text-lg font-semibold ${
+                    <h4 className={`text-sm sm:text-lg font-semibold ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>CHHATTISGARH</h4>
-                    <FileText className={`h-5 w-5 ${
+                    <FileText className={`h-4 w-4 sm:h-5 sm:w-5 ${
                       isDarkMode ? 'text-gray-400' : 'text-gray-600'
                     }`} />
                   </div>
@@ -12854,17 +12885,17 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 {/* MADHYA PRADESH */}
                 <button
                   onClick={() => openApprovalPdf('MADHYA PRADESH')}
-                  className={`w-full p-4 rounded-lg border transition-all duration-200 ${
+                  className={`w-full p-3 sm:p-4 rounded-lg border transition-all duration-200 ${
                     isDarkMode 
                       ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' 
                       : 'border-gray-200 bg-white hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <h4 className={`text-lg font-semibold ${
+                    <h4 className={`text-sm sm:text-lg font-semibold ${
                       isDarkMode ? 'text-white' : 'text-gray-900'
                     }`}>MADHYA PRADESH</h4>
-                    <FileText className={`h-5 w-5 ${
+                    <FileText className={`h-4 w-4 sm:h-5 sm:w-5 ${
                       isDarkMode ? 'text-gray-400' : 'text-gray-600'
                     }`} />
                   </div>
@@ -12873,7 +12904,7 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
                 {/* MAHARASHTRA */}
                 <button
                   onClick={() => openApprovalPdf('MAHARASHTRA')}
-                  className={`w-full p-4 rounded-lg border transition-all duration-200 ${
+                  className={`w-full p-3 sm:p-4 rounded-lg border transition-all duration-200 ${
                     isDarkMode 
                       ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' 
                       : 'border-gray-200 bg-white hover:bg-gray-50'
@@ -12902,35 +12933,35 @@ const ToolboxInterface = ({ isDarkMode = false }) => {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
-              <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>License</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 sm:p-4 border-b border-gray-200 bg-gray-50">
+              <h3 className={`text-base sm:text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>License</h3>
               <button 
                 onClick={closeSidebarLicense}
-                className="p-2 rounded-lg hover:bg-red-100 text-red-600 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-red-100 text-red-600 transition-colors self-end sm:self-auto"
                 title="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="p-6">
+            <div className="p-3 sm:p-4 md:p-6">
               {!isBisFolderOpen ? (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {/* BIS Folder */}
                   <button
                     onClick={openBisFolder}
-                    className={`w-full p-4 rounded-lg border transition-all duration-200 cursor-pointer ${
+                    className={`w-full p-3 sm:p-4 rounded-lg border transition-all duration-200 cursor-pointer ${
                       isDarkMode 
                         ? 'border-gray-600 bg-gray-700 hover:bg-gray-600' 
                         : 'border-gray-200 bg-white hover:bg-gray-50'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <Folder className={`h-8 w-8 ${
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <Folder className={`h-6 w-6 sm:h-8 sm:w-8 ${
                         isDarkMode ? 'text-yellow-400' : 'text-yellow-500'
                       }`} />
-                      <h4 className={`text-lg font-semibold ${
+                      <h4 className={`text-base sm:text-lg font-semibold ${
                         isDarkMode ? 'text-white' : 'text-gray-900'
                       }`}>BIS</h4>
                     </div>

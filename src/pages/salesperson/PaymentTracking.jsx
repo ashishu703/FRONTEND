@@ -118,27 +118,27 @@ export default function ProductToolbar({ onSearch, onAddProduct, onFilterChange,
           <div className="flex shadow-lg rounded-xl overflow-hidden">
             <input
               type="text"
-              className="flex-1 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white border-gray-200 text-gray-900 placeholder-gray-500"
+              className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white border-gray-200 text-gray-900 placeholder-gray-500"
               placeholder="Search by customer, quotation ID (QT), lead ID..."
               value={searchQuery}
               onChange={handleSearch}
             />
-            <button className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md">
-              <Search className="h-4 w-4" />
+            <button className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md flex-shrink-0">
+              <Search className="h-3 w-3 sm:h-4 sm:w-4" />
             </button>
           </div>
         </div>
 
         {/* Right side - Filters and Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
           {/* Quotation ID Filter */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-initial">
             <input
               type="text"
               placeholder="Filter by Quotation ID (QT...)"
               value={filters.quotationId}
               onChange={(e) => handleFilterChange('quotationId', e.target.value)}
-              className="px-4 py-2.5 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-gray-900 placeholder-gray-500 transition-all duration-200 hover:border-purple-300 w-48 shadow-sm"
+              className="w-full sm:w-48 px-3 sm:px-4 py-2 sm:py-2.5 border-2 border-gray-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-gray-900 placeholder-gray-500 transition-all duration-200 hover:border-purple-300 shadow-sm"
             />
             <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-0 hover:opacity-10 pointer-events-none transition-opacity duration-200"></div>
           </div>
@@ -147,7 +147,7 @@ export default function ProductToolbar({ onSearch, onAddProduct, onFilterChange,
           <select
             value={filters.paymentType}
             onChange={(e) => handleFilterChange('paymentType', e.target.value)}
-            className="px-4 py-2.5 border-2 border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-gray-900 transition-all duration-200 hover:border-purple-300 shadow-sm"
+            className="w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 border-2 border-gray-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white text-gray-900 transition-all duration-200 hover:border-purple-300 shadow-sm"
           >
             <option value="">All Payments</option>
             <option value="advance">Advance Payment</option>
@@ -160,11 +160,11 @@ export default function ProductToolbar({ onSearch, onAddProduct, onFilterChange,
 
           <button
             onClick={onRefresh}
-            className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 inline-flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            className="w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 inline-flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
             title="Refresh"
           >
-            <RotateCw className="h-4 w-4" />
-            Refresh
+            <RotateCw className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span>Refresh</span>
           </button>
         </div>
       </div>
@@ -362,25 +362,25 @@ export function ProductPagination({
   const goToLastPage = () => onPageChange(totalPages);
 
   return (
-    <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4 px-4 py-4 border-t-2 border-blue-200 bg-gradient-to-r from-blue-50/50 to-purple-50/50">
+    <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3 sm:py-4 border-t-2 border-blue-200 bg-gradient-to-r from-blue-50/50 to-purple-50/50 pb-20 sm:pb-4">
       {/* Items per page selector */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-700">Show:</span>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs sm:text-sm text-gray-700">Show:</span>
         <select
           value={itemsPerPage}
           onChange={(e) => onItemsPerPageChange(parseInt(e.target.value))}
-          className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="px-2 sm:px-3 py-1 border border-gray-300 rounded-md text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         >
           <option value={5}>5</option>
           <option value={10}>10</option>
           <option value={20}>20</option>
           <option value={50}>50</option>
         </select>
-        <span className="text-sm text-gray-700">per page</span>
+        <span className="text-xs sm:text-sm text-gray-700">per page</span>
       </div>
 
       {/* Page info */}
-      <div className="text-sm text-gray-700">
+      <div className="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
         {totalItems > 0 ? (
           <>
             Showing {startIndex + 1} to {endIndex} of {totalItems} results
@@ -391,29 +391,29 @@ export function ProductPagination({
       </div>
 
       {/* Pagination buttons */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-center">
         {/* First page */}
         <button
           onClick={goToFirstPage}
           disabled={currentPage === 1 || totalItems === 0}
-          className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           title="First page"
         >
-          <ChevronsLeft className="h-4 w-4" />
+          <ChevronsLeft className="h-3 w-3 sm:h-4 sm:w-4" />
         </button>
 
         {/* Previous page */}
         <button
           onClick={goToPreviousPage}
           disabled={currentPage === 1 || totalItems === 0}
-          className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Previous page"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
         </button>
 
         {/* Page numbers */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1">
           {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
             let pageNum;
             if (totalPages <= 5) {
@@ -430,7 +430,7 @@ export function ProductPagination({
               <button
                 key={pageNum}
                 onClick={() => onPageChange(pageNum)}
-                className={`px-3 py-1 text-sm rounded-md border ${
+                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-md border ${
                   currentPage === pageNum
                     ? 'bg-blue-600 text-white border-blue-600'
                     : 'border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -446,20 +446,20 @@ export function ProductPagination({
         <button
           onClick={goToNextPage}
           disabled={currentPage === totalPages || totalItems === 0}
-          className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Next page"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
         </button>
 
         {/* Last page */}
         <button
           onClick={goToLastPage}
           disabled={currentPage === totalPages || totalItems === 0}
-          className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Last page"
         >
-          <ChevronsRight className="h-4 w-4" />
+          <ChevronsRight className="h-3 w-3 sm:h-4 sm:w-4" />
         </button>
       </div>
     </div>
