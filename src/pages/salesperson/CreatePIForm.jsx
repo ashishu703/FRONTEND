@@ -1246,55 +1246,326 @@ export default function CreatePIForm({ quotation: propQuotation, customer: propC
                     return;
                   }
 
-                  // Store original transform and width of wrapper
+                  // Store original styles
                   const originalTransform = wrapper.style.transform;
                   const originalTransformOrigin = wrapper.style.transformOrigin;
                   const originalWidth = wrapper.style.width;
                   const originalMaxHeight = wrapper.style.maxHeight;
+                  const originalElementTransform = element.style.transform;
+                  const originalElementTransformOrigin = element.style.transformOrigin;
+                  const originalElementWidth = element.style.width;
+                  const originalElementMaxWidth = element.style.maxWidth;
                   
-                  // Temporarily remove scale transform and adjust width for full-size PDF
+                  // Calculate A4 dimensions in pixels (at 96 DPI)
+                  const DPI = 96
+                  const A4_WIDTH_IN = 8.27 // A4 width in inches
+                  const A4_WIDTH_PX = Math.round(A4_WIDTH_IN * DPI) // ~794px
+                  
+                  // Set margins (in inches) - equal on all sides
+                  const marginInches = 0.4
+                  const marginPx = Math.round(marginInches * DPI)
+                  
+                  // Calculate available width for content (A4 width minus left and right margins)
+                  // Account for borders by using box-sizing: border-box
+                  // Subtract 2px to ensure borders don't overflow (border width typically 1-2px)
+                  const availableWidth = A4_WIDTH_PX - (marginPx * 2) - 2
+                  
+                  // Remove preview scaling
                   wrapper.style.transform = 'scale(1)';
                   wrapper.style.transformOrigin = 'top left';
                   wrapper.style.width = '100%';
                   wrapper.style.maxHeight = 'none';
-
-                  // Wait a bit for layout to update
-                  await new Promise(resolve => setTimeout(resolve, 300));
+                  
+                  // Set content width to A4 available width (no scaling, let it flow to multiple pages)
+                  // Ensure content stays within fixed margins - no border crossing
+                  // Use border-box to include borders in width calculation
+                  element.style.width = `${availableWidth}px`;
+                  element.style.maxWidth = `${availableWidth}px`;
+                  element.style.minWidth = `${availableWidth}px`;
+                  element.style.transform = 'none';
+                  element.style.transformOrigin = 'top left';
+                  element.style.boxSizing = 'border-box';
+                  element.style.overflowX = 'hidden'; // Prevent horizontal overflow
+                  element.style.overflowY = 'visible'; // Allow vertical flow for multi-page
+                  element.style.wordWrap = 'break-word';
+                  element.style.overflowWrap = 'break-word';
+                  element.style.padding = '0';
+                  element.style.paddingBottom = '30px'; // Add bottom padding to prevent text cutting at page end
+                  element.style.margin = '0';
+                  element.style.marginBottom = '20px'; // Extra margin to prevent cutting
+                  
+                  // Ensure all child elements also use border-box and respect width
+                  const allElements = element.querySelectorAll('*');
+                  allElements.forEach(el => {
+                    el.style.boxSizing = 'border-box';
+                    el.style.maxWidth = '100%';
+                    // Ensure fixed width elements don't exceed container
+                    if (el.style.width && el.style.width !== 'auto' && !el.style.width.includes('%')) {
+                      const currentWidth = parseFloat(el.style.width);
+                      if (currentWidth > availableWidth) {
+                        el.style.maxWidth = `${availableWidth}px`;
+                        el.style.width = '100%';
+                      }
+                    }
+                    // Ensure tables don't exceed container
+                    if (el.tagName === 'TABLE') {
+                      el.style.width = '100%';
+                      el.style.maxWidth = '100%';
+                      el.style.boxSizing = 'border-box';
+                    }
+                  });
+                  
+                  // Ensure all child elements respect container width but allow text to render fully
+                  const allChildren = element.querySelectorAll('*');
+                  allChildren.forEach(child => {
+                    // Remove all height constraints
+                    child.style.height = 'auto';
+                    child.style.maxHeight = 'none';
+                    child.style.minHeight = 'auto';
+                    
+                    if (child.tagName !== 'TABLE' && child.tagName !== 'IMG') {
+                      child.style.maxWidth = '100%';
+                      child.style.boxSizing = 'border-box';
+                      // Allow text elements to overflow vertically to prevent clipping
+                      if (['P', 'DIV', 'SPAN', 'TD', 'TH', 'LI', 'LABEL', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(child.tagName)) {
+                        child.style.overflow = 'visible';
+                        child.style.overflowX = 'hidden';
+                        child.style.overflowY = 'visible';
+                        child.style.height = 'auto';
+                        child.style.maxHeight = 'none';
+                        
+                        // Table cells - ensure proper line-height and padding to prevent top clipping
+                        if (child.tagName === 'TD' || child.tagName === 'TH') {
+                          child.style.paddingTop = '8px';
+                          child.style.paddingBottom = '8px';
+                          child.style.lineHeight = '1.4';
+                          child.style.verticalAlign = 'top';
+                          child.style.whiteSpace = 'normal';
+                          child.style.boxSizing = 'border-box';
+                        }
+                        // Bold text elements - extra padding for top clipping
+                        else if (child.tagName === 'B' || child.tagName === 'STRONG' || 
+                                 child.classList.contains('font-bold') ||
+                                 window.getComputedStyle(child).fontWeight >= '600') {
+                          child.style.lineHeight = '1.4';
+                          child.style.paddingTop = '6px';
+                          child.style.paddingBottom = '4px';
+                          child.style.overflow = 'visible';
+                        }
+                        // Text elements - ensure line-height and padding to prevent top clipping
+                        else if (['P', 'DIV', 'SPAN', 'LI', 'LABEL', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(child.tagName)) {
+                          child.style.lineHeight = '1.4';
+                          child.style.paddingTop = '4px';
+                          child.style.paddingBottom = '4px';
+                        }
+                      }
+                    }
+                  });
+                  
+                  // Wait for layout to update - longer wait to ensure all styles are applied
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                  
+                  // Force a reflow to ensure all styles are calculated
+                  element.offsetHeight
+                  
+                  // Get actual content dimensions - use multiple methods to ensure full capture
+                  const scrollHeight = element.scrollHeight
+                  const offsetHeight = element.offsetHeight
+                  const boundingRect = element.getBoundingClientRect()
+                  const boundingHeight = boundingRect.height
+                  const clientHeight = element.clientHeight
+                  
+                  // Use the maximum of all height measurements to ensure full content is captured
+                  // Add minimal buffer to ensure text is fully visible without creating blank pages
+                  const contentWidth = availableWidth
+                  const baseHeight = Math.max(scrollHeight, offsetHeight, boundingHeight, clientHeight)
+                  // Use actual height with minimal buffer to avoid blank pages
+                  const contentHeight = baseHeight + 30 // Minimal buffer (20px for text + 10px safety)
 
                   const opt = {
-                    margin: [0.3, 0.3, 0.3, 0.3],
+                    margin: [marginInches, marginInches, marginInches, marginInches],
                     filename: `PI-${piFormData.invoiceNumber || 'Draft'}-${(piFormData.billTo?.business || 'Customer').replace(/\s+/g, '-')}.pdf`,
                     image: { type: 'jpeg', quality: 0.98 },
                     html2canvas: { 
-                      scale: 2,
+                      scale: 2, // High scale for quality
                       useCORS: true,
                       letterRendering: true,
                       allowTaint: true,
                       backgroundColor: '#ffffff',
                       logging: false,
+                      removeContainer: false, // Keep container for proper rendering
+                      foreignObjectRendering: false, // Better text rendering
+                      imageTimeout: 0, // No timeout for images
                       scrollX: 0,
                       scrollY: 0,
-                      windowWidth: element.scrollWidth,
-                      windowHeight: element.scrollHeight
+                      width: contentWidth,
+                      height: contentHeight > 20000 ? undefined : contentHeight, // Don't set if too large to avoid blank pages
+                      windowWidth: contentWidth,
+                      windowHeight: contentHeight > 20000 ? undefined : contentHeight, // Don't set if too large
+                      onclone: (clonedDoc) => {
+                        // Inject CSS to prevent right border overflow and bottom text cutting
+                        const style = clonedDoc.createElement('style');
+                        style.textContent = `
+                          #pi-content, #pi-content * {
+                            box-sizing: border-box !important;
+                            max-width: 100% !important;
+                          }
+                          #pi-content {
+                            width: ${contentWidth}px !important;
+                            max-width: ${contentWidth}px !important;
+                            overflow-x: hidden !important;
+                            padding-bottom: 30px !important;
+                            margin-bottom: 20px !important;
+                            box-sizing: border-box !important;
+                            border: none !important;
+                          }
+                          /* Ensure all borders are within container */
+                          #pi-content * {
+                            max-width: 100% !important;
+                            box-sizing: border-box !important;
+                          }
+                          /* Ensure tables and containers stretch to borders */
+                          table, .table {
+                            width: 100% !important;
+                            max-width: 100% !important;
+                            table-layout: auto !important;
+                            box-sizing: border-box !important;
+                          }
+                          td, th {
+                            word-wrap: break-word !important;
+                            overflow-wrap: break-word !important;
+                            box-sizing: border-box !important;
+                          }
+                          /* Prevent text from being cut at page bottom */
+                          p, div, span, td, th, li, label {
+                            page-break-inside: avoid !important;
+                            orphans: 3 !important;
+                            widows: 3 !important;
+                          }
+                          tr {
+                            page-break-inside: avoid !important;
+                            page-break-after: auto !important;
+                          }
+                          table {
+                            page-break-inside: avoid !important;
+                          }
+                        `;
+                        clonedDoc.head.appendChild(style);
+                        
+                        // Ensure main element respects width
+                        const mainElement = clonedDoc.getElementById('pi-content');
+                        if (mainElement) {
+                          mainElement.style.width = `${contentWidth}px`;
+                          mainElement.style.maxWidth = `${contentWidth}px`;
+                          mainElement.style.overflowX = 'hidden';
+                          mainElement.style.boxSizing = 'border-box';
+                        }
+                        
+                        // Aggressive fixes for text rendering to prevent clipping
+                        const allElements = clonedDoc.querySelectorAll('*');
+                        allElements.forEach(el => {
+                          try {
+                            // Ensure box-sizing for all elements
+                            el.style.boxSizing = 'border-box';
+                            
+                            // Remove all height constraints
+                            el.style.height = 'auto';
+                            el.style.maxHeight = 'none';
+                            el.style.minHeight = 'auto';
+                            
+                            // For all text-containing elements - just ensure overflow visible
+                            if (['P', 'DIV', 'SPAN', 'TD', 'TH', 'LI', 'LABEL', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(el.tagName)) {
+                              // Ensure text can overflow vertically - preserve all other styles
+                              el.style.overflow = 'visible';
+                              el.style.overflowX = 'hidden';
+                              el.style.overflowY = 'visible';
+                              el.style.height = 'auto';
+                              el.style.maxHeight = 'none';
+                              
+                              // Table cells - ensure proper line-height and padding to prevent top clipping
+                              if (el.tagName === 'TD' || el.tagName === 'TH') {
+                                el.style.verticalAlign = 'top';
+                                el.style.whiteSpace = 'normal';
+                                el.style.wordWrap = 'break-word';
+                                el.style.boxSizing = 'border-box';
+                                el.style.lineHeight = '1.4';
+                                el.style.paddingTop = '8px';
+                                el.style.paddingBottom = '8px';
+                              }
+                              // Bold text elements - extra padding for top clipping
+                              else if (el.tagName === 'B' || el.tagName === 'STRONG' || 
+                                       window.getComputedStyle(el).fontWeight >= '600' ||
+                                       el.classList.contains('font-bold')) {
+                                el.style.lineHeight = '1.4';
+                                el.style.paddingTop = '6px';
+                                el.style.paddingBottom = '4px';
+                                el.style.overflow = 'visible';
+                              }
+                              // Text elements - ensure line-height and padding to prevent top clipping
+                              else {
+                                el.style.lineHeight = '1.4';
+                                el.style.paddingTop = '4px';
+                                el.style.paddingBottom = '4px';
+                              }
+                            }
+                          } catch (e) {
+                            // Fallback - ensure line-height and padding to prevent clipping
+                            if (el.tagName === 'TD' || el.tagName === 'TH') {
+                              el.style.overflow = 'visible';
+                              el.style.height = 'auto';
+                              el.style.maxHeight = 'none';
+                              el.style.verticalAlign = 'top';
+                              el.style.boxSizing = 'border-box';
+                              el.style.lineHeight = '1.4';
+                              el.style.paddingTop = '8px';
+                              el.style.paddingBottom = '8px';
+                            } else if (el.tagName === 'B' || el.tagName === 'STRONG') {
+                              el.style.overflow = 'visible';
+                              el.style.height = 'auto';
+                              el.style.maxHeight = 'none';
+                              el.style.lineHeight = '1.4';
+                              el.style.paddingTop = '6px';
+                              el.style.paddingBottom = '4px';
+                            } else if (['P', 'DIV', 'SPAN', 'LI', 'LABEL'].includes(el.tagName)) {
+                              el.style.overflow = 'visible';
+                              el.style.height = 'auto';
+                              el.style.maxHeight = 'none';
+                              el.style.lineHeight = '1.4';
+                              el.style.paddingTop = '4px';
+                              el.style.paddingBottom = '4px';
+                            }
+                          }
+                        });
+                      }
                     },
                     jsPDF: { 
                       unit: 'in', 
-                      format: 'a4', 
+                      format: 'a4', // Force A4 format
                       orientation: 'portrait',
-                      compress: false,
-                      putOnlyUsedFonts: true
+                      compress: true,
+                      putOnlyUsedFonts: true,
+                      precision: 16
                     },
-                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+                    pagebreak: { 
+                      mode: ['css', 'legacy'], // Allow natural page breaks for multi-page support
+                      before: '.page-break-before',
+                      after: '.page-break-after',
+                      avoid: ['.no-break', 'tr', 'table', 'td', 'th', 'p', 'div'] // Avoid breaking elements to prevent text cutting at page end
+                    }
                   };
 
                   // Generate PDF from the template content (pi-content)
                   await html2pdf().set(opt).from(element).save();
 
-                  // Restore original transform and styles
+                  // Restore original styles
                   wrapper.style.transform = originalTransform;
                   wrapper.style.transformOrigin = originalTransformOrigin;
                   wrapper.style.width = originalWidth;
                   wrapper.style.maxHeight = originalMaxHeight;
+                  element.style.transform = originalElementTransform;
+                  element.style.transformOrigin = originalElementTransformOrigin;
+                  element.style.width = originalElementWidth;
+                  element.style.maxWidth = originalElementMaxWidth;
                 } catch (error) {
                   console.error('Error generating PI PDF:', error);
                   alert('Failed to generate PDF. Please try again.');
