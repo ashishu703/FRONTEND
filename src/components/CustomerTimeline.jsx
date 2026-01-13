@@ -76,13 +76,13 @@ const CustomerTimeline = ({
 
   return (
     <div
-      className="fixed top-12 sm:top-14 right-0 h-[calc(100vh-3rem)] sm:h-[calc(100vh-3.5rem)] z-50"
+      className="fixed top-16 right-0 h-[calc(100vh-4rem)] sm:h-[calc(100vh-4rem)] z-[90]"
       style={{ width: 'fit-content', maxWidth: 349, minWidth: 244 }}
     >
       <div className="bg-white h-full flex flex-col shadow-2xl border-l border-gray-200">
-        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 p-3 sticky top-0 z-10 shadow-lg">
+        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 pt-8 sm:pt-10 pb-4 px-4 sticky top-0 z-10 shadow-lg">
           <div className="flex justify-between items-center">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2 leading-none">
               <Clock className="h-4 w-4" />
               Customer Timeline
             </h3>
@@ -91,7 +91,7 @@ const CustomerTimeline = ({
                 <button
                   type="button"
                   onClick={() => onReassign(lead)}
-                  className="text-white hover:text-purple-200 p-1.5 rounded-lg hover:bg-white/20 transition-colors"
+                  className="text-white hover:text-purple-200 p-1.5 rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center"
                   title="Reassign Lead"
                 >
                   <UserPlus className="h-4 w-4" />
@@ -100,7 +100,8 @@ const CustomerTimeline = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="text-white hover:text-gray-200 p-1.5 rounded-lg hover:bg-white/20 transition-colors"
+                className="text-white hover:text-gray-200 p-1.5 rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center"
+                aria-label="Close timeline"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -112,10 +113,11 @@ const CustomerTimeline = ({
         <div
           className="flex-1 overflow-y-auto"
           style={{
-            maxHeight: 'calc(100vh - 50px)',
+            maxHeight: 'calc(100vh - 58px)',
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
-            padding: 4
+            padding: 12,
+            paddingTop:10
           }}
         >
           <style>{`div::-webkit-scrollbar { display: none; }`}</style>
@@ -161,7 +163,7 @@ const CustomerTimeline = ({
             </div>
 
             <div className="flex justify-start mb-3">
-              <div className="max-w-[85%] rounded-lg rounded-tl-none bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 p-2 shadow-md">
+              <div className="max-w-[85%] rounded-lg rounded-tl-none bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 p-3 shadow-md">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="p-1 bg-green-500 rounded-full">
                     <CheckCircle className="h-3 w-3 text-white" />
@@ -187,7 +189,7 @@ const CustomerTimeline = ({
                   </span>
                 </div>
                 <div className="flex justify-start mb-3">
-                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-300 p-2 shadow-md">
+                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-300 p-3 shadow-md">
                     <div className="flex items-center gap-2 mb-1">
                       <div className="p-1 bg-purple-500 rounded-full">
                         <UserPlus className="h-3 w-3 text-white" />
@@ -254,8 +256,8 @@ const CustomerTimeline = ({
                           <div
                             className={
                               isRightAligned
-                                ? 'max-w-[85%] rounded-lg rounded-tr-none bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-300 p-2 shadow-md'
-                                : 'max-w-[85%] rounded-lg rounded-tl-none bg-gradient-to-br from-white to-gray-50 border-2 border-gray-300 p-2 shadow-sm'
+                                ? 'max-w-[85%] rounded-lg rounded-tr-none bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-300 p-3 shadow-md'
+                                : 'max-w-[85%] rounded-lg rounded-tl-none bg-gradient-to-br from-white to-gray-50 border-2 border-gray-300 p-3 shadow-sm'
                             }
                           >
                             <div className="flex items-center gap-2 mb-1.5">
@@ -309,7 +311,7 @@ const CustomerTimeline = ({
                   </span>
                 </div>
                 <div className="flex justify-start">
-                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-gradient-to-br from-yellow-50 to-amber-50 border-2 border-yellow-300 p-2 shadow-md">
+                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-gradient-to-br from-yellow-50 to-amber-50 border-2 border-yellow-300 p-3 shadow-md">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="p-1 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full">
                         <FileText className="h-3 w-3 text-white" />
@@ -334,7 +336,7 @@ const CustomerTimeline = ({
                         return (
                           <div
                             key={q.id}
-                            className="border-2 border-yellow-200 rounded-lg px-2 py-1.5 bg-white shadow-sm mb-1.5"
+                            className="border-2 border-yellow-200 rounded-lg px-3 py-2 bg-white shadow-sm mb-1.5"
                           >
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-bold text-blue-700">
@@ -408,7 +410,7 @@ const CustomerTimeline = ({
                                   return (
                                     <span
                                       key={pi.id}
-                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-300 shadow-sm"
+                                      className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-300 shadow-sm"
                                     >
                                       <div className="p-0.5 bg-gradient-to-r from-orange-500 to-amber-500 rounded">
                                         <Receipt className="h-2.5 w-2.5 text-white" />
@@ -483,8 +485,8 @@ const CustomerTimeline = ({
                   </span>
                 </div>
                 <div className="flex justify-start">
-                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-300 p-2 shadow-md">
-                    <div className="flex items-center gap-2 mb-2">
+                  <div className="max-w-[85%] rounded-lg rounded-tl-none bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-300 p-3 shadow-md">
+                            <div className="flex items-center gap-2 mb-2">
                       <div className="p-1 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full">
                         <CreditCard className="h-3 w-3 text-white" />
                       </div>
@@ -548,9 +550,9 @@ const CustomerTimeline = ({
                           
                           return (
                             <div
-                              key={payment.id || payment.payment_reference}
-                              className="border-2 border-blue-200 rounded-lg px-2 py-1.5 bg-white shadow-sm mb-1.5"
-                            >
+                                key={payment.id || payment.payment_reference}
+                                className="border-2 border-blue-200 rounded-lg px-3 py-2 bg-white shadow-sm mb-1.5"
+                              >
                               <div className="flex items-center gap-1.5 flex-wrap mb-1">
                                 <span className="font-bold text-blue-700">
                                   {payment.quotation_number || 'QT-N/A'}

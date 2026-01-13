@@ -1,7 +1,7 @@
 import React from 'react'
 import { Filter, X, ArrowUpDown } from 'lucide-react'
 
-export default function LeadFilters({ 
+export default function EnquiryFilters({ 
   showFilterPanel, setShowFilterPanel, enabledFilters, advancedFilters, 
   getUniqueFilterOptions, handleAdvancedFilterChange, toggleFilterSection, clearAdvancedFilters,
   sortBy, setSortBy, sortOrder, setSortOrder, handleSortChange, handleSortOrderChange
@@ -9,27 +9,29 @@ export default function LeadFilters({
   if (!showFilterPanel) return null
 
   const filterLabels = {
-    tag: 'Tag',
+    state: 'State',
+    division: 'Division',
+    product: 'Product',
     followUpStatus: 'Follow Up Status',
     salesStatus: 'Sales Status',
-    state: 'State',
-    leadSource: 'Lead Source',
-    productType: 'Product Type',
+    salesperson: 'Salesperson',
+    telecaller: 'Telecaller',
     dateRange: 'Date Range'
   }
 
   // Map filter keys to their corresponding option keys in getUniqueFilterOptions
   const filterOptionsMap = {
-    tag: 'tags',
+    state: 'states',
+    division: 'divisions',
+    product: 'products',
     followUpStatus: 'followUpStatuses',
     salesStatus: 'salesStatuses',
-    state: 'states',
-    leadSource: 'leadSources',
-    productType: 'products'
+    salesperson: 'salespersons',
+    telecaller: 'telecallers'
   }
 
   return (
-    <div id="filter-panel" className="fixed right-4 top-32 z-[100] bg-white rounded-xl shadow-2xl border border-gray-200 w-80 max-h-[calc(100vh-150px)] overflow-hidden flex flex-col">
+    <div id="enquiry-filter-panel" className="fixed right-4 top-32 z-[100] bg-white rounded-xl shadow-2xl border border-gray-200 w-80 max-h-[calc(100vh-150px)] overflow-hidden flex flex-col">
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-200 p-3 flex items-center justify-between">
         <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
           <Filter className="h-4 w-4 text-blue-600" /> Filters
@@ -39,7 +41,7 @@ export default function LeadFilters({
         </button>
       </div>
       <div className="p-3 space-y-2 overflow-y-auto flex-1">
-        {['tag', 'followUpStatus', 'salesStatus', 'state', 'leadSource', 'productType', 'dateRange'].map(filterKey => (
+        {['state', 'division', 'product', 'followUpStatus', 'salesStatus', 'salesperson', 'telecaller', 'dateRange'].map(filterKey => (
           <div key={filterKey} className="border border-gray-200 rounded-lg overflow-hidden">
             <div className="flex items-center gap-2 p-2 bg-gray-50">
               <input 
@@ -69,7 +71,7 @@ export default function LeadFilters({
                   </div>
                 ) : (
                   <select 
-                    value={advancedFilters[filterKey]} 
+                    value={advancedFilters[filterKey] || ''} 
                     onChange={(e) => handleAdvancedFilterChange(filterKey, e.target.value)} 
                     className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
@@ -77,33 +79,6 @@ export default function LeadFilters({
                     {(() => {
                       const optionsKey = filterOptionsMap[filterKey]
                       const options = (getUniqueFilterOptions && optionsKey && getUniqueFilterOptions[optionsKey]) || []
-                      
-                      // Debug for productType
-                      if (filterKey === 'productType') {
-                        console.log('[LeadFilters] ========== PRODUCT TYPE FILTER RENDER ==========')
-                        console.log('[LeadFilters] Filter key:', filterKey)
-                        console.log('[LeadFilters] Options key:', optionsKey)
-                        console.log('[LeadFilters] Options length:', options.length)
-                        console.log('[LeadFilters] Options array:', options)
-                        console.log('[LeadFilters] Has getUniqueFilterOptions:', !!getUniqueFilterOptions)
-                        console.log('[LeadFilters] getUniqueFilterOptions keys:', getUniqueFilterOptions ? Object.keys(getUniqueFilterOptions) : null)
-                        console.log('[LeadFilters] Products key exists:', getUniqueFilterOptions ? 'products' in getUniqueFilterOptions : false)
-                        console.log('[LeadFilters] Products value:', getUniqueFilterOptions?.products)
-                        console.log('[LeadFilters] Full getUniqueFilterOptions:', getUniqueFilterOptions)
-                        
-                        if (!options || options.length === 0) {
-                          console.error('[LeadFilters] ❌ ERROR: No product options available!')
-                          console.error('[LeadFilters] This means products are not being extracted correctly.')
-                        } else {
-                          console.log('[LeadFilters] ✅ SUCCESS: Product options found!')
-                        }
-                        console.log('[LeadFilters] ================================================')
-                      }
-                      
-                      // Render options
-                      if (!options || options.length === 0) {
-                        return null // Don't render anything if no options
-                      }
                       
                       return options.map(opt => (
                         <option key={opt} value={opt}>{opt}</option>
@@ -130,13 +105,12 @@ export default function LeadFilters({
             className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
           >
             <option value="none">No Sorting</option>
-            <option value="name">Name (A-Z / Z-A)</option>
+            <option value="customer_name">Customer Name (A-Z / Z-A)</option>
             <option value="business">Business (A-Z / Z-A)</option>
             <option value="state">State (A-Z / Z-A)</option>
-            <option value="salesStatus">Sales Status (A-Z / Z-A)</option>
-            <option value="followUpStatus">Follow Up Status (A-Z / Z-A)</option>
-            <option value="date">Date (Newest / Oldest)</option>
-            <option value="phone">Phone (Asc / Desc)</option>
+            <option value="division">Division (A-Z / Z-A)</option>
+            <option value="enquired_product">Product (A-Z / Z-A)</option>
+            <option value="enquiry_date">Date (Newest / Oldest)</option>
           </select>
           {sortBy !== 'none' && (
             <select 
@@ -145,10 +119,10 @@ export default function LeadFilters({
               className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
             >
               <option value="asc">
-                {sortBy === 'date' ? 'Oldest First' : 'A to Z'}
+                {sortBy === 'enquiry_date' ? 'Oldest First' : 'A to Z'}
               </option>
               <option value="desc">
-                {sortBy === 'date' ? 'Newest First' : 'Z to A'}
+                {sortBy === 'enquiry_date' ? 'Newest First' : 'Z to A'}
               </option>
             </select>
           )}

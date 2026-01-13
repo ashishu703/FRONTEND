@@ -271,12 +271,20 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
       try {
         const { branches, organizations: orgs } = await companyBranchService.fetchBranches();
         setCompanyBranches(branches);
-        setOrganizations(orgs);
+        
+        // Sort organizations alphabetically by organization_name or legal_name
+        const sortedOrgs = [...orgs].sort((a, b) => {
+          const nameA = (a.organization_name || a.legal_name || `Organization #${a.id}`).toLowerCase();
+          const nameB = (b.organization_name || b.legal_name || `Organization #${b.id}`).toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+        
+        setOrganizations(sortedOrgs);
 
-        if (!quotationData.selectedBranch && orgs.length > 0) {
+        if (!quotationData.selectedBranch && sortedOrgs.length > 0) {
           setQuotationData(prev => ({
             ...prev,
-            selectedBranch: String(orgs[0].id)
+            selectedBranch: String(sortedOrgs[0].id)
           }));
         }
       } catch (error) {
@@ -956,7 +964,11 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                   required
                 >
                   <option value="">Select Organization</option>
-                  {organizations.map((org) => (
+                  {[...organizations].sort((a, b) => {
+                    const nameA = (a.organization_name || a.legal_name || `Organization #${a.id}`).toLowerCase();
+                    const nameB = (b.organization_name || b.legal_name || `Organization #${b.id}`).toLowerCase();
+                    return nameA.localeCompare(nameB);
+                  }).map((org) => (
                     <option key={org.id} value={String(org.id)}>
                       {org.organization_name || org.legal_name || `Organization #${org.id}`}
                     </option>
