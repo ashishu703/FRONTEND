@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { X, FileText, Calendar, User, Package, DollarSign, Plus, Eye, Building2, Layout, Download, Truck, CreditCard } from "lucide-react";
 import DynamicTemplateRenderer from "../../components/DynamicTemplateRenderer";
 import { defaultQuotationTerms } from '../../constants/quotationTerms';
@@ -19,7 +19,7 @@ function CardContent({ className, children }) {
 }
 
 function CardHeader({ className, children }) {
-  return <div className={`p-6 ${className || ''}`}>{children}</div>;
+  return <div className={`p-3 sm:p-4 md:p-6 ${className || ''}`}>{children}</div>;
 }
 
 function CardTitle({ className, children }) {
@@ -790,12 +790,12 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
 
   if (showPreview) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-4">
-        <div className="w-full max-w-5xl max-h-[90vh] overflow-y-auto relative bg-white rounded-lg shadow-xl">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[110] p-2 sm:p-4">
+        <div className="w-full max-w-5xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto relative bg-white rounded-lg shadow-xl">
           {/* Header with Template Selector */}
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-            <h2 className="text-xl font-bold text-gray-900">Quotation Preview</h2>
-            <div className="flex items-center gap-3">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-3 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 z-10">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Quotation Preview</h2>
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               {/* Template Selector */}
               <div className="flex gap-2">
                 {availableTemplates.map((template) => (
@@ -825,7 +825,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
           </div>
           
           {/* Preview Content */}
-          <div className="p-6">
+          <div className="p-3 sm:p-6">
             {(() => {
               const activeTemplate = availableTemplates.find(
                 (tpl) => tpl.template_key === selectedTemplate
@@ -850,7 +850,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
               );
             })()}
           </div>
-          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-3 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3">
             <Button 
               type="button" 
               onClick={handleDownloadPDF}
@@ -878,14 +878,14 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
 
   const formContent = (
     <>
-      <CardHeader className={`flex flex-row items-center justify-between space-y-0 pb-3 border-b ${standalone ? 'pt-6' : ''}`}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-sm">
-              <FileText className="h-5 w-5 text-white" />
+      <CardHeader className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 pb-3 border-b ${standalone ? 'pt-3 sm:pt-6' : ''}`}>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-sm">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
             <div>
-              <CardTitle className="text-xl font-semibold text-gray-900">{existingQuotation ? 'Edit Quotation' : 'Create Quotation'}</CardTitle>
-              <p className="text-sm text-gray-600">For {customer?.name}</p>
+              <CardTitle className="text-lg sm:text-xl font-semibold text-gray-900">{existingQuotation ? 'Edit Quotation' : 'Create Quotation'}</CardTitle>
+              <p className="text-xs sm:text-sm text-gray-600">For {customer?.name}</p>
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-gray-100">
@@ -893,7 +893,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
           </Button>
         </CardHeader>
 
-      <div className="flex flex-row gap-4 p-6" style={{ minHeight: 'calc(100vh - 200px)' }}>
+      <div className="flex flex-col lg:flex-row gap-4 p-3 sm:p-4 md:p-6" style={{ minHeight: 'calc(100vh - 200px)' }}>
         {/* Left Side - Form */}
         <div className="flex-1 overflow-y-auto pr-4" style={{ maxHeight: 'calc(100vh - 200px)', minWidth: '60%' }}>
           <CardContent className="p-0">
@@ -1098,8 +1098,8 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {quotationData.items.map((item, index) => (
-                      <>
-                        <tr key={item.id}>
+                      <React.Fragment key={item.id || index}>
+                        <tr>
                           <td className="px-2 py-3">
                             <div className="relative">
                               <input
@@ -1190,7 +1190,7 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
                             />
                           </td>
                         </tr>
-                      </>
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -1573,8 +1573,8 @@ export default function CreateQuotationForm({ customer, user, onClose, onSave, s
 
   // Otherwise render as modal
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[110] p-4">
-      <Card className="w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[110] p-2 sm:p-4">
+      <Card className="w-full max-w-5xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl">
         {formContent}
       </Card>
     </div>

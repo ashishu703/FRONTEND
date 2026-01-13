@@ -25,28 +25,30 @@ const LoginSection = ({ onLogin, isLoading, error }) => {
   };
 
   return (
-    <div className="flex-1 bg-white flex items-center justify-center p-8">
+    <div className="flex-1 bg-white flex items-center justify-center p-4 sm:p-6 md:p-8">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="mb-8 text-center">
+        <div className="mb-6 sm:mb-8 text-center">
           <img 
             src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png" 
             alt="Logo" 
-            className="h-12 mx-auto mb-4"
+            className="h-10 sm:h-12 mx-auto mb-3 sm:mb-4"
           />
         </div>
 
         {/* Welcome Text */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-blue-600 mb-3">Welcome Back</h1>
-          <p className="text-gray-600 text-sm leading-relaxed">
-            Sign in to access your personalized dashboard and<br />
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-blue-600 mb-2 sm:mb-3">Welcome Back</h1>
+          <p className="text-gray-600 text-sm leading-relaxed px-2">
+            Sign in to access your personalized dashboard and
+            <span className="hidden sm:inline"><br /></span>
+            <span className="sm:hidden"> </span>
             manage your work and department operations
           </p>
         </div>
 
         {/* Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {/* Email Field */}
           <div>
             <div className="flex items-center mb-2">
@@ -133,17 +135,17 @@ const LoginSection = ({ onLogin, isLoading, error }) => {
 // Right Business Hub Component (Dark/Blue Theme)
 const BusinessHubSection = () => {
   return (
-    <div className="flex-1 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 flex items-center justify-center p-8 relative overflow-hidden">
+    <div className="hidden md:flex flex-1 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 items-center justify-center p-4 sm:p-6 md:p-8 relative overflow-hidden min-h-[400px] md:min-h-0">
       {/* Background Decoration */}
       <div className="absolute top-0 left-0 w-full h-full opacity-10">
-        <div className="absolute top-20 left-20 w-32 h-32 bg-white rounded-full blur-xl"></div>
-        <div className="absolute bottom-20 right-20 w-40 h-40 bg-white rounded-full blur-xl"></div>
+        <div className="absolute top-10 sm:top-20 left-10 sm:left-20 w-24 sm:w-32 h-24 sm:h-32 bg-white rounded-full blur-xl"></div>
+        <div className="absolute bottom-10 sm:bottom-20 right-10 sm:right-20 w-32 sm:w-40 h-32 sm:h-40 bg-white rounded-full blur-xl"></div>
       </div>
 
-      <div className="text-center max-w-lg relative z-10">
+      <div className="text-center max-w-lg relative z-10 w-full">
         {/* CRM Diagram */}
-        <div className="mb-8 relative">
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-2xl relative border border-white/20">
+        <div className="mb-6 sm:mb-8 relative">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 sm:p-6 md:p-8 shadow-2xl relative border border-white/20">
             <div className="absolute top-4 right-4">
               <div className="text-xs text-gray-500 font-medium">SERVICE</div>
               <div className="text-xs text-blue-600 font-bold">MANAGEMENT</div>
@@ -151,13 +153,13 @@ const BusinessHubSection = () => {
             
             {/* Central CRM Hub */}
             <div className="relative flex items-center justify-center">
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-full w-32 h-20 flex items-center justify-center shadow-xl relative overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-full w-24 h-14 sm:w-32 sm:h-20 flex items-center justify-center shadow-xl relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 opacity-20"></div>
-                <span className="text-white text-2xl font-bold relative z-10">CRM</span>
+                <span className="text-white text-xl sm:text-2xl font-bold relative z-10">CRM</span>
               </div>
               
-              {/* Connected Icons with Animation */}
-              <div className="absolute -top-8 -left-4 animate-pulse">
+              {/* Connected Icons with Animation - Hidden on very small screens */}
+              <div className="hidden sm:block absolute -top-8 -left-4 animate-pulse">
                 <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg">
                   <Users className="w-4 h-4 text-white" />
                 </div>
@@ -165,28 +167,28 @@ const BusinessHubSection = () => {
                 <div className="w-8 h-px bg-blue-300"></div>
               </div>
               
-              <div className="absolute top-12 -right-8 animate-pulse" style={{animationDelay: '0.5s'}}>
+              <div className="hidden sm:block absolute top-12 -right-8 animate-pulse" style={{animationDelay: '0.5s'}}>
                 <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg">
                   <div className="w-3 h-3 border-2 border-white rounded-full"></div>
                 </div>
                 <div className="w-6 h-px bg-blue-300"></div>
               </div>
               
-              <div className="absolute -bottom-8 left-8 animate-pulse" style={{animationDelay: '1s'}}>
+              <div className="hidden sm:block absolute -bottom-8 left-8 animate-pulse" style={{animationDelay: '1s'}}>
                 <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-full w-8 h-8 flex items-center justify-center shadow-lg">
                   <Grid3x3 className="w-4 h-4 text-white" />
                 </div>
                 <div className="w-px h-6 bg-blue-300 mx-auto"></div>
               </div>
               
-              <div className="absolute bottom-4 -right-12 animate-pulse" style={{animationDelay: '1.5s'}}>
+              <div className="hidden md:block absolute bottom-4 -right-12 animate-pulse" style={{animationDelay: '1.5s'}}>
                 <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-full w-10 h-10 flex items-center justify-center shadow-lg">
                   <div className="w-4 h-4 bg-yellow-400 rounded-full shadow-sm"></div>
                 </div>
                 <div className="w-6 h-px bg-blue-300"></div>
               </div>
               
-              <div className="absolute -bottom-4 left-12 animate-pulse" style={{animationDelay: '2s'}}>
+              <div className="hidden md:block absolute -bottom-4 left-12 animate-pulse" style={{animationDelay: '2s'}}>
                 <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-full w-6 h-6 flex items-center justify-center shadow-lg">
                   <Settings className="w-3 h-3 text-white" />
                 </div>
@@ -196,35 +198,37 @@ const BusinessHubSection = () => {
         </div>
 
         {/* Title and Description */}
-        <h2 className="text-4xl font-bold text-white mb-4 drop-shadow-lg">Your Digital Business Hub</h2>
-        <p className="text-blue-100 text-lg mb-8 leading-relaxed drop-shadow-sm">
-          Access your centralized dashboard to efficiently<br />
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4 drop-shadow-lg px-2">Your Digital Business Hub</h2>
+        <p className="text-blue-100 text-sm sm:text-base md:text-lg mb-6 sm:mb-8 leading-relaxed drop-shadow-sm px-2">
+          Access your centralized dashboard to efficiently
+          <span className="hidden sm:inline"><br /></span>
+          <span className="sm:hidden"> </span>
           manage your work and department operations
         </p>
 
         {/* Feature Cards */}
-        <div className="flex justify-center space-x-8">
-          <div className="text-center group cursor-pointer">
-            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-full w-12 h-12 flex items-center justify-center mb-3 mx-auto shadow-xl group-hover:scale-110 transition-all duration-300">
-              <Zap className="w-6 h-6 text-white" />
+        <div className="flex flex-wrap justify-center gap-4 sm:gap-6 md:gap-8 px-2">
+          <div className="text-center group cursor-pointer flex-1 min-w-[100px] sm:flex-none">
+            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-2 sm:mb-3 mx-auto shadow-xl group-hover:scale-110 transition-all duration-300">
+              <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <div className="text-sm text-white font-medium drop-shadow-sm">Real-time Analytics</div>
+            <div className="text-xs sm:text-sm text-white font-medium drop-shadow-sm">Real-time Analytics</div>
             <div className="text-xs text-blue-200">& Insights</div>
           </div>
           
-          <div className="text-center group cursor-pointer">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-full w-12 h-12 flex items-center justify-center mb-3 mx-auto shadow-xl group-hover:scale-110 transition-all duration-300">
-              <Users className="w-6 h-6 text-white" />
+          <div className="text-center group cursor-pointer flex-1 min-w-[100px] sm:flex-none">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-2 sm:mb-3 mx-auto shadow-xl group-hover:scale-110 transition-all duration-300">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <div className="text-sm text-white font-medium drop-shadow-sm">Customer</div>
+            <div className="text-xs sm:text-sm text-white font-medium drop-shadow-sm">Customer</div>
             <div className="text-xs text-blue-200">Management Tools</div>
           </div>
           
-          <div className="text-center group cursor-pointer">
-            <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-full w-12 h-12 flex items-center justify-center mb-3 mx-auto shadow-xl group-hover:scale-110 transition-all duration-300">
-              <Award className="w-6 h-6 text-white" />
+          <div className="text-center group cursor-pointer flex-1 min-w-[100px] sm:flex-none">
+            <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-2 sm:mb-3 mx-auto shadow-xl group-hover:scale-110 transition-all duration-300">
+              <Award className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <div className="text-sm text-white font-medium drop-shadow-sm">Service Performance</div>
+            <div className="text-xs sm:text-sm text-white font-medium drop-shadow-sm">Service Performance</div>
             <div className="text-xs text-blue-200">Tracking</div>
           </div>
         </div>
@@ -252,7 +256,7 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col md:flex-row">
       <LoginSection onLogin={handleLogin} isLoading={isLoading} error={error} />
       <BusinessHubSection />
     </div>

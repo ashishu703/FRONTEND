@@ -2072,7 +2072,7 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-3 sm:p-4 md:p-6 pb-24 sm:pb-6">
 
       <Toolbar
         onSearch={handleSearch}
@@ -2104,11 +2104,11 @@ export default function ProductsPage() {
         </div>
       ) : (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto -mx-3 sm:mx-0">
+          <table className="min-w-[800px] sm:w-full">
             <thead className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 border-b-2 border-blue-200">
               <tr>
-                <th className="px-6 py-4 text-left">
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-blue-600" />
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Lead ID</span>
@@ -2168,12 +2168,12 @@ export default function ProductsPage() {
                 {paginatedPaymentTracking.length > 0 ? (
                   paginatedPaymentTracking.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-sm text-gray-900 font-medium">
                         {item.leadId}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div>
                         <div className="font-semibold text-sm text-gray-900 truncate max-w-[200px]" title={item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}>
                           {item.customerName && item.customerName !== 'N/A' ? item.customerName : (item.leadData?.name || 'N/A')}
@@ -2201,26 +2201,26 @@ export default function ProductsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-xs text-gray-900 truncate max-w-[150px] block" title={item.productName || 'N/A'}>{item.productName || 'N/A'}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div className="max-w-[180px]">
                         <span className="text-xs text-gray-700 truncate block" title={item.address || 'N/A'}>
                           {item.address || 'N/A'}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-sm font-bold text-gray-900 font-mono">{item.quotationId || 'N/A'}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {getPaymentStatusBadge(item)}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4">
                         <span className="text-sm text-gray-900">{item.workOrderId || 'N/A'}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-gray-900">
                           {item.quotationData?.delivery_date ? 
@@ -2235,7 +2235,7 @@ export default function ProductsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-center">
                       <div className="flex items-center justify-center">
                         <div className="relative action-menu-container">
                           <button

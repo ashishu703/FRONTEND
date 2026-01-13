@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Moon, Sun, BarChart3, Clock, User, Factory, Wrench, HelpCircle, Activity, Server, Settings, Shield, Link, CheckCheck, Circle, FileText } from 'lucide-react';
+import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Moon, Sun, BarChart3, Clock, User, Factory, Wrench, HelpCircle, Activity, Server, Settings, Shield, Link, CheckCheck, Circle, FileText, Menu } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useNotifications } from './hooks/useNotifications';
 import ProfileUpdateModal from './components/ProfileUpdateModal';
 
 const ASHVAY_LOGO = "https://res.cloudinary.com/dngojnptn/image/upload/v1764139419/ChatGPT_Image_Nov_26_2025_11_50_20_AM_qkwcqe.png";
 
-const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMobileView = false, isDarkMode = false, onToggleDarkMode, onProfileClick }) => {
+const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMobileView = false, isDarkMode = false, onToggleDarkMode, onProfileClick, onToggleSidebar, sidebarOpen }) => {
   const { user, refreshUser } = useAuth();
   const { notifications, unreadCount, isConnected, markAsRead, markAsUnread, markAllAsRead } = useNotifications();
   
@@ -296,6 +296,14 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
       
       // Sales Department Head pages
       case 'sales-dashboard':
+        // Check if userType is salesdepartmenthead to show Sales Overview like salesperson
+        if (userType === 'salesdepartmenthead') {
+          return {
+            icon: <TrendingUp className="w-6 h-6 text-white" />,
+            title: "Sales Overview",
+            subtitle: "Monitor sales performance and metrics"
+          };
+        }
         return {
           icon: <TrendingUp className="w-6 h-6 text-white" />,
           title: "Sales Dashboard",
@@ -557,6 +565,20 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
       <div className="flex items-center justify-between px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 flex-wrap gap-2 sm:gap-3">
         {/* Left Section - Dynamic Page Header */}
         <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+          {/* Hamburger Menu for Mobile */}
+          {isMobileView && onToggleSidebar && (
+            <button
+              onClick={onToggleSidebar}
+              className={`p-1.5 sm:p-2 rounded-lg transition-colors flex-shrink-0 ${
+                isDarkMode 
+                  ? 'hover:bg-gray-700 text-gray-300' 
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
+              title="Toggle Menu"
+            >
+              <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          )}
           <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg flex-shrink-0" style={{
             boxShadow: '0 10px 15px -3px rgba(99, 102, 241, 0.3), 0 4px 6px -2px rgba(99, 102, 241, 0.2)'
           }}>

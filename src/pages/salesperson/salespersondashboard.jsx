@@ -1466,7 +1466,7 @@ export default function DashboardContent({ isDarkMode = false }) {
   }
 
   return (
-    <main className={`flex-1 overflow-y-auto overflow-x-hidden p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <main className={`flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {showMonthlyHighlight && (monthlyHighlight?.highlightType === 'winner' || monthlyHighlight?.highlightType === 'achieved') && (
         <div className="fixed inset-0 z-[99999]">
           <div
@@ -1513,11 +1513,11 @@ export default function DashboardContent({ isDarkMode = false }) {
         </div>
       )}
       {/* Tab Navigation with Date Filter and Refresh Button */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex gap-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
+        <div className="flex gap-4 sm:gap-6">
           <button 
             onClick={() => setActiveTab('overview')}
-            className={`gap-2 flex items-center pb-2 border-b-2 ${
+            className={`gap-1 sm:gap-2 flex items-center pb-2 border-b-2 text-sm sm:text-base ${
               activeTab === 'overview' 
                 ? 'text-blue-600 border-blue-600' 
                 : isDarkMode 
@@ -1525,12 +1525,12 @@ export default function DashboardContent({ isDarkMode = false }) {
                   : 'text-gray-500 border-transparent'
             }`}
           >
-            <TrendingUp className="h-4 w-4" />
-            Overview
+            <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span>Overview</span>
           </button>
           <button 
             onClick={() => setActiveTab('performance')}
-            className={`gap-2 flex items-center pb-2 border-b-2 ${
+            className={`gap-1 sm:gap-2 flex items-center pb-2 border-b-2 text-sm sm:text-base ${
               activeTab === 'performance' 
                 ? 'text-blue-600 border-blue-600' 
                 : isDarkMode 
@@ -1538,16 +1538,16 @@ export default function DashboardContent({ isDarkMode = false }) {
                   : 'text-gray-500 border-transparent'
             }`}
           >
-            <BarChart3 className="h-4 w-4" />
-            Performance
+            <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span>Performance</span>
           </button>
         </div>
         {activeTab === 'overview' && (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
             <button
               onClick={refreshDashboard}
               disabled={refreshing}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 shadow-lg hover:shadow-xl ${
+              className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 shadow-lg hover:shadow-xl ${
                 refreshing
                   ? 'opacity-50 cursor-not-allowed'
                   : ''
@@ -1558,11 +1558,11 @@ export default function DashboardContent({ isDarkMode = false }) {
               }`}
               title="Refresh dashboard data"
             >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${refreshing ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
             </button>
             <div className="relative flex items-center gap-2">
-              <Calendar className={`h-5 w-5 ${
+              <Calendar className={`h-4 w-4 sm:h-5 sm:w-5 ${
               overviewDateFilter 
                   ? (isDarkMode ? 'text-purple-400' : 'text-purple-600')
                 : (isDarkMode ? 'text-gray-400' : 'text-gray-500')
@@ -1571,7 +1571,7 @@ export default function DashboardContent({ isDarkMode = false }) {
               type="date"
               value={overviewDateFilter}
               onChange={(e) => setOverviewDateFilter(e.target.value)}
-                className={`px-4 py-2.5 border-2 rounded-lg text-sm focus:outline-none focus:ring-2 transition-all duration-200 shadow-sm ${
+                className={`flex-1 px-3 sm:px-4 py-2 sm:py-2.5 border-2 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 transition-all duration-200 shadow-sm ${
                 isDarkMode 
                     ? `bg-gray-800 border-gray-600 text-white focus:ring-purple-500 focus:border-purple-500 hover:border-purple-400 ${overviewDateFilter ? 'border-purple-400 bg-purple-900/30' : ''}`
                     : `bg-white text-gray-900 focus:ring-purple-500 focus:border-purple-500 hover:border-purple-300 ${overviewDateFilter ? 'border-purple-500 bg-purple-50' : 'border-gray-300'}`
@@ -1583,7 +1583,7 @@ export default function DashboardContent({ isDarkMode = false }) {
             {overviewDateFilter && (
               <button
                 onClick={() => setOverviewDateFilter('')}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
+                  className={`px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 whitespace-nowrap ${
                   isDarkMode 
                       ? 'text-gray-300 hover:text-white hover:bg-gray-700 bg-gray-800 border border-gray-600' 
                       : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 bg-white border border-gray-300'
@@ -1601,15 +1601,15 @@ export default function DashboardContent({ isDarkMode = false }) {
       {activeTab === 'overview' && (
         <>
       {/* Lead Status Summary - Moved to top */}
-      <div className="space-y-4 mb-8">
+      <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8">
         <div className="flex items-center gap-2">
-          <Clock className={`h-5 w-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-          <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Lead Status Summary</h2>
+          <Clock className={`h-4 w-4 sm:h-5 sm:w-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+          <h2 className={`text-base sm:text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Lead Status Summary</h2>
         </div>
-        <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Overview of your leads by status</p>
+        <p className={`text-xs sm:text-sm mb-3 sm:mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Overview of your leads by status</p>
 
         {/* Total Leads Card and Lead Status Cards - Combined grid with 4 columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 overflow-hidden">
           {/* Total Leads Card - Added at the beginning */}
           <Card className={cx(
             "border-2 relative overflow-hidden",
@@ -1633,7 +1633,7 @@ export default function DashboardContent({ isDarkMode = false }) {
               </div>
             </CardHeader>
             <CardContent className="relative z-10">
-              <div className={`text-3xl font-bold mb-1 bg-gradient-to-r ${
+              <div className={`text-2xl sm:text-3xl font-bold mb-1 bg-gradient-to-r ${
                 isDarkMode ? 'from-white to-blue-100 bg-clip-text text-transparent' : 'from-blue-600 to-blue-800 bg-clip-text text-transparent'
               }`}>{calculatedMetrics.totalLeads}</div>
               <p className={`text-xs font-medium ${
@@ -1693,7 +1693,7 @@ export default function DashboardContent({ isDarkMode = false }) {
                   </div>
                 </CardHeader>
                 <CardContent className="relative z-10">
-                  <div className={`text-3xl font-bold mb-1 bg-gradient-to-r ${
+                  <div className={`text-2xl sm:text-3xl font-bold mb-1 bg-gradient-to-r ${
                     isDarkMode 
                       ? 'from-white to-gray-200 bg-clip-text text-transparent' 
                       : `${colors.valueColor} bg-clip-text text-transparent`
@@ -1716,7 +1716,7 @@ export default function DashboardContent({ isDarkMode = false }) {
           <Target className={`h-5 w-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
           <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Target & Timeline</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 overflow-hidden">
           <Card className={cx(
             "border-2 relative overflow-hidden",
             isDarkMode 
@@ -1841,7 +1841,7 @@ export default function DashboardContent({ isDarkMode = false }) {
         </div>
         <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Critical business indicators and trends</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 overflow-hidden">
           {overviewMetrics.map((metric, index) => {
             const Icon = metric.icon
             // Color schemes for each metric
@@ -1925,7 +1925,7 @@ export default function DashboardContent({ isDarkMode = false }) {
             {/* Quotation Metrics */}
             <div className="mb-6">
               <h3 className={`text-md font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Quotations</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                 <Card className={cx(
                   "border-2 relative overflow-hidden",
                   isDarkMode 
@@ -2031,7 +2031,7 @@ export default function DashboardContent({ isDarkMode = false }) {
             {/* PI Metrics */}
             <div className="mb-6">
               <h3 className={`text-md font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Proforma Invoices</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                 <Card className={cx(
                   "border-2 relative overflow-hidden",
                   isDarkMode 
@@ -2137,7 +2137,7 @@ export default function DashboardContent({ isDarkMode = false }) {
             {/* Payment & Order Metrics */}
             <div className="mb-6">
               <h3 className={`text-md font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Payments & Orders</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                 <Card className={cx(
                   "border-2 relative overflow-hidden",
                   isDarkMode 
@@ -2243,7 +2243,7 @@ export default function DashboardContent({ isDarkMode = false }) {
             {/* Payment Overview KPI Cards - Colorful Design */}
             <div className="mt-8 mb-6">
               <h3 className={`text-md font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Payment Overview</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                 {/* Total Payments Card */}
                 <Card className={cx(
                   "border-2 relative overflow-hidden",
@@ -2379,7 +2379,7 @@ export default function DashboardContent({ isDarkMode = false }) {
               <h3 className={`text-md font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Trends & Analytics</h3>
               
               {/* Row 1: Quotation Trends & Proforma Invoice Distribution */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                 {/* 1. Quotation Trends - Line Chart */}
                 <Card className={`rounded-xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-700/50' : 'bg-white border-gray-200'} shadow-md`} isDarkMode={isDarkMode}>
                   <CardHeader className="pb-3">
@@ -2426,7 +2426,7 @@ export default function DashboardContent({ isDarkMode = false }) {
               </div>
 
               {/* Row 2: Payment Trends & Payment Distribution */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                 {/* 6. Payments Trend - Area Chart */}
                 <Card className={`rounded-xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-700/50' : 'bg-white border-gray-200'} shadow-md`} isDarkMode={isDarkMode}>
                   <CardHeader className="pb-3">
@@ -2479,7 +2479,7 @@ export default function DashboardContent({ isDarkMode = false }) {
               </div>
 
               {/* Row 3: Sales Order Progress, Payment Due Ratio, Lead Sources */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
                 {/* 5. Sales Order Progress - Funnel Chart */}
                 <Card className={`rounded-xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-700/50' : 'bg-white border-gray-200'} shadow-md`} isDarkMode={isDarkMode}>
                   <CardHeader className="pb-3">
@@ -2562,7 +2562,7 @@ export default function DashboardContent({ isDarkMode = false }) {
       </div>
 
               {/* Row 4: Weekly Leads Activity & Monthly Revenue Trend */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                 {/* 4. Weekly Leads Activity - Bar Chart */}
                 <Card className={`rounded-xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-700/50' : 'bg-white border-gray-200'} shadow-md`} isDarkMode={isDarkMode}>
                   <CardHeader className="pb-3">
@@ -2621,7 +2621,7 @@ export default function DashboardContent({ isDarkMode = false }) {
               </div>
 
               {/* Row 5: Revenue Distribution, Lead Conversion Funnel, Sales vs Target */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
                 {/* 11. Revenue Distribution - Donut Chart */}
                 <Card className={`rounded-xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-700/50' : 'bg-white border-gray-200'} shadow-md`} isDarkMode={isDarkMode}>
                   <CardHeader className="pb-3">

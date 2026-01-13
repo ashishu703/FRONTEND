@@ -9,7 +9,7 @@ function cx(...classes) {
   return classes.filter(Boolean).join(" ")
 }
 
-export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen, setSidebarOpen, isDarkMode = false }) {
+export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen, setSidebarOpen, isDarkMode = false, isMobileView = false }) {
   const collapseTimerRef = useRef(null);
   const isManuallyToggledRef = useRef(false);
 
@@ -108,12 +108,14 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen
       {/* Sidebar */}
       <div
         className={cx(
-          "fixed top-0 left-0 h-screen z-40 shadow-2xl border-r transition-all duration-200 flex flex-col",
+          "fixed top-0 left-0 h-screen z-50 shadow-2xl border-r transition-all duration-300 flex flex-col",
           "bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 border-slate-700/50",
-          sidebarOpen ? "w-64" : "w-16",
+          isMobileView 
+            ? (sidebarOpen ? "w-64" : "-translate-x-full w-64")
+            : (sidebarOpen ? "w-64" : "w-16"),
         )}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
+        onMouseEnter={!isMobileView ? handleMouseEnter : undefined}
+        onMouseLeave={!isMobileView ? handleMouseLeave : undefined}
         style={{
           background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
           boxShadow: '4px 0 20px rgba(0, 0, 0, 0.3)'
