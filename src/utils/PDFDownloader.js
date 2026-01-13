@@ -1,4 +1,3 @@
-// Global PDF Download Utility Class
 import html2pdf from 'html2pdf.js'
 
 export class PDFDownloader {
@@ -30,7 +29,6 @@ export class PDFDownloader {
         `;
         clonedDoc.head.appendChild(style);
         
-        // Ensure all images are loaded
         const images = clonedDoc.querySelectorAll('img');
         images.forEach(img => {
           if (!img.complete) {
@@ -44,7 +42,7 @@ export class PDFDownloader {
       format: 'a4',
       orientation: 'portrait',
       compress: true,
-      putOnlyUsedFonts: false, // Include all fonts
+      putOnlyUsedFonts: false,
       precision: 16
     },
     pagebreak: { 
@@ -52,7 +50,7 @@ export class PDFDownloader {
       before: '.page-break-before',
       after: '.page-break-after',
       avoid: ['table', 'tr', '.no-break']
-    } // Prevent page breaks in middle of content
+    }
   }
 
   static async download(elementId, filename, options = {}) {
@@ -61,16 +59,13 @@ export class PDFDownloader {
       throw new Error(`Element with id "${elementId}" not found`)
     }
 
-    // OPTIMIZED: Wait for fonts and images to load
     await new Promise(resolve => setTimeout(resolve, 500))
     
-    // Ensure element is visible for proper rendering
     const originalDisplay = element.style.display
     const originalVisibility = element.style.visibility
     element.style.display = 'block'
     element.style.visibility = 'visible'
     
-    // Calculate proper dimensions
     const elementHeight = element.scrollHeight
     const elementWidth = element.scrollWidth
     
@@ -92,7 +87,6 @@ export class PDFDownloader {
     try {
       await html2pdf().set(opt).from(element).save()
     } finally {
-      // Restore original styles
       element.style.display = originalDisplay
       element.style.visibility = originalVisibility
     }

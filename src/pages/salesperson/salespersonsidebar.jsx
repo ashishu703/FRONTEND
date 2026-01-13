@@ -13,22 +13,42 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen
   const collapseTimerRef = useRef(null);
   const isManuallyToggledRef = useRef(false);
 
-  // Auto-collapse on mouse leave
+  // Auto-expand on mouse enter - immediate response
   const handleMouseEnter = () => {
+    // Don't auto-expand if manually closed
+    if (isManuallyToggledRef.current && !sidebarOpen) {
+      return;
+    }
+    
+    // Clear any pending collapse timer immediately
     if (collapseTimerRef.current) {
       clearTimeout(collapseTimerRef.current);
       collapseTimerRef.current = null;
     }
-    if (!isManuallyToggledRef.current) {
-      setSidebarOpen(true);
+    
+    // Auto-expand immediately if sidebar is closed
+    if (!sidebarOpen) {
+      // Only auto-expand if not manually closed
+      if (!isManuallyToggledRef.current) {
+        setSidebarOpen(true);
+      }
     }
   };
 
   const handleMouseLeave = () => {
+    // Reset manual toggle flag when mouse leaves (allows auto-expand on next hover)
+    if (isManuallyToggledRef.current && !sidebarOpen) {
+      // If sidebar was manually closed and mouse leaves, reset flag after a short delay
+      setTimeout(() => {
+        isManuallyToggledRef.current = false;
+      }, 300);
+    }
+    
+    // Only auto-collapse if not manually toggled to stay open
     if (!isManuallyToggledRef.current) {
       collapseTimerRef.current = setTimeout(() => {
         setSidebarOpen(false);
-      }, 2000); // Collapse after 2 seconds
+      }, 1500); // Collapse after 1.5 seconds (reduced from 2 seconds for faster response)
     }
   };
 
@@ -42,22 +62,53 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen
   }, []);
 
   // Handle manual toggle
-  const handleToggle = () => {
-    isManuallyToggledRef.current = !sidebarOpen; // If expanding manually, set flag; if collapsing, clear flag
-    setSidebarOpen(!sidebarOpen);
-    // Clear any pending auto-collapse
+  const handleToggle = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    const newState = !sidebarOpen;
+    
+    // Set flag based on new state:
+    // - If closing (newState = false), set flag to true (manually closed - prevent auto-expand)
+    // - If opening (newState = true), set flag to false (can auto-collapse again)
+    isManuallyToggledRef.current = !newState;
+    
+    // Clear any pending timers first
     if (collapseTimerRef.current) {
       clearTimeout(collapseTimerRef.current);
       collapseTimerRef.current = null;
     }
+    
+    // Set the new state
+    setSidebarOpen(newState);
+  };
+
+  // Prevent mouse events on button from triggering sidebar auto-expand/collapse
+  const handleButtonMouseEnter = (e) => {
+    e.stopPropagation();
+  };
+
+  const handleButtonMouseLeave = (e) => {
+    e.stopPropagation();
   };
 
   return (
     <>
+      {/* Hover trigger zone when sidebar is collapsed - makes it easier to expand */}
+      {!sidebarOpen && (
+        <div
+          className="fixed top-0 left-0 w-8 h-screen z-30"
+          onMouseEnter={handleMouseEnter}
+          style={{ cursor: 'pointer' }}
+        />
+      )}
+      
       {/* Sidebar */}
       <div
         className={cx(
-          "fixed top-0 left-0 h-screen z-40 shadow-2xl border-r transition-all duration-300 flex flex-col",
+          "fixed top-0 left-0 h-screen z-40 shadow-2xl border-r transition-all duration-200 flex flex-col",
           "bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 border-slate-700/50",
           sidebarOpen ? "w-64" : "w-16",
         )}
@@ -87,9 +138,12 @@ export default function Sidebar({ currentPage, onNavigate, onLogout, sidebarOpen
             ) : null}
             <button
               onClick={handleToggle}
+              onMouseEnter={handleButtonMouseEnter}
+              onMouseLeave={handleButtonMouseLeave}
               className={`p-2 hover:bg-slate-700/50 rounded-lg transition-all duration-200 text-slate-300 hover:text-white ${!sidebarOpen ? 'mx-auto' : ''}`}
+              type="button"
             >
-              {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
             </button>
           </div>
         </div>
