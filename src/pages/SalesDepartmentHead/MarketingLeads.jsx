@@ -271,7 +271,7 @@ const MarketingLeads = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-3 sm:p-4 md:p-6 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
@@ -282,7 +282,7 @@ const MarketingLeads = () => {
       </div>
 
       {/* Search and Action Bar */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 sm:mb-6">
         <div className="flex items-center justify-between">
           {/* Left: Search (half width) */}
           <div className="flex items-center gap-3 w-full max-w-xl">
@@ -334,11 +334,11 @@ const MarketingLeads = () => {
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto -mx-3 sm:mx-0">
+          <table className="w-full min-w-[800px] sm:min-w-0">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left">
                   <input
                     type="checkbox"
                     checked={selectedLeads.length === leads.length && leads.length > 0}
@@ -472,7 +472,7 @@ const MarketingLeads = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredLeads.map((lead) => (
                 <tr key={lead.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-4">
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4">
                     <input
                       type="checkbox"
                       checked={selectedLeads.includes(lead.id)}
@@ -494,7 +494,7 @@ const MarketingLeads = () => {
                   <td className="px-4 py-4 text-sm text-gray-900">
                     {lead.category}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4">
                     {getStatusBadge(lead.salesStatus, 'sales')}
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-900">
@@ -506,13 +506,13 @@ const MarketingLeads = () => {
                   <td className="px-4 py-4 text-sm text-gray-900">
                     {lead.telecaller}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4">
                     {getStatusBadge(lead.telecallerStatus, 'telecaller')}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4">
                     {getStatusBadge(lead.paymentStatus, 'payment')}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4">
                     <div className="flex items-center space-x-2">
                       <button
                         className="w-6 h-6 flex items-center justify-center text-xs font-semibold text-indigo-600 border border-indigo-200 rounded-full hover:bg-indigo-50 transition-colors"

@@ -593,7 +593,7 @@ const PaymentsDashboard = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
         <StatCard
@@ -632,7 +632,7 @@ const PaymentsDashboard = () => {
 
       {/* Search and Filters */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
@@ -659,43 +659,61 @@ const PaymentsDashboard = () => {
               </button>
               
               {showDateRangeFilter && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-20 p-4">
-                  <div className="mb-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                    <input
-                      type="date"
-                      value={dateRange.startDate}
-                      onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
+                <>
+                  {/* Mobile overlay */}
+                  <div 
+                    className="fixed inset-0 bg-black/50 z-[15] sm:hidden"
+                    onClick={() => setShowDateRangeFilter(false)}
+                  />
+                  <div className="fixed sm:absolute top-1/2 sm:top-full right-1/2 sm:right-0 -translate-x-1/2 sm:translate-x-0 -translate-y-1/2 sm:translate-y-0 sm:mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm sm:max-w-none bg-white rounded-lg shadow-lg border border-gray-200 z-20 p-3 sm:p-4">
+                    {/* Modal Header with Close Button */}
+                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
+                      <h3 className="text-sm sm:text-base font-semibold text-gray-900">Select Date Range</h3>
+                      <button
+                        onClick={() => setShowDateRangeFilter(false)}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        title="Close"
+                      >
+                        <XCircle className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="mb-3">
+                      <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                      <input
+                        type="date"
+                        value={dateRange.startDate}
+                        onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
+                        className="w-full px-2 sm:px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">End Date</label>
+                      <input
+                        type="date"
+                        value={dateRange.endDate}
+                        onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
+                        className="w-full px-2 sm:px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <button
+                        onClick={() => {
+                          setDateRange({ startDate: '', endDate: '' });
+                          setShowDateRangeFilter(false);
+                        }}
+                        className="w-full sm:flex-1 px-3 py-2 text-xs sm:text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        Clear
+                      </button>
+                      <button
+                        onClick={() => setShowDateRangeFilter(false)}
+                        className="w-full sm:flex-1 px-3 py-2 text-xs sm:text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Apply
+                      </button>
+                    </div>
                   </div>
-                  <div className="mb-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                    <input
-                      type="date"
-                      value={dateRange.endDate}
-                      onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setDateRange({ startDate: '', endDate: '' });
-                        setShowDateRangeFilter(false);
-                      }}
-                      className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                    >
-                      Clear
-                    </button>
-                    <button
-                      onClick={() => setShowDateRangeFilter(false)}
-                      className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Apply
-                    </button>
-                  </div>
-                </div>
+                </>
               )}
             </div>
             
@@ -773,41 +791,41 @@ const PaymentsDashboard = () => {
 
         {/* Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto -mx-3 sm:mx-0">
+            <table className="w-full min-w-[800px] sm:min-w-0">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-4 text-left">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Lead ID</span>
                   </th>
-                  <th className="px-6 py-4 text-left">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Customer Name</span>
                   </th>
-                  <th className="px-6 py-4 text-left">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Salesperson</span>
                   </th>
-                  <th className="px-6 py-4 text-left">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Product Name</span>
                   </th>
-                  <th className="px-6 py-4 text-left">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Address</span>
                   </th>
-                  <th className="px-6 py-4 text-left">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Quotation ID</span>
                   </th>
-                  <th className="px-6 py-4 text-left">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Payment Status</span>
                   </th>
-                  <th className="px-6 py-4 text-left">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Payment Date</span>
                   </th>
-                  <th className="px-6 py-4 text-left">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Purchase Order</span>
                   </th>
-                  <th className="px-6 py-4 text-left">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-left">
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Delivery Date</span>
                   </th>
-                  <th className="px-6 py-4 text-center">
+                  <th className="px-3 sm:px-6 py-3 sm:py-4 text-center">
                     <span className="text-xs font-medium text-gray-700 uppercase tracking-wider">Action</span>
                   </th>
                 </tr>
@@ -816,22 +834,22 @@ const PaymentsDashboard = () => {
                 {loading ? (
                   Array.from({ length: pagination.limit }).map((_, idx) => (
                     <tr key={`skeleton-${idx}`} className="animate-pulse">
-                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
-                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
-                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
-                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-28"></div></td>
-                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-36"></div></td>
-                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
-                      <td className="px-6 py-4"><div className="h-6 bg-gray-200 rounded-full w-20"></div></td>
-                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
-                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
-                      <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
-                      <td className="px-6 py-4"><div className="flex gap-2"><div className="h-8 w-8 bg-gray-200 rounded"></div><div className="h-8 w-8 bg-gray-200 rounded"></div></div></td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="h-4 bg-gray-200 rounded w-28"></div></td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="h-4 bg-gray-200 rounded w-36"></div></td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="h-6 bg-gray-200 rounded-full w-20"></div></td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4"><div className="flex gap-2"><div className="h-8 w-8 bg-gray-200 rounded"></div><div className="h-8 w-8 bg-gray-200 rounded"></div></div></td>
                   </tr>
                   ))
                 ) : filteredPayments.length === 0 ? (
                   <tr>
-                    <td colSpan="11" className="px-6 py-8 text-center">
+                    <td colSpan="11" className="px-3 sm:px-6 py-6 sm:py-8 text-center">
                       <div className="flex flex-col items-center justify-center text-gray-500">
                         <AlertCircle className="w-12 h-12 mb-3 text-gray-400" />
                         <p className="text-lg font-medium mb-1">No Payments Found</p>
@@ -846,12 +864,12 @@ const PaymentsDashboard = () => {
                   </tr>
                 ) : paginatedPayments.map((payment, index) => (
                   <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-sm text-gray-900 font-medium">
                         {payment.leadIdDisplay || `LD-${payment.leadId}`}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div>
                         <div className="font-medium text-gray-900 text-sm">{payment.customer?.name || 'N/A'}</div>
                         {payment.customer?.phone && (
@@ -859,13 +877,13 @@ const PaymentsDashboard = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-sm text-gray-900 font-medium">{payment.salespersonName || 'N/A'}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-sm text-gray-900">{payment.productName || 'N/A'}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div className="flex flex-col gap-0.5">
                         {(() => {
                           const address = payment.address || 'N/A';
@@ -877,10 +895,10 @@ const PaymentsDashboard = () => {
                         })()}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-sm text-gray-900 font-mono">{payment.quotationId || 'N/A'}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(payment.status)}`}>
@@ -901,13 +919,13 @@ const PaymentsDashboard = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-sm text-gray-900">{payment.formattedPaymentDate || 'N/A'}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <span className="text-sm text-gray-900">{payment.purchaseOrderId || 'N/A'}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div className="flex flex-col">
                         <span className="text-sm text-gray-900">{payment.deliveryDate || 'N/A'}</span>
                         <span className={`text-xs mt-1 ${payment.deliveryStatus === 'delivered' ? 'text-green-600' : payment.deliveryStatus === 'pending' ? 'text-yellow-600' : 'text-gray-600'}`}>
@@ -915,7 +933,7 @@ const PaymentsDashboard = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div className="flex items-center justify-center space-x-2">
                         <button
                           onClick={() => handleViewPayment(payment)}
@@ -997,9 +1015,9 @@ const PaymentsDashboard = () => {
         )}
 
         {/* Table Footer with Pagination */}
-        <div className="flex flex-col sm:flex-row items-center justify-between mt-6 pt-4 border-t border-gray-200 gap-4">
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-gray-500">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mt-4 sm:mt-6 pt-4 border-t border-gray-200 gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
+            <div className="text-xs sm:text-sm text-gray-500">
               Showing {startIndex + 1} to {Math.min(endIndex, totalFiltered)} of {totalFiltered} payments
               {totalFiltered !== allPaymentsData.length && (
                 <span className="ml-2 text-blue-600">
@@ -1010,7 +1028,7 @@ const PaymentsDashboard = () => {
             
             {/* Rows per page selector */}
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">Rows per page:</label>
+              <label className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">Rows per page:</label>
               <select
                 value={pagination.limit}
                 onChange={(e) => {
@@ -1030,12 +1048,12 @@ const PaymentsDashboard = () => {
           
           {/* Pagination Controls */}
           {totalPages > 1 && totalFiltered > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
               {/* First page */}
               <button
                 onClick={goToFirstPage}
                 disabled={currentPage === 1}
-                className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 title="First page"
               >
                 <ChevronsLeft className="w-4 h-4" />
@@ -1045,7 +1063,7 @@ const PaymentsDashboard = () => {
               <button
                 onClick={goToPreviousPage}
                 disabled={currentPage === 1}
-                className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 title="Previous page"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -1090,7 +1108,7 @@ const PaymentsDashboard = () => {
               <button
                 onClick={goToNextPage}
                 disabled={currentPage >= totalPages}
-                className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 title="Next page"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -1100,7 +1118,7 @@ const PaymentsDashboard = () => {
               <button
                 onClick={goToLastPage}
                 disabled={currentPage >= totalPages}
-                className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 title="Last page"
               >
                 <ChevronsRight className="w-4 h-4" />
@@ -1113,12 +1131,12 @@ const PaymentsDashboard = () => {
       {/* Payment Overview Modal */}
       {showViewModal && viewingPayment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50">
-          <div className={`absolute right-0 top-0 h-full w-80 max-w-sm bg-white shadow-xl transition-transform duration-300 ease-in-out overflow-y-auto ${
+          <div className={`absolute right-0 top-0 h-full w-full sm:w-80 sm:max-w-sm bg-white shadow-xl transition-transform duration-300 ease-in-out overflow-y-auto ${
             isModalAnimating ? 'translate-x-0' : 'translate-x-full'
           }`}>
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900">Payment Overview</h2>
+            <div className="p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Payment Overview</h2>
                 <button
                   onClick={closeViewModal}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -1127,9 +1145,9 @@ const PaymentsDashboard = () => {
                 </button>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {/* Payment Header */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 sm:p-4 border border-blue-200">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">{viewingPayment.customerId}</h3>
@@ -1145,7 +1163,7 @@ const PaymentsDashboard = () => {
                 </div>
 
                 {/* Customer Information */}
-                <div className="bg-gray-50 rounded-lg p-3">
+                <div className="bg-gray-50 rounded-lg p-2.5 sm:p-3">
                   <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <User className="w-5 h-5 text-blue-600" />
                     Customer Information
@@ -1171,7 +1189,7 @@ const PaymentsDashboard = () => {
                 </div>
 
                 {/* Payment Information */}
-                <div className="bg-gray-50 rounded-lg p-3">
+                <div className="bg-gray-50 rounded-lg p-2.5 sm:p-3">
                   <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-green-600" />
                     Payment Information
@@ -1207,7 +1225,7 @@ const PaymentsDashboard = () => {
                 </div>
 
                 {/* Payment Timeline */}
-                <div className="bg-gray-50 rounded-lg p-3">
+                <div className="bg-gray-50 rounded-lg p-2.5 sm:p-3">
                   <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-purple-600" />
                     Payment Timeline
@@ -1231,7 +1249,7 @@ const PaymentsDashboard = () => {
                 </div>
 
                 {/* Payment Link */}
-                <div className="bg-gray-50 rounded-lg p-3">
+                <div className="bg-gray-50 rounded-lg p-2.5 sm:p-3">
                   <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <Link className="w-4 h-4 text-cyan-600" />
                     Payment Link
@@ -1269,12 +1287,12 @@ const PaymentsDashboard = () => {
       {/* Work Order Modal - Dynamic Renderer with Template */}
       {showWorkOrder && selectedPaymentForWorkOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col m-3 sm:m-4">
             {workOrderLoading ? (
               <div className="flex-1 p-6 animate-pulse">
                 <div className="space-y-4">
                   <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="h-20 bg-gray-200 rounded"></div>
                     <div className="h-20 bg-gray-200 rounded"></div>
                   </div>
@@ -1315,7 +1333,7 @@ const PaymentsDashboard = () => {
       {/* Work Order View Modal */}
       {showWorkOrderView && selectedWorkOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col m-3 sm:m-4">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900">Work Order Details</h2>
               <button
@@ -1345,7 +1363,7 @@ const PaymentsDashboard = () => {
       {/* Work Order Delete Confirmation Modal */}
       {showWorkOrderDelete && selectedWorkOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4 sm:p-6 m-3 sm:m-4">
             <div className="flex items-center gap-4 mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                 <Trash2 className="w-6 h-6 text-red-600" />

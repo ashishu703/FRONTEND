@@ -565,8 +565,8 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
       <div className="flex items-center justify-between px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 flex-wrap gap-2 sm:gap-3">
         {/* Left Section - Dynamic Page Header */}
         <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
-          {/* Hamburger Menu for Mobile */}
-          {isMobileView && onToggleSidebar && (
+          {/* Hamburger Menu for Mobile and when sidebar is closed */}
+          {onToggleSidebar && (isMobileView || userType === 'salesdepartmenthead' || !sidebarOpen) && (
             <button
               onClick={onToggleSidebar}
               className={`p-1.5 sm:p-2 rounded-lg transition-colors flex-shrink-0 ${

@@ -1613,13 +1613,13 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
   }
 
   return (
-    <main className={`flex-1 overflow-y-auto overflow-x-hidden p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <main className={`flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Tab Navigation with Date Filter and Refresh Button */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex gap-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 mb-6">
+        <div className="flex gap-3 sm:gap-6 overflow-x-auto w-full sm:w-auto">
           <button 
             onClick={() => setActiveTab('overview')}
-            className={`gap-2 flex items-center pb-2 border-b-2 ${
+            className={`gap-2 flex items-center pb-2 border-b-2 whitespace-nowrap ${
               activeTab === 'overview' 
                 ? 'text-blue-600 border-blue-600' 
                 : isDarkMode 
@@ -1632,7 +1632,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
           </button>
           <button 
             onClick={() => setActiveTab('performance')}
-            className={`gap-2 flex items-center pb-2 border-b-2 ${
+            className={`gap-2 flex items-center pb-2 border-b-2 whitespace-nowrap ${
               activeTab === 'performance' 
                 ? 'text-blue-600 border-blue-600' 
                 : isDarkMode 
@@ -1645,11 +1645,11 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
           </button>
         </div>
         {activeTab === 'overview' && (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={refreshDashboard}
               disabled={refreshing}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 shadow-lg hover:shadow-xl ${
+              className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 shadow-lg hover:shadow-xl ${
                 refreshing
                   ? 'opacity-50 cursor-not-allowed'
                   : ''
@@ -1664,7 +1664,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
               <span>Refresh</span>
             </button>
             <div className="relative flex items-center gap-2">
-              <Calendar className={`h-5 w-5 ${
+              <Calendar className={`h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0 ${
                 overviewDateFilter 
                   ? (isDarkMode ? 'text-purple-400' : 'text-purple-600')
                   : (isDarkMode ? 'text-gray-400' : 'text-gray-500')
@@ -1673,7 +1673,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
                 type="date"
                 value={overviewDateFilter}
                 onChange={(e) => setOverviewDateFilter(e.target.value)}
-                className={`px-4 py-2.5 border-2 rounded-lg text-sm focus:outline-none focus:ring-2 transition-all duration-200 shadow-sm ${
+                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 sm:py-2.5 border-2 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 transition-all duration-200 shadow-sm min-w-0 ${
                   isDarkMode 
                     ? `bg-gray-800 border-gray-600 text-white focus:ring-purple-500 focus:border-purple-500 hover:border-purple-400 ${overviewDateFilter ? 'border-purple-400 bg-purple-900/30' : ''}`
                     : `bg-white text-gray-900 focus:ring-purple-500 focus:border-purple-500 hover:border-purple-300 ${overviewDateFilter ? 'border-purple-500 bg-purple-50' : 'border-gray-300'}`
@@ -1685,7 +1685,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
               {overviewDateFilter && (
                 <button
                   onClick={() => setOverviewDateFilter('')}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
+                  className={`px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 whitespace-nowrap ${
                     isDarkMode 
                       ? 'text-gray-300 hover:text-white hover:bg-gray-700 bg-gray-800 border border-gray-600' 
                       : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 bg-white border border-gray-300'
@@ -1711,7 +1711,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Overview of your leads by status</p>
 
         {/* Total Leads Card and Lead Status Cards - Combined grid with 4 columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 overflow-hidden">
           {/* Total Leads Card - Added at the beginning */}
           <Card className={cx(
             "border-2 relative overflow-hidden",
@@ -1945,7 +1945,7 @@ const SalesHeadDashboard = ({ setActiveView, isDarkMode = false }) => {
         </div>
         <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Critical business indicators and trends</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 overflow-hidden">
           {overviewMetrics.map((metric, index) => {
             const Icon = metric.icon
             // Color schemes for each metric
