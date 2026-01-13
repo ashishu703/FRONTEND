@@ -4,7 +4,13 @@ import SalesDepartmentHeadSidebar from './SalesDepartmentHeadSidebar';
 import AshvayChat from '../../components/AshvayChat';
 
 const SalesDepartmentHeadLayout = ({ children, onLogout, activeView, setActiveView }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Start with sidebar closed on mobile, open on desktop
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768; // md breakpoint
+    }
+    return false;
+  });
   
   return (
     <div className="min-h-screen relative transition-colors bg-gray-50">
@@ -18,9 +24,18 @@ const SalesDepartmentHeadLayout = ({ children, onLogout, activeView, setActiveVi
       />
       
       {/* Main Content Area */}
-      <div className={sidebarOpen ? "flex-1 ml-64 transition-all duration-300" : "flex-1 ml-16 transition-all duration-300"}>
+      <div className={`flex-1 transition-all duration-300 ${
+        sidebarOpen 
+          ? "ml-0 sm:ml-16 md:ml-64" 
+          : "ml-0 sm:ml-16"
+      }`}>
         {/* Header */}
-        <FixedHeader userType="salesdepartmenthead" currentPage={activeView} />
+        <FixedHeader 
+          userType="salesdepartmenthead" 
+          currentPage={activeView} 
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          sidebarOpen={sidebarOpen}
+        />
         
         {/* Main Content */}
         <div className="flex-1 transition-colors bg-gray-50">

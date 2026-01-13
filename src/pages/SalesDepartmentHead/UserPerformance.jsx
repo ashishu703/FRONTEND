@@ -329,10 +329,10 @@ const SalesDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
           <div className="flex items-center space-x-4">
             <div className="relative">
               <input
@@ -340,17 +340,17 @@ const SalesDashboard = () => {
                 placeholder="Search by username, email, or department..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-80"
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-80"
               />
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             </div>
             <div className="relative" ref={datePickerRef}>
               <button 
                 onClick={() => setShowDatePicker(!showDatePicker)}
-                className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center space-x-2 px-2 sm:px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors w-full sm:w-auto"
               >
-                <Calendar className="w-4 h-4 text-gray-500" />
-                <span className="text-gray-600">
+                <Calendar className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                <span className="text-xs sm:text-sm text-gray-600 truncate">
                   {dateRange.startDate && dateRange.endDate 
                     ? `${dateRange.startDate} - ${dateRange.endDate}`
                     : dateRange.startDate 
@@ -363,42 +363,60 @@ const SalesDashboard = () => {
               </button>
               
               {showDatePicker && (
-                <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg p-4 z-10 min-w-80">
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                      <input
-                        type="date"
-                        value={dateRange.startDate}
-                        onChange={(e) => handleDateRangeChange('startDate', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                      <input
-                        type="date"
-                        value={dateRange.endDate}
-                        onChange={(e) => handleDateRangeChange('endDate', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div className="flex justify-between pt-2">
-                      <button
-                        onClick={clearDateRange}
-                        className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-                      >
-                        Clear
-                      </button>
+                <>
+                  {/* Mobile overlay */}
+                  <div 
+                    className="fixed inset-0 bg-black/50 z-[5] sm:hidden"
+                    onClick={() => setShowDatePicker(false)}
+                  />
+                  <div className="fixed sm:absolute top-1/2 sm:top-full left-1/2 sm:left-0 -translate-x-1/2 sm:translate-x-0 -translate-y-1/2 sm:translate-y-0 sm:mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm sm:max-w-none bg-white border border-gray-300 rounded-lg shadow-lg p-3 sm:p-4 z-10">
+                    {/* Modal Header with Close Button */}
+                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
+                      <h3 className="text-sm sm:text-base font-semibold text-gray-900">Select Date Range</h3>
                       <button
                         onClick={() => setShowDatePicker(false)}
-                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        title="Close"
                       >
-                        Apply
+                        <XCircle className="w-5 h-5" />
                       </button>
                     </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                        <input
+                          type="date"
+                          value={dateRange.startDate}
+                          onChange={(e) => handleDateRangeChange('startDate', e.target.value)}
+                          className="w-full px-2 sm:px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">End Date</label>
+                        <input
+                          type="date"
+                          value={dateRange.endDate}
+                          onChange={(e) => handleDateRangeChange('endDate', e.target.value)}
+                          className="w-full px-2 sm:px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2 sm:justify-between pt-2">
+                        <button
+                          onClick={clearDateRange}
+                          className="w-full sm:w-auto px-3 py-2 text-xs sm:text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          onClick={() => setShowDatePicker(false)}
+                          className="w-full sm:w-auto px-3 py-2 text-xs sm:text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
           </div>
@@ -437,8 +455,8 @@ const SalesDashboard = () => {
 
         {/* User Performance Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto -mx-3 sm:mx-0">
+            <table className="w-full min-w-[1000px] sm:min-w-0">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase">#</th>
@@ -464,7 +482,7 @@ const SalesDashboard = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan="18" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="18" className="px-3 sm:px-6 py-6 sm:py-8 text-center text-gray-500">
                       <div className="flex items-center justify-center space-x-2">
                         <RefreshCw className="w-4 h-4 animate-spin" />
                         <span>Loading user performance data...</span>
@@ -473,7 +491,7 @@ const SalesDashboard = () => {
                   </tr>
                 ) : getFilteredUsers().length === 0 ? (
                   <tr>
-                    <td colSpan="18" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="18" className="px-3 sm:px-6 py-6 sm:py-8 text-center text-gray-500">
                       No users found. Create some department users to see their performance.
                     </td>
                   </tr>
@@ -533,7 +551,7 @@ const SalesDashboard = () => {
       {showUserModal && selectedUser && (
         <div className="fixed inset-0 bg-black/50 flex z-50">
           <div className="bg-white h-full w-full max-w-md ml-auto shadow-xl overflow-y-auto">
-            <div className="px-4 md:px-5 py-4 space-y-6">
+            <div className="px-3 sm:px-4 md:px-5 py-3 sm:py-4 space-y-4 sm:space-y-6">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900">User Performance</h2>
@@ -669,7 +687,7 @@ const SalesDashboard = () => {
                 {/* User Information Form */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">User Information</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
                       <input
@@ -728,7 +746,7 @@ const SalesDashboard = () => {
                 {/* Financial Information Form */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Information</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Total Target (₹)</label>
                       <input

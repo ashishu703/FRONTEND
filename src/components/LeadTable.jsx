@@ -95,7 +95,7 @@ const LeadTable = ({
       }}
     >
       <div
-        className="overflow-x-auto"
+        className="overflow-x-auto -mx-3 sm:mx-0"
         style={{
           marginRight: 0,
           paddingRight: 0,
@@ -104,10 +104,10 @@ const LeadTable = ({
           boxSizing: 'border-box'
         }}
       >
-        <table className="w-full" style={{ width: '100%', tableLayout: 'auto', borderCollapse: 'collapse', margin: 0 }}>
+        <table className="w-full min-w-[800px] sm:min-w-0" style={{ width: '100%', tableLayout: 'auto', borderCollapse: 'collapse', margin: 0 }}>
           <thead className="bg-gradient-to-r from-slate-50 to-gray-50 border-b-2 border-gray-200">
             <tr>
-              <th className="px-4 py-3">
+              <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3">
                 <input
                   type="checkbox"
                   checked={isAllSelected && filteredLeads.length > 0}
@@ -115,7 +115,7 @@ const LeadTable = ({
                 />
               </th>
               {visibleColumns.customerId && (
-                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[130px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[130px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                       <Hash className="w-4 h-4 text-white" />
@@ -125,7 +125,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.customer && (
-                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[220px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[220px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
                       <User className="w-4 h-4 text-white" />
@@ -135,7 +135,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.business && (
-                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[200px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[200px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
                       <Building className="w-4 h-4 text-white" />
@@ -145,7 +145,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.address && (
-                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[200px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[200px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
                       <Building className="w-4 h-4 text-white" />
@@ -155,7 +155,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.state && (
-                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[120px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[120px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
                       <Building className="w-4 h-4 text-white" />
@@ -165,7 +165,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.division && (
-                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[120px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[120px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
                       <Building className="w-4 h-4 text-white" />
@@ -175,7 +175,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.followUpStatus && (
-                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[140px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[140px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
                       <Clock className="w-4 h-4 text-white" />
@@ -185,7 +185,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.salesStatus && (
-                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[140px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[140px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-500 to-amber-500 flex items-center justify-center">
                       <Clock className="w-4 h-4 text-white" />
@@ -195,7 +195,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.assignedSalesperson && (
-                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[160px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[160px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2 relative" ref={salespersonFilterRef}>
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-blue-500 flex items-center justify-center">
                       <User className="w-4 h-4 text-white" />
@@ -280,7 +280,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.assignedTelecaller && (
-                <th className="px-4 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[160px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 md:py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider w-[160px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   <div className="flex items-center space-x-2 relative" ref={telecallerFilterRef}>
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center">
                       <Phone className="w-4 h-4 text-white" />
@@ -365,7 +365,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.gstNo && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
                   <div className="flex items-center space-x-2">
                     <Hash className="w-4 h-4 text-indigo-600" />
                     <span>GST No</span>
@@ -373,7 +373,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.leadSource && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">
                   <div className="flex items-center space-x-2">
                     <Shield className="w-4 h-4 text-orange-600" />
                     <span>Lead Source</span>
@@ -381,7 +381,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.productNames && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[220px]">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[220px]">
                   <div className="flex items-center space-x-2">
                     <Tag className="w-4 h-4 text-pink-600" />
                     <span>Product Name</span>
@@ -389,7 +389,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.category && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
                   <div className="flex items-center space-x-2">
                     <Tag className="w-4 h-4 text-pink-600" />
                     <span>Category</span>
@@ -397,7 +397,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.createdAt && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
                   <div className="flex items-center space-x-2">
                     <Calendar className="w-4 h-4 text-purple-600" />
                     <span>Created</span>
@@ -405,7 +405,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.telecallerStatus && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
                   <div className="flex items-center space-x-2">
                     <CheckCircle className="w-4 h-4 text-green-600" />
                     <span>Telecaller Status</span>
@@ -413,7 +413,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.paymentStatus && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[160px]">
                   <div className="flex items-center space-x-2">
                     <XCircle className="w-4 h-4 text-rose-600" />
                     <span>Payment Status</span>
@@ -421,7 +421,7 @@ const LeadTable = ({
                 </th>
               )}
               {visibleColumns.updatedAt && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[140px]">
                   <div className="flex items-center space-x-2">
                     <Calendar className="w-4 h-4 text-purple-600" />
                     <span>Updated At</span>
@@ -439,9 +439,9 @@ const LeadTable = ({
             </tr>
             {showColumnFilterRow && (
               <tr className="bg-gray-50 border-b border-gray-200">
-                <td className="px-4 py-2"></td>
+                <td className="px-2 sm:px-3 md:px-4 py-2"></td>
                 {visibleColumns.customerId && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.customerId || ''}
@@ -452,7 +452,7 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.customer && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.customer || ''}
@@ -463,7 +463,7 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.business && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.business || ''}
@@ -474,7 +474,7 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.address && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.address || ''}
@@ -485,7 +485,7 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.state && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.state || ''}
@@ -496,7 +496,7 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.division && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.division || ''}
@@ -507,7 +507,7 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.followUpStatus && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.followUpStatus || ''}
@@ -518,7 +518,7 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.salesStatus && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.salesStatus || ''}
@@ -529,13 +529,13 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.assignedSalesperson && (
-                  <td className="px-4 py-2"></td>
+                  <td className="px-2 sm:px-3 md:px-4 py-2"></td>
                 )}
                 {visibleColumns.assignedTelecaller && (
-                  <td className="px-4 py-2"></td>
+                  <td className="px-2 sm:px-3 md:px-4 py-2"></td>
                 )}
                 {visibleColumns.gstNo && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.gstNo || ''}
@@ -546,7 +546,7 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.leadSource && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.leadSource || ''}
@@ -557,7 +557,7 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.productNames && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.productNames || ''}
@@ -568,7 +568,7 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.category && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.category || ''}
@@ -579,7 +579,7 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.createdAt && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.createdAt || ''}
@@ -590,7 +590,7 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.telecallerStatus && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.telecallerStatus || ''}
@@ -601,7 +601,7 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.paymentStatus && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.paymentStatus || ''}
@@ -612,7 +612,7 @@ const LeadTable = ({
                   </td>
                 )}
                 {visibleColumns.updatedAt && (
-                  <td className="px-4 py-2">
+                  <td className="px-2 sm:px-3 md:px-4 py-2">
                     <input
                       type="text"
                       value={columnFilters.updatedAt || ''}
@@ -622,7 +622,7 @@ const LeadTable = ({
                     />
                   </td>
                 )}
-                <td className="px-4 py-2"></td>
+                <td className="px-2 sm:px-3 md:px-4 py-2"></td>
               </tr>
             )}
           </thead>

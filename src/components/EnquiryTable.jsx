@@ -43,22 +43,22 @@ const EnquiryTable = ({ enquiries, loading, groupedByDate, onRefresh, onEdit, on
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto -mx-3 sm:mx-0 max-w-full">
-              <table className="w-full min-w-[600px] sm:min-w-0">
+            <div className="overflow-x-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <table className="w-full min-w-[700px] sm:min-w-0" style={{ tableLayout: 'auto' }}>
                 <thead className="bg-gray-50">
                   <tr>
                     {(visibleColumns.customer_name !== false) && (
-                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[90px] sm:min-w-[120px]">
                         Customer
                       </th>
                     )}
                     {(visibleColumns.business !== false) && (
-                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px] sm:min-w-[150px]">
                         Business
                       </th>
                     )}
                     {(visibleColumns.address !== false) && (
-                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px] sm:min-w-[120px]">
                         Address
                       </th>
                     )}
@@ -132,17 +132,17 @@ const EnquiryTable = ({ enquiries, loading, groupedByDate, onRefresh, onEdit, on
                   {groupedByDate[date].map((enquiry, index) => (
                     <tr key={enquiry.id || index} className="hover:bg-gray-50">
                       {(visibleColumns.customer_name !== false) && (
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                        <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 max-w-[90px] sm:max-w-[120px] md:max-w-none truncate" title={enquiry.customer_name}>
                           {enquiry.customer_name || 'N/A'}
                         </td>
                       )}
                       {(visibleColumns.business !== false) && (
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700">
+                        <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 max-w-[100px] sm:max-w-[150px] md:max-w-none truncate" title={enquiry.business || 'N/A'}>
                           {enquiry.business || 'N/A'}
                         </td>
                       )}
                       {(visibleColumns.address !== false) && (
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 max-w-xs truncate" title={enquiry.address}>
+                        <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 max-w-[80px] sm:max-w-[120px] md:max-w-xs truncate" title={enquiry.address || 'N/A'}>
                           {enquiry.address || 'N/A'}
                         </td>
                       )}
@@ -250,8 +250,8 @@ const EnquiryTable = ({ enquiries, loading, groupedByDate, onRefresh, onEdit, on
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className="overflow-x-auto -mx-3 sm:mx-0 max-w-full">
-        <table className="w-full min-w-[600px] sm:min-w-0">
+      <div className="overflow-x-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <table className="w-full min-w-[700px] sm:min-w-0" style={{ tableLayout: 'auto' }}>
           <thead className="bg-gray-50">
             <tr>
               {(visibleColumns.enquiry_date === true) && (
@@ -260,71 +260,71 @@ const EnquiryTable = ({ enquiries, loading, groupedByDate, onRefresh, onEdit, on
                 </th>
               )}
               {(visibleColumns.customer_name !== false) && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[90px] sm:min-w-[120px]">
                   Customer
                 </th>
               )}
               {(visibleColumns.business !== false) && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px] sm:min-w-[150px]">
                   Business
                 </th>
               )}
               {(visibleColumns.address !== false) && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Address
                 </th>
               )}
               {(visibleColumns.state !== false) && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   State
                 </th>
               )}
               {(visibleColumns.division !== false) && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Division
                 </th>
               )}
               {(visibleColumns.follow_up_status === true) && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Follow Up Status
                 </th>
               )}
               {(visibleColumns.follow_up_remark === true) && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Follow Up Remark
                 </th>
               )}
               {(visibleColumns.sales_status === true) && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Sales Status
                 </th>
               )}
               {(visibleColumns.enquired_product !== false) && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Enquired Product
                 </th>
               )}
               {(visibleColumns.product_quantity !== false) && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Quantity
                 </th>
               )}
               {(visibleColumns.product_remark !== false) && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Product Remark
                 </th>
               )}
               {(visibleColumns.salesperson === true) && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Salesperson
                 </th>
               )}
               {(visibleColumns.telecaller === true) && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Telecaller
                 </th>
               )}
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <div className="flex items-center gap-2">
                   {onToggleColumnVisibility && (
                     <button
@@ -348,76 +348,76 @@ const EnquiryTable = ({ enquiries, loading, groupedByDate, onRefresh, onEdit, on
                     {enquiry.enquiry_date ? new Date(enquiry.enquiry_date).toLocaleDateString('en-IN') : 'N/A'}
                   </td>
                 )}
-                {(visibleColumns.customer_name !== false) && (
-                  <td className="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                    {enquiry.customer_name || 'N/A'}
-                  </td>
-                )}
-                {(visibleColumns.business !== false) && (
-                  <td className="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700">
-                    {enquiry.business || 'N/A'}
-                  </td>
-                )}
-                {(visibleColumns.address !== false) && (
-                  <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 max-w-xs truncate" title={enquiry.address}>
-                    {enquiry.address || 'N/A'}
-                  </td>
-                )}
+                      {(visibleColumns.customer_name !== false) && (
+                        <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 max-w-[90px] sm:max-w-[120px] md:max-w-none truncate" title={enquiry.customer_name || 'N/A'}>
+                          {enquiry.customer_name || 'N/A'}
+                        </td>
+                      )}
+                      {(visibleColumns.business !== false) && (
+                        <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 max-w-[100px] sm:max-w-[150px] md:max-w-none truncate" title={enquiry.business || 'N/A'}>
+                          {enquiry.business || 'N/A'}
+                        </td>
+                      )}
+                      {(visibleColumns.address !== false) && (
+                        <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 max-w-[80px] sm:max-w-[120px] md:max-w-xs truncate" title={enquiry.address || 'N/A'}>
+                          {enquiry.address || 'N/A'}
+                        </td>
+                      )}
                 {(visibleColumns.state !== false) && (
-                  <td className="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700">
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700">
                     {enquiry.state || 'N/A'}
                   </td>
                 )}
                 {(visibleColumns.division !== false) && (
-                  <td className="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700">
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700">
                     {enquiry.division || 'N/A'}
                   </td>
                 )}
                 {(visibleColumns.follow_up_status === true) && (
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 whitespace-nowrap">
                     <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
                       {enquiry.follow_up_status || 'N/A'}
                     </span>
                   </td>
                 )}
                 {(visibleColumns.follow_up_remark === true) && (
-                  <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 max-w-xs truncate" title={enquiry.follow_up_remark}>
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 max-w-[120px] sm:max-w-xs truncate" title={enquiry.follow_up_remark}>
                     {enquiry.follow_up_remark || 'N/A'}
                   </td>
                 )}
                 {(visibleColumns.sales_status === true) && (
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 whitespace-nowrap">
                     <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
                       {enquiry.sales_status || 'N/A'}
                     </span>
                   </td>
                 )}
                 {(visibleColumns.enquired_product !== false) && (
-                  <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 max-w-xs truncate" title={enquiry.enquired_product}>
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 max-w-[120px] sm:max-w-xs truncate" title={enquiry.enquired_product}>
                     {enquiry.enquired_product || 'N/A'}
                   </td>
                 )}
                 {(visibleColumns.product_quantity !== false) && (
-                  <td className="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700">
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700">
                     {enquiry.product_quantity || 'N/A'}
                   </td>
                 )}
                 {(visibleColumns.product_remark !== false) && (
-                  <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 max-w-xs truncate" title={enquiry.product_remark}>
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 max-w-[120px] sm:max-w-xs truncate" title={enquiry.product_remark}>
                     {enquiry.product_remark || 'N/A'}
                   </td>
                 )}
                 {(visibleColumns.salesperson === true) && (
-                  <td className="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700">
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700">
                     {enquiry.salesperson || 'N/A'}
                   </td>
                 )}
                 {(visibleColumns.telecaller === true) && (
-                  <td className="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700">
+                  <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700">
                     {enquiry.telecaller || 'N/A'}
                   </td>
                 )}
-                <td className="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm">
+                <td className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm">
                   <div className="flex items-center gap-2">
                     {onEdit && (
                       <button
