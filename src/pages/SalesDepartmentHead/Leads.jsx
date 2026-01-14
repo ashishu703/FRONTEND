@@ -1773,7 +1773,7 @@ const LeadsSimplified = () => {
 
   return (
     <div
-      className={`space-y-6 transition-all duration-300 ${showCustomerTimeline ? 'pl-6' : 'p-6'}`}
+      className={`space-y-4 sm:space-y-6 transition-all duration-300 ${showCustomerTimeline ? 'pl-3 sm:pl-4 md:pl-6' : 'p-3 sm:p-4 md:p-6'}`}
       style={{
         width: showCustomerTimeline ? 'calc(98% - 200px)' : '100%',
         marginRight: 0,
@@ -1930,7 +1930,7 @@ const LeadsSimplified = () => {
         onToggleColumnFilterRow={() => setShowColumnFilterRow(prev => !prev)}
       />
 
-      <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 p-3 sm:p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="flex items-center space-x-2 text-sm text-gray-600">
           <span>Rows per page:</span>
           <select
@@ -2039,26 +2039,26 @@ const LeadsSimplified = () => {
                 
                 return (
                   <div key={group.dateKey} className="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-                            <Clock className="h-5 w-5 text-white" />
+                    <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                            <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                           </div>
                           <div>
-                            <h3 className="text-xl font-bold text-gray-900">
+                            <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900">
                               {dateDisplay}
                             </h3>
-                            <p className="text-sm text-gray-600">{dateFull}</p>
+                            <p className="text-xs sm:text-sm text-gray-600">{dateFull}</p>
                           </div>
                         </div>
-                        <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                        <div className="bg-blue-100 text-blue-800 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
                           {filteredGroupLeads.length} call{filteredGroupLeads.length !== 1 ? 's' : ''}
                         </div>
                       </div>
                     </div>
                     
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto -mx-3 sm:mx-0">
                       <LeadTable
                         filteredLeads={filteredGroupLeads}
                         tableLoading={lastCallLoading}
@@ -2107,9 +2107,9 @@ const LeadsSimplified = () => {
           
           {/* Last Call Pagination */}
           {lastCallTotal > 0 && (
-            <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm mt-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <span>Rows per page:</span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 p-3 sm:p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm mt-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-2 text-xs sm:text-sm text-gray-600">
+                <span className="whitespace-nowrap">Rows per page:</span>
                 <select
                   value={lastCallLimit}
                   onChange={(e) => {
@@ -2123,13 +2123,13 @@ const LeadsSimplified = () => {
                   <option value={100}>100</option>
                   <option value={200}>200</option>
                 </select>
-                <span>Showing {Math.min(((lastCallPage - 1) * lastCallLimit) + 1, lastCallTotal)} to {Math.min(lastCallPage * lastCallLimit, lastCallTotal)} of {lastCallTotal} calls</span>
+                <span className="whitespace-nowrap">Showing {Math.min(((lastCallPage - 1) * lastCallLimit) + 1, lastCallTotal)} to {Math.min(lastCallPage * lastCallLimit, lastCallTotal)} of {lastCallTotal} calls</span>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                 <button
                   onClick={() => setLastCallPage(1)}
                   disabled={lastCallPage === 1}
-                  className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                   title="First page"
                 >
                   <ChevronsLeft className="w-4 h-4" />
@@ -2137,7 +2137,7 @@ const LeadsSimplified = () => {
                 <button
                   onClick={() => setLastCallPage(p => Math.max(1, p - 1))}
                   disabled={lastCallPage === 1}
-                  className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                   title="Previous page"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -2170,13 +2170,13 @@ const LeadsSimplified = () => {
                     );
                   })}
                 </div>
-                <span className="text-sm text-gray-600 px-2">
+                <span className="text-xs sm:text-sm text-gray-600 px-1 sm:px-2 whitespace-nowrap">
                   Page {lastCallPage} of {Math.ceil(lastCallTotal / lastCallLimit) || 1}
                 </span>
                 <button
                   onClick={() => setLastCallPage(p => p < Math.ceil(lastCallTotal / lastCallLimit) ? p + 1 : p)}
                   disabled={lastCallPage >= Math.ceil(lastCallTotal / lastCallLimit)}
-                  className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                   title="Next page"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -2184,7 +2184,7 @@ const LeadsSimplified = () => {
                 <button
                   onClick={() => setLastCallPage(Math.ceil(lastCallTotal / lastCallLimit))}
                   disabled={lastCallPage >= Math.ceil(lastCallTotal / lastCallLimit)}
-                  className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                   title="Last page"
                 >
                   <ChevronsRight className="w-4 h-4" />
@@ -2245,10 +2245,10 @@ const LeadsSimplified = () => {
       )}
 
       {activeTab === 'enquiry' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-800">Enquiries</h2>
-            <div className="flex items-center gap-2">
+        <div className="space-y-4 sm:space-y-6 overflow-x-hidden">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-2">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Enquiries</h2>
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => setShowEnquiryFilters(!showEnquiryFilters)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
@@ -2281,8 +2281,8 @@ const LeadsSimplified = () => {
 
           {/* Filters - Collapsible */}
           {showEnquiryFilters && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {/* Filter by Salesperson */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Salesperson</label>
@@ -2422,8 +2422,8 @@ const LeadsSimplified = () => {
               
               {/* Enquiry Pagination */}
               {enquiryTotal > 0 && (
-                <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm mt-4">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 p-3 sm:p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm mt-4">
+                  <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
                     <span>Rows per page:</span>
                     <select
                       value={enquiryLimit}
@@ -2438,13 +2438,13 @@ const LeadsSimplified = () => {
                       <option value={100}>100</option>
                       <option value={200}>200</option>
                     </select>
-                    <span>Showing {Math.min(((enquiryPage - 1) * enquiryLimit) + 1, enquiryTotal)} to {Math.min(enquiryPage * enquiryLimit, enquiryTotal)} of {enquiryTotal} enquiries</span>
+                    <span className="whitespace-nowrap">Showing {Math.min(((enquiryPage - 1) * enquiryLimit) + 1, enquiryTotal)} to {Math.min(enquiryPage * enquiryLimit, enquiryTotal)} of {enquiryTotal} enquiries</span>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                     <button
                       onClick={() => setEnquiryPage(1)}
                       disabled={enquiryPage === 1}
-                      className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                       title="First page"
                     >
                       <ChevronsLeft className="w-4 h-4" />
@@ -2452,7 +2452,7 @@ const LeadsSimplified = () => {
                     <button
                       onClick={() => setEnquiryPage(p => Math.max(1, p - 1))}
                       disabled={enquiryPage === 1}
-                      className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                       title="Previous page"
                     >
                       <ChevronLeft className="w-4 h-4" />
@@ -2474,7 +2474,7 @@ const LeadsSimplified = () => {
                           <button
                             key={pageNum}
                             onClick={() => setEnquiryPage(pageNum)}
-                            className={`px-3 py-1 text-sm rounded-md border ${
+                            className={`px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-md border ${
                               enquiryPage === pageNum
                                 ? 'bg-blue-600 text-white border-blue-600'
                                 : 'border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -2485,13 +2485,13 @@ const LeadsSimplified = () => {
                         );
                       })}
                     </div>
-                    <span className="text-sm text-gray-600 px-2">
+                    <span className="text-xs sm:text-sm text-gray-600 px-1 sm:px-2 whitespace-nowrap">
                       Page {enquiryPage} of {Math.ceil(enquiryTotal / enquiryLimit) || 1}
                     </span>
                     <button
                       onClick={() => setEnquiryPage(p => p < Math.ceil(enquiryTotal / enquiryLimit) ? p + 1 : p)}
                       disabled={enquiryPage >= Math.ceil(enquiryTotal / enquiryLimit)}
-                      className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                       title="Next page"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -2499,7 +2499,7 @@ const LeadsSimplified = () => {
                     <button
                       onClick={() => setEnquiryPage(Math.ceil(enquiryTotal / enquiryLimit))}
                       disabled={enquiryPage >= Math.ceil(enquiryTotal / enquiryLimit)}
-                      className="p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                       title="Last page"
                     >
                       <ChevronsRight className="w-4 h-4" />

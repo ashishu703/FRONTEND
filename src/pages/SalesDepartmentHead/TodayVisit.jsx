@@ -178,7 +178,7 @@ const TodayVisit = () => {
   const { weekDays, currentDay } = getCurrentWeekVisits();
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-3 sm:p-4 md:p-6 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
@@ -189,7 +189,7 @@ const TodayVisit = () => {
       </div>
 
       {/* Filters and Controls */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 sm:mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -304,22 +304,23 @@ const TodayVisit = () => {
             </div>
 
             {/* Weekly Visits - Day-wise Columns */}
-            <div className="p-6">
-              <div className="overflow-x-auto">
-                <div className="min-w-full">
+            <div className="p-3 sm:p-4 md:p-6">
+              <div className="overflow-x-auto -mx-3 sm:mx-0">
+                <div className="min-w-[700px] sm:min-w-full">
                   {/* Table Header */}
-                  <div className="grid grid-cols-7 gap-2 mb-4">
+                  <div className="grid grid-cols-7 gap-1.5 sm:gap-2 mb-3 sm:mb-4">
                     {weekDays.map((day) => (
-                      <div key={day} className={`text-center font-semibold text-sm py-3 rounded-lg border-2 ${
+                      <div key={day} className={`text-center font-semibold text-xs sm:text-sm py-2 sm:py-3 rounded-lg border-2 ${
                         currentDay === day 
                           ? 'bg-blue-100 text-blue-800 border-blue-300' 
                           : 'bg-gray-100 text-gray-700 border-gray-200'
                       }`}>
-                        <div className="flex items-center justify-center gap-2">
-                          <Calendar className="w-4 h-4" />
-                          {getDayName(day)}
+                        <div className="flex items-center justify-center gap-1 sm:gap-2">
+                          <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <span className="hidden sm:inline">{getDayName(day)}</span>
+                          <span className="sm:hidden">{getDayName(day).substring(0, 3)}</span>
                         </div>
-                        <div className="text-xs mt-1 opacity-75">
+                        <div className="text-[10px] sm:text-xs mt-1 opacity-75">
                           {salesperson.visits[day]?.length || 0} visits
                         </div>
                       </div>
@@ -327,12 +328,12 @@ const TodayVisit = () => {
                   </div>
                   
                   {/* Table Body */}
-                  <div className="grid grid-cols-7 gap-2">
+                  <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
                     {weekDays.map((day) => (
-                      <div key={day} className="min-h-[400px] space-y-2">
+                      <div key={day} className="min-h-[300px] sm:min-h-[400px] space-y-1.5 sm:space-y-2">
                         {salesperson.visits[day]?.length > 0 ? (
                           salesperson.visits[day].map((visit) => (
-                            <div key={visit.id} className={`rounded-lg p-3 border-2 ${
+                            <div key={visit.id} className={`rounded-lg p-2 sm:p-3 border-2 ${
                               currentDay === day 
                                 ? 'bg-blue-50 border-blue-200' 
                                 : 'bg-gray-50 border-gray-200'
