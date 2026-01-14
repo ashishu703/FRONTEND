@@ -110,7 +110,7 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
     gstNo: false,
     address: true,
     state: true,
-    division: false,
+    division: true,
     customerType: false,
     leadSource: false,
     salesStatus: true,
@@ -126,9 +126,12 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
     setColumnVisibility(prev => ({ ...prev, [columnKey]: !prev[columnKey] }))
   }
 
-  const handleImportSuccess = () => {
+  const handleImportSuccess = async () => {
     setShowImportModal(false)
-    handleRefresh()
+    // Add a small delay to ensure backend has processed the import
+    await new Promise(resolve => setTimeout(resolve, 500))
+    // Refresh leads to show the newly imported data
+    await handleRefresh()
   }
 
   // Use custom hooks
@@ -473,7 +476,41 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
           formData.append('call_recording', customerData.callRecordingFile)
         }
         
-        await apiClient.putFormData(API_ENDPOINTS.SALESPERSON_LEAD_BY_ID(editingCustomer.id), formData)
+        const updateResponse = await apiClient.putFormData(API_ENDPOINTS.SALESPERSON_LEAD_BY_ID(editingCustomer.id), formData)
+        
+        if (!updateResponse?.success) {
+          throw new Error(updateResponse?.message || 'Failed to update customer')
+        }
+        
+        // Update local state immediately for instant feedback
+        const updatedCustomer = {
+          ...editingCustomer,
+          name: customerData.customerName,
+          phone: customerData.mobileNumber.replace(/\D/g, '').slice(-10),
+          whatsapp: customerData.whatsappNumber ? `+91${customerData.whatsappNumber.replace(/\D/g, '').slice(-10)}` : `+91${customerData.mobileNumber.replace(/\D/g, '').slice(-10)}`,
+          email: customerData.email || 'N/A',
+          business: customerData.business || 'N/A',
+          address: customerData.address || 'N/A',
+          gstNo: customerData.gstNumber || 'N/A',
+          productName: customerData.productName || 'N/A',
+          product_type: customerData.productName || 'N/A',
+          state: customerData.state || 'N/A',
+          division: customerData.division || null,
+          enquiryBy: customerData.leadSource || 'N/A',
+          customerType: customerData.customerType || 'N/A',
+          salesStatus: customerData.salesStatus || 'pending',
+          salesStatusRemark: customerData.salesStatusRemark || null,
+          followUpStatus: customerData.followUpStatus || null,
+          followUpRemark: customerData.followUpRemark || null,
+          followUpDate: customerData.followUpDate || null,
+          followUpTime: customerData.followUpTime || null,
+          callDurationSeconds: customerData.callDurationSeconds || null,
+          transferredTo: customerData.transferredTo || null,
+        }
+        
+        // Update local state immediately
+        setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? updatedCustomer : c))
+        leadsHook.setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? updatedCustomer : c))
         
         // If lead is being transferred, call the transfer API
         if (customerData.transferredTo) {
@@ -489,6 +526,15 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
         } else {
           Toast.success('Customer updated successfully!')
         }
+        
+        // Close modal immediately
+        setShowAddCustomer(false)
+        setEditingCustomer(null)
+        
+        // Refresh from API in background to ensure data is in sync
+        setTimeout(async () => {
+          await handleRefresh()
+        }, 500)
       } else {
         // Create new customer
         // Send actual data if present, empty string if not - backend will handle 'N/A' conversion
@@ -554,13 +600,6 @@ export default function CustomerListContent({ isDarkMode = false, selectedCustom
           // Re-throw if not a duplicate error so it gets caught by outer catch
           throw createError
         }
-      }
-      
-      // Refresh leads from API (for edit case)
-      if (editingCustomer) {
-        await handleRefresh()
-        setShowAddCustomer(false)
-        setEditingCustomer(null)
       }
     } catch (error) {
       if (error.status === 409 || error.data?.isDuplicate) {

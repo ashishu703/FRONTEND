@@ -322,9 +322,10 @@ class LeadService {
     const category = normalizeValue(row['Business Category']);
     const productNames = normalizeValue(row['Product Names (comma separated)']);
     const state = normalizeValue(row['State']);
+    const division = normalizeValue(row['Division']);
     
     // Handle date - support both DD/MM/YYYY and YYYY-MM-DD formats
-    let dateValue = (row['Date (DD/MM/YYYY or YYYY-MM-DD)'] || row['Date (YYYY-MM-DD)'] || '').trim();
+    let dateValue = (row['Date (DD/MM/YYYY or YYYY-MM-DD)'] || row['Date (YYYY-MM-DD)'] || row['Date'] || '').trim();
     if (!dateValue || dateValue.toUpperCase() === 'NA' || dateValue.toUpperCase() === 'N/A') {
       dateValue = new Date().toISOString().split('T')[0];
     } else {
@@ -361,6 +362,7 @@ class LeadService {
       gstNo: gstNo === 'N/A' ? null : (gstNo || null),
       productNames: productNames === 'N/A' ? 'N/A' : productNames,
       state: state === 'N/A' ? null : (state || null),
+      division: division === 'N/A' ? null : (division || null),
       assignedSalesperson: (() => {
         const val = (row['Assigned Salesperson'] || '').trim();
         if (!val || val === '' || val.toLowerCase() === 'unassigned' || val.toLowerCase() === 'assigned' || val.toUpperCase() === 'NA' || val.toUpperCase() === 'N/A') return null;

@@ -25,26 +25,17 @@ export function useSalespersonLeads(initialCustomers = []) {
     // Only auto-fetch if initialCustomers is empty (not provided)
     // This allows components like LastCall/ScheduledCall to pass their own data
     if (initialCustomers.length > 0) {
-      console.log('[Hook Debug] Using initialCustomers, skipping auto-fetch. Count:', initialCustomers.length)
       return
     }
     
     const fetchAssigned = async () => {
       try {
-        console.log('[Hook Debug] Auto-fetching leads from API...')
         const res = await apiClient.get(API_ENDPOINTS.SALESPERSON_ASSIGNED_LEADS_ME())
         const rows = res?.data || []
         
-        // Debug: Check first few rows for product data
-        if (rows.length > 0) {
-          console.log('[API Debug] Sample API response row:', {
-            id: rows[0]?.id,
-            product_type: rows[0]?.product_type,
-            productType: rows[0]?.productType,
-            product_name: rows[0]?.product_name,
-            productName: rows[0]?.productName,
-            allKeys: Object.keys(rows[0] || {})
-          })
+        // Debug: Check first few rows for product data (only in development)
+        if (rows.length > 0 && process.env.NODE_ENV === 'development') {
+          console.log('[API Debug] Loaded', rows.length, 'leads from API')
         }
         
         const mapped = rows.map((r) => {
@@ -52,12 +43,22 @@ export function useSalespersonLeads(initialCustomers = []) {
           const productType = r.product_type || r.productType || r.product_name || r.productName || ''
           const productNameValue = productType && productType.trim() !== '' ? productType.trim() : 'N/A'
           
+          // Extract division - handle null, undefined, empty string, and 'N/A'
+          const divisionRaw = r.division || r.Division || null
+          let division = null
+          if (divisionRaw) {
+            const trimmed = String(divisionRaw).trim()
+            if (trimmed && trimmed.toLowerCase() !== 'n/a' && trimmed !== '') {
+              division = trimmed
+            }
+          }
+          
           return {
           id: r.id, name: r.name, phone: r.phone, email: r.email || 'N/A', business: r.business || 'N/A',
           address: r.address || 'N/A', gstNo: r.gst_no || 'N/A', 
           productName: productNameValue,
           product_type: productNameValue, // Store both for compatibility
-          state: r.state || 'N/A', enquiryBy: r.lead_source || 'N/A', customerType: r.customer_type || 'N/A',
+          state: r.state || 'N/A', division: division, enquiryBy: r.lead_source || 'N/A', customerType: r.customer_type || 'N/A',
           date: r.date ? new Date(r.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           salesStatus: r.sales_status || 'pending', salesStatusRemark: r.sales_status_remark || null,
           salesStatusDate: new Date(r.updated_at || r.created_at || Date.now()).toLocaleString(),
@@ -72,14 +73,12 @@ export function useSalespersonLeads(initialCustomers = []) {
           }
         })
         
-        // Debug: Check mapped data
-        const productsInMapped = mapped.filter(c => c.productName && c.productName !== 'N/A' && c.productName.toLowerCase() !== 'n/a')
-        console.log('[API Debug] Mapped customers:', mapped.length)
-        console.log('[API Debug] Customers with valid products:', productsInMapped.length)
-        if (productsInMapped.length > 0) {
-          console.log('[API Debug] Sample products:', productsInMapped.slice(0, 5).map(c => c.productName))
-        } else {
-          console.warn('[API Debug] ⚠️ No valid products found in API response!')
+        // Debug: Check mapped data (only in development)
+        if (process.env.NODE_ENV === 'development') {
+          const productsInMapped = mapped.filter(c => c.productName && c.productName !== 'N/A' && c.productName.toLowerCase() !== 'n/a')
+          if (productsInMapped.length > 0) {
+            console.log('[API Debug] Loaded', mapped.length, 'customers with', productsInMapped.length, 'having products')
+          }
         }
         
         setCustomers(mapped)
@@ -143,36 +142,17 @@ export function useSalespersonLeads(initialCustomers = []) {
     // Get unique products and sort
     const uniqueProducts = [...new Set(allProductValues)].sort()
 
-    // Debug: Log products for troubleshooting
-    if (customers.length > 0) {
-      const sampleCustomer = customers[0]
-      const sampleProduct = sampleCustomer?.productName || sampleCustomer?.product_type || sampleCustomer?.productType || sampleCustomer?.product_name || 'N/A'
-      
-      console.log('[Filter Debug] ========== PRODUCT EXTRACTION ==========')
-      console.log('[Filter Debug] Total customers:', customers.length)
-      console.log('[Filter Debug] Unique products found:', uniqueProducts.length)
-      console.log('[Filter Debug] Sample customer product fields:', {
-        productName: sampleCustomer?.productName,
-        product_type: sampleCustomer?.product_type,
-        productType: sampleCustomer?.productType,
-        product_name: sampleCustomer?.product_name,
-        sampleProduct: sampleProduct
-      })
-      console.log('[Filter Debug] All extracted products:', allProductValues)
-      console.log('[Filter Debug] Unique products list:', uniqueProducts)
-      
-      // Check if all products are 'N/A'
+    // Debug: Log products for troubleshooting (only in development or if there's an issue)
+    if (customers.length > 0 && process.env.NODE_ENV === 'development') {
       const validProducts = customers.filter(c => {
         const p = c.productName || c.product_type || c.productType || c.product_name || ''
         return p && p.trim() !== '' && p !== 'N/A' && p.toLowerCase() !== 'n/a'
       })
-      console.log('[Filter Debug] Customers with valid products:', validProducts.length)
       
+      // Only show warning if there are customers but no valid products
       if (validProducts.length === 0 && customers.length > 0) {
-        console.warn('[Filter Debug] ⚠️ WARNING: No valid products found! All products are N/A or empty.')
-        console.warn('[Filter Debug] This might indicate a data issue in the database.')
+        console.warn('[Filter Debug] No valid products found in customer data. This is normal if products are not yet assigned.')
       }
-      console.log('[Filter Debug] =========================================')
     }
 
     // Extract sales statuses - include all statuses including 'N/A'
