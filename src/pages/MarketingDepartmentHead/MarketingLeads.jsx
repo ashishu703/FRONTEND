@@ -194,7 +194,7 @@ const MarketingLeads = () => {
       const leadsPayload = importPreview.map((row, index) => {
         const payload = leadService.buildCSVLeadPayload(row, index, validationErrors);
         // Date is already handled in buildCSVLeadPayload, but ensure it's formatted correctly
-        const dateField = row['Date (DD/MM/YYYY or YYYY-MM-DD)'] || row['Date (YYYY-MM-DD)'] || '';
+        const dateField = row['Date (DD/MM/YYYY or YYYY-MM-DD)'] || row['Date (YYYY-MM-DD)'] || row['Date'] || '';
         if (dateField) {
           payload.date = formatDateUtil(dateField);
         }
