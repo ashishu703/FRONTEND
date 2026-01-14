@@ -80,9 +80,30 @@ export default function ImportLeadsModal({ show, onClose, onImportSuccess }) {
   }
 
   const handleDownloadTemplate = () => {
-    const headers = ['Name', 'Phone', 'WhatsApp', 'Email', 'Address', 'State', 'GST No', 'Product Name', 'Lead Source', 'Customer Type', 'Date']
-    const sampleData = ['John Doe', '9876543210', '9876543210', 'john@example.com', '123 Street', 'Maharashtra', '27ABCDE1234F1Z5', 'Product A', 'Website', 'Dealer', new Date().toISOString().split('T')[0]]
-    const csvContent = [headers, sampleData].map(row => row.map(field => `"${field}"`).join(',')).join('\n')
+    const headers = [
+      'Customer Name',
+      'Mobile Number', 
+      'WhatsApp Number',
+      'Email',
+      'Address',
+      'GST Number',
+      'Business Name',
+      'Business Category',
+      'Lead Source',
+      'Product Names (comma separated)',
+      'Assigned Salesperson',
+      'Assigned Telecaller',
+      'State',
+      'Division',
+      'Date (DD/MM/YYYY or YYYY-MM-DD)'
+    ]
+    
+    // Demo data as provided by user for Marketing Department Head
+    const csvContent = [
+      headers.map(h => `"${h}"`).join(','),
+      '"saurabh jhariya","9876549874","9876547564","jhariya@gmail.com","right town jabalpur","23FDGT546GF54","samriddhi","business","social media","acsr","NA","NA","MP","jabalpur","06/12/2025"'
+    ].join('\n')
+    
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
@@ -108,17 +129,21 @@ export default function ImportLeadsModal({ show, onClose, onImportSuccess }) {
           const csvText = e.target.result
           const parsedData = parseCSV(csvText)
           const leadsPayload = parsedData.map((row, index) => ({
-            name: row.Name || row.name || '',
-            phone: row.Phone || row.phone || '',
-            whatsapp: row.WhatsApp || row.whatsapp || row.Phone || row.phone || '',
+            name: row['Customer Name'] || row['customer name'] || row.name || '',
+            phone: row['Mobile Number'] || row['mobile number'] || row.Phone || row.phone || '',
+            whatsapp: row['WhatsApp Number'] || row['whatsapp number'] || row.WhatsApp || row.whatsapp || row['Mobile Number'] || row['mobile number'] || row.Phone || row.phone || '',
             email: row.Email || row.email || '',
             address: row.Address || row.address || '',
             state: row.State || row.state || '',
-            gst_no: row['GST No'] || row.gst_no || row['GST No'] || '',
-            product_type: row['Product Name'] || row.product_type || row['Product Name'] || '',
-            lead_source: row['Lead Source'] || row.lead_source || row['Lead Source'] || '',
-            customer_type: row['Customer Type'] || row.customer_type || row['Customer Type'] || '',
-            date: row.Date || row.date || new Date().toISOString().split('T')[0]
+            division: row.Division || row.division || '',
+            gst_no: row['GST Number'] || row['gst number'] || row['GST No'] || row.gst_no || '',
+            business: row['Business Name'] || row['business name'] || row.business || '',
+            business_category: row['Business Category'] || row['business category'] || row.category || '',
+            product_type: row['Product Names (comma separated)'] || row['product names (comma separated)'] || row['Product Name'] || row.product_type || '',
+            lead_source: row['Lead Source'] || row['lead source'] || row.lead_source || '',
+            assigned_salesperson: row['Assigned Salesperson'] || row['assigned salesperson'] || row.assignedSalesperson || (row['Assigned Salesperson'] === 'NA' ? null : null) || null,
+            assigned_telecaller: row['Assigned Telecaller'] || row['assigned telecaller'] || row.assignedTelecaller || (row['Assigned Telecaller'] === 'NA' ? null : null) || null,
+            date: row['Date (DD/MM/YYYY or YYYY-MM-DD)'] || row['date (dd/mm/yyyy or yyyy-mm-dd)'] || row.Date || row.date || new Date().toISOString().split('T')[0]
           })).filter(lead => lead.name || lead.phone)
           
           const response = await apiClient.post(API_ENDPOINTS.SALESPERSON_IMPORT_LEADS(), { leads: leadsPayload })
