@@ -106,6 +106,16 @@ class DepartmentHeadService {
     return apiClient.request(API_ENDPOINTS.LEAD_BY_ID(id), { method: 'DELETE' });
   }
 
+  async getLastCallLeads(params = {}) {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        query.append(key, value);
+      }
+    });
+    return apiClient.get(API_ENDPOINTS.LEADS_LAST_CALL(query.toString()));
+  }
+
   // Proforma Invoices
   async getAllPendingPIs() {
     return apiClient.get('/api/proforma-invoices/pending');
