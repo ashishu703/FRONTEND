@@ -912,7 +912,7 @@ const LeadsSimplified = () => {
           if (!payload) {
             return null; // Row was skipped due to validation
           }
-          payload.date = formatDateUtil(row['Date (YYYY-MM-DD)']);
+          payload.date = formatDateUtil(row['Date (DD/MM/YYYY or YYYY-MM-DD)'] || row['Date (YYYY-MM-DD)'] || row['Date'] || '');
           return payload;
         })
         .filter(payload => payload !== null); // Remove null payloads (skipped rows)

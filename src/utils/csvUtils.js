@@ -15,13 +15,14 @@ export const downloadCSVTemplate = () => {
     'Assigned Salesperson',
     'Assigned Telecaller',
     'State',
+    'Division',
     'Date (DD/MM/YYYY or YYYY-MM-DD)'
   ];
   
   // Demo data as provided by user for Marketing Department Head
   const csvContent = [
     headers.map(h => `"${h}"`).join(','),
-    '"saurabh jhariya","9876549874","9876547564","jhariya@gmail.com","right town jabalpur","23FDGT546GF54","samriddhi","business","social media","acsr","NA","NA","MP","06/12/2025"'
+    '"saurabh jhariya","9876549874","9876547564","jhariya@gmail.com","right town jabalpur","23FDGT546GF54","samriddhi","business","social media","acsr","NA","NA","MP","jabalpur","06/12/2025"'
   ].join('\n');
   
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -127,6 +128,7 @@ export const parseCSV = (csvText) => {
     'business category': 'Business Category',
     'category': 'Category',
     'state': 'State',
+    'division': 'Division',
     'date (dd/mm/yyyy or yyyy-mm-dd)': 'Date (DD/MM/YYYY or YYYY-MM-DD)',
     'date (yyyy-mm-dd)': 'Date (DD/MM/YYYY or YYYY-MM-DD)',
     'date (dd/mm/yyyy)': 'Date (DD/MM/YYYY or YYYY-MM-DD)',
@@ -161,7 +163,7 @@ export const parseCSV = (csvText) => {
     if (header === 'Address') return 1000;
     if (header === 'Email') return 255;
     if (header === 'Mobile Number' || header === 'WhatsApp Number') return 10;
-    if (header === 'State' || header === 'Lead Source' || header === 'Business Category' || header === 'Category') return 100;
+    if (header === 'State' || header === 'Division' || header === 'Lead Source' || header === 'Business Category' || header === 'Category') return 100;
     if (header === 'GST Number') return 50;
     if (header === 'Product Names (comma separated)') return 500;
     return 255;

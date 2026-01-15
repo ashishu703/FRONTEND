@@ -46,7 +46,10 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
   
   const [products] = useState(() => getProducts());
   const [showOtherInput, setShowOtherInput] = useState(
-    initialEnquiredProducts.some(p => p.product === 'Other')
+    initialEnquiredProducts.some(p => {
+      const isInList = getProducts().some(prod => prod.name.toLowerCase() === p.product.toLowerCase());
+      return p.product === 'Other' || (!isInList && p.product);
+    })
   );
   const [productSearch, setProductSearch] = useState('');
   const [showProductDropdown, setShowProductDropdown] = useState(false);
@@ -63,14 +66,16 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
     const selectedProduct = e.target.value;
     if (!selectedProduct || selectedProduct === '') return;
     
-    // Don't add if already exists
-    if (formData.enquired_products.some(p => p.product === selectedProduct)) {
+    // Don't add if already exists (exact match)
+    if (formData.enquired_products.some(p => p.product.toLowerCase() === selectedProduct.toLowerCase())) {
       e.target.value = ''; // Reset dropdown
       return;
     }
     
-    const hasOther = selectedProduct === 'Other' || formData.enquired_products.some(p => p.product === 'Other');
-    setShowOtherInput(hasOther);
+    // Show other input if "Other" is selected
+    if (selectedProduct === 'Other') {
+      setShowOtherInput(true);
+    }
     
     setFormData(prev => ({
       ...prev,
@@ -94,10 +99,9 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
     const productToAdd = productName || productSearch.trim();
     if (!productToAdd) return;
     
-    // Don't add if already exists
+    // Don't add if already exists (exact match)
     if (formData.enquired_products.some(p => 
-      p.product === productToAdd || 
-      (p.product === 'Other' && formData.other_product === productToAdd)
+      p.product.toLowerCase() === productToAdd.toLowerCase()
     )) {
       setProductSearch('');
       setShowProductDropdown(false);
@@ -107,29 +111,15 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
     // Check if it's in the products list
     const isInProductsList = products.some(p => p.name.toLowerCase() === productToAdd.toLowerCase());
     
-    if (isInProductsList) {
-      // If it's in the list, add it normally
-      setFormData(prev => ({
-        ...prev,
-        enquired_products: [...prev.enquired_products, { product: productToAdd, quantity: '', remark: '' }]
-      }));
-    } else {
-      // If it's not in the list, add as "Other" with the custom name
-      const hasOther = formData.enquired_products.some(p => p.product === 'Other');
-      if (!hasOther) {
-        setShowOtherInput(true);
-        setFormData(prev => ({
-          ...prev,
-          enquired_products: [...prev.enquired_products, { product: 'Other', quantity: '', remark: '' }],
-          other_product: productToAdd
-        }));
-      } else {
-        // If Other already exists, just update the other_product
-        setFormData(prev => ({
-          ...prev,
-          other_product: productToAdd
-        }));
-      }
+    // Add the product directly - allow multiple custom products
+    setFormData(prev => ({
+      ...prev,
+      enquired_products: [...prev.enquired_products, { product: productToAdd, quantity: '', remark: '' }]
+    }));
+    
+    // Show other input if any custom product (not in list) is added
+    if (!isInProductsList) {
+      setShowOtherInput(true);
     }
     
     setProductSearch('');
@@ -401,7 +391,7 @@ export const EditLeadStatusModal = ({ lead, onClose, onSave }) => {
                   <div key={index} className="bg-gradient-to-br from-emerald-50 to-teal-50 px-4 py-4 rounded-lg border-2 border-emerald-200 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-semibold text-gray-800 flex-1 break-words pr-2">
-                        {item.product === 'Other' ? formData.other_product || 'Other' : item.product}
+                        {item.product === 'Other' ? (formData.other_product || 'Other') : item.product}
                       </span>
                       <button
                         type="button"
