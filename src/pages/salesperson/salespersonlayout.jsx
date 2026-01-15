@@ -17,6 +17,12 @@ import CreateQuotationForm from './salespersoncreatequotation.jsx'
 import CreatePIForm from './CreatePIForm.jsx'
 import quotationService from '../../api/admin_api/quotationService'
 import proformaInvoiceService from '../../api/admin_api/proformaInvoiceService'
+// Marketing Salesperson Pages
+import GenerateLead from '../MarketingSalesperson/GenerateLead'
+import Tasks from '../MarketingSalesperson/Tasks'
+import FollowUps from '../MarketingSalesperson/FollowUps'
+import Reimbursement from '../MarketingSalesperson/Reimbursement'
+import MarketingSalespersonSidebar from '../MarketingSalesperson/MarketingSalespersonSidebar'
 
 import { SharedDataProvider } from './SharedDataContext';
 
@@ -173,6 +179,7 @@ export default function SalespersonLayout({ onLogout }) {
   const [isMobileView, setIsMobileView] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [selectedCustomerId, setSelectedCustomerId] = useState(null)
+  const [isMarketingMode, setIsMarketingMode] = useState(false) // Toggle state for marketing mode
   
   // Check if we should show quotation form (from sessionStorage)
   useEffect(() => {
@@ -231,6 +238,31 @@ export default function SalespersonLayout({ onLogout }) {
     setIsDarkMode(!isDarkMode);
   };
 
+  const handleToggleView = () => {
+    setIsMarketingMode(!isMarketingMode);
+    // Reset to default page when toggling
+    if (!isMarketingMode) {
+      setCurrentPage('generate-lead');
+    } else {
+      setCurrentPage('dashboard');
+    }
+  };
+
+  const renderMarketingContent = () => {
+    switch (currentPage) {
+      case 'generate-lead':
+        return <GenerateLead />;
+      case 'tasks':
+        return <Tasks />;
+      case 'follow-ups':
+        return <FollowUps />;
+      case 'reimbursement':
+        return <Reimbursement />;
+      default:
+        return <GenerateLead />;
+    }
+  };
+
   return (
     <SharedDataProvider>
       <div className={`min-h-screen relative transition-colors ${
@@ -244,15 +276,28 @@ export default function SalespersonLayout({ onLogout }) {
           />
         )}
         
-        <Sidebar 
-          currentPage={currentPage} 
-          onNavigate={handleNavigation} 
-          onLogout={onLogout} 
-          sidebarOpen={sidebarOpen} 
-          setSidebarOpen={setSidebarOpen}
-          isDarkMode={isDarkMode}
-          isMobileView={isMobileView}
-        />
+        {/* Conditional Sidebar - Marketing or Salesperson */}
+        {isMarketingMode ? (
+          <MarketingSalespersonSidebar 
+            currentPage={currentPage} 
+            onNavigate={setCurrentPage}
+            onLogout={onLogout}
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+            isDarkMode={isDarkMode}
+            isMobileView={isMobileView}
+          />
+        ) : (
+          <Sidebar 
+            currentPage={currentPage} 
+            onNavigate={handleNavigation} 
+            onLogout={onLogout} 
+            sidebarOpen={sidebarOpen} 
+            setSidebarOpen={setSidebarOpen}
+            isDarkMode={isDarkMode}
+            isMobileView={isMobileView}
+          />
+        )}
         
         <div className={`flex-1 transition-all duration-300 ${
           isMobileView 
@@ -262,28 +307,39 @@ export default function SalespersonLayout({ onLogout }) {
               : 'ml-16'
         }`}>
           <FixedHeader 
-            userType="salesperson" 
+            userType={isMarketingMode ? "marketing-salesperson" : "salesperson"} 
             currentPage={currentPage} 
             isMobileView={isMobileView}
             isDarkMode={isDarkMode}
             onToggleDarkMode={handleToggleDarkMode}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             sidebarOpen={sidebarOpen}
+            onToggleView={handleToggleView}
           />
           <div className={`flex-1 transition-colors ${
             isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
           }`}>
-            {currentPage === 'dashboard' && <DashboardContent isDarkMode={isDarkMode} />}
-            {currentPage === 'customers' && <CustomerListContent isDarkMode={isDarkMode} selectedCustomerId={selectedCustomerId} />}
-            {currentPage === 'stock' && <StockManagement isDarkMode={isDarkMode} />}
-            {currentPage === 'products' && <ProductsPage isDarkMode={isDarkMode} />}
-            {currentPage === 'lead-status' && <LeadStatusPage isDarkMode={isDarkMode} />}
-            {currentPage === 'scheduled-call' && <ScheduledCallPage isDarkMode={isDarkMode} />}
-            {currentPage === 'last-call' && <LastCallPage isDarkMode={isDarkMode} />}
-            {currentPage === 'due-payment' && <DuePaymentPage isDarkMode={isDarkMode} />}
-            {currentPage === 'advance-payment' && <AdvancePaymentPage isDarkMode={isDarkMode} />}
-            {currentPage === 'toolbox' && <ToolboxInterface isDarkMode={isDarkMode} />}
-            {currentPage === 'notifications' && <NotificationsPage isDarkMode={isDarkMode} />}
+            {isMarketingMode ? (
+              // Marketing Pages
+              <main className="p-4 sm:p-6 lg:p-8">
+                {renderMarketingContent()}
+              </main>
+            ) : (
+              // Salesperson Pages
+              <>
+                {currentPage === 'dashboard' && <DashboardContent isDarkMode={isDarkMode} />}
+                {currentPage === 'customers' && <CustomerListContent isDarkMode={isDarkMode} selectedCustomerId={selectedCustomerId} />}
+                {currentPage === 'stock' && <StockManagement isDarkMode={isDarkMode} />}
+                {currentPage === 'products' && <ProductsPage isDarkMode={isDarkMode} />}
+                {currentPage === 'lead-status' && <LeadStatusPage isDarkMode={isDarkMode} />}
+                {currentPage === 'scheduled-call' && <ScheduledCallPage isDarkMode={isDarkMode} />}
+                {currentPage === 'last-call' && <LastCallPage isDarkMode={isDarkMode} />}
+                {currentPage === 'due-payment' && <DuePaymentPage isDarkMode={isDarkMode} />}
+                {currentPage === 'advance-payment' && <AdvancePaymentPage isDarkMode={isDarkMode} />}
+                {currentPage === 'toolbox' && <ToolboxInterface isDarkMode={isDarkMode} />}
+                {currentPage === 'notifications' && <NotificationsPage isDarkMode={isDarkMode} />}
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -2,7 +2,6 @@ export const ROLES = {
   SUPERADMIN: 'superadmin',
   DEPARTMENT_HEAD: 'department_head',
   DEPARTMENT_USER: 'department_user',
-  MARKETING_DEPARTMENT_HEAD: 'marketing_department_head',
   HR_DEPARTMENT_HEAD: 'hr_department_head',
 };
 
@@ -13,9 +12,6 @@ export const getUserTypeForRole = (role, departmentType = null) => {
   
   switch (role) {
     case ROLES.DEPARTMENT_HEAD:
-      if (dept === 'marketing_sales' || dept === 'marketing department') {
-        return 'marketingdepartmenthead';
-      }
       if (dept === 'hr' || dept === 'human resources') {
         return 'hrdepartmenthead';
       }
@@ -43,7 +39,7 @@ export const getUserTypeForRole = (role, departmentType = null) => {
       if (dept === 'production' || dept === 'production department') {
         return 'production-staff';
       }
-      if (dept === 'marketing_sales' || dept === 'marketing department') {
+      if (dept === 'marketing_sales' || dept === 'marketing department' || dept === 'marketing') {
         return 'marketing-salesperson';
       }
       if (dept === 'accounts' || dept === 'accounts department') {

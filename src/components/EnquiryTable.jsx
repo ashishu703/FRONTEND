@@ -45,7 +45,7 @@ const EnquiryTable = ({ enquiries, loading, groupedByDate, onRefresh, onEdit, on
             {/* Table */}
             <div className="overflow-x-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
               <table className="w-full min-w-[700px] sm:min-w-0" style={{ tableLayout: 'auto' }}>
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
                     {(visibleColumns.customer_name !== false) && (
                       <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[90px] sm:min-w-[120px]">
@@ -252,7 +252,7 @@ const EnquiryTable = ({ enquiries, loading, groupedByDate, onRefresh, onEdit, on
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
         <table className="w-full min-w-[700px] sm:min-w-0" style={{ tableLayout: 'auto' }}>
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 sticky top-0 z-10">
             <tr>
               {(visibleColumns.enquiry_date === true) && (
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">

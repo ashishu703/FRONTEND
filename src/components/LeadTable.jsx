@@ -105,7 +105,7 @@ const LeadTable = ({
         }}
       >
         <table className="w-full min-w-[800px] sm:min-w-0" style={{ width: '100%', tableLayout: 'auto', borderCollapse: 'collapse', margin: 0 }}>
-          <thead className="bg-gradient-to-r from-slate-50 to-gray-50 border-b-2 border-gray-200">
+          <thead className="bg-gradient-to-r from-slate-50 to-gray-50 border-b-2 border-gray-200 sticky top-0 z-10">
             <tr>
               <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3">
                 <input

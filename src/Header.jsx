@@ -1,12 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Moon, Sun, BarChart3, Clock, User, Factory, Wrench, HelpCircle, Activity, Server, Settings, Shield, Link, CheckCheck, Circle, FileText, Menu } from 'lucide-react';
+import { Bell, Users, X, TrendingUp, Calendar, CheckCircle, MapPin, Award, Package, DollarSign, Moon, Sun, BarChart3, Clock, User, Factory, Wrench, HelpCircle, Activity, Server, Settings, Shield, Link, CheckCheck, Circle, FileText, Menu, ToggleLeft, ToggleRight, CheckSquare } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useNotifications } from './hooks/useNotifications';
 import ProfileUpdateModal from './components/ProfileUpdateModal';
 
-const ASHVAY_LOGO = "https://res.cloudinary.com/dngojnptn/image/upload/v1764139419/ChatGPT_Image_Nov_26_2025_11_50_20_AM_qkwcqe.png";
-
-const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMobileView = false, isDarkMode = false, onToggleDarkMode, onProfileClick, onToggleSidebar, sidebarOpen }) => {
+const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMobileView = false, isDarkMode = false, onToggleDarkMode, onProfileClick, onToggleSidebar, sidebarOpen, onToggleView }) => {
   const { user, refreshUser } = useAuth();
   const { notifications, unreadCount, isConnected, markAsRead, markAsUnread, markAllAsRead } = useNotifications();
   
@@ -225,49 +223,11 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
           title: "Payment Info",
           subtitle: "View payment details from all companies and department heads"
         };
-      case 'marketing-leads':
-        return {
-          icon: <Users className="w-6 h-6 text-white" />,
-          title: "Marketing Leads",
-          subtitle: "Manage marketing department leads"
-        };
       case 'today-visit':
         return {
           icon: <Calendar className="w-6 h-6 text-white" />,
           title: "Today's Visits",
           subtitle: "Schedule and track today's customer visits"
-        };
-      
-      // Marketing Salesperson pages
-      case 'visits':
-        return {
-          icon: <MapPin className="w-6 h-6 text-white" />,
-          title: "Customer Visits",
-          subtitle: "Plan and track customer visits"
-        };
-      case 'calendar':
-        return {
-          icon: <Calendar className="w-6 h-6 text-white" />,
-          title: "Lead Calendar",
-          subtitle: "View your assigned leads day-wise"
-        };
-      case 'expenses':
-        return {
-          icon: <DollarSign className="w-6 h-6 text-white" />,
-          title: "Expenses",
-          subtitle: "Track your marketing expenses"
-        };
-      case 'orders':
-        return {
-          icon: <TrendingUp className="w-6 h-6 text-white" />,
-          title: "Orders",
-          subtitle: "Monitor performance and metrics"
-        };
-      case 'toolbox':
-        return {
-          icon: <Users className="w-6 h-6 text-white" />,
-          title: "Toolbox",
-          subtitle: "Access tools and resources"
         };
       
       // TeleSales pages
@@ -286,12 +246,30 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
           subtitle: "Manage office sales activities"
         };
       
-      // Marketing Salesperson dashboard
-      case 'marketing-salesperson':
+      // Marketing Salesperson pages
+      case 'generate-lead':
         return {
           icon: <Users className="w-6 h-6 text-white" />,
-          title: "Marketing Sales Dashboard",
-          subtitle: "Manage marketing sales activities"
+          title: "Generate Lead",
+          subtitle: "Create and manage new leads"
+        };
+      case 'tasks':
+        return {
+          icon: <CheckSquare className="w-6 h-6 text-white" />,
+          title: "Tasks",
+          subtitle: "Manage assigned and completed tasks"
+        };
+      case 'follow-ups':
+        return {
+          icon: <MapPin className="w-6 h-6 text-white" />,
+          title: "Follow-ups",
+          subtitle: "Record customer follow-ups with location and photo"
+        };
+      case 'reimbursement':
+        return {
+          icon: <DollarSign className="w-6 h-6 text-white" />,
+          title: "Reimbursement",
+          subtitle: "Track and submit daily expenses"
         };
       
       // Sales Department Head pages
@@ -452,26 +430,6 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
           subtitle: ""
         };
 
-      // Marketing Department Head pages
-      case 'marketing-dashboard':
-        return {
-          icon: <TrendingUp className="w-6 h-6 text-white" />,
-          title: "Marketing Dashboard",
-          subtitle: "Marketing department performance overview"
-        };
-      case 'campaign-leads':
-        return {
-          icon: <Users className="w-6 h-6 text-white" />,
-          title: "Campaign Leads",
-          subtitle: "Manage and track campaign leads"
-        };
-      case 'marketing-department-users':
-        return {
-          icon: <Users className="w-6 h-6 text-white" />,
-          title: "Marketing Department Users",
-          subtitle: "Manage marketing department users and permissions"
-        };
-      
       // IT Department pages
       case 'it-dashboard':
         return {
@@ -599,21 +557,35 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
         </div>
 
         <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 flex-shrink-0">
-          <button
-            onClick={() => {
-              window.dispatchEvent(new CustomEvent('openAshvayChat'));
-            }}
-            className={`p-1 sm:p-1.5 rounded-lg transition-colors flex-shrink-0 ${
-              isDarkMode 
-                ? 'hover:bg-gray-700' 
-                : 'hover:bg-gray-100'
-            }`}
-            title="Ashvay AI Support"
-          >
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden bg-white p-0.5">
-              <img src={ASHVAY_LOGO} alt="Ashvay" className="w-full h-full object-contain rounded-full" />
-            </div>
-          </button>
+          {/* Toggle Button for Marketing Salesperson and Salesperson */}
+          {(userType === "marketing-salesperson" || userType === "salesperson") && (
+            <button
+              onClick={onToggleView || (() => {})}
+              className={`p-1.5 sm:p-2 rounded-lg transition-all flex-shrink-0 shadow-md ${
+                isDarkMode 
+                  ? 'bg-gray-700 text-gray-200 hover:bg-gray-600 hover:text-white' 
+                  : 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700'
+              }`}
+              title={userType === "marketing-salesperson" ? "Toggle Marketing/Sales View" : "Toggle View"}
+            >
+              <ToggleRight className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          )}
+          
+          {/* Toggle Button for other users if onToggleView is provided */}
+          {userType !== "marketing-salesperson" && userType !== "salesperson" && onToggleView && (
+            <button
+              onClick={onToggleView}
+              className={`p-1.5 sm:p-2 rounded-lg transition-all flex-shrink-0 shadow-md ${
+                isDarkMode 
+                  ? 'bg-gray-700 text-gray-200 hover:bg-gray-600 hover:text-white' 
+                  : 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700'
+              }`}
+              title="Toggle View"
+            >
+              <ToggleRight className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          )}
           
           {userType === "salesperson" && onToggleDarkMode && (
             <button
@@ -626,20 +598,6 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
               title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
               {isDarkMode ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
-            </button>
-          )}
-          
-          {userType === "marketing-salesperson" && onProfileClick && (
-            <button
-              onClick={onProfileClick}
-              className={`p-1 sm:p-1.5 rounded-lg transition-colors flex-shrink-0 ${
-                currentPage === 'profile' 
-                  ? (isDarkMode ? 'bg-blue-700 text-blue-200' : 'bg-blue-100 text-blue-700')
-                  : (isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100')
-              }`}
-              title="Profile & Attendance"
-            >
-              <User className={`w-4 h-4 sm:w-5 sm:h-5 ${currentPage === 'profile' ? (isDarkMode ? 'text-blue-200' : 'text-blue-700') : (isDarkMode ? 'text-gray-300' : 'text-gray-600')}`} />
             </button>
           )}
           
