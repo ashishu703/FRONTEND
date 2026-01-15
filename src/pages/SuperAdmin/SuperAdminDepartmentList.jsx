@@ -403,7 +403,7 @@ const DepartmentManagement = () => {
             </div>
           </div>
           {showFilters && (
-            <div id="advanced-filters" className="mt-4 border-t border-gray-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div id="advanced-filters" className="mt-4 border-t border-gray-100 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-xs text-gray-500 mb-1">From</label>
                 <input

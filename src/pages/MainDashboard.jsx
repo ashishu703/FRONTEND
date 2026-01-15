@@ -6,9 +6,7 @@ import SuperAdminDepartmentList from './SuperAdmin/SuperAdminDepartmentList';
 import AllLeads from './SuperAdmin/AllLeads';
 import Configuration from './SuperAdmin/Configuration';
 import PaymentInfo from './SuperAdmin/PaymentInfo';
-import MarketingLeads from './SalesDepartmentHead/MarketingLeads';
 import TodayVisit from './SalesDepartmentHead/TodayVisit';
-import MarketingSalespersonDashboard from './SuperAdmin/MarketingSalespersonDashboard';
 import TeleSalesDashboard from './SuperAdmin/TeleSalesDashboard';
 import OfficeSalesPersonDashboard from './SuperAdmin/OfficeSalesPersonDashboard';
 import CreateOrganisation from './SuperAdmin/CreateOrganisation';
@@ -28,8 +26,6 @@ const MainDashboard = ({ activeView, setActiveView }) => {
         return <SuperAdminDashboard />;
       case 'leads':
         return <AllLeads />;
-      case 'marketing-leads':
-        return <MarketingLeads />;
       case 'today-visit':
         try {
           return <TodayVisit />;
@@ -47,8 +43,6 @@ const MainDashboard = ({ activeView, setActiveView }) => {
         return <Configuration />;
       case 'performance':
         return <PaymentInfo />;
-      case 'marketing-salesperson':
-        return <MarketingSalespersonDashboard />;
       case 'tele-sales':
         return <TeleSalesDashboard />;
       case 'office-sales-person':

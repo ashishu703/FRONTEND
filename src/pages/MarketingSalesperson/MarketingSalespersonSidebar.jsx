@@ -1,201 +1,176 @@
-import React, { useState } from 'react';
-import { 
-  BarChart3, 
-  Users, 
-  Calendar,
-  Wrench,
-  Menu,
-  X,
-  LogOut,
-  UserCheck,
-  ShoppingCart,
-  IndianRupee,
-  User,
-  HelpCircle,
-  CalendarCheck,
-  Camera,
-  ChevronDown
-} from 'lucide-react';
+"use client"
 
-const MarketingSalespersonSidebar = ({ activeView, setActiveView }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [paymentsOpen, setPaymentsOpen] = useState(false);
+import { useState, useRef, useEffect } from "react"
+import { LayoutDashboard, Users, LogOut, Menu, X, FileText, CheckSquare, MapPin, DollarSign } from "lucide-react"
 
-  const toggleSidebar = () => {
-    setIsExpanded(!isExpanded);
-  };
+function cx(...classes) {
+  return classes.filter(Boolean).join(" ")
+}
 
-  const togglePayments = () => {
-    setPaymentsOpen(!paymentsOpen);
-  };
+export default function MarketingSalespersonSidebar({ 
+  currentPage, 
+  onNavigate, 
+  onLogout, 
+  sidebarOpen, 
+  setSidebarOpen, 
+  isDarkMode = false, 
+  isMobileView = false 
+}) {
+  const collapseTimerRef = useRef(null);
+  const isManuallyToggledRef = useRef(false);
 
-  const sidebarItems = [
-    {
-      id: 'dashboard',
-      label: 'Dashboard',
-      icon: <BarChart3 className="w-5 h-5" />,
-      hasDropdown: false
-    },
-    // {
-    //   id: 'all-leads',
-    //   label: 'All Leads',
-    //   icon: <UserCheck className="w-5 h-5" />,
-    //   hasDropdown: false
-    // },
-    {
-      id: 'assigned-meetings',
-      label: 'Assigned Meetings',
-      icon: <CalendarCheck className="w-5 h-5" />,
-      hasDropdown: false
-    },
-    {
-      id: 'checkin-history',
-      label: 'Check-In History',
-      icon: <Camera className="w-5 h-5" />,
-      hasDropdown: false
-    },
-    {
-      id: 'orders',
-      label: 'Orders',
-      icon: <ShoppingCart className="w-5 h-5" />,
-      hasDropdown: false
-    },
-    {
-      id: 'payments',
-      label: 'Payments',
-      icon: <IndianRupee className="w-5 h-5" />,
-      hasDropdown: true
-    },
-    {
-      id: 'calendar',
-      label: 'Calendar',
-      icon: <Calendar className="w-5 h-5" />,
-      hasDropdown: false
-    },
-    {
-      id: 'toolbox',
-      label: 'Toolbox',
-      icon: <Wrench className="w-5 h-5" />,
-      hasDropdown: false
+  const handleMouseEnter = () => {
+    if (isManuallyToggledRef.current && !sidebarOpen) {
+      return;
     }
-  ];
-
-  const handleItemClick = (item) => {
-    if (item.hasDropdown) {
-      togglePayments();
-    } else {
-      setActiveView(item.id);
+    
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+      collapseTimerRef.current = null;
+    }
+    
+    if (!sidebarOpen) {
+      if (!isManuallyToggledRef.current) {
+        setSidebarOpen(true);
+      }
     }
   };
 
-  const handlePaymentStatusClick = (status) => {
-    setActiveView(`payment-status-${status}`);
+  const handleMouseLeave = () => {
+    if (isManuallyToggledRef.current && !sidebarOpen) {
+      setTimeout(() => {
+        isManuallyToggledRef.current = false;
+      }, 300);
+    }
+    
+    if (!isManuallyToggledRef.current) {
+      collapseTimerRef.current = setTimeout(() => {
+        setSidebarOpen(false);
+      }, 1500);
+    }
   };
 
-  const paymentStatuses = [
-    { id: 'due', label: 'Due Payments', color: 'text-orange-500' },
-    { id: 'advance', label: 'Advance Payments', color: 'text-blue-500' },
-    { id: 'completed', label: 'Completed Payments', color: 'text-green-500' },
+  useEffect(() => {
+    return () => {
+      if (collapseTimerRef.current) {
+        clearTimeout(collapseTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleToggle = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    const newState = !sidebarOpen;
+    isManuallyToggledRef.current = !newState;
+    
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+      collapseTimerRef.current = null;
+    }
+    
+    setSidebarOpen(newState);
+  };
+
+  const menuItems = [
+    { id: 'generate-lead', label: 'Generate Lead', icon: <Users className="w-5 h-5" /> },
+    { id: 'tasks', label: 'Tasks', icon: <CheckSquare className="w-5 h-5" /> },
+    { id: 'follow-ups', label: 'Follow-ups', icon: <MapPin className="w-5 h-5" /> },
+    { id: 'reimbursement', label: 'Reimbursement', icon: <DollarSign className="w-5 h-5" /> },
   ];
 
   return (
-    <div className={`bg-white shadow-lg transition-all duration-300 ${isExpanded ? 'w-64' : 'w-16'}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
-        {isExpanded && (
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">M</span>
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-800">ANOCAB</h1>
-              <p className="text-xs text-gray-500">Marketing Salesperson</p>
-            </div>
-          </div>
+    <>
+      {!sidebarOpen && !isMobileView && (
+        <div
+          className="fixed top-0 left-0 w-8 h-screen z-30"
+          onMouseEnter={handleMouseEnter}
+          style={{ cursor: 'pointer' }}
+        />
+      )}
+      
+      <div
+        className={cx(
+          "fixed top-0 left-0 h-screen z-50 shadow-2xl border-r transition-all duration-300 flex flex-col",
+          "bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 border-slate-700/50",
+          isMobileView 
+            ? (sidebarOpen ? "w-64" : "-translate-x-full w-64")
+            : (sidebarOpen ? "w-64" : "w-16"),
         )}
-        <button
-          onClick={toggleSidebar}
-          className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          {isExpanded ? <X className="w-5 h-5 text-gray-600" /> : <Menu className="w-5 h-5 text-gray-600" />}
-        </button>
-      </div>
-
-      {/* Navigation Items */}
-      <nav className="p-4 space-y-2">
-        {sidebarItems.map((item) => (
-          <div key={item.id}>
-            <button
-              onClick={() => handleItemClick(item)}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                activeView === item.id || (item.hasDropdown && activeView.startsWith('payment-status-'))
-                  ? 'bg-blue-100 text-blue-700 border-r-2 border-blue-600'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <div className="flex-shrink-0">
-                {item.icon}
-              </div>
-              {isExpanded && (
-                <>
-                  <span className="text-sm font-medium">{item.label}</span>
-                  {item.hasDropdown && (
-                    <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${paymentsOpen ? 'rotate-180' : ''}`} />
-                  )}
-                </>
-              )}
-            </button>
-            
-            {/* Payments Dropdown */}
-            {item.hasDropdown && item.id === 'payments' && paymentsOpen && isExpanded && (
-              <div className="ml-6 mt-2 space-y-1">
-                {paymentStatuses.map((status) => (
-                  <button
-                    key={status.id}
-                    onClick={() => handlePaymentStatusClick(status.id)}
-                    className={`w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
-                      activeView === `payment-status-${status.id}`
-                        ? 'bg-blue-50 text-blue-700 font-medium'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <span className={`w-2 h-2 rounded-full mr-2 ${status.color}`}></span>
-                    {status.label}
-                  </button>
-                ))}
+        onMouseEnter={!isMobileView ? handleMouseEnter : undefined}
+        onMouseLeave={!isMobileView ? handleMouseLeave : undefined}
+        style={{
+          background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+          boxShadow: '4px 0 20px rgba(0, 0, 0, 0.3)'
+        }}
+      >
+        <div className="p-4 border-b border-slate-700/50 bg-gradient-to-r from-blue-600/20 to-purple-600/20">
+          <div className="flex items-center justify-between">
+            {sidebarOpen && (
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 p-1.5 shadow-lg">
+                  <img 
+                    src="https://res.cloudinary.com/drpbrn2ax/image/upload/v1757416761/logo2_kpbkwm-removebg-preview_jteu6d.png" 
+                    alt="ANOCAB Logo" 
+                    className="w-full h-full object-contain rounded-lg"
+                  />
+                </div>
+                <div>
+                  <h1 className="font-bold text-white text-lg tracking-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>ANOCAB</h1>
+                  <p className="text-xs text-slate-400">Marketing Salesperson</p>
+                </div>
               </div>
             )}
+            <button
+              onClick={handleToggle}
+              className={`p-2 hover:bg-slate-700/50 rounded-lg transition-all duration-200 text-slate-300 hover:text-white ${!sidebarOpen ? 'mx-auto' : ''}`}
+            >
+              {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
-        ))}
-      </nav>
+        </div>
 
-      {/* Support Button */}
-      <div className="absolute bottom-20 left-4 right-4">
-        <button
-          onClick={() => window.location.href = '/support'}
-          className="w-full flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <HelpCircle className="w-5 h-5" />
-          {isExpanded && <span className="text-sm font-medium">Support</span>}
-        </button>
-      </div>
+        <nav className="flex-1 p-3 overflow-y-auto">
+          <ul className="space-y-1.5">
+            {menuItems.map((item) => (
+              <li key={item.id}>
+                <button
+                  onClick={() => onNavigate(item.id)}
+                  className={cx(
+                    "w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200",
+                    currentPage === item.id
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                      : 'hover:bg-slate-700/50 text-slate-300 hover:text-white'
+                  )}
+                  style={{
+                    transform: currentPage === item.id ? 'translateX(4px)' : 'none',
+                  }}
+                >
+                  <div className={currentPage === item.id ? 'text-white' : 'text-slate-400'}>
+                    {item.icon}
+                  </div>
+                  {sidebarOpen && (
+                    <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>{item.label}</span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-      {/* Logout Button */}
-      <div className="absolute bottom-4 left-4 right-4">
-        <button
-          onClick={() => {
-            // Handle logout logic here
-            window.close();
-          }}
-          className="w-full flex items-center space-x-3 px-3 py-2 text-red-600 rounded-lg transition-colors"
-        >
-          <LogOut className="w-5 h-5" />
-          {isExpanded && <span className="text-sm font-medium">Logout</span>}
-        </button>
+        <div className="p-3 border-t border-slate-700/50 bg-slate-800/30">
+          <button 
+            onClick={onLogout}
+            className="w-full flex items-center space-x-3 px-3 py-2.5 text-red-400 hover:bg-red-500/20 hover:text-red-300 rounded-xl transition-all duration-200"
+          >
+            <LogOut className="w-5 h-5" />
+            {sidebarOpen && <span className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>Logout</span>}
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
-};
-
-export default MarketingSalespersonSidebar;
-
+}

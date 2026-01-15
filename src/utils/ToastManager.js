@@ -159,7 +159,7 @@ class ToastManager {
         flex-shrink: 0;
       ">${icons[type]}</div>
       <div style="flex: 1; color: #374151;">${message}</div>
-      <button onclick="toastManager.remove(this.parentElement)" style="
+      <button class="toast-close-btn" style="
         background: none;
         border: none;
         color: #9CA3AF;
@@ -170,6 +170,14 @@ class ToastManager {
         flex-shrink: 0;
       ">×</button>
     `;
+
+    // Attach event listener to close button instead of using inline onclick
+    const closeButton = toast.querySelector('.toast-close-btn');
+    if (closeButton) {
+      closeButton.addEventListener('click', () => {
+        this.remove(toast);
+      });
+    }
 
     return toast;
   }
