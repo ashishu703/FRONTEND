@@ -21,8 +21,7 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [openDropdowns, setOpenDropdowns] = useState({
     department: false,
-    salesDepartment: false,
-    marketingSalesperson: false
+    salesDepartment: false
   });
   const collapseTimerRef = useRef(null);
   const isManuallyToggledRef = useRef(false);
@@ -44,7 +43,7 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
     if (!isManuallyToggledRef.current) {
       collapseTimerRef.current = setTimeout(() => {
         setIsExpanded(false);
-        setOpenDropdowns({ department: false, salesDepartment: false, marketingSalesperson: false });
+        setOpenDropdowns({ department: false, salesDepartment: false });
       }, 2000); // Collapse after 2 seconds
     }
   };
@@ -216,11 +215,7 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
                       <div className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-50 text-gray-600`}
                       onClick={() => {
                         if (subItem.hasSubDropdown) {
-                          if (subItem.label === 'Marketing Salesperson') {
-                            toggleDropdown('marketingSalesperson');
-                          } else {
-                            toggleDropdown('salesDepartment');
-                          }
+                          toggleDropdown('salesDepartment');
                         } else {
                           setActiveView(subItem.label.toLowerCase().replace(/\s+/g, '-'));
                         }
@@ -241,9 +236,7 @@ const Sidebar = ({ onLogout, activeView, setActiveView }) => {
                       </div>
                       
                       {/* Sub-dropdown Items */}
-                      {subItem.hasSubDropdown && (
-                        subItem.label === 'Marketing Salesperson' ? openDropdowns.marketingSalesperson : openDropdowns.salesDepartment
-                      ) && (
+                      {subItem.hasSubDropdown && openDropdowns.salesDepartment && (
                         <ul className="ml-6 mt-1 space-y-1">
                           {subItem.subDropdownItems.map((subSubItem, subIndex) => {
                             const IconComponent = subSubItem.icon === 'UserCheck' ? UserCheck : 
