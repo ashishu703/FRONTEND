@@ -29,9 +29,11 @@ import { calculateAssignedCounts, getUnassignedLeadIds, filterLeads } from '../.
 import { COMPANY_BRANCHES, DEFAULT_USER, DEFAULT_BRANCH } from '../../config/appConfig';
 import { useAuth } from '../../hooks/useAuth';
 import CSVImportValidationService from '../../services/CSVImportValidationService';
-import { debounce } from '../../utils/debounce';
 import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton';
 import EnquiryTable from '../../components/EnquiryTable';
+import reportService from '../../api/admin_api/reportService';
+import departmentHeadService from '../../api/admin_api/departmentHeadService';
+import { Users, Activity } from 'lucide-react';
 
 const LeadsSimplified = () => {
   const [activeTab, setActiveTab] = useState('leads');
@@ -193,6 +195,13 @@ const LeadsSimplified = () => {
   const [lastCallLoading, setLastCallLoading] = useState(false);
   const [lastCallInitialLoading, setLastCallInitialLoading] = useState(false);
   
+  // Salesperson Dashboard state
+  const [lastCallViewMode, setLastCallViewMode] = useState('date'); // 'date' or 'salesperson'
+  const [salespersons, setSalespersons] = useState([]);
+  const [salespersonsLoading, setSalespersonsLoading] = useState(false);
+  const [allLastCallLeadsForSalesperson, setAllLastCallLeadsForSalesperson] = useState([]);
+  const [selectedSalespersonTab, setSelectedSalespersonTab] = useState('all'); // 'all' or specific salesperson name
+  
   // Cache for enquiries and last call
   const enquiriesCacheRef = useRef(new Map());
   const lastCallCacheRef = useRef(new Map());
@@ -228,13 +237,17 @@ const LeadsSimplified = () => {
         updatedAt: lead.updated_at || lead.created_at || transformed.updatedAt || '',
         assignedSalesperson: lead.assignedSalesperson || lead.assigned_salesperson || transformed.assignedSalesperson || 'Unassigned',
         assignedTelecaller: lead.assignedTelecaller || lead.assigned_telecaller || transformed.assignedTelecaller || 'Unassigned',
-        // Preserve date fields for Last Call filtering (snake_case)
+        // Preserve date and time fields for Last Call filtering (snake_case) - Enhanced for real-time salesperson data
         follow_up_date: lead.follow_up_date || lead.followUpDate || transformed.follow_up_date || null,
+        follow_up_time: lead.follow_up_time || lead.followUpTime || transformed.follow_up_time || null,
         follow_up_remark: followUpRemark,
         follow_up_status: followUpStatus,
         next_meeting_date: lead.next_meeting_date || lead.nextMeetingDate || transformed.next_meeting_date || null,
+        next_meeting_time: lead.next_meeting_time || lead.nextMeetingTime || transformed.next_meeting_time || null,
         meeting_date: lead.meeting_date || lead.meetingDate || transformed.meeting_date || null,
+        meeting_time: lead.meeting_time || lead.meetingTime || transformed.meeting_time || null,
         scheduled_date: lead.scheduled_date || lead.scheduledDate || transformed.scheduled_date || null,
+        scheduled_time: lead.scheduled_time || lead.scheduledTime || transformed.scheduled_time || null,
         sales_status: salesStatus,
         sales_status_remark: salesStatusRemark,
         updated_at: lead.updated_at || lead.updatedAt || transformed.updated_at || null,
@@ -325,7 +338,7 @@ const LeadsSimplified = () => {
   // Define loadAllLeadsForFilters before fetchLastCallLeads to avoid initialization error
   const loadAllLeadsForFiltersRef = useRef(null);
   
-  // Fetch last call leads with pagination, caching and parallel API calls
+  // Fetch last call leads with optimized backend API - server-side filtering and pagination
   const fetchLastCallLeads = useCallback(async (forceRefresh = false, page = lastCallPage, limit = lastCallLimit) => {
     if (activeTab !== 'lastCall') return;
     
@@ -353,81 +366,48 @@ const LeadsSimplified = () => {
         setLastCallInitialLoading(true);
       }
       
-      // Load all leads for filtering (use existing function via ref)
-      const loadAllLeadsFn = loadAllLeadsForFiltersRef.current;
-      if (!loadAllLeadsFn) {
-        console.error('loadAllLeadsForFilters not available');
-        return [];
+      // Use optimized backend API endpoint with server-side filtering and pagination
+      const params = {
+        page,
+        limit: Math.min(limit, 50) // Max 50 per page
+      };
+      
+      // Add departmentType if available (for filtering)
+      if (user?.departmentType) {
+        params.departmentType = user.departmentType;
       }
-      const allLeads = await loadAllLeadsFn(true);
+      
+      const response = await departmentHeadService.getLastCallLeads(params);
+      const leadsData = response?.data || [];
+      const pagination = response?.pagination || {};
+      const total = pagination.total || 0;
       
       // Transform leads with proper field mapping
-      const transformedLeads = transformLeads(allLeads);
+      const transformedLeads = transformLeads(leadsData);
       
-      // Filter for last call leads only
-      const today = new Date();
-      today.setHours(23, 59, 59, 999);
-      
-      const allLastCallLeads = transformedLeads.filter(lead => {
-        if (!lead) return false;
-        
-        const hasFollowUpStatus = lead.follow_up_status && lead.follow_up_status.trim() !== '';
-        const hasFollowUpRemark = lead.follow_up_remark && lead.follow_up_remark.trim() !== '';
-        
-        const hasFollowUpDate = lead.follow_up_date && lead.follow_up_date !== 'N/A' && lead.follow_up_date !== '';
-        const hasNextMeetingDate = lead.next_meeting_date && lead.next_meeting_date !== 'N/A' && lead.next_meeting_date !== '';
-        const hasMeetingDate = lead.meeting_date && lead.meeting_date !== 'N/A' && lead.meeting_date !== '';
-        const hasScheduledDate = lead.scheduled_date && lead.scheduled_date !== 'N/A' && lead.scheduled_date !== '';
-        const hasNextMeetingStatus = lead.sales_status === 'next_meeting' && lead.sales_status_remark;
-        
-        const hasScheduledDateOrTime = hasFollowUpDate || hasNextMeetingDate || hasMeetingDate || hasScheduledDate || hasNextMeetingStatus;
-        
-        if (!hasFollowUpStatus && !hasFollowUpRemark && !hasScheduledDateOrTime) {
-          return false;
-        }
-        
-        let callDate = null;
-        if (lead.follow_up_date) {
-          callDate = new Date(lead.follow_up_date);
-        } else if (lead.next_meeting_date) {
-          callDate = new Date(lead.next_meeting_date);
-        } else if (lead.meeting_date) {
-          callDate = new Date(lead.meeting_date);
-        } else if (lead.scheduled_date) {
-          callDate = new Date(lead.scheduled_date);
-        } else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
-          const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
-          if (dateMatch) {
-            callDate = new Date(dateMatch[1]);
-          }
-        } else if (lead.updated_at) {
-          callDate = new Date(lead.updated_at);
-        }
-        
-        if (!callDate || isNaN(callDate.getTime())) {
-          return false;
-        }
-        
-        callDate.setHours(0, 0, 0, 0);
-        return callDate <= today;
-      });
-      
-      // Apply pagination
-      const total = allLastCallLeads.length;
-      const startIndex = (page - 1) * limit;
-      const endIndex = startIndex + limit;
-      const paginatedLeads = allLastCallLeads.slice(startIndex, endIndex);
+      // For salesperson view, we need all leads - fetch with high limit if needed
+      // But only if in salesperson view mode
+      if (lastCallViewMode === 'salesperson' && total > 0) {
+        // Fetch all last call leads for salesperson grouping (with reasonable limit)
+        const allParams = { ...params, page: 1, limit: Math.min(total, 1000) };
+        const allResponse = await departmentHeadService.getLastCallLeads(allParams);
+        const allLeadsData = allResponse?.data || [];
+        const allTransformed = transformLeads(allLeadsData);
+        setAllLastCallLeadsForSalesperson(allTransformed);
+      } else {
+        setAllLastCallLeadsForSalesperson(transformedLeads);
+      }
       
       // Update cache
       lastCallCacheRef.current.set(cacheKey, {
-        data: paginatedLeads,
+        data: transformedLeads,
         total,
         timestamp: now
       });
       
-      setLastCallLeadsData(paginatedLeads);
+      setLastCallLeadsData(transformedLeads);
       setLastCallTotal(total);
-      return paginatedLeads;
+      return transformedLeads;
     } catch (err) {
       if (err.name !== 'AbortError') {
         console.error('Error fetching last call leads:', err);
@@ -439,7 +419,7 @@ const LeadsSimplified = () => {
       setLastCallInitialLoading(false);
       fetchLastCallAbortControllerRef.current = null;
     }
-  }, [activeTab, transformLeads, lastCallPage, lastCallLimit]);
+  }, [activeTab, transformLeads, lastCallPage, lastCallLimit, lastCallViewMode, user?.departmentType]);
 
   // Fetch last call leads when Last Call tab is active or pagination changes
   useEffect(() => {
@@ -447,6 +427,34 @@ const LeadsSimplified = () => {
       fetchLastCallLeads(false, lastCallPage, lastCallLimit);
     }
   }, [activeTab, lastCallPage, lastCallLimit, fetchLastCallLeads]);
+
+  // Fetch salespersons list
+  const fetchSalespersons = useCallback(async () => {
+    try {
+      setSalespersonsLoading(true);
+      const departmentType = user?.departmentType || null;
+      const response = await reportService.getSalespersonsList({ departmentType });
+      const salespersonsList = response?.salespersons || response?.data?.salespersons || [];
+      setSalespersons(salespersonsList);
+    } catch (err) {
+      console.error('Error fetching salespersons:', err);
+      apiErrorHandler.handleError(err, 'fetch salespersons');
+    } finally {
+      setSalespersonsLoading(false);
+    }
+  }, [user?.departmentType]);
+
+  // OPTIMIZED: Fetch salespersons and all leads when switching to salesperson view
+  useEffect(() => {
+    if (activeTab === 'lastCall' && lastCallViewMode === 'salesperson') {
+      // Only fetch salespersons if not already loaded
+      if (salespersons.length === 0 && !salespersonsLoading) {
+        fetchSalespersons();
+      }
+      // Always fetch fresh data when switching to salesperson view to ensure real-time updates
+      fetchLastCallLeads(true, 1, 10000); // Fetch all leads with high limit
+    }
+  }, [activeTab, lastCallViewMode, fetchSalespersons, fetchLastCallLeads, salespersons.length, salespersonsLoading]);
 
   // Extract unique values from enquiries for filter dropdowns
   const enquiryFilterOptions = useMemo(() => {
@@ -564,6 +572,149 @@ const LeadsSimplified = () => {
     }));
   }, [filteredLastCallLeads]);
 
+  // OPTIMIZED: Helper to extract call date from lead (memoized callback)
+  const getCallDateFromLead = useCallback((lead) => {
+    if (lead.follow_up_date) return new Date(lead.follow_up_date);
+    if (lead.next_meeting_date) return new Date(lead.next_meeting_date);
+    if (lead.meeting_date) return new Date(lead.meeting_date);
+    if (lead.scheduled_date) return new Date(lead.scheduled_date);
+    if (lead.updated_at) return new Date(lead.updated_at);
+    return null;
+  }, []);
+
+  // Group leads by salesperson for dashboard view - returns ALL salespersons
+  // OPTIMIZED: Only recalculate when actually needed (salesperson view mode)
+  const allGroupedLastCallLeadsBySalesperson = useMemo(() => {
+    // Early return if not in salesperson view mode
+    if (lastCallViewMode !== 'salesperson' && allLastCallLeadsForSalesperson.length === 0) {
+      return [];
+    }
+
+    const groups = {};
+    const leadsToGroup = lastCallViewMode === 'salesperson' 
+      ? allLastCallLeadsForSalesperson 
+      : filteredLastCallLeads;
+    
+    // Early return if no leads
+    if (!leadsToGroup || leadsToGroup.length === 0) {
+      return [];
+    }
+    
+    for (let i = 0; i < leadsToGroup.length; i++) {
+      const lead = leadsToGroup[i];
+      if (!lead) continue;
+      
+      const salespersonName = lead.assignedSalesperson || lead.assigned_salesperson || 'Unassigned';
+      
+      if (!groups[salespersonName]) {
+        groups[salespersonName] = {
+          salespersonName: salespersonName,
+          leads: [],
+          lastCallDate: null,
+          totalCalls: 0
+        };
+      }
+      
+      groups[salespersonName].leads.push(lead);
+      groups[salespersonName].totalCalls += 1;
+      
+      // Find the most recent call date for this salesperson
+      const callDate = getCallDateFromLead(lead);
+      
+      if (callDate && !isNaN(callDate.getTime())) {
+        const currentLastCall = groups[salespersonName].lastCallDate;
+        if (!currentLastCall || callDate > currentLastCall) {
+          groups[salespersonName].lastCallDate = callDate;
+        }
+      }
+    }
+    
+    // Sort by last call date (most recent first), then by total calls
+    const sorted = Object.values(groups);
+    sorted.sort((a, b) => {
+      if (!a.lastCallDate && !b.lastCallDate) return b.totalCalls - a.totalCalls;
+      if (!a.lastCallDate) return 1;
+      if (!b.lastCallDate) return -1;
+      const dateDiff = b.lastCallDate.getTime() - a.lastCallDate.getTime();
+      return dateDiff !== 0 ? dateDiff : b.totalCalls - a.totalCalls;
+    });
+    
+    return sorted;
+  }, [allLastCallLeadsForSalesperson, lastCallViewMode, filteredLastCallLeads, getCallDateFromLead]);
+
+  // OPTIMIZED: Calculate total calls for "All" tab (memoized)
+  const allTabTotalCalls = useMemo(() => {
+    if (!allGroupedLastCallLeadsBySalesperson.length) return 0;
+    let total = 0;
+    const top5 = allGroupedLastCallLeadsBySalesperson.slice(0, 5);
+    for (let i = 0; i < top5.length; i++) {
+      total += top5[i].totalCalls || 0;
+    }
+    return total;
+  }, [allGroupedLastCallLeadsBySalesperson]);
+
+  // OPTIMIZED: Filtered grouped leads based on selected salesperson tab
+  const groupedLastCallLeadsBySalesperson = useMemo(() => {
+    if (!allGroupedLastCallLeadsBySalesperson.length) {
+      return [];
+    }
+
+    if (selectedSalespersonTab === 'all') {
+      // Show top 5 if 'all' tab is selected
+      return allGroupedLastCallLeadsBySalesperson.slice(0, 5);
+    }
+    
+    // OPTIMIZED: Use find instead of filter for single result
+    const found = allGroupedLastCallLeadsBySalesperson.find(
+      group => group.salespersonName === selectedSalespersonTab
+    );
+    return found ? [found] : [];
+  }, [allGroupedLastCallLeadsBySalesperson, selectedSalespersonTab]);
+
+  // OPTIMIZED: Get unique salesperson names from all groups for tabs
+  // Only recalculate when grouped data or salespersons list changes
+  const availableSalespersonsForDropdown = useMemo(() => {
+    if (allGroupedLastCallLeadsBySalesperson.length === 0 && salespersons.length === 0) {
+      return [];
+    }
+
+    const salespersonMap = new Map();
+    
+    // Add salespersons from grouped data
+    for (let i = 0; i < allGroupedLastCallLeadsBySalesperson.length; i++) {
+      const group = allGroupedLastCallLeadsBySalesperson[i];
+      salespersonMap.set(group.salespersonName, {
+        name: group.salespersonName,
+        totalCalls: group.totalCalls,
+        lastCallDate: group.lastCallDate
+      });
+    }
+    
+    // Add salespersons from API list (even if they have no calls)
+    for (let i = 0; i < salespersons.length; i++) {
+      const sp = salespersons[i];
+      const name = sp.username || sp.name || sp.email;
+      if (name && !salespersonMap.has(name)) {
+        salespersonMap.set(name, {
+          name: name,
+          totalCalls: 0,
+          lastCallDate: null
+        });
+      }
+    }
+    
+    const result = Array.from(salespersonMap.values());
+    result.sort((a, b) => {
+      // Sort by total calls (descending), then by name
+      if (b.totalCalls !== a.totalCalls) {
+        return b.totalCalls - a.totalCalls;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    
+    return result;
+  }, [allGroupedLastCallLeadsBySalesperson, salespersons]);
+
   // Filter enquiries based on selected filters - OPTIMIZED (client-side filtering on paginated data)
   const filteredEnquiries = useMemo(() => {
     // Use paginated enquiries directly (server-side pagination)
@@ -676,8 +827,7 @@ const LeadsSimplified = () => {
 
   // Handle enquiry edit
   const handleEditEnquiry = (enquiry) => {
-    // TODO: Open edit modal
-    console.log('Edit enquiry:', enquiry);
+    // Edit enquiry functionality
     toastManager.info('Edit functionality coming soon');
   };
 
@@ -1015,15 +1165,19 @@ const LeadsSimplified = () => {
 
   const applyLeadResponse = (response, { refreshAll = false } = {}) => {
     if (!response?.data) return;
-    // Ensure date fields are preserved for Last Call filtering
+    // Ensure date and time fields are preserved for Last Call filtering - Enhanced for real-time salesperson data
     const leadsWithDates = response.data.map(lead => ({
       ...lead,
       follow_up_date: lead.follow_up_date || lead.followUpDate || null,
+      follow_up_time: lead.follow_up_time || lead.followUpTime || null,
       follow_up_remark: lead.follow_up_remark || lead.followUpRemark || null,
       follow_up_status: lead.follow_up_status || lead.followUpStatus || null,
       next_meeting_date: lead.next_meeting_date || lead.nextMeetingDate || null,
+      next_meeting_time: lead.next_meeting_time || lead.nextMeetingTime || null,
       meeting_date: lead.meeting_date || lead.meetingDate || null,
+      meeting_time: lead.meeting_time || lead.meetingTime || null,
       scheduled_date: lead.scheduled_date || lead.scheduledDate || null,
+      scheduled_time: lead.scheduled_time || lead.scheduledTime || null,
       sales_status: lead.sales_status || lead.salesStatus || null,
       sales_status_remark: lead.sales_status_remark || lead.salesStatusRemark || null,
       updated_at: lead.updated_at || lead.updatedAt || null
@@ -1059,15 +1213,19 @@ const LeadsSimplified = () => {
         // Use setTimeout to yield to UI thread and prevent blocking
         await new Promise(resolve => setTimeout(resolve, 0));
         const transformed = await leadService.fetchAllLeads();
-        // Ensure date fields are preserved for Last Call filtering
+        // Ensure date and time fields are preserved for Last Call filtering - Enhanced for real-time salesperson data
         const leadsWithDates = transformed.map(lead => ({
           ...lead,
           follow_up_date: lead.follow_up_date || lead.followUpDate || null,
+          follow_up_time: lead.follow_up_time || lead.followUpTime || null,
           follow_up_remark: lead.follow_up_remark || lead.followUpRemark || null,
           follow_up_status: lead.follow_up_status || lead.followUpStatus || null,
           next_meeting_date: lead.next_meeting_date || lead.nextMeetingDate || null,
+          next_meeting_time: lead.next_meeting_time || lead.nextMeetingTime || null,
           meeting_date: lead.meeting_date || lead.meetingDate || null,
+          meeting_time: lead.meeting_time || lead.meetingTime || null,
           scheduled_date: lead.scheduled_date || lead.scheduledDate || null,
+          scheduled_time: lead.scheduled_time || lead.scheduledTime || null,
           sales_status: lead.sales_status || lead.salesStatus || null,
           sales_status_remark: lead.sales_status_remark || lead.salesStatusRemark || null,
           updated_at: lead.updated_at || lead.updatedAt || null
@@ -1090,7 +1248,8 @@ const LeadsSimplified = () => {
   // Set ref for fetchLastCallLeads to access (after function is defined)
   useEffect(() => {
     loadAllLeadsForFiltersRef.current = loadAllLeadsForFilters;
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Ref assignment - no deps needed
 
   const fetchLeads = async () => {
     try {
@@ -1444,81 +1603,17 @@ const LeadsSimplified = () => {
       let customerIds = new Set();
       if (type === 'pi') {
         const relevantPIs = countsResult?.filteredPIs[status] || [];
-        console.log(`[Filter Debug] PI Filter - Status: ${status}, Relevant PIs:`, relevantPIs.length, relevantPIs);
         if (relevantPIs.length > 0) {
           customerIds = await leadsFilterService.extractCustomerIdsFromPIs(relevantPIs);
-          console.log(`[Filter Debug] Extracted customer IDs from PIs:`, Array.from(customerIds));
         }
       } else if (type === 'quotation') {
         const relevantQuotations = countsResult?.filteredQuotations[status] || [];
-        console.log(`[Filter Debug] Quotation Filter - Status: ${status}, Relevant Quotations:`, relevantQuotations.length, relevantQuotations);
         if (relevantQuotations.length > 0) {
-          // Log customer IDs from quotations
-          const customerIdsFromQuotations = relevantQuotations.map(q => ({
-            id: q.id,
-            customer_id: q.customer_id,
-            customerId: q.customerId,
-            customerID: q.customerID
-          }));
-          console.log(`[Filter Debug] Customer IDs from quotations:`, customerIdsFromQuotations);
-          
           customerIds = await leadsFilterService.extractCustomerIdsFromQuotations(relevantQuotations);
-          console.log(`[Filter Debug] Extracted customer IDs:`, Array.from(customerIds));
         }
       }
       
-      // Debug: Check sample lead IDs and test matching
-      if (loadedLeads.length > 0) {
-        const sampleLeadIds = loadedLeads.slice(0, 10).map(lead => ({
-          id: lead.id,
-          customerId: lead.customerId,
-          customer_id: lead.customer_id,
-          customer: lead.customer
-        }));
-        console.log(`[Filter Debug] Sample lead IDs:`, sampleLeadIds);
-        
-        // Test matching on sample leads
-        const matchingLeads = loadedLeads.filter(lead => {
-          const leadIdFields = [lead.id, lead.customerId, lead.customer_id].filter(
-            (id) => id !== null && id !== undefined
-          );
-          for (const leadId of leadIdFields) {
-            const normalized = IDMatcher.normalizeId(leadId);
-            if (normalized.numeric !== null && customerIds.has(normalized.numeric)) {
-              return true;
-            }
-            if (customerIds.has(normalized.string)) {
-              return true;
-            }
-            if (customerIds.has(String(leadId))) {
-              return true;
-            }
-          }
-          return false;
-        });
-        console.log(`[Filter Debug] Matching leads found:`, matchingLeads.length, matchingLeads.slice(0, 3));
-        
-        // Check if customer_id 7634 exists in any lead
-        const leadWith7634 = loadedLeads.find(lead => 
-          lead.id === 7634 || lead.customerId === 7634 || lead.customer_id === 7634 ||
-          String(lead.id) === '7634' || String(lead.customerId) === '7634' || String(lead.customer_id) === '7634'
-        );
-        console.log(`[Filter Debug] Lead with ID 7634:`, leadWith7634);
-        
-        // Check all leads with IDs close to 7634
-        const leadsNear7634 = loadedLeads.filter(lead => {
-          const id = lead.id || lead.customerId || lead.customer_id;
-          return id && (Math.abs(Number(id) - 7634) < 10);
-        }).slice(0, 5);
-        console.log(`[Filter Debug] Leads near ID 7634:`, leadsNear7634);
-        
-        // Verify customerIds set contains 7634
-        console.log(`[Filter Debug] Customer IDs set contains 7634:`, customerIds.has(7634), customerIds.has('7634'));
-        console.log(`[Filter Debug] All customer IDs in set:`, Array.from(customerIds));
-      }
-      
       setFilteredCustomerIds(customerIds);
-      console.log(`[Filter Debug] Filter applied: ${type} - ${status}, Customer IDs set size: ${customerIds.size}, Total leads loaded: ${loadedLeads.length}`);
     } catch (err) {
       console.error('Error in handleBadgeClick:', err);
       toastManager.error('Failed to load leads for filtering');
@@ -1996,24 +2091,229 @@ const LeadsSimplified = () => {
             <DashboardSkeleton />
           ) : (
             <>
-              <SearchBar
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                onImportClick={() => setShowImportPopup(true)}
-                onAddCustomer={() => setShowAddCustomer(true)}
-                onAssignSelected={() => {
-                  setAssigningLead(null);
-                  setAssignForm({ salesperson: '', telecaller: '' });
-                  setShowAssignModal(true);
-                }}
-                onBulkDelete={handleBulkDelete}
-                onExportExcel={handleExportToExcel}
-                selectedCount={selectedLeadIds.length}
-                onRefresh={() => fetchLastCallLeads(true)}
-              />
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                <SearchBar
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  onImportClick={() => setShowImportPopup(true)}
+                  onAddCustomer={() => setShowAddCustomer(true)}
+                  onAssignSelected={() => {
+                    setAssigningLead(null);
+                    setAssignForm({ salesperson: '', telecaller: '' });
+                    setShowAssignModal(true);
+                  }}
+                  onBulkDelete={handleBulkDelete}
+                  onExportExcel={handleExportToExcel}
+                  selectedCount={selectedLeadIds.length}
+                  onRefresh={() => {
+                    fetchLastCallLeads(true);
+                    if (lastCallViewMode === 'salesperson') {
+                      fetchSalespersons();
+                    }
+                  }}
+                />
+                
+                {/* View Mode Toggle */}
+                <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-1 shadow-sm">
+                  <button
+                    onClick={() => setLastCallViewMode('date')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      lastCallViewMode === 'date'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      <span>By Date</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setLastCallViewMode('salesperson')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      lastCallViewMode === 'salesperson'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      <span>By Salesperson</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
 
-              {/* Last Call Leads - Grouped by Date */}
-              {groupedLastCallLeads.length > 0 ? (
+              {/* Salesperson Dashboard View */}
+              {lastCallViewMode === 'salesperson' ? (
+                <div className="space-y-4">
+                  {/* Salesperson Tabs */}
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="border-b border-gray-200">
+                      <div className="flex overflow-x-auto scrollbar-hide">
+                        <button
+                          onClick={() => setSelectedSalespersonTab('all')}
+                          className={`px-4 sm:px-6 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                            selectedSalespersonTab === 'all'
+                              ? 'border-blue-600 text-blue-600 bg-blue-50'
+                              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4" />
+                            <span>All ({allTabTotalCalls})</span>
+                          </div>
+                        </button>
+                        {availableSalespersonsForDropdown.slice(0, 10).map((sp) => (
+                          <button
+                            key={sp.name}
+                            onClick={() => setSelectedSalespersonTab(sp.name)}
+                            className={`px-4 sm:px-6 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                              selectedSalespersonTab === sp.name
+                                ? 'border-blue-600 text-blue-600 bg-blue-50'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                                {sp.name.charAt(0).toUpperCase()}
+                              </span>
+                              <span>{sp.name}</span>
+                              {sp.totalCalls > 0 && (
+                                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">
+                                  {sp.totalCalls}
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {salespersonsLoading ? (
+                    <DashboardSkeleton />
+                  ) : groupedLastCallLeadsBySalesperson.length > 0 ? (
+                    groupedLastCallLeadsBySalesperson.map((group, index) => {
+                      // Filter leads by search term
+                      const filteredLeads = group.leads.filter(lead => {
+                        if (!searchTerm) return true;
+                        const searchLower = searchTerm.toLowerCase();
+                        return (
+                          (lead.customer || lead.name || '').toLowerCase().includes(searchLower) ||
+                          (lead.email || '').toLowerCase().includes(searchLower) ||
+                          (lead.business || '').toLowerCase().includes(searchLower) ||
+                          (lead.phone || '').toLowerCase().includes(searchLower)
+                        );
+                      });
+
+                      if (filteredLeads.length === 0) return null;
+
+                      const lastCallDateStr = group.lastCallDate
+                        ? group.lastCallDate.toLocaleString('en-IN', { 
+                            day: '2-digit', 
+                            month: 'short', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })
+                        : 'No recent calls';
+
+                      return (
+                        <div key={group.salespersonName} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                          <div className="px-4 sm:px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                                  <span className="text-white font-bold text-lg sm:text-xl">
+                                    {group.salespersonName.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div>
+                                  <h3 className="text-lg sm:text-xl font-bold text-gray-900">
+                                    {group.salespersonName}
+                                  </h3>
+                                  <div className="flex flex-wrap items-center gap-3 mt-1">
+                                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                                      <Activity className="w-4 h-4" />
+                                      <span>{group.totalCalls} call{group.totalCalls !== 1 ? 's' : ''}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                                      <Clock className="w-4 h-4" />
+                                      <span>Last: {lastCallDateStr}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
+                                #{index + 1} Salesperson
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="overflow-x-auto -mx-4 sm:mx-0">
+                            <LeadTable
+                              filteredLeads={filteredLeads}
+                              tableLoading={lastCallLoading}
+                              hasStatusFilter={false}
+                              visibleColumns={visibleColumns}
+                              isAllSelected={false}
+                              selectedLeadIds={[]}
+                              isLeadAssigned={isLeadAssigned}
+                              isValueAssigned={isValueAssigned}
+                              getStatusBadge={getStatusBadge}
+                              toggleSelectAll={() => {}}
+                              toggleSelectOne={() => {}}
+                              onEdit={handleEdit}
+                              onViewTimeline={(lead) => {
+                                setTimelineLead(lead);
+                                setShowCustomerTimeline(true);
+                              }}
+                              onAssign={openAssignModal}
+                              showCustomerTimeline={showCustomerTimeline}
+                              setShowColumnFilter={setShowColumnFilter}
+                              allLeadsData={lastCallLeadsData}
+                              assignedSalespersonFilter=""
+                              assignedTelecallerFilter=""
+                              onAssignedSalespersonFilterChange={() => {}}
+                              onAssignedTelecallerFilterChange={() => {}}
+                              usernames={usernames}
+                              columnFilters={{}}
+                              onColumnFilterChange={() => {}}
+                              showColumnFilterRow={false}
+                              onToggleColumnFilterRow={() => {}}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : selectedSalespersonTab !== 'all' && groupedLastCallLeadsBySalesperson.length === 0 ? (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+                      <Users className="mx-auto h-12 w-12 text-gray-400" />
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">No activity found</h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        No last call activities found for <strong>{selectedSalespersonTab}</strong> at the moment.
+                      </p>
+                      <button
+                        onClick={() => setSelectedSalespersonTab('all')}
+                        className="mt-4 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        ← View All Top 5 Salespersons
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+                      <Users className="mx-auto h-12 w-12 text-gray-400" />
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">No salesperson activity</h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        No last call activities found for salespersons at the moment.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Date Grouped View */
+                groupedLastCallLeads.length > 0 ? (
             <div className="space-y-6">
               {groupedLastCallLeads.map((group) => {
                 // Filter leads in this group by search term (on paginated data)
@@ -2103,10 +2403,11 @@ const LeadsSimplified = () => {
                 You don't have any last call activities at the moment.
               </p>
             </div>
-          )}
+          )
+              )}
           
-          {/* Last Call Pagination */}
-          {lastCallTotal > 0 && (
+          {/* Last Call Pagination - Only show for date view */}
+          {lastCallViewMode === 'date' && lastCallTotal > 0 && (
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 p-3 sm:p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm mt-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-2 text-xs sm:text-sm text-gray-600">
                 <span className="whitespace-nowrap">Rows per page:</span>
