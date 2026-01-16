@@ -195,16 +195,17 @@ const AccountsPayInfo = ({ setActiveView }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start gap-3">
+      <div className="flex flex-wrap items-start gap-2 sm:gap-3">
         {Object.entries(TAB_META).map(([key, meta]) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`px-4 py-2 rounded-full border text-sm font-medium transition ${
+            className={`px-3 sm:px-4 py-2 rounded-full border text-xs sm:text-sm font-medium transition ${
               activeTab === key ? `${meta.color} border-current` : 'border-slate-200 text-slate-500'
             }`}
           >
-            {meta.label} ({tabCounts[key] || 0})
+            {meta.label} <span className="hidden sm:inline">({tabCounts[key] || 0})</span>
+            <span className="sm:hidden">({tabCounts[key] || 0})</span>
           </button>
         ))}
       </div>
@@ -223,20 +224,21 @@ const AccountsPayInfo = ({ setActiveView }) => {
       )}
 
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-slate-100">
-          <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500">
             <Filter className="w-4 h-4" />
-            {paginatedLabel}
+            <span className="hidden sm:inline">{paginatedLabel}</span>
+            <span className="sm:hidden">Payments</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search lead, customer, reference"
-                className="pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Search..."
+                className="w-full sm:w-auto pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
             <select
@@ -253,7 +255,8 @@ const AccountsPayInfo = ({ setActiveView }) => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-100">
             <thead className="bg-slate-50">
               <tr>
@@ -272,7 +275,7 @@ const AccountsPayInfo = ({ setActiveView }) => {
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-10 text-center text-slate-500">
+                  <td colSpan={11} className="px-6 py-10 text-center text-slate-500">
                     <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
                     Loading payments...
                   </td>
@@ -280,7 +283,7 @@ const AccountsPayInfo = ({ setActiveView }) => {
               )}
               {!loading && payments.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-10 text-center text-slate-500">
+                  <td colSpan={11} className="px-6 py-10 text-center text-slate-500">
                     No payments found for this tab.
                   </td>
                 </tr>
@@ -339,23 +342,120 @@ const AccountsPayInfo = ({ setActiveView }) => {
           </table>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-t border-slate-100">
-          <p className="text-sm text-slate-500">{paginatedLabel}</p>
-          <div className="flex items-center gap-2">
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4 p-4">
+          {loading && (
+            <div className="text-center py-10 text-slate-500">
+              <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+              Loading payments...
+            </div>
+          )}
+          {!loading && payments.length === 0 && (
+            <div className="text-center py-10 text-slate-500">
+              No payments found for this tab.
+            </div>
+          )}
+          {!loading &&
+            payments.map((payment) => (
+              <div key={payment.id} className="bg-white border border-slate-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500">Lead ID</p>
+                    <p className="text-sm font-semibold text-slate-900">LD-{payment.lead_id}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleOpenEdit(payment)}
+                      title="Edit approval"
+                      className="p-2 rounded-full hover:bg-slate-100 text-slate-500"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleViewPayment(payment)}
+                      title="View details"
+                      className="p-2 rounded-full hover:bg-slate-100 text-slate-500"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-slate-500">Customer</p>
+                    <p className="text-sm text-slate-700">{payment.customer_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Business</p>
+                    <p className="text-sm text-slate-700">{payment.business_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Product</p>
+                    <p className="text-sm text-slate-700">{payment.product_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Installment</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {formatAmount(payment.installment_amount)}
+                      {payment.statusVariant && (
+                        <span
+                          className={`ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${payment.statusVariant.badgeClass}`}
+                          title={payment.statusVariant.label}
+                        >
+                          {payment.statusVariant.code}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Address</p>
+                  <p className="text-sm text-slate-600">{payment.address || 'N/A'}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-slate-500">Quotation ID</p>
+                    <p className="text-sm text-slate-600">{payment.displayQuotation}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">PI ID</p>
+                    <p className="text-sm text-slate-600">{payment.displayPi}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Payment Method</p>
+                  <p className="text-sm font-semibold text-slate-900">{payment.methodLabel}</p>
+                  {payment.payment_reference && (
+                    <p className="text-xs text-slate-500 mt-1">Ref: {payment.payment_reference}</p>
+                  )}
+                </div>
+                {payment.remarksText && payment.remarksText !== '—' && (
+                  <div>
+                    <p className="text-xs text-slate-500">Remarks</p>
+                    <p className="text-sm text-slate-600 whitespace-pre-line">{payment.remarksText}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100">
+          <p className="text-xs sm:text-sm text-slate-500 text-center sm:text-left">{paginatedLabel}</p>
+          <div className="flex items-center justify-center gap-2">
             <button
               disabled={pagination.page === 1}
               onClick={() => setPagination((prev) => ({ ...prev, page: prev.page - 1 }))}
-              className="px-3 py-2 text-sm border rounded-lg disabled:opacity-40"
+              className="px-3 py-2 text-xs sm:text-sm border rounded-lg disabled:opacity-40"
             >
               Previous
             </button>
-            <span className="text-sm text-slate-500">
+            <span className="text-xs sm:text-sm text-slate-500">
               Page {pagination.page} of {pagination.pages}
             </span>
             <button
               disabled={pagination.page >= pagination.pages}
               onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
-              className="px-3 py-2 text-sm border rounded-lg disabled:opacity-40"
+              className="px-3 py-2 text-xs sm:text-sm border rounded-lg disabled:opacity-40"
             >
               Next
             </button>
@@ -365,9 +465,9 @@ const AccountsPayInfo = ({ setActiveView }) => {
 
       {/* View Modal */}
       {viewPayment && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 px-4">
-          <div className="bg-white w-full max-w-6xl rounded-lg shadow-xl border border-slate-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-2 sm:p-4">
+          <div className="bg-white w-full max-w-6xl rounded-lg shadow-xl border border-slate-200 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 sticky top-0 bg-white z-10">
               <div>
                 <p className="text-[10px] uppercase text-slate-400">Payment Preview</p>
                 <h3 className="text-sm font-semibold text-slate-900">Lead #{viewPayment.lead_id}</h3>
@@ -380,7 +480,7 @@ const AccountsPayInfo = ({ setActiveView }) => {
               </button>
             </div>
             <div className="px-4 py-3 space-y-2.5">
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2 text-xs">
                 <div>
                   <p className="text-[10px] text-slate-400 mb-0.5">Customer</p>
                   <p className="text-xs font-medium text-slate-900 leading-tight">{viewPayment.customer_name || 'N/A'}</p>
@@ -424,28 +524,28 @@ const AccountsPayInfo = ({ setActiveView }) => {
               </div>
               <div>
                 <p className="text-[10px] text-slate-400 mb-0.5">Address</p>
-                <p className="text-xs text-slate-700 leading-tight">{viewPayment.address || 'N/A'}</p>
+                <p className="text-xs text-slate-700 leading-tight break-words">{viewPayment.address || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-[10px] text-slate-400 mb-0.5">Remarks</p>
-                <p className="text-xs text-slate-700 leading-tight">{viewPayment.remarks || 'No remarks added'}</p>
+                <p className="text-xs text-slate-700 leading-tight break-words">{viewPayment.remarks || 'No remarks added'}</p>
               </div>
               <div>
                 <p className="text-[10px] text-slate-400 mb-0.5">Accounts Notes</p>
-                <p className="text-xs text-slate-500 leading-tight">
+                <p className="text-xs text-slate-500 leading-tight break-words">
                   {viewPayment.approval_notes?.trim() ? viewPayment.approval_notes : 'No notes provided'}
                 </p>
               </div>
               <div>
                 <p className="text-[10px] text-slate-400 mb-1">Payment Receipt</p>
                 {viewPayment.payment_receipt_url ? (
-                  <div className="flex items-start gap-2">
-                    <div className="border border-slate-200 rounded overflow-hidden bg-white flex-shrink-0" style={{ maxWidth: '160px', maxHeight: '120px' }}>
+                  <div className="flex flex-col sm:flex-row items-start gap-2">
+                    <div className="border border-slate-200 rounded overflow-hidden bg-white flex-shrink-0 w-full sm:w-auto" style={{ maxWidth: '160px', maxHeight: '120px' }}>
                       <img
                         src={viewPayment.payment_receipt_url}
                         alt="Payment receipt"
                         className="w-full h-full object-contain"
-                        style={{ maxHeight: '120px', maxWidth: '160px' }}
+                        style={{ maxHeight: '120px', maxWidth: '100%' }}
                         loading="lazy"
                       />
                     </div>
@@ -453,7 +553,7 @@ const AccountsPayInfo = ({ setActiveView }) => {
                       href={viewPayment.payment_receipt_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center px-2 py-1 text-[10px] font-medium text-indigo-600 border border-indigo-200 rounded hover:bg-indigo-50 transition-colors h-fit mt-0.5"
+                      className="inline-flex items-center px-2 py-1 text-[10px] font-medium text-indigo-600 border border-indigo-200 rounded hover:bg-indigo-50 transition-colors"
                     >
                       Open
                     </a>
@@ -484,7 +584,7 @@ const AccountsPayInfo = ({ setActiveView }) => {
                 ) : installmentBreakdown ? (
                   <div className="space-y-4">
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                       <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
                         <p className="text-[10px] text-slate-500 uppercase mb-1">Total Amount</p>
                         <p className="text-sm font-semibold text-slate-900">
@@ -513,9 +613,11 @@ const AccountsPayInfo = ({ setActiveView }) => {
 
                     {/* Installment Table */}
                     {installmentBreakdown.installments && installmentBreakdown.installments.length > 0 ? (
-                      <div className="border border-slate-200 rounded-lg overflow-hidden">
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-slate-200">
+                      <>
+                        {/* Desktop Table View */}
+                        <div className="hidden md:block border border-slate-200 rounded-lg overflow-hidden">
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-slate-200">
                             <thead className="bg-slate-50">
                               <tr>
                                 <th className="px-4 py-2 text-left text-[10px] font-semibold text-slate-600 uppercase">Inst #</th>
@@ -607,6 +709,70 @@ const AccountsPayInfo = ({ setActiveView }) => {
                           </table>
                         </div>
                       </div>
+
+                        {/* Mobile Card View for Installments */}
+                        <div className="md:hidden space-y-3">
+                          {installmentBreakdown.installments.map((inst, idx) => {
+                            const isApproved = inst.approval_status === 'approved';
+                            const isPending = inst.approval_status === 'pending';
+                            const isRejected = inst.approval_status === 'rejected';
+                            
+                            return (
+                              <div key={inst.payment_id || idx} className="bg-white border border-slate-200 rounded-lg p-3 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold text-slate-900">Inst #{inst.installment_number}</span>
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                      isApproved ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                      isPending ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                      'bg-rose-50 text-rose-700 border border-rose-200'
+                                    }`}>
+                                      {inst.approval_status?.toUpperCase() || 'PENDING'}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm font-semibold text-slate-900">
+                                    {formatAmount(inst.installment_amount)}
+                                  </p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <p className="text-[10px] text-slate-500">Date</p>
+                                    <p className="text-slate-700">{inst.payment_date ? new Date(inst.payment_date).toLocaleDateString('en-IN') : 'N/A'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-slate-500">Method</p>
+                                    <p className="text-slate-700">{(inst.payment_method || 'N/A').replace(/_/g, ' ').toUpperCase()}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-slate-500">Ledger Before</p>
+                                    <p className="text-slate-700">{formatAmount(inst.ledger_balance_before)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-slate-500">Ledger After</p>
+                                    <p className="text-slate-700">{formatAmount(inst.ledger_balance_after)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-slate-500">Cumulative Paid</p>
+                                    <p className="text-slate-700">{formatAmount(inst.cumulative_approved)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-slate-500">Remaining</p>
+                                    <p className={`font-medium ${inst.remaining_balance > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                      {formatAmount(inst.remaining_balance)}
+                                    </p>
+                                  </div>
+                                </div>
+                                {inst.payment_reference && (
+                                  <div>
+                                    <p className="text-[10px] text-slate-500">Reference</p>
+                                    <p className="text-xs text-slate-600 font-mono">{inst.payment_reference}</p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
                     ) : (
                       <div className="text-center py-6 text-sm text-slate-500 border border-slate-200 rounded-lg">
                         No installments found for this quotation
@@ -626,10 +792,10 @@ const AccountsPayInfo = ({ setActiveView }) => {
 
   {/* Edit Modal */}
       {editPayment && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 px-4">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-2 sm:p-4">
           <form
             onSubmit={handleApprovalSubmit}
-            className="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-slate-200"
+            className="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-slate-200 max-h-[95vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
               <div>
