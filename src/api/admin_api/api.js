@@ -46,6 +46,7 @@ export const API_ENDPOINTS = {
   LEADS_BATCH_DELETE: () => `${LEADS_BASE}/batch`,
   LEAD_BY_ID: (id) => `${LEADS_BASE}/${id}`,
   LEADS_STATS: () => `${LEADS_BASE}/stats`,
+  LEADS_LAST_CALL: (query = '') => `${LEADS_BASE}/last-call${query ? `?${query}` : ''}`,
   SALESPERSON_ASSIGNED_LEADS_ME: () => `${LEADS_BASE}/assigned/salesperson`,
   SALESPERSON_ASSIGNED_LEADS_BY_USERNAME: (username) => `${LEADS_BASE}/assigned/salesperson/${encodeURIComponent(username)}`,
   SALESPERSON_LEAD_BY_ID: (id) => `${LEADS_BASE}/assigned/salesperson/lead/${id}`,
