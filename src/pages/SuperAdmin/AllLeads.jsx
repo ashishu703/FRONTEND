@@ -20,12 +20,13 @@ const AllLeads = () => {
   const { user } = useAuth();
   const [leadsData, setLeadsData] = useState([]);
   const [allLeadsData, setAllLeadsData] = useState([]);
-  const [lastCallLeadsData, setLastCallLeadsData] = useState([]);
+  const [lastCallSummaryData, setLastCallSummaryData] = useState([]);
   const [lastCallLoading, setLastCallLoading] = useState(false);
   const [lastCallInitialLoading, setLastCallInitialLoading] = useState(false);
   const [lastCallPage, setLastCallPage] = useState(1);
   const [lastCallLimit, setLastCallLimit] = useState(50);
   const [lastCallTotal, setLastCallTotal] = useState(0);
+  const [expandedLastCallRows, setExpandedLastCallRows] = useState({});
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
   
@@ -375,29 +376,25 @@ const AllLeads = () => {
     });
   }, [leadService]);
 
-  // Cache for last call leads (keyed by page)
+  // Cache for last call summary (keyed by page)
   const lastCallCacheRef = useRef(new Map());
   const LAST_CALL_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
   const fetchLastCallAbortControllerRef = useRef(null);
 
-  // Fetch last call leads with pagination, caching and parallel API calls
-  const fetchLastCallLeads = useCallback(async (forceRefresh = false, page = lastCallPage, limit = lastCallLimit) => {
-    // Cancel previous request
+  const fetchLastCallSummary = useCallback(async (forceRefresh = false, page = lastCallPage, limit = lastCallLimit) => {
     if (fetchLastCallAbortControllerRef.current) {
       fetchLastCallAbortControllerRef.current.abort();
     }
     fetchLastCallAbortControllerRef.current = new AbortController();
     
-    // Create cache key
-    const cacheKey = `page-${page}-limit-${limit}`;
+    const cacheKey = `summary-${page}-limit-${limit}`;
     const now = Date.now();
     
-    // Check cache
     const cached = lastCallCacheRef.current.get(cacheKey);
     if (!forceRefresh && cached && cached.timestamp && (now - cached.timestamp) < LAST_CALL_CACHE_DURATION) {
-      setLastCallLeadsData(cached.data);
+      setLastCallSummaryData(cached.data);
       setLastCallTotal(cached.total);
-      return cached.data;
+      return;
     }
 
     try {
@@ -406,89 +403,29 @@ const AllLeads = () => {
         setLastCallInitialLoading(true);
       }
       
-      // Use SalesDataService for parallel API calls - fetch all pages in parallel
-      const allLeads = await salesDataService.fetchAllLeads('office_sales');
+      const response = await departmentHeadService.getLastCallSummary({ page, limit });
+      const summary = response?.data || [];
+      const total = response?.pagination?.total || 0;
       
-      // Transform and filter
-      const filteredLeads = filterTestData(allLeads);
-      const transformedLeads = transformLeads(filteredLeads);
-      
-      // Filter for last call leads only
-      const today = new Date();
-      today.setHours(23, 59, 59, 999);
-      
-      const allLastCallLeads = transformedLeads.filter(lead => {
-        if (!lead) return false;
-        
-        const hasFollowUpStatus = lead.follow_up_status && lead.follow_up_status.trim() !== '';
-        const hasFollowUpRemark = lead.follow_up_remark && lead.follow_up_remark.trim() !== '';
-        
-        const hasFollowUpDate = lead.follow_up_date && lead.follow_up_date !== 'N/A' && lead.follow_up_date !== '';
-        const hasNextMeetingDate = lead.next_meeting_date && lead.next_meeting_date !== 'N/A' && lead.next_meeting_date !== '';
-        const hasMeetingDate = lead.meeting_date && lead.meeting_date !== 'N/A' && lead.meeting_date !== '';
-        const hasScheduledDate = lead.scheduled_date && lead.scheduled_date !== 'N/A' && lead.scheduled_date !== '';
-        const hasNextMeetingStatus = lead.sales_status === 'next_meeting' && lead.sales_status_remark;
-        
-        const hasScheduledDateOrTime = hasFollowUpDate || hasNextMeetingDate || hasMeetingDate || hasScheduledDate || hasNextMeetingStatus;
-        
-        if (!hasFollowUpStatus && !hasFollowUpRemark && !hasScheduledDateOrTime) {
-          return false;
-        }
-        
-        let callDate = null;
-        if (lead.follow_up_date) {
-          callDate = new Date(lead.follow_up_date);
-        } else if (lead.next_meeting_date) {
-          callDate = new Date(lead.next_meeting_date);
-        } else if (lead.meeting_date) {
-          callDate = new Date(lead.meeting_date);
-        } else if (lead.scheduled_date) {
-          callDate = new Date(lead.scheduled_date);
-        } else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
-          const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
-          if (dateMatch) {
-            callDate = new Date(dateMatch[1]);
-          }
-        } else if (lead.updated_at) {
-          callDate = new Date(lead.updated_at);
-        }
-        
-        if (!callDate || isNaN(callDate.getTime())) {
-          return false;
-        }
-        
-        callDate.setHours(0, 0, 0, 0);
-        return callDate <= today;
-      });
-      
-      // Apply pagination
-      const total = allLastCallLeads.length;
-      const startIndex = (page - 1) * limit;
-      const endIndex = startIndex + limit;
-      const paginatedLeads = allLastCallLeads.slice(startIndex, endIndex);
-      
-      // Update cache
       lastCallCacheRef.current.set(cacheKey, {
-        data: paginatedLeads,
+        data: summary,
         total,
         timestamp: now
       });
       
-      setLastCallLeadsData(paginatedLeads);
+      setLastCallSummaryData(summary);
       setLastCallTotal(total);
-      return paginatedLeads;
     } catch (err) {
       if (err.name !== 'AbortError') {
-        console.error('Error fetching last call leads:', err);
-        apiErrorHandler.handleError(err, 'fetch last call leads');
+        console.error('Error fetching last call summary:', err);
+        apiErrorHandler.handleError(err, 'fetch last call summary');
       }
-      return [];
     } finally {
       setLastCallLoading(false);
       setLastCallInitialLoading(false);
       fetchLastCallAbortControllerRef.current = null;
     }
-  }, [filterTestData, transformLeads, lastCallPage, lastCallLimit]);
+  }, [lastCallPage, lastCallLimit]);
 
   // Fetch leads when filters change - with debouncing
   useEffect(() => {
@@ -504,106 +441,32 @@ const AllLeads = () => {
     };
   }, [fetchLeads]);
 
-  // Fetch last call leads when Last Call tab is active or pagination changes
+  // Fetch last call summary when Last Call tab is active or pagination changes
   useEffect(() => {
     if (activeTab === 'lastCall') {
-      fetchLastCallLeads(false, lastCallPage, lastCallLimit);
+      fetchLastCallSummary(false, lastCallPage, lastCallLimit);
     }
-  }, [activeTab, lastCallPage, lastCallLimit, fetchLastCallLeads]);
+  }, [activeTab, lastCallPage, lastCallLimit, fetchLastCallSummary]);
 
-  // Format date for display (short format like "10 Dec")
-  const formatDateShort = useCallback((dateString) => {
-    if (!dateString || dateString === 'No Date') return 'N/A';
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'N/A';
-      return date.toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short'
-      });
-    } catch {
-      return 'N/A';
-    }
-  }, []);
-
-  // Format date for grouping (full format)
-  const formatDateForGrouping = useCallback((dateString) => {
-    if (!dateString || dateString === 'No Date') return 'N/A';
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'N/A';
-      return date.toLocaleDateString('en-GB', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    } catch {
-      return 'N/A';
-    }
-  }, []);
-
-  // Filter last call leads by search term
-  const filteredLastCallLeads = useMemo(() => {
-    if (!searchTerm) return lastCallLeadsData;
-    
-    const searchLower = searchTerm.toLowerCase();
-    return lastCallLeadsData.filter(lead => {
-      if (!lead) return false;
-      return (
-        (lead.customer || '').toLowerCase().includes(searchLower) ||
-        (lead.email || '').toLowerCase().includes(searchLower) ||
-        (lead.business || '').toLowerCase().includes(searchLower) ||
-        (lead.phone || '').toLowerCase().includes(searchLower)
-      );
-    });
-  }, [lastCallLeadsData, searchTerm]);
-
-  // Optimized date extraction (memoized)
-  const getLeadDateKey = useCallback((lead) => {
-    if (lead.follow_up_date) return { dateKey: lead.follow_up_date, dateObj: new Date(lead.follow_up_date) };
-    if (lead.next_meeting_date) return { dateKey: lead.next_meeting_date, dateObj: new Date(lead.next_meeting_date) };
-    if (lead.meeting_date) return { dateKey: lead.meeting_date, dateObj: new Date(lead.meeting_date) };
-    if (lead.scheduled_date) return { dateKey: lead.scheduled_date, dateObj: new Date(lead.scheduled_date) };
-    if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
-        const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
-      if (dateMatch) return { dateKey: dateMatch[1], dateObj: new Date(dateMatch[1]) };
-    }
-    if (lead.updated_at) {
-      const dateKey = lead.updated_at.split('T')[0];
-      return { dateKey, dateObj: new Date(dateKey) };
-    }
-    return { dateKey: 'No Date', dateObj: new Date(0) };
-  }, []);
-
-  // Group leads by date (last call date) - OPTIMIZED
-  const groupedLastCallLeads = useMemo(() => {
-    if (!filteredLastCallLeads.length) return [];
-    
-    const groups = new Map();
-    
-    // Single pass grouping
-    filteredLastCallLeads.forEach(lead => {
-      const { dateKey, dateObj } = getLeadDateKey(lead);
-      
-      if (!groups.has(dateKey)) {
-        groups.set(dateKey, {
-          dateObj,
-          dateKey,
-          leads: []
-        });
+  const groupedLastCallSummary = useMemo(() => {
+    const groups = {};
+    for (let i = 0; i < lastCallSummaryData.length; i++) {
+      const row = lastCallSummaryData[i];
+      if (!row?.call_date || !row?.salesperson) continue;
+      if (!groups[row.call_date]) {
+        groups[row.call_date] = [];
       }
-      groups.get(dateKey).leads.push(lead);
-    });
-    
-    // Convert to array and sort
-    return Array.from(groups.values())
-      .sort((a, b) => {
-        if (a.dateKey === 'No Date') return 1;
-        if (b.dateKey === 'No Date') return -1;
-        return b.dateObj - a.dateObj;
-      });
-  }, [filteredLastCallLeads, getLeadDateKey]);
+      groups[row.call_date].push(row);
+    }
+
+    return Object.keys(groups)
+      .sort((a, b) => new Date(b) - new Date(a))
+      .map(dateKey => ({
+        dateKey,
+        rows: groups[dateKey]
+      }));
+  }, [lastCallSummaryData]);
+
 
   // Optimized search filter (memoized)
   const matchesSearch = useCallback((lead, searchLower) => {
@@ -1441,109 +1304,108 @@ const AllLeads = () => {
             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
           }}>
             <div className="flex items-center justify-between gap-4">
-              <div className="flex-1 max-w-xl">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Search by name, email, or business..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-white/90 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none placeholder:text-gray-400 text-sm font-medium shadow-sm transition-all duration-200"
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  />
-                </div>
-              </div>
-              
               <div className="flex items-center space-x-3">
                 <button
                   className="p-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 shadow-sm"
-                  onClick={() => setShowColumnFilter(true)}
-                  title="Toggle Columns"
-                >
-                  <Eye className="w-4 h-4" />
-                </button>
-                
-                <button 
-                  className="p-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-300 hover:text-blue-600 transition-all duration-200 shadow-sm" 
-                      onClick={() => fetchLastCallLeads(true)}
-                      disabled={lastCallLoading}
+                  onClick={() => fetchLastCallSummary(true)}
+                  disabled={lastCallLoading}
                   title="Refresh"
                 >
-                      <RefreshCw className={`w-4 h-4 ${lastCallLoading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-4 h-4 ${lastCallLoading ? 'animate-spin' : ''}`} />
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Last Call Leads - Grouped by Date */}
-          {groupedLastCallLeads.length > 0 ? (
+          {/* Last Call Summary - Grouped by Date */}
+          {groupedLastCallSummary.length > 0 ? (
             <div className="space-y-6">
-              {groupedLastCallLeads.map((group) => {
-                // Leads are already filtered by search term in filteredLastCallLeads
-                if (group.leads.length === 0) return null;
-
-                const dateDisplay = group.dateKey === 'No Date' 
-                  ? 'No Date' 
-                  : formatDateShort(group.dateKey);
-                const dateFull = group.dateKey === 'No Date' 
-                  ? 'No Date' 
-                  : formatDateForGrouping(group.dateKey);
-                
-                return (
-                  <div key={group.dateKey} className="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-                            <Clock className="h-5 w-5 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="text-xl font-bold text-gray-900">
-                              {dateDisplay}
-                            </h3>
-                            <p className="text-sm text-gray-600">{dateFull}</p>
-                          </div>
-                        </div>
-                        <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                          {group.leads.length} call{group.leads.length !== 1 ? 's' : ''}
-                        </div>
+              {groupedLastCallSummary.map((group) => (
+                <div key={group.dateKey} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                        <Clock className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {new Date(group.dateKey).toLocaleDateString('en-IN', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </h3>
                       </div>
                     </div>
-                    
-                    <div className="overflow-x-auto">
-                      <LeadTable
-                        filteredLeads={group.leads}
-                        tableLoading={lastCallLoading}
-                        hasStatusFilter={false}
-                        visibleColumns={visibleColumns}
-                        isAllSelected={false}
-                        selectedLeadIds={[]}
-                        isLeadAssigned={isLeadAssigned}
-                        isValueAssigned={isValueAssigned}
-                        getStatusBadge={getStatusBadge}
-                        toggleSelectAll={() => {}}
-                        toggleSelectOne={() => {}}
-                        onEdit={handleEdit}
-                        onViewTimeline={handleViewTimeline}
-                        onAssign={handleAssign}
-                        showCustomerTimeline={showCustomerTimeline}
-                        setShowColumnFilter={setShowColumnFilter}
-                        allLeadsData={lastCallLeadsData}
-                        assignedSalespersonFilter=""
-                        assignedTelecallerFilter=""
-                        onAssignedSalespersonFilterChange={() => {}}
-                        onAssignedTelecallerFilterChange={() => {}}
-                        usernames={[]}
-                        columnFilters={{}}
-                        onColumnFilterChange={() => {}}
-                        showColumnFilterRow={false}
-                        onToggleColumnFilterRow={() => {}}
-                      />
-                    </div>
                   </div>
-                );
-              })}
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[500px]">
+                      <thead className="bg-white">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salesperson</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Calls</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leads</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {group.rows.map((row) => (
+                          <React.Fragment key={`${group.dateKey}-${row.salesperson}`}>
+                            <tr>
+                              <td className="px-4 py-2 text-sm text-gray-700">{row.salesperson}</td>
+                              <td className="px-4 py-2 text-sm text-gray-700">{row.total_calls}</td>
+                              <td className="px-4 py-2 text-sm text-gray-700">
+                                <button
+                                  onClick={() => {
+                                    const key = `${group.dateKey}-${row.salesperson}`;
+                                    setExpandedLastCallRows(prev => ({
+                                      ...prev,
+                                      [key]: !prev[key]
+                                    }));
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 text-sm"
+                                >
+                                  {expandedLastCallRows[`${group.dateKey}-${row.salesperson}`] ? 'Hide' : 'View'} ({row.leads?.length || 0})
+                                </button>
+                              </td>
+                            </tr>
+                            {expandedLastCallRows[`${group.dateKey}-${row.salesperson}`] && (
+                              <tr>
+                                <td colSpan={3} className="px-4 py-2 bg-gray-50">
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[600px]">
+                                      <thead>
+                                        <tr>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lead</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Follow Up</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales Status</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-200">
+                                        {(row.leads || []).map((lead) => (
+                                          <tr key={lead.id}>
+                                            <td className="px-3 py-2 text-sm text-gray-700">{lead.customer}</td>
+                                            <td className="px-3 py-2 text-sm text-gray-700">{lead.phone}</td>
+                                            <td className="px-3 py-2 text-sm text-gray-700">{lead.business}</td>
+                                            <td className="px-3 py-2 text-sm text-gray-700">{lead.follow_up_status}</td>
+                                            <td className="px-3 py-2 text-sm text-gray-700">{lead.sales_status}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
@@ -1573,7 +1435,7 @@ const AllLeads = () => {
                   <option value={100}>100</option>
                   <option value={200}>200</option>
                 </select>
-                <span>Showing {Math.min(((lastCallPage - 1) * lastCallLimit) + 1, lastCallTotal)} to {Math.min(lastCallPage * lastCallLimit, lastCallTotal)} of {lastCallTotal} calls</span>
+                <span>Showing {Math.min(((lastCallPage - 1) * lastCallLimit) + 1, lastCallTotal)} to {Math.min(lastCallPage * lastCallLimit, lastCallTotal)} of {lastCallTotal} rows</span>
               </div>
               <div className="flex items-center space-x-2">
                 <button
