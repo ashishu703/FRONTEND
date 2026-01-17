@@ -5,12 +5,17 @@ import { useAuth } from './useAuth';
 
 const getBaseURL = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
-    const baseURL = import.meta.env.VITE_API_BASE_URL;
+    let baseURL = import.meta.env.VITE_API_BASE_URL;
     if (baseURL.startsWith('http')) {
+      // Ensure it ends with /api if not already
+      if (!baseURL.endsWith('/api')) {
+        baseURL = baseURL.endsWith('/') ? `${baseURL}api` : `${baseURL}/api`;
+      }
       return baseURL;
     }
     if (typeof window !== 'undefined') {
-      return `${window.location.origin}${baseURL}`;
+      const url = baseURL.startsWith('/') ? baseURL : `/${baseURL}`;
+      return `${window.location.origin}${url}`;
     }
   }
   if (typeof window !== 'undefined') {
@@ -34,19 +39,37 @@ export const useFirebasePush = () => {
   const getVapidKey = useCallback(async () => {
     try {
       const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
-      if (!token) return null;
+      if (!token) {
+        console.warn('[useFirebasePush] No auth token found, skipping VAPID key fetch');
+        return null;
+      }
 
-      const res = await fetch(`${BASE_URL}/configuration/push-notification/vapid-key`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      // Ensure the URL is correctly formatted
+      const url = `${BASE_URL}/configuration/push-notification/vapid-key`;
+      console.log('[useFirebasePush] Fetching VAPID key from:', url);
+
+      const res = await fetch(url, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
       
       if (res.ok) {
         const json = await res.json();
-        return json.success && json.enabled ? json.vapid_key : null;
+        if (json.success && json.enabled && json.vapid_key) {
+          console.log('[useFirebasePush] VAPID key fetched successfully');
+          return json.vapid_key;
+        } else {
+          console.warn('[useFirebasePush] Push notifications not enabled or VAPID key not available');
+          return null;
+        }
+      } else {
+        console.warn(`[useFirebasePush] Failed to fetch VAPID key: ${res.status} ${res.statusText}`);
+        return null;
       }
-      return null;
     } catch (error) {
-      console.error('Error fetching VAPID key:', error);
+      console.error('[useFirebasePush] Error fetching VAPID key:', error);
       return null;
     }
   }, []);

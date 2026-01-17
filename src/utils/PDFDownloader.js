@@ -547,12 +547,18 @@ export class PDFDownloader {
   }
 
   static async downloadPI(piNumber, customerName = 'Customer') {
-    const elementId = 'pi-preview-content'
+    const elementId = document.getElementById('pi-content') ? 'pi-content' : 'pi-preview-content'
     const filename = `PI-${piNumber}-${customerName.replace(/\s+/g, '-')}.pdf`
     
     // Ensure A4 format with best fit for invoices
     return this.download(elementId, filename, {
       margin: [0.4, 0.4, 0.4, 0.4], // Slightly larger margins for better appearance
+      pagebreak: {
+        mode: ['css', 'legacy'],
+        before: '.page-break-before',
+        after: '.page-break-after',
+        avoid: ['.no-break']
+      },
       jsPDF: {
         unit: 'in',
         format: 'a4', // Force A4
