@@ -83,23 +83,23 @@ const AccountsOverview = ({ onViewPayments }) => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-500">Accounts Control Tower</p>
-          <h1 className="text-2xl font-bold text-slate-900">Payment & Approval Snapshot</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Payment & Approval Snapshot</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <button
             onClick={fetchStats}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
           </button>
           <button
             onClick={onViewPayments}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-500"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-500"
           >
             Go to Payment Info
             <ArrowUpRight className="w-4 h-4" />
@@ -140,20 +140,21 @@ const AccountsOverview = ({ onViewPayments }) => {
       </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-b border-slate-100 gap-3">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Latest Pending Approvals</h2>
-            <p className="text-sm text-slate-500">Stay on top of every incoming payment</p>
+            <h2 className="text-sm sm:text-base font-semibold text-slate-900">Latest Pending Approvals</h2>
+            <p className="text-xs sm:text-sm text-slate-500">Stay on top of every incoming payment</p>
           </div>
           <button
             onClick={onViewPayments}
-            className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+            className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-indigo-600 hover:text-indigo-500 self-start sm:self-auto"
           >
             Review all
             <ArrowUpRight className="w-4 h-4" />
           </button>
         </div>
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-100">
             <thead className="bg-slate-50">
               <tr>
@@ -191,6 +192,44 @@ const AccountsOverview = ({ onViewPayments }) => {
               ))}
             </tbody>
           </table>
+        </div>
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-3 p-4">
+          {recentPending.length === 0 && (
+            <div className="text-center py-8 text-sm text-slate-500">
+              All caught up! No pending approvals at the moment.
+            </div>
+          )}
+          {recentPending.map((payment) => (
+            <div key={payment.id} className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-900">LD-{payment.lead_id}</span>
+                <span className="text-sm font-semibold text-slate-900">
+                  ₹{Number(payment.installment_amount || 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <p className="text-[10px] text-slate-500">Customer</p>
+                  <p className="text-slate-700">{payment.customer_name || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500">Business</p>
+                  <p className="text-slate-700">{payment.business_name || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500">Quotation</p>
+                  <p className="text-slate-700">{payment.displayQuotation}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-500">Payment Date</p>
+                  <p className="text-slate-700">
+                    {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

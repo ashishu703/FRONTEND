@@ -87,12 +87,10 @@ class ToastManager {
     this.container.appendChild(toast);
     this.toasts.push(toast);
 
-    // Animate in
     setTimeout(() => {
       toast.classList.add('toast-visible');
     }, 10);
 
-    // Auto remove
     if (duration > 0) {
       setTimeout(() => {
         this.remove(toast);
@@ -171,7 +169,6 @@ class ToastManager {
       ">×</button>
     `;
 
-    // Attach event listener to close button instead of using inline onclick
     const closeButton = toast.querySelector('.toast-close-btn');
     if (closeButton) {
       closeButton.addEventListener('click', () => {
@@ -249,10 +246,8 @@ class ToastManager {
   }
 }
 
-// Create global instance
 const toastManager = new ToastManager();
 
-// Add CSS for animations
 if (typeof document !== 'undefined') {
   const style = document.createElement('style');
   style.textContent = `

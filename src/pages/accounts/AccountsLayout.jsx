@@ -13,9 +13,9 @@ const AccountsLayout = ({ children, onLogout, activeView, setActiveView, headerU
         userType={headerUserType}
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden w-full md:w-auto">
         <FixedHeader userType={headerUserType} currentPage={activeView} />
-        <main className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto bg-slate-50 p-3 sm:p-4 md:p-6 pt-14 md:pt-4">
           {children}
         </main>
       </div>

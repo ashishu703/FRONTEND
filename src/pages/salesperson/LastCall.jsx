@@ -486,9 +486,9 @@ export default function LastCall() {
   const [showCustomerTimeline, setShowCustomerTimeline] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   
-  // Pagination state
+  // Pagination state - show all date groups by default, allow pagination if needed
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(100); // Show up to 100 date groups by default
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -585,8 +585,9 @@ export default function LastCall() {
         // Store ALL leads for filter options
         setAllLeads(leadsData);
         
+        // Get today's date at midnight in local timezone for proper comparison
         const today = new Date();
-        today.setHours(23, 59, 59, 999); // Set to end of today for comparison
+        today.setHours(0, 0, 0, 0); // Set to start of today
         
         const lastCallLeads = leadsData.filter(lead => {
           const hasFollowUpStatus = lead.follow_up_status && lead.follow_up_status.trim() !== '';
@@ -617,20 +618,26 @@ export default function LastCall() {
           // Priority: follow_up_date > next_meeting_date > meeting_date > scheduled_date
           if (lead.follow_up_date) {
             callDate = new Date(lead.follow_up_date);
+            callDate.setHours(0, 0, 0, 0); // Normalize to start of day
           } else if (lead.next_meeting_date) {
             callDate = new Date(lead.next_meeting_date);
+            callDate.setHours(0, 0, 0, 0);
           } else if (lead.meeting_date) {
             callDate = new Date(lead.meeting_date);
+            callDate.setHours(0, 0, 0, 0);
           } else if (lead.scheduled_date) {
             callDate = new Date(lead.scheduled_date);
+            callDate.setHours(0, 0, 0, 0);
           } else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
             // Extract date from remark format like "2025-10-28 AT 19:10"
             const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
             if (dateMatch) {
               callDate = new Date(dateMatch[1]);
+              callDate.setHours(0, 0, 0, 0);
             }
           } else if (lead.updated_at) {
             callDate = new Date(lead.updated_at);
+            callDate.setHours(0, 0, 0, 0);
           }
           
           // If no date is available, exclude the lead
@@ -638,11 +645,31 @@ export default function LastCall() {
             return false;
           }
           
-          // Only include if call/scheduled date is <= today
+          // Only include if call/scheduled date is <= today (compare dates, not times)
           return callDate <= today;
         });
         
         console.log(`[LastCall] Filtered to ${lastCallLeads.length} last call leads for user: ${user?.email}`);
+        
+        // Debug: Log date distribution
+        const dateCounts = {};
+        lastCallLeads.forEach(lead => {
+          let dateKey = '';
+          if (lead.follow_up_date) {
+            const d = new Date(lead.follow_up_date);
+            dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          } else if (lead.next_meeting_date) {
+            const d = new Date(lead.next_meeting_date);
+            dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          } else if (lead.updated_at) {
+            const d = new Date(lead.updated_at);
+            dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          }
+          if (dateKey) {
+            dateCounts[dateKey] = (dateCounts[dateKey] || 0) + 1;
+          }
+        });
+        console.log('[LastCall] Date distribution:', Object.keys(dateCounts).sort().reverse().slice(0, 10).map(d => `${d}: ${dateCounts[d]} leads`));
         
         setLeads(lastCallLeads);
         setFilteredLeads(lastCallLeads);
@@ -840,6 +867,22 @@ export default function LastCall() {
     });
   };
 
+  // Helper function to normalize date string to YYYY-MM-DD format
+  const normalizeDateKey = (dateString) => {
+    if (!dateString) return null;
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return null;
+      // Extract YYYY-MM-DD format
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (e) {
+      return null;
+    }
+  };
+
   // Group leads by date (last call date)
   const groupedLeads = useMemo(() => {
     const groups = {};
@@ -851,29 +894,42 @@ export default function LastCall() {
       
       if (lead.follow_up_date) {
         dateObj = new Date(lead.follow_up_date);
-        dateKey = lead.follow_up_date; // Use ISO date string as key
+        dateKey = normalizeDateKey(lead.follow_up_date);
       } else if (lead.next_meeting_date) {
         dateObj = new Date(lead.next_meeting_date);
-        dateKey = lead.next_meeting_date;
+        dateKey = normalizeDateKey(lead.next_meeting_date);
       } else if (lead.meeting_date) {
         dateObj = new Date(lead.meeting_date);
-        dateKey = lead.meeting_date;
+        dateKey = normalizeDateKey(lead.meeting_date);
       } else if (lead.scheduled_date) {
         dateObj = new Date(lead.scheduled_date);
-        dateKey = lead.scheduled_date;
+        dateKey = normalizeDateKey(lead.scheduled_date);
       } else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
         // Extract date from remark format like "2025-10-28 AT 19:10"
         const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
         if (dateMatch) {
           dateObj = new Date(dateMatch[1]);
-          dateKey = dateMatch[1];
+          dateKey = dateMatch[1]; // Already in YYYY-MM-DD format
         }
       } else if (lead.updated_at) {
         dateObj = new Date(lead.updated_at);
-        dateKey = lead.updated_at.split('T')[0]; // Use date part only
+        dateKey = normalizeDateKey(lead.updated_at);
       } else {
         dateKey = 'No Date';
         dateObj = new Date(0); // Use epoch for sorting
+      }
+      
+      // Skip if dateKey is null (invalid date)
+      if (!dateKey || dateKey === 'No Date') {
+        if (!groups['No Date']) {
+          groups['No Date'] = {
+            dateObj: new Date(0),
+            dateKey: 'No Date',
+            leads: []
+          };
+        }
+        groups['No Date'].leads.push(lead);
+        return;
       }
       
       if (!groups[dateKey]) {
@@ -887,10 +943,18 @@ export default function LastCall() {
     });
     
     // Sort dates in descending order (most recent first)
+    // Normalize date objects for proper comparison
     const sortedDates = Object.keys(groups).sort((a, b) => {
       if (a === 'No Date') return 1;
       if (b === 'No Date') return -1;
-      return groups[b].dateObj - groups[a].dateObj;
+      
+      // Normalize dates to start of day for consistent comparison
+      const dateA = new Date(groups[a].dateObj);
+      dateA.setHours(0, 0, 0, 0);
+      const dateB = new Date(groups[b].dateObj);
+      dateB.setHours(0, 0, 0, 0);
+      
+      return dateB.getTime() - dateA.getTime();
     });
     
     return sortedDates.map(dateKey => ({
@@ -905,6 +969,14 @@ export default function LastCall() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedGroups = groupedLeads.slice(startIndex, endIndex);
+  
+  // Debug: Log grouped dates
+  React.useEffect(() => {
+    if (groupedLeads.length > 0) {
+      console.log(`[LastCall] Total date groups: ${groupedLeads.length}, Showing: ${startIndex + 1}-${Math.min(endIndex, groupedLeads.length)}`);
+      console.log('[LastCall] Date groups:', groupedLeads.slice(0, 10).map(g => `${g.dateKey} (${g.leads.length} leads)`));
+    }
+  }, [groupedLeads, startIndex, endIndex]);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -1244,10 +1316,11 @@ export default function LastCall() {
                 onChange={(e) => handleItemsPerPageChange(parseInt(e.target.value))}
                 className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
                 <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
+                <option value={500}>500</option>
+                <option value={1000}>All</option>
               </select>
               <span className="text-sm text-gray-700">per page</span>
             </div>

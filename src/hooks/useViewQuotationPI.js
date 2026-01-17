@@ -259,18 +259,44 @@ export function useViewQuotationPI(companyBranches, user) {
       // Calculate advance payment
       let advancePayment = 0;
       let originalQuotationTotal = quotationTotal;
+      let approvedPayments = [];
       try {
         const payRes = await paymentService.getPaymentsByQuotation(piData.quotation_id);
         const allPayments = payRes?.data || [];
-        advancePayment = allPayments
+        const approvedOnly = allPayments
           .filter(p => {
             const approvalStatus = (p.approval_status || p.accounts_approval_status || '').toLowerCase();
             return approvalStatus === 'approved';
           })
-          .reduce((sum, p) => {
-            const amount = Number(p.installment_amount || p.paid_amount || p.amount || 0);
-            return sum + (isNaN(amount) ? 0 : amount);
-          }, 0);
+        
+        advancePayment = approvedOnly.reduce((sum, p) => {
+          const amount = Number(p.installment_amount || p.paid_amount || p.amount || 0);
+          return sum + (isNaN(amount) ? 0 : amount);
+        }, 0);
+        
+        approvedPayments = approvedOnly.map((payment) => {
+          const paymentDate = payment.payment_date || payment.created_at || '';
+          let formattedDate = '';
+          if (paymentDate) {
+            try {
+              formattedDate = new Date(paymentDate).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+            } catch (e) {
+              formattedDate = paymentDate;
+            }
+          }
+          const amountRaw = Number(payment.installment_amount || payment.paid_amount || payment.amount || 0);
+          return {
+            date: formattedDate,
+            mode: payment.payment_method || 'N/A',
+            refNo: payment.payment_reference || payment.id || '',
+            amount: amountRaw.toFixed(2),
+            amountRaw
+          };
+        });
         
         if (advancePayment > 0 && quotationTotal > 0) {
           originalQuotationTotal = quotationTotal;
@@ -281,6 +307,12 @@ export function useViewQuotationPI(companyBranches, user) {
           originalQuotationTotal = quotationTotal;
         }
       }
+
+      const totalAdvanceRaw = approvedPayments.reduce((sum, payment) => sum + (payment.amountRaw || 0), 0);
+      const totalAdvanceValue = totalAdvanceRaw || advancePayment || 0;
+      const balanceDue = Math.max(0, Number(quotationTotal || 0) - totalAdvanceValue);
+      const formattedTotalAdvance = totalAdvanceValue.toFixed(2);
+      const formattedBalanceDue = balanceDue.toFixed(2);
 
       // Build billTo - prefer from quotation bill_to, then fallback
       const billTo = billToFromQuotation || {
@@ -320,7 +352,10 @@ export function useViewQuotationPI(companyBranches, user) {
         taxAmount,
         total: finalTotal,
         originalQuotationTotal: advancePayment > 0 ? originalQuotationTotal : 0,
-        advancePayment,
+        advancePayment: totalAdvanceValue,
+        advancePayments: approvedPayments,
+        totalAdvance: formattedTotalAdvance,
+        balanceDue: formattedBalanceDue,
         billTo,
         paymentMode: completeQuotation.payment_mode || completeQuotation.paymentMode || '',
         transportTc: completeQuotation.transport_tc || completeQuotation.transportTc || '',

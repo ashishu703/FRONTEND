@@ -23,6 +23,7 @@ import UserService from '../../services/UserService';
 import PIService from '../../services/PIService';
 import QuotationService from '../../services/QuotationService';
 import { generateQuotationPDF } from '../../utils/pdfUtils';
+import paymentService from '../../api/admin_api/paymentService';
 import { downloadCSVTemplate, parseCSV, formatDate as formatDateUtil, exportToExcel } from '../../utils/csvUtils';
 import { getStatusBadge as getStatusBadgeUtil } from '../../utils/statusUtils';
 import { calculateAssignedCounts, getUnassignedLeadIds, filterLeads } from '../../utils/leadFilters';
@@ -196,7 +197,7 @@ const LeadsSimplified = () => {
   const [lastCallInitialLoading, setLastCallInitialLoading] = useState(false);
   
   // Salesperson Dashboard state
-  const [lastCallViewMode, setLastCallViewMode] = useState('date'); // 'date' or 'salesperson'
+  const [lastCallViewMode] = useState('salesperson');
   const [salespersons, setSalespersons] = useState([]);
   const [salespersonsLoading, setSalespersonsLoading] = useState(false);
   const [allLastCallLeadsForSalesperson, setAllLastCallLeadsForSalesperson] = useState([]);
@@ -237,7 +238,6 @@ const LeadsSimplified = () => {
         updatedAt: lead.updated_at || lead.created_at || transformed.updatedAt || '',
         assignedSalesperson: lead.assignedSalesperson || lead.assigned_salesperson || transformed.assignedSalesperson || 'Unassigned',
         assignedTelecaller: lead.assignedTelecaller || lead.assigned_telecaller || transformed.assignedTelecaller || 'Unassigned',
-        // Preserve date and time fields for Last Call filtering (snake_case) - Enhanced for real-time salesperson data
         follow_up_date: lead.follow_up_date || lead.followUpDate || transformed.follow_up_date || null,
         follow_up_time: lead.follow_up_time || lead.followUpTime || transformed.follow_up_time || null,
         follow_up_remark: followUpRemark,
@@ -251,7 +251,6 @@ const LeadsSimplified = () => {
         sales_status: salesStatus,
         sales_status_remark: salesStatusRemark,
         updated_at: lead.updated_at || lead.updatedAt || transformed.updated_at || null,
-        // Map to camelCase for LeadTable component (required for display)
         followUpStatus: followUpStatus,
         followUpRemark: followUpRemark,
         salesStatus: salesStatus,
@@ -260,17 +259,14 @@ const LeadsSimplified = () => {
     });
   }, [leadService]);
 
-  // Fetch enquiries with pagination and parallel API calls
   const fetchEnquiries = useCallback(async (forceRefresh = false, page = enquiryPage, limit = enquiryLimit) => {
     if (activeTab !== 'enquiry') return;
     
-    // Cancel previous request
     if (fetchEnquiriesAbortControllerRef.current) {
       fetchEnquiriesAbortControllerRef.current.abort();
     }
     fetchEnquiriesAbortControllerRef.current = new AbortController();
     
-    // Create cache key from page, limit, and filters
     const cacheKey = JSON.stringify({ page, limit, filters: enquiryFilters });
     const now = Date.now();
     
@@ -285,13 +281,11 @@ const LeadsSimplified = () => {
     
     setEnquiriesLoading(true);
     try {
-      // Build query params
       const params = new URLSearchParams();
       params.append('page', page.toString());
       params.append('limit', limit.toString());
       if (enquiryFilters.enquiry_date) params.append('enquiryDate', enquiryFilters.enquiry_date);
       
-      // Fetch paginated data and grouped data in parallel
       const groupedParams = new URLSearchParams();
       if (enquiryFilters.enquiry_date) groupedParams.append('enquiryDate', enquiryFilters.enquiry_date);
       
@@ -349,7 +343,7 @@ const LeadsSimplified = () => {
     fetchLastCallAbortControllerRef.current = new AbortController();
     
     // Create cache key
-    const cacheKey = `page-${page}-limit-${limit}`;
+    const cacheKey = `all-${lastCallViewMode || 'date'}`;
     const now = Date.now();
     
     // Check cache
@@ -366,48 +360,66 @@ const LeadsSimplified = () => {
         setLastCallInitialLoading(true);
       }
       
-      // Use optimized backend API endpoint with server-side filtering and pagination
-      const params = {
-        page,
-        limit: Math.min(limit, 50) // Max 50 per page
+      // Use optimized backend API endpoint with server-side filtering
+      // Always fetch all pages for department head/superadmin view
+      const baseParams = {
+        limit: 100, // Backend max per page
+        page: 1
       };
       
       // Add departmentType if available (for filtering)
       if (user?.departmentType) {
-        params.departmentType = user.departmentType;
+        baseParams.departmentType = user.departmentType;
       }
       
-      const response = await departmentHeadService.getLastCallLeads(params);
-      const leadsData = response?.data || [];
-      const pagination = response?.pagination || {};
-      const total = pagination.total || 0;
+      let allLeads = [];
+      let total = 0;
+      let currentPage = 1;
       
-      // Transform leads with proper field mapping
-      const transformedLeads = transformLeads(leadsData);
-      
-      // For salesperson view, we need all leads - fetch with high limit if needed
-      // But only if in salesperson view mode
-      if (lastCallViewMode === 'salesperson' && total > 0) {
-        // Fetch all last call leads for salesperson grouping (with reasonable limit)
-        const allParams = { ...params, page: 1, limit: Math.min(total, 1000) };
-        const allResponse = await departmentHeadService.getLastCallLeads(allParams);
-        const allLeadsData = allResponse?.data || [];
-        const allTransformed = transformLeads(allLeadsData);
-        setAllLastCallLeadsForSalesperson(allTransformed);
-      } else {
-        setAllLastCallLeadsForSalesperson(transformedLeads);
+      // Fetch all pages to ensure complete data
+      while (true) {
+        if (fetchLastCallAbortControllerRef.current?.signal?.aborted) {
+          return [];
+        }
+        
+        const response = await departmentHeadService.getLastCallLeads({
+          ...baseParams,
+          page: currentPage
+        });
+        const leadsData = response?.data || [];
+        const pagination = response?.pagination || {};
+        
+        if (currentPage === 1) {
+          total = pagination.total || 0;
+        }
+        
+        if (leadsData.length === 0) {
+          break;
+        }
+        
+        const transformedBatch = transformLeads(leadsData);
+        allLeads = allLeads.concat(transformedBatch);
+        
+        if (total && allLeads.length >= total) {
+          break;
+        }
+        
+        currentPage += 1;
       }
+      
+      const resolvedTotal = total || allLeads.length;
       
       // Update cache
       lastCallCacheRef.current.set(cacheKey, {
-        data: transformedLeads,
-        total,
+        data: allLeads,
+        total: resolvedTotal,
         timestamp: now
       });
       
-      setLastCallLeadsData(transformedLeads);
-      setLastCallTotal(total);
-      return transformedLeads;
+      setLastCallLeadsData(allLeads);
+      setLastCallTotal(resolvedTotal);
+      setAllLastCallLeadsForSalesperson(allLeads);
+      return allLeads;
     } catch (err) {
       if (err.name !== 'AbortError') {
         console.error('Error fetching last call leads:', err);
@@ -488,6 +500,21 @@ const LeadsSimplified = () => {
     }
   }, []);
 
+  // Normalize date key to YYYY-MM-DD format for consistent grouping
+  const normalizeDateKey = useCallback((dateString) => {
+    if (!dateString) return null;
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return null;
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch {
+      return null;
+    }
+  }, []);
+
   // Format date for grouping (full format)
   const formatDateForGrouping = useCallback((dateString) => {
     if (!dateString || dateString === 'No Date') return 'N/A';
@@ -505,11 +532,17 @@ const LeadsSimplified = () => {
     }
   }, []);
 
-  // Filter last call leads - use paginated lastCallLeadsData
+  // Paginate last call leads locally (all leads are loaded for department head)
+  const paginatedLastCallLeads = useMemo(() => {
+    const start = (lastCallPage - 1) * lastCallLimit;
+    const end = start + lastCallLimit;
+    return lastCallLeadsData.slice(start, end);
+  }, [lastCallLeadsData, lastCallPage, lastCallLimit]);
+
+  // Filter last call leads - use paginated data
   const filteredLastCallLeads = useMemo(() => {
-    // Use paginated lastCallLeadsData
-    return lastCallLeadsData;
-  }, [lastCallLeadsData]);
+    return paginatedLastCallLeads;
+  }, [paginatedLastCallLeads]);
 
   // Group leads by date (last call date) - using paginated data
   const groupedLastCallLeads = useMemo(() => {
@@ -523,16 +556,16 @@ const LeadsSimplified = () => {
       
       if (lead.follow_up_date) {
         dateObj = new Date(lead.follow_up_date);
-        dateKey = lead.follow_up_date; // Use ISO date string as key
+        dateKey = normalizeDateKey(lead.follow_up_date);
       } else if (lead.next_meeting_date) {
         dateObj = new Date(lead.next_meeting_date);
-        dateKey = lead.next_meeting_date;
+        dateKey = normalizeDateKey(lead.next_meeting_date);
       } else if (lead.meeting_date) {
         dateObj = new Date(lead.meeting_date);
-        dateKey = lead.meeting_date;
+        dateKey = normalizeDateKey(lead.meeting_date);
       } else if (lead.scheduled_date) {
         dateObj = new Date(lead.scheduled_date);
-        dateKey = lead.scheduled_date;
+        dateKey = normalizeDateKey(lead.scheduled_date);
       } else if (lead.sales_status === 'next_meeting' && lead.sales_status_remark) {
         // Extract date from remark format like "2025-10-28 AT 19:10"
         const dateMatch = lead.sales_status_remark.match(/(\d{4}-\d{2}-\d{2})/);
@@ -542,12 +575,17 @@ const LeadsSimplified = () => {
         }
       } else if (lead.updated_at) {
         dateObj = new Date(lead.updated_at);
-        dateKey = lead.updated_at.split('T')[0]; // Use date part only
+        dateKey = normalizeDateKey(lead.updated_at);
       } else {
         dateKey = 'No Date';
         dateObj = new Date(0); // Use epoch for sorting
       }
       
+      if (!dateKey) {
+        dateKey = 'No Date';
+        dateObj = new Date(0);
+      }
+
       if (!groups[dateKey]) {
         groups[dateKey] = {
           dateObj: dateObj,
@@ -653,15 +691,14 @@ const LeadsSimplified = () => {
     return total;
   }, [allGroupedLastCallLeadsBySalesperson]);
 
-  // OPTIMIZED: Filtered grouped leads based on selected salesperson tab
+  // Filtered grouped leads based on selected salesperson tab
   const groupedLastCallLeadsBySalesperson = useMemo(() => {
     if (!allGroupedLastCallLeadsBySalesperson.length) {
       return [];
     }
 
     if (selectedSalespersonTab === 'all') {
-      // Show top 5 if 'all' tab is selected
-      return allGroupedLastCallLeadsBySalesperson.slice(0, 5);
+      return allGroupedLastCallLeadsBySalesperson;
     }
     
     // OPTIMIZED: Use find instead of filter for single result
@@ -670,6 +707,23 @@ const LeadsSimplified = () => {
     );
     return found ? [found] : [];
   }, [allGroupedLastCallLeadsBySalesperson, selectedSalespersonTab]);
+
+  // Pagination for salesperson groups (only when "all" tab is selected)
+  const salespersonGroupsTotal = groupedLastCallLeadsBySalesperson.length;
+  const paginatedSalespersonGroups = useMemo(() => {
+    if (selectedSalespersonTab !== 'all') {
+      return groupedLastCallLeadsBySalesperson;
+    }
+    const start = (lastCallPage - 1) * lastCallLimit;
+    const end = start + lastCallLimit;
+    return groupedLastCallLeadsBySalesperson.slice(start, end);
+  }, [groupedLastCallLeadsBySalesperson, lastCallPage, lastCallLimit, selectedSalespersonTab]);
+
+  useEffect(() => {
+    if (selectedSalespersonTab !== 'all' && lastCallPage !== 1) {
+      setLastCallPage(1);
+    }
+  }, [selectedSalespersonTab, lastCallPage]);
 
   // OPTIMIZED: Get unique salesperson names from all groups for tabs
   // Only recalculate when grouped data or salespersons list changes
@@ -1706,6 +1760,46 @@ const LeadsSimplified = () => {
         advancePayment, 
         originalQuotationTotal
       );
+
+      const paymentHistoryResponse = await paymentService
+        .getPaymentsByQuotation(pi.quotation_id)
+        .catch(() => ({ data: [] }));
+      const approvedPayments = (paymentHistoryResponse?.data || [])
+        .filter((payment) => {
+          const approvalStatus = (payment.approval_status || payment.accounts_approval_status || '').toLowerCase();
+          return approvalStatus === 'approved';
+        })
+        .map((payment) => {
+          const paymentDate = payment.payment_date || payment.created_at || '';
+          let formattedDate = '';
+          if (paymentDate) {
+            try {
+              formattedDate = new Date(paymentDate).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+            } catch (e) {
+              formattedDate = paymentDate;
+            }
+          }
+
+          const amountRaw = Number(payment.installment_amount || payment.paid_amount || payment.amount || 0);
+          return {
+            date: formattedDate,
+            mode: payment.payment_method || 'N/A',
+            refNo: payment.payment_reference || payment.id || '',
+            amount: amountRaw.toFixed(2),
+            amountRaw
+          };
+        });
+
+      const totalAdvanceRaw = approvedPayments.reduce((sum, payment) => sum + (payment.amountRaw || 0), 0);
+      const totalAdvanceValue = totalAdvanceRaw || advancePayment || 0;
+      const quotationTotalAmount = Number(totals.quotationTotal || completeQuotation.total_amount || completeQuotation.total || 0);
+      const balanceDue = Math.max(0, quotationTotalAmount - totalAdvanceValue);
+      const formattedTotalAdvance = totalAdvanceValue.toFixed(2);
+      const formattedBalanceDue = balanceDue.toFixed(2);
       
       // Get customer data for billTo
       const customerData = allLeadsDataRef.current?.find(lead => lead.id === Number(pi.customer_id)) || null;
@@ -1717,7 +1811,6 @@ const LeadsSimplified = () => {
       const piDate = rawPiDate ? new Date(rawPiDate).toISOString().split('T')[0] : '';
       const validUntil = pi.valid_until || pi.validUntil || completeQuotation.valid_until || '';
 
-      // Bank details & terms from quotation (same as CreatePIForm)
       const rawBankDetails = completeQuotation.bank_details || completeQuotation.bankDetails;
       let bankDetails = null;
       try {
@@ -1725,7 +1818,6 @@ const LeadsSimplified = () => {
           bankDetails = typeof rawBankDetails === 'string' ? JSON.parse(rawBankDetails) : rawBankDetails;
         }
       } catch (e) {
-        // Bank details parsing failed, will use null
       }
 
       const rawTerms = completeQuotation.terms_sections || completeQuotation.termsSections;
@@ -1783,6 +1875,11 @@ const LeadsSimplified = () => {
         taxRate: totals.taxRate,
         taxAmount: totals.taxAmount,
         total: finalTotal,
+        originalQuotationTotal: totalAdvanceValue > 0 ? originalQuotationTotal : 0,
+        advancePayment: totalAdvanceValue,
+        advancePayments: approvedPayments,
+        totalAdvance: formattedTotalAdvance,
+        balanceDue: formattedBalanceDue,
 
         // Additional details from quotation
         paymentMode: completeQuotation.payment_mode || completeQuotation.paymentMode || '',
@@ -1791,12 +1888,10 @@ const LeadsSimplified = () => {
         deliveryTerms: completeQuotation.delivery_terms || completeQuotation.deliveryTerms || '',
         materialType: completeQuotation.material_type || completeQuotation.materialType || '',
 
-        // Textual terms
         paymentTerms: completeQuotation.payment_terms || completeQuotation.paymentTerms || '',
         validity: validUntil,
         warranty: completeQuotation.warranty || '',
 
-        // Bank details & terms & conditions
         bankDetails,
         terms,
 
@@ -2107,46 +2202,12 @@ const LeadsSimplified = () => {
                   selectedCount={selectedLeadIds.length}
                   onRefresh={() => {
                     fetchLastCallLeads(true);
-                    if (lastCallViewMode === 'salesperson') {
-                      fetchSalespersons();
-                    }
                   }}
                 />
-                
-                {/* View Mode Toggle */}
-                <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-1 shadow-sm">
-                  <button
-                    onClick={() => setLastCallViewMode('date')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                      lastCallViewMode === 'date'
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      <span>By Date</span>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setLastCallViewMode('salesperson')}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                      lastCallViewMode === 'salesperson'
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4" />
-                      <span>By Salesperson</span>
-                    </div>
-                  </button>
-                </div>
               </div>
 
               {/* Salesperson Dashboard View */}
-              {lastCallViewMode === 'salesperson' ? (
-                <div className="space-y-4">
+              <div className="space-y-4">
                   {/* Salesperson Tabs */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="border-b border-gray-200">
@@ -2193,8 +2254,8 @@ const LeadsSimplified = () => {
 
                   {salespersonsLoading ? (
                     <DashboardSkeleton />
-                  ) : groupedLastCallLeadsBySalesperson.length > 0 ? (
-                    groupedLastCallLeadsBySalesperson.map((group, index) => {
+                  ) : paginatedSalespersonGroups.length > 0 ? (
+                    paginatedSalespersonGroups.map((group, index) => {
                       // Filter leads by search term
                       const filteredLeads = group.leads.filter(lead => {
                         if (!searchTerm) return true;
@@ -2245,8 +2306,8 @@ const LeadsSimplified = () => {
                                   </div>
                                 </div>
                               </div>
-                              <div className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
-                                #{index + 1} Salesperson
+                            <div className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
+                              #{(selectedSalespersonTab === 'all' ? ((lastCallPage - 1) * lastCallLimit + index + 1) : 1)} Salesperson
                               </div>
                             </div>
                           </div>
@@ -2298,7 +2359,7 @@ const LeadsSimplified = () => {
                         onClick={() => setSelectedSalespersonTab('all')}
                         className="mt-4 text-sm text-blue-600 hover:text-blue-800 font-medium"
                       >
-                        ← View All Top 5 Salespersons
+                        ← View All Salespersons
                       </button>
                     </div>
                   ) : (
@@ -2311,103 +2372,9 @@ const LeadsSimplified = () => {
                     </div>
                   )}
                 </div>
-              ) : (
-                /* Date Grouped View */
-                groupedLastCallLeads.length > 0 ? (
-            <div className="space-y-6">
-              {groupedLastCallLeads.map((group) => {
-                // Filter leads in this group by search term (on paginated data)
-                const filteredGroupLeads = group.leads.filter(lead => {
-                  if (!searchTerm) return true;
-                  const searchLower = searchTerm.toLowerCase();
-                  return (
-                    (lead.customer || lead.name || '').toLowerCase().includes(searchLower) ||
-                    (lead.email || '').toLowerCase().includes(searchLower) ||
-                    (lead.business || '').toLowerCase().includes(searchLower) ||
-                    (lead.phone || '').toLowerCase().includes(searchLower)
-                  );
-                });
-
-                if (filteredGroupLeads.length === 0) return null;
-
-                const dateDisplay = group.dateKey === 'No Date' 
-                  ? 'No Date' 
-                  : formatDateShort(group.dateKey);
-                const dateFull = group.dateKey === 'No Date' 
-                  ? 'No Date' 
-                  : formatDateForGrouping(group.dateKey);
-                
-                return (
-                  <div key={group.dateKey} className="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-                            <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900">
-                              {dateDisplay}
-                            </h3>
-                            <p className="text-xs sm:text-sm text-gray-600">{dateFull}</p>
-                          </div>
-                        </div>
-                        <div className="bg-blue-100 text-blue-800 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
-                          {filteredGroupLeads.length} call{filteredGroupLeads.length !== 1 ? 's' : ''}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="overflow-x-auto -mx-3 sm:mx-0">
-                      <LeadTable
-                        filteredLeads={filteredGroupLeads}
-                        tableLoading={lastCallLoading}
-                        hasStatusFilter={false}
-                        visibleColumns={visibleColumns}
-                        isAllSelected={false}
-                        selectedLeadIds={[]}
-                        isLeadAssigned={isLeadAssigned}
-                        isValueAssigned={isValueAssigned}
-                        getStatusBadge={getStatusBadge}
-                        toggleSelectAll={() => {}}
-                        toggleSelectOne={() => {}}
-                        onEdit={handleEdit}
-                        onViewTimeline={(lead) => {
-                          setTimelineLead(lead);
-                          setShowCustomerTimeline(true);
-                        }}
-                        onAssign={openAssignModal}
-                        showCustomerTimeline={showCustomerTimeline}
-                        setShowColumnFilter={setShowColumnFilter}
-                        allLeadsData={lastCallLeadsData}
-                        assignedSalespersonFilter=""
-                        assignedTelecallerFilter=""
-                        onAssignedSalespersonFilterChange={() => {}}
-                        onAssignedTelecallerFilterChange={() => {}}
-                        usernames={usernames}
-                        columnFilters={{}}
-                        onColumnFilterChange={() => {}}
-                        showColumnFilterRow={false}
-                        onToggleColumnFilterRow={() => {}}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-              <Clock className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No last call data</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                You don't have any last call activities at the moment.
-              </p>
-            </div>
-          )
-              )}
           
-          {/* Last Call Pagination - Only show for date view */}
-          {lastCallViewMode === 'date' && lastCallTotal > 0 && (
+          {/* Last Call Pagination - Salesperson grouping */}
+          {selectedSalespersonTab === 'all' && salespersonGroupsTotal > 0 && (
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 p-3 sm:p-4 border-t border-gray-200 bg-white rounded-lg shadow-sm mt-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-2 text-xs sm:text-sm text-gray-600">
                 <span className="whitespace-nowrap">Rows per page:</span>
@@ -2419,12 +2386,12 @@ const LeadsSimplified = () => {
                   }}
                   className="border border-gray-300 rounded px-2 py-1 text-sm"
                 >
-                  <option value={25}>25</option>
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
                   <option value={50}>50</option>
-                  <option value={100}>100</option>
-                  <option value={200}>200</option>
                 </select>
-                <span className="whitespace-nowrap">Showing {Math.min(((lastCallPage - 1) * lastCallLimit) + 1, lastCallTotal)} to {Math.min(lastCallPage * lastCallLimit, lastCallTotal)} of {lastCallTotal} calls</span>
+                <span className="whitespace-nowrap">Showing {Math.min(((lastCallPage - 1) * lastCallLimit) + 1, salespersonGroupsTotal)} to {Math.min(lastCallPage * lastCallLimit, salespersonGroupsTotal)} of {salespersonGroupsTotal} salespersons</span>
               </div>
               <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                 <button
@@ -2444,9 +2411,9 @@ const LeadsSimplified = () => {
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, Math.ceil(lastCallTotal / lastCallLimit)) }, (_, i) => {
+                  {Array.from({ length: Math.min(5, Math.ceil(salespersonGroupsTotal / lastCallLimit)) }, (_, i) => {
                     let pageNum;
-                    const totalPages = Math.ceil(lastCallTotal / lastCallLimit);
+                    const totalPages = Math.ceil(salespersonGroupsTotal / lastCallLimit);
                     if (totalPages <= 5) {
                       pageNum = i + 1;
                     } else if (lastCallPage <= 3) {
@@ -2472,19 +2439,19 @@ const LeadsSimplified = () => {
                   })}
                 </div>
                 <span className="text-xs sm:text-sm text-gray-600 px-1 sm:px-2 whitespace-nowrap">
-                  Page {lastCallPage} of {Math.ceil(lastCallTotal / lastCallLimit) || 1}
+                  Page {lastCallPage} of {Math.ceil(salespersonGroupsTotal / lastCallLimit) || 1}
                 </span>
                 <button
-                  onClick={() => setLastCallPage(p => p < Math.ceil(lastCallTotal / lastCallLimit) ? p + 1 : p)}
-                  disabled={lastCallPage >= Math.ceil(lastCallTotal / lastCallLimit)}
+                  onClick={() => setLastCallPage(p => p < Math.ceil(salespersonGroupsTotal / lastCallLimit) ? p + 1 : p)}
+                  disabled={lastCallPage >= Math.ceil(salespersonGroupsTotal / lastCallLimit)}
                   className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                   title="Next page"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => setLastCallPage(Math.ceil(lastCallTotal / lastCallLimit))}
-                  disabled={lastCallPage >= Math.ceil(lastCallTotal / lastCallLimit)}
+                  onClick={() => setLastCallPage(Math.ceil(salespersonGroupsTotal / lastCallLimit))}
+                  disabled={lastCallPage >= Math.ceil(salespersonGroupsTotal / lastCallLimit)}
                   className="p-1.5 sm:p-2 rounded-md border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                   title="Last page"
                 >
