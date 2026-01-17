@@ -510,7 +510,7 @@ const FixedHeader = ({ userType = "superadmin", currentPage = "dashboard", isMob
   const pageContent = getPageHeaderContent();
 
   return (
-    <header className={`sticky top-0 z-[100] border-b shadow-lg transition-all duration-300 backdrop-blur-md ${
+    <header className={`sticky top-0 z-[30] border-b shadow-lg transition-all duration-300 backdrop-blur-md ${
       isDarkMode 
         ? 'bg-gray-900/95 border-gray-700' 
         : 'bg-white/95 border-gray-200'

@@ -81,6 +81,24 @@ const LeadsSimplified = () => {
     enquiry_date: false
   });
   const [showEnquiryColumnModal, setShowEnquiryColumnModal] = useState(false);
+  const [showEnquiryEditModal, setShowEnquiryEditModal] = useState(false);
+  const [editingEnquiry, setEditingEnquiry] = useState(null);
+  const [enquiryEditForm, setEnquiryEditForm] = useState({
+    customer_name: '',
+    business: '',
+    address: '',
+    state: '',
+    division: '',
+    enquired_product: '',
+    product_quantity: '',
+    product_remark: '',
+    follow_up_status: '',
+    follow_up_remark: '',
+    sales_status: '',
+    sales_status_remark: '',
+    salesperson: '',
+    telecaller: ''
+  });
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [showAll, setShowAll] = useState(false);
@@ -879,10 +897,60 @@ const LeadsSimplified = () => {
     toastManager.success(`Exported ${filteredEnquiries.length} enquiry(ies) to CSV`);
   };
 
-  // Handle enquiry edit
   const handleEditEnquiry = (enquiry) => {
-    // Edit enquiry functionality
-    toastManager.info('Edit functionality coming soon');
+    setEditingEnquiry(enquiry);
+    setEnquiryEditForm({
+      customer_name: enquiry.customer_name || '',
+      business: enquiry.business || '',
+      address: enquiry.address || '',
+      state: enquiry.state || '',
+      division: enquiry.division || '',
+      enquired_product: enquiry.enquired_product || '',
+      product_quantity: enquiry.product_quantity || '',
+      product_remark: enquiry.product_remark || '',
+      follow_up_status: enquiry.follow_up_status || '',
+      follow_up_remark: enquiry.follow_up_remark || '',
+      sales_status: enquiry.sales_status || '',
+      sales_status_remark: enquiry.sales_status_remark || '',
+      salesperson: enquiry.salesperson || '',
+      telecaller: enquiry.telecaller || ''
+    });
+    setShowEnquiryEditModal(true);
+  };
+
+  const handleSaveEnquiryEdit = async () => {
+    if (!editingEnquiry?.id) return;
+    try {
+      setEnquiriesLoading(true);
+      const payload = {
+        customer_name: enquiryEditForm.customer_name,
+        business: enquiryEditForm.business,
+        address: enquiryEditForm.address,
+        state: enquiryEditForm.state,
+        division: enquiryEditForm.division,
+        enquired_product: enquiryEditForm.enquired_product,
+        product_quantity: enquiryEditForm.product_quantity,
+        product_remark: enquiryEditForm.product_remark,
+        follow_up_status: enquiryEditForm.follow_up_status,
+        follow_up_remark: enquiryEditForm.follow_up_remark,
+        sales_status: enquiryEditForm.sales_status,
+        sales_status_remark: enquiryEditForm.sales_status_remark,
+        salesperson: enquiryEditForm.salesperson,
+        telecaller: enquiryEditForm.telecaller
+      };
+      const response = await apiClient.put(API_ENDPOINTS.ENQUIRY_UPDATE(editingEnquiry.id), payload);
+      if (response.success) {
+        toastManager.success('Enquiry updated successfully');
+        setShowEnquiryEditModal(false);
+        setEditingEnquiry(null);
+        enquiriesCacheRef.current.clear();
+        await fetchEnquiries(true, enquiryPage, enquiryLimit);
+      }
+    } catch (error) {
+      apiErrorHandler.handleError(error, 'update enquiry');
+    } finally {
+      setEnquiriesLoading(false);
+    }
   };
 
   // Handle enquiry delete
@@ -2977,6 +3045,166 @@ const LeadsSimplified = () => {
         loadingUsers={loadingUsers}
         usersError={usersError}
       />
+
+      {showEnquiryEditModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Edit Enquiry</h3>
+              <button
+                onClick={() => setShowEnquiryEditModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                <input
+                  type="text"
+                  value={enquiryEditForm.customer_name}
+                  onChange={(e) => setEnquiryEditForm(prev => ({ ...prev, customer_name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Business</label>
+                <input
+                  type="text"
+                  value={enquiryEditForm.business}
+                  onChange={(e) => setEnquiryEditForm(prev => ({ ...prev, business: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <textarea
+                  rows="2"
+                  value={enquiryEditForm.address}
+                  onChange={(e) => setEnquiryEditForm(prev => ({ ...prev, address: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                <input
+                  type="text"
+                  value={enquiryEditForm.state}
+                  onChange={(e) => setEnquiryEditForm(prev => ({ ...prev, state: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Division</label>
+                <input
+                  type="text"
+                  value={enquiryEditForm.division}
+                  onChange={(e) => setEnquiryEditForm(prev => ({ ...prev, division: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Enquired Product</label>
+                <input
+                  type="text"
+                  value={enquiryEditForm.enquired_product}
+                  onChange={(e) => setEnquiryEditForm(prev => ({ ...prev, enquired_product: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                <input
+                  type="text"
+                  value={enquiryEditForm.product_quantity}
+                  onChange={(e) => setEnquiryEditForm(prev => ({ ...prev, product_quantity: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Product Remark</label>
+                <textarea
+                  rows="2"
+                  value={enquiryEditForm.product_remark}
+                  onChange={(e) => setEnquiryEditForm(prev => ({ ...prev, product_remark: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Follow Up Status</label>
+                <input
+                  type="text"
+                  value={enquiryEditForm.follow_up_status}
+                  onChange={(e) => setEnquiryEditForm(prev => ({ ...prev, follow_up_status: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Follow Up Remark</label>
+                <input
+                  type="text"
+                  value={enquiryEditForm.follow_up_remark}
+                  onChange={(e) => setEnquiryEditForm(prev => ({ ...prev, follow_up_remark: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sales Status</label>
+                <input
+                  type="text"
+                  value={enquiryEditForm.sales_status}
+                  onChange={(e) => setEnquiryEditForm(prev => ({ ...prev, sales_status: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sales Status Remark</label>
+                <input
+                  type="text"
+                  value={enquiryEditForm.sales_status_remark}
+                  onChange={(e) => setEnquiryEditForm(prev => ({ ...prev, sales_status_remark: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Salesperson</label>
+                <input
+                  type="text"
+                  value={enquiryEditForm.salesperson}
+                  onChange={(e) => setEnquiryEditForm(prev => ({ ...prev, salesperson: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telecaller</label>
+                <input
+                  type="text"
+                  value={enquiryEditForm.telecaller}
+                  onChange={(e) => setEnquiryEditForm(prev => ({ ...prev, telecaller: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => setShowEnquiryEditModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEnquiryEdit}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showQuotationModal && selectedQuotation && (
         <QuotationPreview

@@ -54,7 +54,7 @@ export default function AddCustomerModal({ onClose, onSave, editingCustomer }) {
     productNames: Array.isArray(editingCustomer?.productNames)
       ? editingCustomer.productNames
       : (editingCustomer?.productName ? [editingCustomer.productName] : []),
-    date: new Date().toISOString().split('T')[0],
+    date: editingCustomer?.date || '',
     division: editingCustomer?.division || ''
   });
 
